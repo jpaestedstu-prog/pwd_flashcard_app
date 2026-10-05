@@ -25,6 +25,16 @@ class MainActivity : FlutterActivity() {
         /** Mirrors `DeviceTimezone._channel` on the Dart side. */
         private const val TIMEZONE_CHANNEL = "flashlearn/device_timezone"
 
+        /**
+         * While a learner drives the app with a switch, the window stays out of
+         * the system keyboard's reach. Android hands hardware keys to the
+         * keyboard BEFORE the app whenever a text field has an input
+         * connection, and the keyboard swallows Space/Enter — the keys switch
+         * interfaces send — to type into the field. With the flag the keys
+         * reach the app (and no system keyboard rises over the gaze one).
+         */
+        private const val IME_CHANNEL = "flashlearn/ime"
+
         /** Mirrors `RoutineNativeAlarms._channel` on the Dart side. */
         private const val ROUTINE_CHANNEL = "flashlearn/routine_alarms"
 
@@ -49,6 +59,39 @@ class MainActivity : FlutterActivity() {
      * and inert until Dart enables capture — see [GamepadBridge].
      */
     private var gamepadBridge: GamepadBridge? = null
+
+    /** A switch learner is active (see IME_CHANNEL). */
+    private var switchKeysToApp = false
+
+    /**
+     * Gives the Flutter view Android-level focus if it lost it.
+     *
+     * In touch mode Android treats Space and Enter as navigation keys: when
+     * nothing in the window holds focus, the FIRST such key is spent giving
+     * focus (ViewRootImpl leaving touch mode) and never reaches the app. A
+     * switch interface sends exactly those keys, so a learner's first press
+     * after anyone touched the screen could vanish. With the view focused the
+     * key goes through.
+     */
+    private fun focusFlutterView() {
+        val root = window?.decorView ?: return
+        fun find(v: android.view.View): android.view.View? {
+            if (v is io.flutter.embedding.android.FlutterView) return v
+            if (v is android.view.ViewGroup) {
+                for (i in 0 until v.childCount) {
+                    find(v.getChildAt(i))?.let { return it }
+                }
+            }
+            return null
+        }
+        val view = find(root) ?: return
+        if (!view.hasFocus()) view.requestFocus()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus && switchKeysToApp) window?.decorView?.post { focusFlutterView() }
+    }
 
     /** The routine channel, once the engine exists. */
     private var routineChannel: MethodChannel? = null
@@ -100,6 +143,30 @@ class MainActivity : FlutterActivity() {
                     result.success(java.util.TimeZone.getDefault().id)
                 } else {
                     result.notImplemented()
+                }
+            }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, IME_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "setBypass" -> {
+                        val on = call.argument<Boolean>("on") ?: false
+                        switchKeysToApp = on
+                        runOnUiThread {
+                            if (on) {
+                                window.addFlags(WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM)
+                                focusFlutterView()
+                            } else {
+                                window.clearFlags(WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM)
+                            }
+                        }
+                        result.success(true)
+                    }
+                    "focus" -> {
+                        runOnUiThread { focusFlutterView() }
+                        result.success(true)
+                    }
+                    else -> result.notImplemented()
                 }
             }
 

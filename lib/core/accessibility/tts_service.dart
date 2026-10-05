@@ -5,8 +5,35 @@ import '../../providers/app_providers.dart';
 
 /// Text-to-Speech service with bilingual support (English + Filipino)
 class TtsService {
+  TtsService() {
+    // One set of engine callbacks, fanned out: [speaking] for whatever paces
+    // itself by the speech, and the single [setCompletionHandler] callback TV
+    // Cast chains its second language on. A cancel or an error ends the
+    // speech too, but only a natural finish runs that callback — exactly what
+    // the engine's own completion handler did.
+    _tts.setStartHandler(() => _setSpeaking(true));
+    _tts.setCompletionHandler(() {
+      _setSpeaking(false);
+      _completionHandler?.call();
+    });
+    _tts.setCancelHandler(() => _setSpeaking(false));
+    _tts.setErrorHandler((_) => _setSpeaking(false));
+  }
+
   final FlutterTts _tts = FlutterTts();
   bool _isInitialized = false;
+
+  /// Whether the speech engine is talking right now — app-wide, since the
+  /// device has one engine whichever service instance started the speech.
+  /// Spoken scanning waits on it, so a long name is heard to the end before
+  /// the highlight moves on.
+  static final ValueNotifier<bool> speaking = ValueNotifier(false);
+
+  static void Function()? _completionHandler;
+
+  static void _setSpeaking(bool value) {
+    if (speaking.value != value) speaking.value = value;
+  }
   String _currentLanguage = 'en-US';
 
   Future<void> init({double speed = 0.5, double pitch = 1.0}) async {
@@ -72,7 +99,7 @@ class TtsService {
 
   /// Register a callback that fires when TTS finishes speaking.
   void setCompletionHandler(void Function() handler) {
-    _tts.setCompletionHandler(handler);
+    _completionHandler = handler;
   }
 
   Future<void> setSpeed(double speed) async {

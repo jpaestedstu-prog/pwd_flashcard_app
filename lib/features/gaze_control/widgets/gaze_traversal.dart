@@ -32,6 +32,11 @@ import 'gaze_keyboard.dart';
 /// control lands on it, scanning visits it after the last control, and a
 /// blink there closes the dialog, sheet or page — the same rule as the Back
 /// pill on the D-pad screens.
+///
+/// On a long page the pill also lights after every [exitEvery] controls. A
+/// switch learner on the tablet opened a page by mistake and then waited
+/// through every control on it before Back came round; now it is never more
+/// than a few steps away.
 class GazeTraversal {
   GazeTraversal({
     required this.onMoved,
@@ -58,6 +63,23 @@ class GazeTraversal {
 
   /// The highlight is on the Back pill rather than on a control.
   bool _onExit = false;
+
+  /// Scanning lights the Back pill after this many controls, part-way down a
+  /// long page, as well as after the last one.
+  static const int exitEvery = 6;
+
+  /// Controls lit since the Back pill last was, and whether the pill now lit
+  /// is such a part-way stop (scanning then carries on from where it was).
+  int _sinceExit = 0;
+  bool _exitInterleaved = false;
+
+  /// The surface being scanned, so a new page or dialog starts its count
+  /// afresh.
+  FocusScopeNode? _scanScope;
+
+  /// What was lit before the last scan step, for a press that lands just
+  /// after it ([commit] with `late`).
+  ({FocusNode? node, bool exit})? _beforeScan;
 
   /// Whether the traversal ring is currently drawn.
   bool get ringShowing => _ring.isShowing;
@@ -88,6 +110,7 @@ class GazeTraversal {
   }
 
   void _setExit(bool value) {
+    if (!value) _exitInterleaved = false;
     if (_onExit == value) return;
     _onExit = value;
     final context = _ringContext;
@@ -102,6 +125,7 @@ class GazeTraversal {
   /// the first control — or anywhere, on a surface with no controls — is the
   /// Back pill.
   bool move(TraversalDirection direction) {
+    _beforeScan = null;
     final backward =
         direction == TraversalDirection.up ||
         direction == TraversalDirection.left;
@@ -122,6 +146,7 @@ class GazeTraversal {
       if (GazeFocusDriver.moveToStart()) {
         _setExit(false);
         onMoved();
+        _keepSystemKeyboardDown();
         return true;
       }
       return false;
@@ -141,22 +166,40 @@ class GazeTraversal {
   }
 
   /// Focus landing on a text field raises the system keyboard by itself —
-  /// half the screen, none of it reachable by gaze. Put it away; a blink on
-  /// the field opens the gaze keyboard instead.
+  /// half the screen, none of it reachable by gaze — and, while it is up, the
+  /// keyboard takes a switch interface's Space before the app sees it, so a
+  /// switch user could not press anything on that field. Put it away; a blink
+  /// or a press on the field opens the gaze keyboard instead.
+  ///
+  /// Checked over the next two frames: a move back to the top of a page
+  /// focuses its first control a frame later ([GazeFocusDriver.moveToStart]).
   void _keepSystemKeyboardDown() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    void check() {
       final context = GazeFocusDriver.focused?.context;
       if (context != null && GazeKeyboard.editableFor(context) != null) {
         GazeKeyboard.hideSystemKeyboard();
       }
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      check();
+      WidgetsBinding.instance.addPostFrameCallback((_) => check());
+      WidgetsBinding.instance.scheduleFrame();
     });
+    WidgetsBinding.instance.scheduleFrame();
   }
 
   /// Presses whatever the ring is on. A freshly opened dialog often still has
   /// focus on its scope node with nothing to press, so pull focus onto its
   /// first control instead and the learner's first blink is never swallowed.
   /// On the Back pill, closes the surface.
-  bool commit({GazeSelectBy by = GazeSelectBy.blink}) {
+  ///
+  /// [late]: the press came just after scanning moved the highlight on (see
+  /// `ScanClock.justMoved`), so it is meant for what was lit before.
+  bool commit({GazeSelectBy by = GazeSelectBy.blink, bool late = false}) {
+    final before = _beforeScan;
+    _beforeScan = null;
+    if (late && before != null && _commitBefore(before, by)) return true;
     if (_onExit) {
       _setExit(false);
       onLeft?.call();
@@ -180,9 +223,37 @@ class GazeTraversal {
     }
     if (GazeFocusDriver.moveFirst()) {
       onMoved();
+      _keepSystemKeyboardDown();
       return true;
     }
     return false;
+  }
+
+  /// Presses what scanning lit just before its last step. False when that is
+  /// gone (scrolled out of a lazy list, the page closed) — the caller then
+  /// presses what is lit now.
+  bool _commitBefore(({FocusNode? node, bool exit}) before, GazeSelectBy by) {
+    if (before.exit) {
+      _setExit(false);
+      onLeft?.call();
+      return GazeFocusDriver.popTop();
+    }
+    final node = before.node;
+    final context = node?.context;
+    if (node == null || context == null || !context.mounted) return false;
+    if (node is FocusScopeNode || !node.canRequestFocus) return false;
+    _setExit(false);
+    node.requestFocus();
+    if (GazeKeyboard.editableFor(context) != null) {
+      // Focus moves at the end of this microtask turn; open the keyboard for
+      // the field once it has.
+      Future.microtask(GazeKeyboard.openForFocus);
+      onPressed(by);
+      return true;
+    }
+    if (!GazeFocusDriver.activateNode(node)) return false;
+    onPressed(by);
+    return true;
   }
 
   /// A completed head hold. Look-up doubles as "press it" when nothing else
@@ -207,30 +278,70 @@ class GazeTraversal {
   }
 
   /// Scanning mode: the next control in reading order lights up, and after
-  /// the last one, the Back pill.
+  /// the last one — and every [exitEvery] controls on a long page — the Back
+  /// pill.
   bool scanStep() {
     final stepped = onScanned ?? onMoved;
+    final focused = GazeFocusDriver.focused;
+    _beforeScan = (node: focused, exit: _onExit);
+    final scope = focused?.nearestScope;
+    if (!identical(scope, _scanScope)) {
+      _scanScope = scope;
+      _sinceExit = 0;
+      _exitInterleaved = false;
+    }
     if (!GazeFocusDriver.hasFocusable()) {
       // Only the way out to offer: keep it lit.
       _setExit(true);
       return true;
     }
     if (_onExit) {
-      // Round again from the top of the page.
-      final moved = GazeFocusDriver.moveToStart();
+      final interleaved = _exitInterleaved;
       _setExit(false);
-      if (moved) stepped();
+      // A stop part-way down the page carries on where it was; the stop
+      // after the last control goes round again from the top.
+      final moved = interleaved
+          ? GazeFocusDriver.scanNext()
+          : GazeFocusDriver.moveToStart();
+      if (moved) {
+        _sinceExit = 1;
+        stepped();
+        _keepSystemKeyboardDown();
+      }
       return moved;
     }
     if (GazeFocusDriver.isLast()) {
       _setExit(true);
+      _sinceExit = 0;
+      stepped();
+      return true;
+    }
+    // Not when the end of the page — and its own Back stop — is only a step
+    // or two away.
+    if (_sinceExit >= exitEvery &&
+        GazeFocusDriver.remainingAfterFocused() > 2) {
+      _setExit(true);
+      _exitInterleaved = true;
+      _sinceExit = 0;
       stepped();
       return true;
     }
     final moved = GazeFocusDriver.scanNext();
-    if (moved) stepped();
-    return moved;
+    if (moved) {
+      _sinceExit++;
+      stepped();
+      _keepSystemKeyboardDown();
+      return true;
+    }
+    // Nowhere further to go — say a sheet whose only control is its close
+    // button, which scanning leaves to the pill: light the way out rather
+    // than nothing at all.
+    _setExit(true);
+    _sinceExit = 0;
+    stepped();
+    return true;
   }
+
 
   /// A spoken phrase while traversing. Movement, select and "go back" are
   /// handled here — "go back" closes the surface holding the focus, which is

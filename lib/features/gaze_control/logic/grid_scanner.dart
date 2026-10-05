@@ -1,3 +1,7 @@
+import 'dart:math' as math;
+
+import '../models/gaze_models.dart';
+
 /// Pure **row–column scanning** over a ragged grid — the "Scanning mode"
 /// selection method for learners who can blink but cannot move their head.
 ///
@@ -35,6 +39,9 @@ class GridScanner {
   /// How many button-phase steps have been taken in the current row, so a
   /// full unanswered pass can hand control back to the row phase.
   int _stepsInRow = 0;
+
+  /// Where the highlight was before the last [step] (see [undoStep]).
+  ({int row, int? col, int steps})? _beforeStep;
 
   /// The row currently lit (or containing the lit control). Meaningless when
   /// [isEmpty].
@@ -82,6 +89,7 @@ class GridScanner {
   void reset() {
     _row = _firstRowFrom(0);
     _stepsInRow = 0;
+    _beforeStep = null;
     // A grid with a single scannable row has no row phase: start on its first
     // control.
     _col = (!isEmpty && !_usesRowPhase) ? 0 : null;
@@ -90,6 +98,7 @@ class GridScanner {
   /// Moves the highlight on by one.
   void step() {
     if (isEmpty) return;
+    _beforeStep = (row: _row, col: _col, steps: _stepsInRow);
     final col = _col;
     if (col == null) {
       _row = _firstRowFrom(_row + 1);
@@ -107,10 +116,69 @@ class GridScanner {
     _col = (col + 1) % len;
   }
 
+  /// Puts the highlight back where it was before the last [step]: a press
+  /// that arrived just as the highlight moved on means what it had lit, not
+  /// what replaced it a moment before. Returns whether there was one to undo.
+  bool undoStep() {
+    final before = _beforeStep;
+    if (before == null) return false;
+    _beforeStep = null;
+    _row = before.row;
+    _col = before.col;
+    _stepsInRow = before.steps;
+    return true;
+  }
+
+  /// Steers the highlight the way a controller's stick or arrows were
+  /// pushed, like a D-pad cursor: ▲ ▼ to the row above or below (onto its
+  /// nearest control when one control is lit, wrapping top to bottom), ◀ ▶
+  /// along the row — and on a whole lit row, ◀ ▶ step into it.
+  ///
+  /// The stick first followed the scan's own order instead, so ▶ on a whole
+  /// row lit the next *row*: a learner pushing right to reach a row's second
+  /// control was carried down the screen.
+  void steer(GazeZone direction) {
+    if (isEmpty || direction == GazeZone.none) return;
+    _beforeStep = null;
+    _stepsInRow = 0;
+    final forward =
+        direction == GazeZone.down || direction == GazeZone.right;
+    final col = _col;
+    if (!_usesRowPhase) {
+      // One row: every direction walks along it.
+      final len = _rows[_row];
+      _col = ((col ?? 0) + (forward ? 1 : -1)) % len;
+      return;
+    }
+    if (direction == GazeZone.up || direction == GazeZone.down) {
+      final next = forward ? _firstRowFrom(_row + 1) : _lastRowFrom(_row - 1);
+      _row = next;
+      if (col != null) _col = math.min(col, _rows[next] - 1);
+      return;
+    }
+    final len = _rows[_row];
+    if (col == null) {
+      _col = forward ? 0 : len - 1;
+      return;
+    }
+    _col = (col + (forward ? 1 : -1)).clamp(0, len - 1);
+  }
+
+  /// Lights the whole of the current row again (the row phase) — where a
+  /// learner coming back from a page lands: on the control they opened, one
+  /// stray press opened that page again.
+  void wholeRow() {
+    if (isEmpty || !_usesRowPhase) return;
+    _col = null;
+    _stepsInRow = 0;
+    _beforeStep = null;
+  }
+
   /// The learner blinked. Returns the control to activate, or null when the
   /// blink only stepped into a row (or there is nothing to scan).
   ({int row, int col})? select() {
     if (isEmpty) return null;
+    _beforeStep = null;
     final col = _col;
     if (col != null) {
       _stepsInRow = 0;
@@ -120,6 +188,16 @@ class GridScanner {
     _col = 0;
     _stepsInRow = 0;
     return null;
+  }
+
+  /// The last row at or before [start] (wrapping) that has controls in it.
+  int _lastRowFrom(int start) {
+    if (_rows.isEmpty) return 0;
+    for (var i = 0; i < _rows.length; i++) {
+      final r = (start - i) % _rows.length;
+      if (_rows[r] > 0) return r;
+    }
+    return 0;
   }
 
   /// The first row at or after [start] (wrapping) that has controls in it.

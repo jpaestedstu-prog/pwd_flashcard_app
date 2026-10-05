@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../widgets/app_back_button.dart';
+
 /// Drives Flutter's **built-in directional focus traversal** from gaze input.
 ///
 /// The published-grid D-pad ([gazeHomeGrid] / `GazeDpadScope`) only reaches
@@ -183,14 +185,66 @@ abstract final class GazeFocusDriver {
   /// blink-only learner sees each control of a dialog or pushed page light up
   /// in turn. From a bare scope node (a route that has only just appeared)
   /// this lands on its first control.
+  ///
+  /// A page's own back or close button is passed over ([isBackButton]): the
+  /// Back pill does the same thing in the same place on every page. Lit first
+  /// on almost every page, it was what a learner's next press hit — the page
+  /// they had just opened closed again.
   static bool scanNext() {
     final node = focused;
     if (node == null) return false;
-    if (node.nextFocus()) {
-      _revealFocused();
-      return true;
+    // Hidden from this one traversal step only.
+    final hidden = <FocusNode>[
+      for (final n in node.nearestScope?.traversalDescendants ??
+          const <FocusNode>[])
+        if (!identical(n, node) && isBackButton(n)) n,
+    ];
+    for (final n in hidden) {
+      n.skipTraversal = true;
     }
-    return false;
+    try {
+      if (node.nextFocus()) {
+        _revealFocused();
+        return true;
+      }
+      return false;
+    } finally {
+      for (final n in hidden) {
+        n.skipTraversal = false;
+      }
+    }
+  }
+
+  /// Whether [node] is a page's own back or close button — the app's
+  /// [AppBackButton], or Material's [BackButton] / [CloseButton].
+  static bool isBackButton(FocusNode node) {
+    final context = node.context;
+    if (context == null || !context.mounted) return false;
+    return context.findAncestorWidgetOfExactType<AppBackButton>() != null ||
+        context.findAncestorWidgetOfExactType<BackButton>() != null ||
+        context.findAncestorWidgetOfExactType<CloseButton>() != null;
+  }
+
+  /// How many controls come after the focused one on its surface (those laid
+  /// out — a lazy list builds only what is near the screen).
+  static int remainingAfterFocused() {
+    final node = focused;
+    if (node == null) return 0;
+    final order = _readingOrder(node);
+    final index = order.indexWhere((n) => identical(n, node));
+    return index < 0 ? order.length : order.length - index - 1;
+  }
+
+  /// Activates [node] — a control that has just lost the highlight (a press
+  /// that landed a moment after scanning moved on). See [activate].
+  static bool activateNode(FocusNode node) {
+    final context = node.context;
+    if (context == null || !context.mounted) return false;
+    const intent = ActivateIntent();
+    final action = Actions.maybeFind<ActivateIntent>(context, intent: intent);
+    if (action == null || !action.isEnabled(intent)) return false;
+    Actions.invoke(context, intent);
+    return true;
   }
 
   /// The controls focus can move among on the focused surface, in reading
@@ -302,9 +356,15 @@ abstract final class GazeFocusDriver {
   }
 
   static bool _focusFirst(FocusNode node) {
-    final order = _readingOrder(node);
-    if (order.isEmpty) return false;
-    final first = order.first;
+    final all = _readingOrder(node);
+    if (all.isEmpty) return false;
+    // Not the page's own back button (see [scanNext]) — unless that is all
+    // there is.
+    final order = [
+      for (final n in all)
+        if (!isBackButton(n)) n,
+    ];
+    final first = order.isEmpty ? all.first : order.first;
     if (!identical(first, node)) first.requestFocus();
     _revealFocused();
     return true;

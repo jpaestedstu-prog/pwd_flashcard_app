@@ -15,9 +15,16 @@
         "Look and hold: keep still on a highlighted button to choose it — no blink needed",
         "A gaze keyboard for messages and every text field",
         "One-switch scanning with a Bluetooth controller or switch, camera off",
-        "The highlighted button can be read aloud as it moves",
+        "With a controller, any button chooses and the stick moves the highlight the way it is pushed — then the highlight waits for you",
+        "A press made just as the highlight moves on chooses what you saw lit",
+        "Pages open on their own buttons, Back comes round every few items, and Home lights the whole row again when you return",
+        "A switch can type into any text field: the system keyboard no longer takes the press",
+        "The highlighted button can be read aloud as it moves, and the highlight waits until its name has been read",
         "A mistaken blink can’t lock a learner out: turning gaze off or moving to a switch is undone unless confirmed",
         "Teachers and parents set a learner’s Gaze Control from the learner’s card",
+        "Peer Collab can be set up and started hands-free, partner’s name included",
+        "Face tracking no longer freezes after a few minutes of use",
+        "The Game Controller pages say when Gaze Control is using the controller",
         "Gaze use (time, choices, speed, mistakes) is measured and added to the research export"
       ]
     },

@@ -20,6 +20,7 @@ import '../features/gaze_control/controllers/gaze_controller.dart'
     show GazeStatus;
 import '../features/gamepad/providers/gamepad_sections.dart';
 import '../features/gaze_control/models/gaze_settings.dart';
+import '../features/gaze_control/providers/gaze_home_grid.dart';
 import '../features/gaze_control/widgets/gaze_hints.dart';
 import '../features/gaze_control/widgets/nav_gaze_scope.dart';
 import '../widgets/level_up_celebration_screen.dart';
@@ -515,6 +516,7 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
               status: gaze.status,
               featureTilesActive: gaze.featureTilesActive,
               settings: gaze.settings,
+              wholeRowLit: _wholeRowLit(gaze),
               bottomOffset:
                   _computeMetrics(context).bar +
                   MediaQuery.paddingOf(context).bottom,
@@ -973,6 +975,17 @@ class _AnimatedNavItemState extends State<_AnimatedNavItem> {
 
 // ─── Gaze-navigation hint ─────────────────────────────
 
+/// Scanning has a whole row of several controls lit, where a press steps
+/// into the row instead of opening anything.
+bool _wholeRowLit(NavGazeState gaze) {
+  if (!gaze.scanning) return false;
+  if (gaze.wholeNavRow) return true;
+  final row = gazeHomeGrid.focusRow;
+  if (row == null || gazeHomeGrid.focusCol != null) return false;
+  final rows = gazeHomeGrid.rows;
+  return row < rows.length && rows[row].length > 1;
+}
+
 /// A small instructional chip shown just above the bottom bar while gaze
 /// navigation is active, telling the learner how to drive the tabs hands-free.
 /// Purely informational ([IgnorePointer]) — touch falls straight through.
@@ -997,6 +1010,10 @@ class _GazeNavHint extends StatelessWidget {
   /// don't pick must not be told to blink, a switch user to look anywhere.
   final GazeSettings settings;
 
+  /// Scanning lights a whole row of several controls (see
+  /// [GazeHints.forSettings]).
+  final bool wholeRowLit;
+
   const _GazeNavHint({
     required this.ready,
     required this.faceVisible,
@@ -1004,6 +1021,7 @@ class _GazeNavHint extends StatelessWidget {
     required this.status,
     this.featureTilesActive = false,
     this.settings = const GazeSettings(),
+    this.wholeRowLit = false,
   });
 
   @override
@@ -1042,6 +1060,7 @@ class _GazeNavHint extends StatelessWidget {
                   context,
                   settings,
                   rowsReachable: featureTilesActive,
+                  wholeRowLit: wholeRowLit,
                 ),
               ),
     };

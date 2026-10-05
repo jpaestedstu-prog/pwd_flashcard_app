@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HardwareKeyboard;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -196,12 +197,20 @@ abstract final class GazeDebugBridge {
       case 'switch':
         // One press of the learner's switch, as a controller button or a
         // switch interface's key would deliver it.
+        // `dir=up|down|left|right`: a controller's stick instead (steers the
+        // scanning highlight).
         final claimed = GazeSwitchInput.instance.claiming.value;
-        GazeSwitchInput.instance.press();
+        final dir = GazeZone.values.where((z) => z.name == p['dir']).firstOrNull;
+        if (dir != null) {
+          GazeSwitchInput.instance.steer(dir);
+        } else {
+          GazeSwitchInput.instance.press();
+        }
         return {
           'ok': claimed,
           'claiming': claimed,
           'presses': GazeSwitchInput.instance.debugPresses,
+          'steps': GazeSwitchInput.instance.debugSteps,
         };
       case 'metrics':
         String? id = p['profile'];
@@ -291,6 +300,17 @@ abstract final class GazeDebugBridge {
       'switch': {
         'claiming': GazeSwitchInput.instance.claiming.value,
         'presses': GazeSwitchInput.instance.debugPresses,
+        'steps': GazeSwitchInput.instance.debugSteps,
+        'history': GazeSwitchInput.instance.debugHistory.reversed
+            .take(12)
+            .toList(),
+        'listeners': GazeSwitchInput.instance.debugListeners,
+        'keyEvents': GazeSwitchInput.instance.debugKeyEvents,
+        'lastKey': GazeSwitchInput.instance.debugLastKey,
+        'keyboardBypassed': GazeSwitchInput.instance.keyboardBypassed,
+        'keysDown': HardwareKeyboard.instance.logicalKeysPressed
+            .map((k) => k.keyLabel)
+            .toList(),
       },
       'spoken': [...gazeDebugSpoken],
       'controllers': [

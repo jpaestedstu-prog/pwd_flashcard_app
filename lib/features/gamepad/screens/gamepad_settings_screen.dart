@@ -9,6 +9,7 @@ import '../models/gamepad_settings.dart';
 import '../providers/gamepad_settings_provider.dart';
 import '../providers/gamepad_status_provider.dart';
 import '../widgets/gamepad_guide.dart';
+import '../widgets/gaze_uses_controller_notice.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 
@@ -36,6 +37,7 @@ class GamepadSettingsScreen extends ConsumerWidget {
         children: [
           _StatusCard(connected: status.connected, name: status.name),
           const SizedBox(height: 12),
+          const GazeUsesControllerNotice(),
           Semantics(
             button: true,
             label: _t(context).gpPractise,

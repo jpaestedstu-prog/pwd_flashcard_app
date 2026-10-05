@@ -11,6 +11,7 @@ import '../../../core/theme/app_colors.dart' show AppColors;
 import '../controllers/gaze_controller.dart';
 import '../logic/gaze_grid_cursor.dart';
 import '../logic/grid_scanner.dart';
+import '../logic/scan_clock.dart';
 import '../logic/voice_commands.dart';
 import '../models/gaze_models.dart';
 import '../models/gaze_settings.dart';
@@ -198,9 +199,9 @@ class _GazeDpadScopeState extends ConsumerState<GazeDpadScope>
   Object? _cameraToken;
 
   /// Scanning mode: the row–column scanner over the same grid the D-pad
-  /// walks (exit row included), and the timer that steps it.
+  /// walks (exit row included), and the clock that steps it.
   GridScanner? _scanner;
-  Timer? _scanTimer;
+  ScanClock? _scanClock;
 
   /// Head moves, blinks, scan steps and voice while something covers this
   /// screen — plus the ring that shows where that is.
@@ -209,18 +210,18 @@ class _GazeDpadScopeState extends ConsumerState<GazeDpadScope>
       ref.read(hapticServiceProvider).selectionClick();
       GazeMetrics.instance.moved();
       _gaze?.armRestSelect();
-      sayFocusedSoon();
+      sayFocusedSoon(exit: _traversal.onExit);
     },
     onScanned: () {
       ref.read(hapticServiceProvider).selectionClick();
       GazeMetrics.instance.scanned();
-      sayFocusedSoon();
+      sayFocusedSoon(exit: _traversal.onExit);
     },
     onPressed: (by) {
       ref.read(hapticServiceProvider).success();
       gazePicked(_gaze, by);
     },
-    onLeft: GazeMetrics.instance.backed,
+    onLeft: () => gazeBacked(_gaze),
   );
 
   bool get _scanning => _scanner != null;
@@ -252,7 +253,11 @@ class _GazeDpadScopeState extends ConsumerState<GazeDpadScope>
     _cameraToken = gazeCameraOwners.acquire();
     gazeCameraOwners.addListener(_onCameraOwnersChanged);
     controller.start();
-    beginGazeSession(settings, onSwitch: _onSwitch);
+    beginGazeSession(
+      settings,
+      onSwitch: _onSwitch,
+      onSwitchSteer: _onSwitchSteer,
+    );
     if (settings.scanMode) {
       // Like the D-pad, the scan begins on the screen's own controls rather
       // than on the Back row above them.
@@ -292,10 +297,31 @@ class _GazeDpadScopeState extends ConsumerState<GazeDpadScope>
   /// A press on the learner's switch or controller.
   void _onSwitch() => _commit(by: GazeSelectBy.switchButton);
 
+  /// A controller's stick or arrows while scanning: the highlight moves the
+  /// way it was pushed — and then waits there for the learner
+  /// ([ScanClock.steered]).
+  void _onSwitchSteer(GazeZone direction) {
+    final scanner = _scanner;
+    final gaze = _gaze;
+    if (!mounted || gaze == null || scanner == null || gaze.suspended) return;
+    if (gazeCovered) {
+      // A sheet or dialog: the control that way on it.
+      _traversal.zone(direction, lookUpSelects: false);
+      _scanClock?.steered();
+      return;
+    }
+    if (scanner.isEmpty) return;
+    ref.read(hapticServiceProvider).selectionClick();
+    setState(() => scanner.steer(direction));
+    _scanClock?.steered();
+    GazeMetrics.instance.moved();
+    _sayCell(scanner.row, scanner.col);
+  }
+
   @override
   void dispose() {
     endGazeSession();
-    _scanTimer?.cancel();
+    _scanClock?.stop();
     stopGazeCoverageWatch();
     _traversal.hideRing();
     disposeVoiceControl();
@@ -334,7 +360,11 @@ class _GazeDpadScopeState extends ConsumerState<GazeDpadScope>
         setState(() {});
       } else if (_isTopOwner && gaze.suspended) {
         gaze.resumeCamera();
-        beginGazeSession(_settings, onSwitch: _onSwitch);
+        beginGazeSession(
+          _settings,
+          onSwitch: _onSwitch,
+          onSwitchSteer: _onSwitchSteer,
+        );
         if (_settings.voiceCommands) startVoiceControl();
         if (_scanning) _restartScanTimer();
         onGazeCoverageChanged(gazeCovered);
@@ -403,7 +433,7 @@ class _GazeDpadScopeState extends ConsumerState<GazeDpadScope>
       case DpadVoiceIntent.scrollDown:
         voiceScroll(1);
       case DpadVoiceIntent.goBack:
-        GazeMetrics.instance.backed();
+        gazeBacked(_gaze);
         Navigator.of(context).maybePop();
       default:
         break;
@@ -414,7 +444,7 @@ class _GazeDpadScopeState extends ConsumerState<GazeDpadScope>
   /// else a selection.
   void _record(int row, GazeSelectBy by) {
     if (_hasExitRow && row == 0) {
-      GazeMetrics.instance.backed();
+      gazeBacked(_gaze);
     } else {
       gazePicked(_gaze, by);
     }
@@ -472,9 +502,13 @@ class _GazeDpadScopeState extends ConsumerState<GazeDpadScope>
     if (scanner.row == 0 && scanner.onWholeRow) scanner.step();
   }
 
+  /// (Re)starts the step clock: the highlight gets a full step from now.
   void _restartScanTimer() {
-    _scanTimer?.cancel();
-    _scanTimer = Timer.periodic(_settings.scanStepDuration, (_) => _scanTick());
+    (_scanClock ??= ScanClock(
+      step: _settings.scanStepDuration,
+      onStep: _scanTick,
+      holdFor: scanHoldForSpeech,
+    )).restart();
   }
 
   void _scanTick() {
@@ -497,6 +531,8 @@ class _GazeDpadScopeState extends ConsumerState<GazeDpadScope>
   void _scanSelect(GazeSelectBy by) {
     final scanner = _scanner;
     if (scanner == null) return;
+    // A press a moment after the highlight moved on means what it had lit.
+    if (_scanClock?.takeJustMoved() ?? false) scanner.undoStep();
     final pick = scanner.select();
     _restartScanTimer();
     if (pick == null) {
@@ -563,7 +599,8 @@ class _GazeDpadScopeState extends ConsumerState<GazeDpadScope>
   void _commit({GazeSelectBy by = GazeSelectBy.blink}) {
     if (!mounted) return;
     if (gazeCovered) {
-      _traversal.commit(by: by);
+      _traversal.commit(by: by, late: _scanClock?.takeJustMoved() ?? false);
+      if (_scanning) _restartScanTimer();
       return;
     }
     if (_scanning) {

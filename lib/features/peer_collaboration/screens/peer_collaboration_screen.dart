@@ -22,6 +22,7 @@ import '../../../widgets/flashcard_image.dart';
 import '../../gaze_control/models/gaze_action.dart';
 import '../../gaze_control/models/gaze_models.dart';
 import '../../gaze_control/providers/gaze_settings_provider.dart';
+import '../../gaze_control/widgets/gaze_keyboard.dart';
 import '../../gaze_control/widgets/gaze_scope.dart';
 // The hands-free cursor and the FSL clip launcher both live under
 // `multiplayer/` because the races needed them first. Neither is race-specific
@@ -487,20 +488,33 @@ class _PeerCollaborationScreenState
 
   // ─── Hands-free control ───────────────────────────────
 
+  /// Player 2's name, typed with the gaze keyboard.
+  Future<void> _typePlayer2Name(AppLocalizations l10n) async {
+    await GazeKeyboard.show(
+      context,
+      controller: _player2Controller,
+      hint: l10n.collabPlayer2NameHint,
+    );
+    // The keyboard writes through the controller, which runs no onChanged.
+    if (mounted) setState(() {});
+  }
+
   List<GazeAction> _gazeActions() {
     final l10n = _l10n;
     final session = _session;
     final live = !_mediaOpen;
 
-    if (session == null || session.isComplete) {
+    // The results screen has one thing to do. The picker has several —
+    // Player 2's name, then each activity — so it moves like the activity
+    // itself: it used to offer only Choose, which could reach nothing but the
+    // first item.
+    if (session != null && session.isComplete) {
       return [
         GazeAction(
           zone: GazeZone.down,
-          label: session == null ? l10n.gazeChoose : l10n.playAgain,
+          label: l10n.playAgain,
           selects: true,
-          icon: session == null
-              ? Icons.check_circle_rounded
-              : Icons.replay_rounded,
+          icon: Icons.replay_rounded,
           color: AppColors.success,
           enabled: live && _cursor.canChoose,
           onSelect: _cursor.choose,
@@ -607,9 +621,12 @@ class _PeerCollaborationScreenState
     final adaptations = presentation.adaptations;
 
     // Publish the picker's hands-free targets. The resume card's Continue, when
-    // it is showing, is the first of them.
+    // it is showing, is the first of them; then Player 2's name, which an
+    // activity cannot start without — the gaze keyboard types it, so a
+    // hands-free learner is not stuck waiting for someone to type it by touch.
     final actions = <VoidCallback>[
       if (resume != null) () => _resumeSession(resume),
+      () => _typePlayer2Name(l10n),
       for (final activity in activities)
         () => _startSession(activity, profile?.name ?? 'Player 1'),
     ];
@@ -621,7 +638,9 @@ class _PeerCollaborationScreenState
         if (index >= 0 && index < actions.length) actions[index]();
       },
     );
-    final activityCursorOffset = resume != null ? 1 : 0;
+    final nameCursorIndex = resume != null ? 1 : 0;
+    final activityCursorOffset = nameCursorIndex + 1;
+    final nameFocused = _cursor.highlight && _cursor.isFocused(nameCursorIndex);
 
     return SingleChildScrollView(
       padding: EdgeInsets.all(padding),
@@ -713,7 +732,9 @@ class _PeerCollaborationScreenState
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(color: hc.border),
+                  borderSide: nameFocused
+                      ? const BorderSide(color: AppColors.accent, width: 3)
+                      : BorderSide(color: hc.border),
                 ),
               ),
             ),

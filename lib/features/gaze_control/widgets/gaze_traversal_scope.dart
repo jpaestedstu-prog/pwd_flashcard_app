@@ -8,7 +8,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/accessibility/haptic_service.dart'
     show hapticServiceProvider;
 import '../controllers/gaze_controller.dart';
+import '../logic/scan_clock.dart';
 import '../logic/voice_commands.dart';
+import '../models/gaze_models.dart';
 import '../models/gaze_settings.dart';
 import '../providers/gaze_camera_owners.dart';
 import '../providers/gaze_settings_provider.dart';
@@ -68,25 +70,25 @@ class _GazeTraversalScopeState extends ConsumerState<GazeTraversalScope>
   GazeController? _gaze;
   GazeSettings _settings = const GazeSettings();
   Object? _cameraToken;
-  Timer? _scanTimer;
+  ScanClock? _scanClock;
 
   late final GazeTraversal _traversal = GazeTraversal(
     onMoved: () {
       ref.read(hapticServiceProvider).selectionClick();
       GazeMetrics.instance.moved();
       _gaze?.armRestSelect();
-      sayFocusedSoon();
+      sayFocusedSoon(exit: _traversal.onExit);
     },
     onScanned: () {
       ref.read(hapticServiceProvider).selectionClick();
       GazeMetrics.instance.scanned();
-      sayFocusedSoon();
+      sayFocusedSoon(exit: _traversal.onExit);
     },
     onPressed: (by) {
       ref.read(hapticServiceProvider).success();
       gazePicked(_gaze, by);
     },
-    onLeft: GazeMetrics.instance.backed,
+    onLeft: () => gazeBacked(_gaze),
   );
 
   bool get _isTopOwner {
@@ -111,7 +113,9 @@ class _GazeTraversalScopeState extends ConsumerState<GazeTraversalScope>
       _traversal.zone(zone, lookUpSelects: _settings.lookUpSelects);
     };
     controller.onBlink = () {
-      if (mounted) _traversal.commit();
+      if (!mounted) return;
+      _traversal.commit(late: _scanClock?.takeJustMoved() ?? false);
+      _scanClock?.restart();
     };
     controller.onRest = () {
       if (mounted) _traversal.commit(by: GazeSelectBy.rest);
@@ -121,12 +125,20 @@ class _GazeTraversalScopeState extends ConsumerState<GazeTraversalScope>
     _cameraToken = gazeCameraOwners.acquire();
     gazeCameraOwners.addListener(_onCameraOwnersChanged);
     controller.start();
-    beginGazeSession(settings, onSwitch: _onSwitch);
+    beginGazeSession(
+      settings,
+      onSwitch: _onSwitch,
+      onSwitchSteer: _onSwitchSteer,
+    );
     if (settings.scanMode) {
-      _scanTimer = Timer.periodic(settings.scanStepDuration, (_) {
-        if (!mounted || (_gaze?.suspended ?? true)) return;
-        _traversal.scanStep();
-      });
+      _scanClock = ScanClock(
+        step: settings.scanStepDuration,
+        onStep: () {
+          if (!mounted || (_gaze?.suspended ?? true)) return;
+          _traversal.scanStep();
+        },
+        holdFor: scanHoldForSpeech,
+      )..start();
     }
     if (settings.voiceCommands) startVoiceControl();
     // The ring goes up once this frame has laid the screen out.
@@ -134,13 +146,28 @@ class _GazeTraversalScopeState extends ConsumerState<GazeTraversalScope>
   }
 
   void _onSwitch() {
-    if (mounted) _traversal.commit(by: GazeSelectBy.switchButton);
+    if (!mounted) return;
+    _traversal.commit(
+      by: GazeSelectBy.switchButton,
+      late: _scanClock?.takeJustMoved() ?? false,
+    );
+    _scanClock?.restart();
+  }
+
+  /// A controller's stick or arrows while scanning: the highlight moves the
+  /// way it was pushed — and then waits there for the learner
+  /// ([ScanClock.steered]).
+  void _onSwitchSteer(GazeZone direction) {
+    final clock = _scanClock;
+    if (!mounted || clock == null || (_gaze?.suspended ?? true)) return;
+    _traversal.zone(direction, lookUpSelects: false);
+    clock.steered();
   }
 
   @override
   void dispose() {
     endGazeSession();
-    _scanTimer?.cancel();
+    _scanClock?.stop();
     _traversal.hideRing();
     disposeVoiceControl();
     _gaze?.dispose();
@@ -171,7 +198,11 @@ class _GazeTraversalScopeState extends ConsumerState<GazeTraversalScope>
         disposeVoiceControl();
       } else if (_isTopOwner && gaze.suspended) {
         gaze.resumeCamera();
-        beginGazeSession(_settings, onSwitch: _onSwitch);
+        beginGazeSession(
+          _settings,
+          onSwitch: _onSwitch,
+          onSwitchSteer: _onSwitchSteer,
+        );
         if (_settings.voiceCommands) startVoiceControl();
       }
       _syncRing();

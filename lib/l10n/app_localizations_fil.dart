@@ -8419,6 +8419,18 @@ class AppLocalizationsFil extends AppLocalizations {
   String get gpTitle => '🎮  Game Controller';
 
   @override
+  String get gpGazeUsesTitle =>
+      'Ginagamit ng Gaze Control ang controller na ito';
+
+  @override
+  String get gpGazeUsesBody =>
+      'Sa ngayon, anumang button ay pumipili sa nakailaw, at ang stick o mga arrow ay naglilipat ng ilaw. Ang gabay sa mga button sa pahinang ito ay para sa oras na hindi pumipili gamit ang switch ang Gaze Control.';
+
+  @override
+  String get gpGazeUsesPractice =>
+      'Sa ngayon, ang pagpindot ng button ay pumipili sa nakailaw (gaya ng Bumalik), kaya hindi ito masasanay dito. Para masanay sa mga button na ito, patayin muna ang pagpili gamit ang switch sa Gaze Control.';
+
+  @override
   String get gpPractise => 'Sanayin ang controller';
 
   @override
@@ -11895,21 +11907,33 @@ class AppLocalizationsFil extends AppLocalizations {
   String get gzHintPickLookUp => 'tumingala para pumili';
 
   @override
-  String get gzHintPickSwitch => 'pindutin ang switch para pumili';
+  String get gzHintPickSwitch => 'pindutin ang isang button para pumili';
 
   @override
-  String get gzHintPickEither => 'kumurap o pindutin ang switch para pumili';
+  String get gzHintPickEither =>
+      'kumurap o pindutin ang isang button para pumili';
 
   @override
   String get gzHintPickRest => 'manatiling nakatigil para pumili';
 
   @override
   String get gzHintScanSwitch =>
-      'Pindutin ang switch kapag umilaw ang gusto mo';
+      'Pindutin ang isang button para piliin ang nakailaw — o ilipat ang ilaw gamit ang stick';
 
   @override
   String get gzHintScanEither =>
-      'Kumurap o pindutin ang switch kapag umilaw ang gusto mo';
+      'Kumurap o pindutin ang isang button para piliin ang nakailaw — o ilipat ang ilaw gamit ang stick';
+
+  @override
+  String get gzHintScanRowSwitch =>
+      'Pindutin ang isang button para pumasok sa hanay na ito — o ilipat ang ilaw gamit ang stick';
+
+  @override
+  String get gzHintScanRowEither =>
+      'Kumurap o pindutin ang isang button para pumasok sa hanay na ito — o ilipat ang ilaw gamit ang stick';
+
+  @override
+  String get gzHintScanRowBlink => 'Kumurap para pumasok sa hanay na ito';
 
   @override
   String get gzLeaveSwitch => 'Pindutin ang switch para bumalik';

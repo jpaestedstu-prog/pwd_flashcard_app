@@ -68,6 +68,10 @@ GazeController get _camera => GazeController.debugLive.last;
 /// Long enough for the 400 ms coverage ticker to notice a route.
 const _pastCoverageTick = Duration(milliseconds: 600);
 
+/// A learner's reaction to a newly lit control: past the moment in which a
+/// press still counts for what was lit before it (`ScanClock.forgiveness`).
+const _reaction = Duration(milliseconds: 500);
+
 Future<List<CameraDescription>> _noCameras() async => const [];
 
 /// A two-button dialog, as the viewer's sheets and the Daily Reward are.
@@ -735,6 +739,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 1000));
       expect(gazeHomeGrid.focusRow, 1);
       // One control in the row: a blink opens it straight away.
+      await tester.pump(_reaction);
       _camera.debugBlink();
       await tester.pump();
       expect(c, 1);
@@ -744,12 +749,14 @@ void main() {
       expect(last.wholeNavRow, isTrue);
       expect(gazeHomeGrid.focusRow, isNull);
       // …a blink steps into it, the tabs light in turn, a blink opens one.
+      await tester.pump(_reaction);
       _camera.debugBlink();
       await tester.pump();
       expect(last.wholeNavRow, isFalse);
       expect(last.targetIndex, 0);
       await tester.pump(const Duration(milliseconds: 1000));
       expect(last.targetIndex, 1);
+      await tester.pump(_reaction);
       _camera.debugBlink();
       await tester.pump();
       expect(commits, [1]);
@@ -801,6 +808,7 @@ void main() {
       expect(last.isFocused(0, 0), isTrue);
       expect(last.isFocused(0, 1), isFalse);
       await tester.pump(const Duration(milliseconds: 1000));
+      await tester.pump(_reaction);
       _camera.debugBlink(); // Next
       await tester.pump();
       expect(fired, ['n']);
@@ -813,6 +821,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 1000));
       await tester.pump(const Duration(milliseconds: 1000));
       expect(last.exitFocused, isTrue);
+      await tester.pump(_reaction);
       _camera.debugBlink();
       await tester.pump();
       expect(exits, 1);
@@ -851,6 +860,7 @@ void main() {
       // Two scan steps: Stay, then Close.
       await tester.pump(const Duration(milliseconds: 3000));
       await tester.pump(const Duration(milliseconds: 3000));
+      await tester.pump(_reaction);
       _camera.debugBlink();
       await tester.pumpAndSettle();
       expect(pressed, ['close']);

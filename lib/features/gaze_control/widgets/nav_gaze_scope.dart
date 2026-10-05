@@ -10,6 +10,7 @@ import '../../../core/accessibility/haptic_service.dart'
 import '../controllers/gaze_controller.dart';
 import '../logic/gaze_grid_cursor.dart';
 import '../logic/grid_scanner.dart';
+import '../logic/scan_clock.dart';
 import '../logic/voice_commands.dart';
 import '../models/gaze_models.dart';
 import '../models/gaze_settings.dart';
@@ -195,9 +196,9 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
   bool _syncScheduled = false;
 
   /// Scanning mode: the row–column scanner over the same grid the D-pad
-  /// walks, and the timer that steps it.
+  /// walks, and the clock that steps it.
   GridScanner? _scanner;
-  Timer? _scanTimer;
+  ScanClock? _scanClock;
 
   /// Head moves, blinks, scan steps and voice while a route or an in-screen
   /// modal covers the hubs — plus the ring that shows where that is.
@@ -206,18 +207,18 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
       ref.read(hapticServiceProvider).selectionClick();
       GazeMetrics.instance.moved();
       _gaze?.armRestSelect();
-      sayFocusedSoon();
+      sayFocusedSoon(exit: _traversal.onExit);
     },
     onScanned: () {
       ref.read(hapticServiceProvider).selectionClick();
       GazeMetrics.instance.scanned();
-      sayFocusedSoon();
+      sayFocusedSoon(exit: _traversal.onExit);
     },
     onPressed: (by) {
       ref.read(hapticServiceProvider).success();
       gazePicked(_gaze, by);
     },
-    onLeft: GazeMetrics.instance.backed,
+    onLeft: () => gazeBacked(_gaze),
   );
 
   bool get _scanning => _scanner != null;
@@ -389,7 +390,11 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
     controller.onRest = () => _commit(by: GazeSelectBy.rest);
     controller.addListener(_onControllerUpdate);
     _gaze = controller;
-    beginGazeSession(settings, onSwitch: _onSwitch);
+    beginGazeSession(
+      settings,
+      onSwitch: _onSwitch,
+      onSwitchSteer: _onSwitchSteer,
+    );
     if (settings.scanMode) _startScanning();
     // Begin where the learner actually is (on the live tab).
     _syncCursor();
@@ -406,6 +411,29 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
 
   /// A press on the learner's switch or controller.
   void _onSwitch() => _commit(by: GazeSelectBy.switchButton);
+
+  /// A controller's stick or arrows while scanning: the highlight moves the
+  /// way it was pushed — and then waits there for the learner
+  /// ([ScanClock.steered]).
+  void _onSwitchSteer(GazeZone direction) {
+    final scanner = _scanner;
+    if (!mounted || _gaze == null || scanner == null) return;
+    if (_useTraversal) {
+      // A page or dialog: the control that way on the screen.
+      _traversal.zone(direction, lookUpSelects: false);
+      _scanClock?.steered();
+      return;
+    }
+    scanner.setRows(_rowLengths());
+    if (scanner.isEmpty) return;
+    ref.read(hapticServiceProvider).selectionClick();
+    scanner.steer(direction);
+    _scanClock?.steered();
+    GazeMetrics.instance.moved();
+    _sayScanned();
+    _publishFocus();
+    setState(() {});
+  }
 
   void _teardown() {
     endGazeSession();
@@ -441,7 +469,11 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
       return;
     }
     controller.applySettings(next);
-    reconfigureGazeSession(next, onSwitch: _onSwitch);
+    reconfigureGazeSession(
+      next,
+      onSwitch: _onSwitch,
+      onSwitchSteer: _onSwitchSteer,
+    );
     if (previous.scanMode != next.scanMode ||
         previous.scanStepMs != next.scanStepMs) {
       _stopScanning();
@@ -456,21 +488,22 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
 
   void _startScanning() {
     _scanner = GridScanner(_rowLengths());
-    _restartScanTimer();
+    _scanClock = ScanClock(
+      step: _settings.scanStepDuration,
+      onStep: _scanTick,
+      holdFor: scanHoldForSpeech,
+    )..start();
   }
 
   void _stopScanning() {
-    _scanTimer?.cancel();
-    _scanTimer = null;
+    _scanClock?.stop();
+    _scanClock = null;
     _scanner = null;
   }
 
-  /// (Re)starts the step timer, so a highlight that has just moved — or a row
+  /// (Re)starts the step clock, so a highlight that has just moved — or a row
   /// just stepped into — always gets a full step before moving on.
-  void _restartScanTimer() {
-    _scanTimer?.cancel();
-    _scanTimer = Timer.periodic(_settings.scanStepDuration, (_) => _scanTick());
-  }
+  void _restartScanTimer() => _scanClock?.restart();
 
   void _scanTick() {
     final scanner = _scanner;
@@ -524,6 +557,10 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
     final scanner = _scanner;
     if (scanner == null) return;
     scanner.setRows(_rowLengths());
+    // A press a moment after the highlight moved on means what it had lit.
+    if ((_scanClock?.takeJustMoved() ?? false) && scanner.undoStep()) {
+      _publishFocus();
+    }
     final pick = scanner.select();
     if (pick == null) {
       if (scanner.isEmpty) return;
@@ -547,6 +584,14 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
       ref.read(hapticServiceProvider).success();
       gazePicked(_gaze, by);
       cell.onActivate();
+      // Scanning: the learner comes back to the whole row, not to the tile
+      // they opened — set now, not when the page is seen to close, so not
+      // even a press the moment they are back can reopen it.
+      final scanner = _scanner;
+      if (scanner != null) {
+        scanner.wholeRow();
+        _publishFocus();
+      }
     } else {
       if (!_hasNavRow || col < 0 || col >= widget.itemCount) return;
       ref.read(hapticServiceProvider).success();
@@ -630,7 +675,7 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
       case DpadVoiceIntent.scrollDown:
         voiceScroll(1);
       case DpadVoiceIntent.goBack:
-        GazeMetrics.instance.backed();
+        gazeBacked(_gaze);
         Navigator.of(context).maybePop();
       default:
         break;
@@ -734,7 +779,8 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
     // Traversal first: it works even when this shell has no grid of its own
     // (the nav-less guest Player shell).
     if (_useTraversal) {
-      _traversal.commit(by: by);
+      _traversal.commit(by: by, late: _scanClock?.takeJustMoved() ?? false);
+      _restartScanTimer();
       return;
     }
     if (_scanning) {
@@ -785,6 +831,13 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
   /// the focus-traversal fallback, and exactly one of them applies at a time.
   @override
   void onGazeCoverageChanged(bool covered) {
+    final scanner = _scanner;
+    if (!covered && scanner != null) {
+      // Back from a page: the whole row it was opened from lights again.
+      scanner.setRows(_rowLengths());
+      scanner.wholeRow();
+      _restartScanTimer();
+    }
     _publishFocus();
     _syncFocusRing();
   }

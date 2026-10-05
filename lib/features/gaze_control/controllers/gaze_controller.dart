@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 
@@ -55,14 +56,35 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
        _restSelectDuration = settings.dwellSelectDuration,
        _smoothing = settings.smoothing,
        _dwell = DwellTracker(dwellDuration: settings.dwellDuration),
-       _detector =
-           detectorFactory?.call() ??
-           MlKitGazeDetector(
-             mirrorHorizontal: settings.mirrorHorizontal,
-             invertVertical: settings.invertVertical,
-           );
+       _detectorFactory = detectorFactory {
+    _detector = _newDetector();
+  }
   final Future<List<CameraDescription>> Function() camerasLoader;
-  final GazeDetector _detector;
+  final GazeDetector Function()? _detectorFactory;
+
+  /// Replaced when it stops answering (see [detectTimeout]).
+  late GazeDetector _detector;
+
+  GazeDetector _newDetector() =>
+      _detectorFactory?.call() ??
+      MlKitGazeDetector(
+        mirrorHorizontal: _mirrorHorizontal,
+        invertVertical: _invertVertical,
+      );
+
+  /// How long one frame's face detection may take before the detector is
+  /// written off. A frame normally takes a few tens of milliseconds.
+  ///
+  /// On the tablet, with a real learner, face tracking froze after a few
+  /// minutes: one detection never completed, and since each frame waits for
+  /// the one before it, every later frame was skipped for good. The camera
+  /// kept streaming, the highlight kept showing, and the learner's head and
+  /// blinks did nothing at all until the screen was left.
+  static const Duration detectTimeout = Duration(seconds: 2);
+
+  /// How long the camera may go without delivering a frame before the stream
+  /// is restarted.
+  static const Duration streamStallLimit = Duration(seconds: 5);
   DwellTracker _dwell;
   final BlinkDetector _blink = BlinkDetector();
   final Stopwatch _clock = Stopwatch();
@@ -156,6 +178,11 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
 
   int _debugFrames = 0;
 
+  /// The last head angles, as the camera read them and as the zone was
+  /// decided on (rest offset + smoothing) — for measuring smoothing on a real
+  /// face from the debug bridge.
+  double _debugRawTurn = 0, _debugRawTilt = 0, _debugTurn = 0, _debugTilt = 0;
+
   /// A snapshot for the debug bridge.
   Map<String, Object?> debugDescribe() => {
     'status': _status.name,
@@ -176,6 +203,12 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
     'restArmed': _restArmed,
     'restProgress': double.parse(_restProgress.toStringAsFixed(2)),
     'framesProcessed': _debugFrames,
+    'detectorRestarts': debugDetectorRestarts,
+    'streamRestarts': debugStreamRestarts,
+    'angles': [
+      for (final v in [_debugRawTurn, _debugRawTilt, _debugTurn, _debugTilt])
+        double.parse(v.toStringAsFixed(1)),
+    ],
   };
 
   /// Fires a completed hold on [zone], as if the learner had held it.
@@ -274,12 +307,22 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
   /// Stands the camera down because another camera surface is now on top —
   /// the hardware runs one session at a time. The controller stays alive and
   /// keeps its tuning; [resumeCamera] brings the camera back.
+  ///
+  /// Switch scanning has no camera, but is suspended all the same: the scopes
+  /// read [suspended] to stand their scanner and switch down while covered,
+  /// and to take them back when uncovered. Without it a covered switch screen
+  /// kept scanning underneath, and never took its switch back afterwards — the
+  /// learner's presses went nowhere once they returned.
   void suspendCamera() {
-    if (_suspended || _disposed || !_usesCamera) return;
+    if (_suspended || _disposed) return;
     _suspended = true;
-    _restartAfterInit = false;
     // A keep-still pending on this screen must not fire when it comes back.
     disarmRestSelect();
+    if (!_usesCamera) {
+      _notify();
+      return;
+    }
+    _restartAfterInit = false;
     _teardownController();
     _status = GazeStatus.initializing;
     _notify();
@@ -287,8 +330,12 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
 
   /// Re-acquires the camera after [suspendCamera].
   void resumeCamera() {
-    if (!_suspended || _disposed || !_usesCamera) return;
+    if (!_suspended || _disposed) return;
     _suspended = false;
+    if (!_usesCamera) {
+      _notify();
+      return;
+    }
     _initCamera();
   }
 
@@ -322,6 +369,7 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
     _controller = null;
     _streaming = false;
     _isDetecting = false;
+    _stopWatchdog();
     _dwell.reset();
     _blink.reset();
     _clock
@@ -426,6 +474,7 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
       }
       _streaming = true;
       _status = GazeStatus.ready;
+      _startWatchdog();
       _notify();
     } on CameraException catch (e) {
       if (!identical(_controller, controller)) return;
@@ -447,6 +496,7 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> _onFrame(CameraImage image) async {
+    _lastFrameAt = _clock.elapsed;
     if (_isDetecting || !_streaming || _disposed) return;
     final now = _clock.elapsed;
     if (now - _lastProcessed < _minFrameGap) return;
@@ -476,14 +526,86 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
       }
       final input = _inputImageFromCameraImage(image, controller, camera);
       if (input == null) return;
-      final signal = await _detector.detect(input);
-      if (_disposed || !_streaming) return;
-      _applySignal(signal, now);
+      await _detectFrame(input, now);
     } catch (_) {
       // A single bad frame must never kill the stream.
     } finally {
       _isDetecting = false;
     }
+  }
+
+  /// One frame's face detection — written off, and the detector replaced,
+  /// when it takes longer than [detectTimeout].
+  Future<void> _detectFrame(InputImage input, Duration now) async {
+    final FaceSignal signal;
+    try {
+      signal = await _detector.detect(input).timeout(detectTimeout);
+    } on TimeoutException {
+      _replaceDetector();
+      return;
+    }
+    if (_disposed || !_streaming) return;
+    _applySignal(signal, now);
+  }
+
+  /// Runs [_detectFrame] on [input], as a camera frame would (tests).
+  @visibleForTesting
+  Future<void> debugDetectFrame(InputImage input, Duration now) =>
+      _detectFrame(input, now);
+
+  /// The detector stopped answering: start a fresh one, and say the face is
+  /// not seen until it answers — a hung reading must not leave the last head
+  /// position (and a "face found") standing as if the learner were frozen.
+  void _replaceDetector() {
+    if (_disposed) return;
+    debugDetectorRestarts++;
+    final old = _detector;
+    _detector = _newDetector();
+    old.close().catchError((Object _) {});
+    _faceVisible = false;
+    _dwell.reset();
+    _blink.reset();
+    _turnFilter?.reset();
+    _tiltFilter?.reset();
+    _zone = GazeZone.none;
+    _progress = 0;
+    _notify();
+  }
+
+  // ── Watchdog ───────────────────────────────────────────────────────────
+
+  Timer? _watchdog;
+  Duration _lastFrameAt = Duration.zero;
+
+  /// Times the detector or the camera stream was restarted (debug bridge).
+  int debugDetectorRestarts = 0;
+  int debugStreamRestarts = 0;
+
+  void _startWatchdog() {
+    _watchdog?.cancel();
+    _lastFrameAt = _clock.elapsed;
+    _watchdog = Timer.periodic(const Duration(milliseconds: 1500), (_) {
+      checkStream();
+    });
+  }
+
+  void _stopWatchdog() {
+    _watchdog?.cancel();
+    _watchdog = null;
+  }
+
+  /// Restarts the camera when it has stopped delivering frames altogether
+  /// (the stream can die without an error). Called by the watchdog; public
+  /// for tests.
+  @visibleForTesting
+  void checkStream() {
+    if (_disposed || _suspended || !_streaming || _initInFlight) return;
+    if (_clock.elapsed - _lastFrameAt < streamStallLimit) return;
+    debugStreamRestarts++;
+    _teardownController();
+    _status = GazeStatus.initializing;
+    _notify();
+    _initCamera();
   }
 
   void _applySignal(FaceSignal raw, Duration now) {
@@ -494,6 +616,12 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
     }
 
     final signal = _steadied(raw, now);
+    if (raw.hasFace) {
+      _debugRawTurn = raw.headTurn;
+      _debugRawTilt = raw.headTilt;
+      _debugTurn = signal.headTurn;
+      _debugTilt = signal.headTilt;
+    }
     final zone = resolveGazeZone(
       signal,
       turnThresholdDeg: _turnThreshold,

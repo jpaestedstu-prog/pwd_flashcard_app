@@ -14,13 +14,19 @@ import '../models/gaze_settings.dart';
 abstract final class GazeHints {
   /// [rowsReachable]: up and down move between rows here (the hub grid, a
   /// dialog). False on the bare tab bar, where only left/right move.
+  ///
+  /// [wholeRowLit]: scanning lights a whole row of several controls, where a
+  /// press goes *into* the row rather than opening anything — the step a
+  /// learner new to scanning could not make sense of when the hint only ever
+  /// said "choose".
   static String forSettings(
     BuildContext context,
     GazeSettings s, {
     required bool rowsReachable,
+    bool wholeRowLit = false,
   }) {
     final t = _t(context);
-    if (s.scanMode) return scan(t, s);
+    if (s.scanMode) return wholeRowLit ? scanRow(t, s) : scan(t, s);
     final moves = !rowsReachable
         ? t.gzHintMoveTabs
         : (s.lookUpSelects ? t.gzHintMoveNoUp : t.gzHintMove);
@@ -34,6 +40,13 @@ abstract final class GazeHints {
     if (s.switchSelects) return t.gzHintPickSwitch;
     if (s.blinkSelects) return t.gzHintPickBlink;
     return t.gzHintPickLookUp;
+  }
+
+  /// What a press does while scanning has a whole row lit.
+  static String scanRow(AppLocalizations t, GazeSettings s) {
+    if (s.blinkSelects && s.switchSelects) return t.gzHintScanRowEither;
+    if (s.switchSelects) return t.gzHintScanRowSwitch;
+    return t.gzHintScanRowBlink;
   }
 
   /// What picks, while scanning.

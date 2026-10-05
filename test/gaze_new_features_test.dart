@@ -20,13 +20,16 @@ import 'package:pwdpwdpwd/features/gaze_control/logic/one_euro_filter.dart';
 import 'package:pwdpwdpwd/features/gaze_control/models/gaze_models.dart';
 import 'package:pwdpwdpwd/features/gaze_control/models/gaze_settings.dart';
 import 'package:pwdpwdpwd/features/gaze_control/providers/gaze_settings_provider.dart';
+import 'package:pwdpwdpwd/features/gaze_control/screens/gaze_calibration_screen.dart';
 import 'package:pwdpwdpwd/features/gaze_control/screens/gaze_settings_screen.dart';
 import 'package:pwdpwdpwd/features/gaze_control/services/gaze_detector.dart';
 import 'package:pwdpwdpwd/features/gaze_control/services/gaze_metrics.dart';
 import 'package:pwdpwdpwd/features/gaze_control/services/gaze_switch_input.dart';
+import 'package:pwdpwdpwd/features/gaze_control/widgets/gaze_dpad_scope.dart';
 import 'package:pwdpwdpwd/features/gaze_control/widgets/gaze_hints.dart';
 import 'package:pwdpwdpwd/features/gaze_control/widgets/gaze_keyboard.dart';
 import 'package:pwdpwdpwd/features/gaze_control/widgets/gaze_traversal.dart';
+import 'package:pwdpwdpwd/l10n/app_localizations.dart';
 import 'package:pwdpwdpwd/l10n/app_localizations_en.dart';
 
 import 'support/device_matrix.dart';
@@ -566,6 +569,24 @@ void main() {
       expect(got, hasLength(2));
     });
 
+    test('the system keyboard is kept away exactly while the learner picks '
+        'with a switch', () {
+      for (final (settings, expected) in [
+        (const GazeSettings(enabled: true), false),
+        (const GazeSettings(enabled: true, pickWith: GazePick.switchButton), true),
+        (const GazeSettings(enabled: true, pickWith: GazePick.either), true),
+        // Gaze off: nothing of the switch is in use.
+        (const GazeSettings(pickWith: GazePick.switchButton), false),
+      ]) {
+        final container = ProviderContainer(overrides: [
+          gazeSettingsProvider.overrideWith(() => _FixedSettings(settings)),
+        ]);
+        expect(container.read(gazeKeyboardBypassProvider), expected);
+        expect(input.keyboardBypassed, expected);
+        container.dispose();
+      }
+    });
+
     testWidgets('a switch interface that types Space is heard',
         (tester) async {
       var presses = 0;
@@ -869,6 +890,71 @@ void main() {
     expect(code.text, 'AB');
   });
 
+  testWidgets('the resting-position screen fits phones and tablets at large '
+      'text', (tester) async {
+    await expectScreenNoOverflowAcrossDevices(
+      tester,
+      () => GazeCalibrationScreen(
+        camerasLoader: () async => const [],
+        detectorFactory: _FakeDetector.new,
+      ),
+      devices: [...kNarrowPortrait, ...kTabletMatrix],
+    );
+  });
+
+  testWidgets('a learner’s Gaze Control, as their teacher sees it, survives '
+      'the themes at large text', (tester) async {
+    await expectScreenSurvivesThemes(
+      tester,
+      () => const GazeSettingsScreen(
+        profileId: 'kid-1',
+        learnerName: 'Multiple Disabilities Student',
+      ),
+    );
+  });
+
+  testWidgets('"Keep this change?" fits a phone at the largest text',
+      (tester) async {
+    tester.view.physicalSize = const Size(360, 640) * 3;
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    GazeSwitchInput.instance.reset();
+    addTearDown(GazeSwitchInput.instance.reset);
+    final container = ProviderContainer(overrides: [
+      gazeSettingsProvider.overrideWith(
+        () => _FixedSettings(const GazeSettings(enabled: true)),
+      ),
+    ]);
+    addTearDown(container.dispose);
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context)
+              .copyWith(textScaler: const TextScaler.linear(2.0)),
+          child: child!,
+        ),
+        home: const GazeSettingsScreen(),
+      ),
+    ));
+    await tester.pump();
+    await tester.dragUntilVisible(
+      find.text('A switch or controller button'),
+      find.byType(ListView),
+      const Offset(0, -250),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('A switch or controller button'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Keep this change?'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.text('Undo'));
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('the gaze keyboard fits phones and tablets at large text',
       (tester) async {
     await expectScreenNoOverflowAcrossDevices(
@@ -993,12 +1079,16 @@ void main() {
       await tester.pump(const Duration(milliseconds: 1000));
       expect(last.wholeNavRow, isTrue);
       now = now.add(const Duration(seconds: 1));
+      // A moment to react: a press as the highlight moves on means what it
+      // had lit (see the scanning-clock tests).
+      await tester.pump(const Duration(milliseconds: 500));
       GazeSwitchInput.instance.press();
       await tester.pump();
       expect(last.targetIndex, 0);
       await tester.pump(const Duration(milliseconds: 1000));
       expect(last.targetIndex, 1);
       now = now.add(const Duration(seconds: 1));
+      await tester.pump(const Duration(milliseconds: 500));
       GazeSwitchInput.instance.press();
       await tester.pump();
       expect(commits, [1]);
@@ -1007,6 +1097,112 @@ void main() {
       await tester.pump();
       expect(GazeSwitchInput.instance.claiming.value, isFalse,
           reason: 'the controller is handed back when gaze stands down');
+    });
+
+    testWidgets('a covered switch screen hands over its switch, then takes it '
+        'back', (tester) async {
+      var picked = 0;
+      var now = DateTime(2026, 10, 5, 9);
+      GazeSwitchInput.instance.clock = () => now;
+      final container = ProviderContainer(overrides: [
+        gazeSettingsProvider.overrideWith(
+          () => _FixedSettings(const GazeSettings(
+            enabled: true,
+            scanMode: true,
+            scanStepMs: 1000,
+            pickWith: GazePick.switchButton,
+          )),
+        ),
+        settingsProvider.overrideWith(_StubAppSettings.new),
+      ]);
+      addTearDown(container.dispose);
+      await tester.pumpWidget(UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          home: Scaffold(
+            body: GazeDpadScope(
+              rows: [
+                [GazeDpadCell(label: 'a', onActivate: () => picked++)],
+              ],
+              camerasLoader: _noCameras,
+              detectorFactory: _FakeDetector.new,
+              builder: (context, gaze) => const Text('screen'),
+            ),
+          ),
+        ),
+      ));
+      await tester.pump();
+      await tester.pump();
+      final screen = GazeController.debugLive.last;
+      expect(GazeSwitchInput.instance.claiming.value, isTrue);
+
+      // Something with its own gaze opens on top (the gaze keyboard, a game).
+      final top = gazeCameraOwners.acquire();
+      await tester.pump();
+      await tester.pump();
+      expect(screen.suspended, isTrue,
+          reason: 'stood down even with no camera to stop');
+      expect(GazeSwitchInput.instance.claiming.value, isFalse);
+      await tester.pump(const Duration(seconds: 3));
+      expect(picked, 0);
+
+      gazeCameraOwners.release(top);
+      await tester.pump();
+      await tester.pump();
+      expect(screen.suspended, isFalse);
+      expect(GazeSwitchInput.instance.claiming.value, isTrue,
+          reason: 'the switch is the screen\'s again');
+      now = now.add(const Duration(seconds: 1));
+      GazeSwitchInput.instance.press();
+      await tester.pump();
+      expect(picked, 1);
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+    });
+
+    testWidgets('leaving by the Back row stops a pending keep-still',
+        (tester) async {
+      var exited = 0;
+      final container = ProviderContainer(overrides: [
+        gazeSettingsProvider.overrideWith(
+          () => _FixedSettings(
+            const GazeSettings(enabled: true, dwellSelect: true),
+          ),
+        ),
+        settingsProvider.overrideWith(_StubAppSettings.new),
+      ]);
+      addTearDown(container.dispose);
+      await tester.pumpWidget(UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          home: Scaffold(
+            body: GazeDpadScope(
+              rows: [
+                [GazeDpadCell(label: 'a', onActivate: () {})],
+              ],
+              onExit: () => exited++,
+              camerasLoader: _noCameras,
+              detectorFactory: _FakeDetector.new,
+              builder: (context, gaze) => const Text('screen'),
+            ),
+          ),
+        ),
+      ));
+      await tester.pump();
+      await tester.pump();
+      final camera = GazeController.debugLive.last;
+      camera.debugSelect(GazeZone.up); // onto the Back row: a move, so armed
+      await tester.pump();
+      expect(camera.restArmed, isTrue);
+      camera.debugBlink();
+      await tester.pump();
+      expect(exited, 1);
+      expect(camera.restArmed, isFalse,
+          reason: 'keeping still after Back must not pick on the screen below');
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
     });
 
     testWidgets('a blink pick stops the pending keep-still', (tester) async {

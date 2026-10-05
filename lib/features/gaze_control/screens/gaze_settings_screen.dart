@@ -481,6 +481,8 @@ class _KeepChangeDialogState extends ConsumerState<_KeepChangeDialog> {
   Widget build(BuildContext context) {
     final t = _t(context);
     return AlertDialog(
+      // The largest text sizes make the message taller than a phone screen.
+      scrollable: true,
       title: Text(t.gzsKeepTitle),
       content: Column(
         mainAxisSize: MainAxisSize.min,

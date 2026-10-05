@@ -14078,6 +14078,24 @@ abstract class AppLocalizations {
   /// **'🎮  Game Controller'**
   String get gpTitle;
 
+  /// No description provided for @gpGazeUsesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Gaze Control is using this controller'**
+  String get gpGazeUsesTitle;
+
+  /// No description provided for @gpGazeUsesBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Right now any button picks what is lit, and the stick or arrows move the highlight. The button guide on this page is for when Gaze Control is not picking with a switch.'**
+  String get gpGazeUsesBody;
+
+  /// No description provided for @gpGazeUsesPractice.
+  ///
+  /// In en, this message translates to:
+  /// **'Right now a button press picks what is lit (such as Back), so it is not practised here. To practise these buttons, first turn off picking with a switch in Gaze Control.'**
+  String get gpGazeUsesPractice;
+
   /// No description provided for @gpPractise.
   ///
   /// In en, this message translates to:
@@ -19979,13 +19997,13 @@ abstract class AppLocalizations {
   /// No description provided for @gzHintPickSwitch.
   ///
   /// In en, this message translates to:
-  /// **'press your switch to choose'**
+  /// **'press a button to choose'**
   String get gzHintPickSwitch;
 
   /// No description provided for @gzHintPickEither.
   ///
   /// In en, this message translates to:
-  /// **'blink or press your switch to choose'**
+  /// **'blink or press a button to choose'**
   String get gzHintPickEither;
 
   /// No description provided for @gzHintPickRest.
@@ -19997,14 +20015,32 @@ abstract class AppLocalizations {
   /// No description provided for @gzHintScanSwitch.
   ///
   /// In en, this message translates to:
-  /// **'Press your switch when the one you want lights up'**
+  /// **'Press a button to choose what is lit — or move the light with the stick'**
   String get gzHintScanSwitch;
 
   /// No description provided for @gzHintScanEither.
   ///
   /// In en, this message translates to:
-  /// **'Blink or press your switch when the one you want lights up'**
+  /// **'Blink or press a button to choose what is lit — or move the light with the stick'**
   String get gzHintScanEither;
+
+  /// No description provided for @gzHintScanRowSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Press a button to go into this row — or move the light with the stick'**
+  String get gzHintScanRowSwitch;
+
+  /// No description provided for @gzHintScanRowEither.
+  ///
+  /// In en, this message translates to:
+  /// **'Blink or press a button to go into this row — or move the light with the stick'**
+  String get gzHintScanRowEither;
+
+  /// No description provided for @gzHintScanRowBlink.
+  ///
+  /// In en, this message translates to:
+  /// **'Blink to go into this row'**
+  String get gzHintScanRowBlink;
 
   /// No description provided for @gzLeaveSwitch.
   ///

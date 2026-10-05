@@ -15,6 +15,7 @@ import '../providers/gamepad_practice.dart';
 import '../providers/gamepad_settings_provider.dart';
 import '../providers/gamepad_status_provider.dart';
 import '../services/gamepad_announcer.dart';
+import '../widgets/gaze_uses_controller_notice.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
@@ -192,6 +193,7 @@ class _GamepadPracticeScreenState extends ConsumerState<GamepadPracticeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              const GazeUsesControllerNotice(practising: true),
               if (!status.connected)
                 Container(
                   padding: const EdgeInsets.all(14),

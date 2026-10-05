@@ -124,13 +124,17 @@ abstract final class GazeKeyboard {
     BuildContext context,
     GazeKeyboardTarget target, {
     required String? hint,
-  }) {
-    return showModalBottomSheet<void>(
+  }) async {
+    await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
       builder: (_) => GazeKeyboardSheet(target: target, hint: hint),
     );
+    // Focus goes back to the field, which raises the system keyboard again —
+    // keep it down, as when gaze first reached the field.
+    WidgetsBinding.instance.addPostFrameCallback((_) => hideSystemKeyboard());
+    WidgetsBinding.instance.scheduleFrame();
   }
 }
 

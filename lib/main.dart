@@ -39,6 +39,8 @@ import 'features/companion/widgets/companion_overlay.dart';
 import 'features/gamepad/widgets/gamepad_host.dart';
 import 'features/gaze_control/debug/gaze_debug_bridge.dart';
 import 'features/gaze_control/services/gaze_metrics.dart';
+import 'features/gaze_control/providers/gaze_settings_provider.dart'
+    show gazeKeyboardBypassProvider;
 import 'features/gaze_control/widgets/gaze_focus_overlay.dart';
 import 'features/tv_cast/widgets/cast_status_pill.dart';
 import 'features/onboarding/widgets/membership_eviction_gate.dart';
@@ -279,6 +281,9 @@ class FlashLearnApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
+    // A switch learner's presses must reach the app, not the system keyboard
+    // (see gazeKeyboardBypassProvider).
+    ref.watch(gazeKeyboardBypassProvider);
     final settings = ref.watch(settingsProvider);
 
     // ── Active-time tracking + alarm scheduler lifecycle ──

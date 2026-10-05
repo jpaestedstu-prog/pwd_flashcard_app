@@ -27,5 +27,13 @@ class ScanCycler {
     return _current;
   }
 
+  /// Moves the highlight to the previous item (wrapping) and returns it —
+  /// a controller's ◀ or ▲, or a press that landed just after a move.
+  int back() {
+    if (count <= 0) return -1;
+    _current = (current - 1) % count;
+    return _current;
+  }
+
   void reset() => _current = 0;
 }

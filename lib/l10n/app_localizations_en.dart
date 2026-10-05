@@ -8496,6 +8496,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gpTitle => '🎮  Game Controller';
 
   @override
+  String get gpGazeUsesTitle => 'Gaze Control is using this controller';
+
+  @override
+  String get gpGazeUsesBody =>
+      'Right now any button picks what is lit, and the stick or arrows move the highlight. The button guide on this page is for when Gaze Control is not picking with a switch.';
+
+  @override
+  String get gpGazeUsesPractice =>
+      'Right now a button press picks what is lit (such as Back), so it is not practised here. To practise these buttons, first turn off picking with a switch in Gaze Control.';
+
+  @override
   String get gpPractise => 'Practise the controller';
 
   @override
@@ -11989,21 +12000,32 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gzHintPickLookUp => 'look up to choose';
 
   @override
-  String get gzHintPickSwitch => 'press your switch to choose';
+  String get gzHintPickSwitch => 'press a button to choose';
 
   @override
-  String get gzHintPickEither => 'blink or press your switch to choose';
+  String get gzHintPickEither => 'blink or press a button to choose';
 
   @override
   String get gzHintPickRest => 'keep still to choose';
 
   @override
   String get gzHintScanSwitch =>
-      'Press your switch when the one you want lights up';
+      'Press a button to choose what is lit — or move the light with the stick';
 
   @override
   String get gzHintScanEither =>
-      'Blink or press your switch when the one you want lights up';
+      'Blink or press a button to choose what is lit — or move the light with the stick';
+
+  @override
+  String get gzHintScanRowSwitch =>
+      'Press a button to go into this row — or move the light with the stick';
+
+  @override
+  String get gzHintScanRowEither =>
+      'Blink or press a button to go into this row — or move the light with the stick';
+
+  @override
+  String get gzHintScanRowBlink => 'Blink to go into this row';
 
   @override
   String get gzLeaveSwitch => 'Press your switch to go back';

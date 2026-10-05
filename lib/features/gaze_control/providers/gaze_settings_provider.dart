@@ -4,6 +4,7 @@ import '../../../data/local/hive_service.dart';
 import '../../../providers/app_providers.dart'
     show profileAtTablet, profileProvider;
 import '../models/gaze_settings.dart';
+import '../services/gaze_switch_input.dart';
 
 /// Hive key (in the shared `settings` box) holding the serialised
 /// [GazeSettings] map. Namespaced per profile by
@@ -211,6 +212,17 @@ class GazeProfileSettingsNotifier
     } catch (_) {}
   }
 }
+
+/// Keeps the system keyboard away while the learner at the tablet picks with
+/// a switch (see [GazeSwitchInput.setKeyboardBypass]). Watched by the app
+/// root, so it follows sign-ins, profile switches and settings changes.
+final gazeKeyboardBypassProvider = Provider<bool>((ref) {
+  final on = ref.watch(
+    gazeSettingsProvider.select((s) => s.enabled && s.switchSelects),
+  );
+  GazeSwitchInput.instance.setKeyboardBypass(on);
+  return on;
+});
 
 final gazeSettingsForProfileProvider = NotifierProvider.family<
   GazeProfileSettingsNotifier,

@@ -202,9 +202,12 @@ class _GazeCalibrationScreenState extends ConsumerState<GazeCalibrationScreen> {
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(16),
+            // The camera takes two thirds; the message the rest, scrolling at
+            // the largest text sizes rather than pushing off the screen.
             child: Column(
               children: [
                 Expanded(
+                  flex: 2,
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(24),
                     child: Stack(
@@ -237,26 +240,35 @@ class _GazeCalibrationScreenState extends ConsumerState<GazeCalibrationScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                Semantics(
-                  liveRegion: true,
-                  child: Text(
-                    _message(t),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Semantics(
+                          liveRegion: true,
+                          child: Text(
+                            _message(t),
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        if (_phase == _Phase.failed &&
+                            _attempts >= _maxAutoAttempts) ...[
+                          const SizedBox(height: 12),
+                          FilledButton.icon(
+                            onPressed: _retry,
+                            icon: const Icon(Icons.refresh_rounded),
+                            label: Text(t.gzTryAgain),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                 ),
-                if (_phase == _Phase.failed &&
-                    _attempts >= _maxAutoAttempts) ...[
-                  const SizedBox(height: 12),
-                  FilledButton.icon(
-                    onPressed: _retry,
-                    icon: const Icon(Icons.refresh_rounded),
-                    label: Text(t.gzTryAgain),
-                  ),
-                ],
               ],
             ),
           ),
