@@ -2,6 +2,26 @@
   "_comment": "Newest first. tools/release_page_build.py renders the website's download section, changelog, website/version.json and the GitHub release notes from this file plus pubspec.yaml and the built APKs. The first entry must match the pubspec version.",
   "releases": [
     {
+      "version": "1.2.5",
+      "build": 9,
+      "date": "2026-10-05",
+      "summary_en": "Gaze Control fits each learner. A learner can set their own <strong>resting position</strong>, steady a shaky head with <strong>smoothing</strong>, choose by <strong>keeping still</strong>, type with the new <strong>gaze keyboard</strong>, or use <strong>one switch</strong> — any button on a Bluetooth controller — with scanning, and the camera off. The highlighted button can be read aloud, teachers and parents can set a learner’s Gaze Control from the learner’s card, and gaze use is measured for the research data export. Installs over v1.2.4 and keeps your profiles.",
+      "summary_fil": "Iniaangkop na ang Gaze Control sa bawat mag-aaral. Maitatakda na ng mag-aaral ang sarili niyang <strong>posisyon ng pahinga</strong>, mapapakinis ang nanginginig na galaw ng ulo gamit ang <strong>smoothing</strong>, makakapili sa pamamagitan ng <strong>pananatiling nakatigil</strong>, makakapag-type gamit ang bagong <strong>gaze keyboard</strong>, o makakagamit ng <strong>isang switch</strong> — kahit anong button ng Bluetooth controller — kasama ang scanning, at sarado ang camera. Mababasa na nang malakas ang naka-highlight na button, maitatakda na ng guro at magulang ang Gaze Control ng mag-aaral mula sa kard ng mag-aaral, at nasusukat na ang paggamit ng gaze para sa research data export. Nai-i-install sa ibabaw ng v1.2.4 at nananatili ang inyong mga profile.",
+      "notes_en": "Gaze Control adds a resting position, smoothing, look-and-hold, a gaze keyboard, one-switch scanning, spoken highlights, educator controls and usage measurements.",
+      "notes_fil": "May posisyon ng pahinga, smoothing, tingin-at-tigil, gaze keyboard, scanning gamit ang isang switch, binibigkas na highlight, kontrol ng guro at magulang, at pagsukat ng paggamit ang Gaze Control.",
+      "bullets_en": [
+        "Set my resting position: movements are measured from the way the learner usually sits",
+        "Smoothing (off, light, strong) steadies tremors without slowing a deliberate turn",
+        "Look and hold: keep still on a highlighted button to choose it — no blink needed",
+        "A gaze keyboard for messages and every text field",
+        "One-switch scanning with a Bluetooth controller or switch, camera off",
+        "The highlighted button can be read aloud as it moves",
+        "A mistaken blink can’t lock a learner out: turning gaze off or moving to a switch is undone unless confirmed",
+        "Teachers and parents set a learner’s Gaze Control from the learner’s card",
+        "Gaze use (time, choices, speed, mistakes) is measured and added to the research export"
+      ]
+    },
+    {
       "version": "1.2.4",
       "build": 8,
       "date": "2026-10-05",
