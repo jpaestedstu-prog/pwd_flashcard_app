@@ -7,6 +7,12 @@ nothing appears until a real recording is ready. Please do not use a stitched
 sequence of dictionary clips or a hearing person's approximation: a Deaf
 visitor will notice, and the point of the video is to greet them properly.
 
+**Published 7 October 2026** with the group's own recording (52 seconds,
+`GROUP_2_THESIS_FOREVER - WEBSITE`, kept on Cloudinary as the original). The
+website copy is `website/assets/videos/fsl-welcome.mp4` (480p, silent — the
+original's sound track is only room noise) with the poster
+`fsl-welcome-poster.webp`. To replace it, follow "Export and publish" below.
+
 ## What to sign (about 30–40 seconds)
 
 Sign the meaning in natural FSL — this is a guide, not a word-for-word script.
@@ -48,12 +54,22 @@ Sign the meaning in natural FSL — this is a guide, not a word-for-word script.
    If the phone recorded HDR (colours look washed out), use the tone-mapping
    recipe in `tools/README.md` instead.
 
-2. Optional but recommended: captions, so hearing parents can follow too.
-   Save them as `website/assets/videos/fsl-welcome.en.vtt` and
-   `website/assets/videos/fsl-welcome.fil.vtt` (copy the format of
-   `app-demo.en.vtt`). The site switches between them with its language
-   toggle.
+2. Make a poster from a calm opening frame (it shows before the video
+   plays):
 
-3. Run `python tools/release_page_build.py`. It adds the welcome section to
-   `website/index.html` (with whichever caption files exist) and bumps the
-   offline cache. Check the page locally, commit, and deploy as usual.
+   ```
+   C:\ffmpeg\bin\ffmpeg.exe -ss 0.6 -i raw.mp4 -frames:v 1 -vf "scale=854:480" poster.png
+   ```
+
+   then save `poster.png` as `website/assets/videos/fsl-welcome-poster.webp`.
+
+3. No captions, on purpose: a browser draws captions over the bottom of the
+   picture, which is where the signer's hands are. Hearing parents read the
+   same message in the "Read the welcome" panel under the video instead. Its
+   English and Filipino text is `WELCOME_WORDS_EN` / `WELCOME_WORDS_FIL` in
+   `tools/release_page_build.py` — it follows the guide above, so if a
+   recording says something different, change the text there to match.
+
+4. Run `python tools/release_page_build.py`. It adds the welcome section to
+   `website/index.html` and bumps the offline cache. Check the page locally,
+   commit, and deploy as usual.

@@ -35,7 +35,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
-<link rel="stylesheet" href="assets/site.css?v=bcb10f9c68">
+<link rel="stylesheet" href="assets/site.css?v=1032330bac">
 <script>(function(h){h.classList.add('js');try{var p=JSON.parse(localStorage.getItem('flp-a11y')||'{}');if(p.font==='lg'||p.font==='xl')h.classList.add('fs-'+p.font);if(p.dys)h.classList.add('dys');if(p.hc)h.classList.add('hc');if(p.fil){h.classList.add('fil');h.setAttribute('lang','fil');}if(p.fil||p.font==='lg'||p.font==='xl')h.classList.add('nav-compact');}catch(e){}})(document.documentElement);</script>
 <!--/gen:site-head-->
 <!--gen:app-jsonld--><script type="application/ld+json">
@@ -47,8 +47,8 @@
   "applicationCategory": "EducationalApplication",
   "description": "Free bilingual English/Filipino flashcard learning app designed for students with disabilities, with Filipino Sign Language support, games, stories, and a full accessibility suite.",
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "PHP" },
-  "downloadUrl": "https://github.com/jpaestedstu-prog/pwd_flashcard_app/releases/download/v1.2.6/FlashLearnPWD-v1.2.6-arm64.apk",
-  "softwareVersion": "1.2.6"
+  "downloadUrl": "https://github.com/jpaestedstu-prog/pwd_flashcard_app/releases/download/v1.2.7/FlashLearnPWD-v1.2.7-arm64.apk",
+  "softwareVersion": "1.2.7"
 }
 </script><!--/gen:app-jsonld-->
 </head>
@@ -175,7 +175,24 @@
   </div>
 </section>
 
-<!--gen:fsl-welcome--><!--/gen:fsl-welcome-->
+<!--gen:fsl-welcome-->
+<section id="fsl-welcome" class="section tint" aria-labelledby="fslWelcomeTitle">
+  <div class="container">
+    <div class="section-head center">
+      <p class="eyebrow"><span aria-hidden="true">🤟</span> <span class="en">Welcome in FSL</span><span class="fil">Pagbati sa FSL</span></p>
+      <h2 id="fslWelcomeTitle"><span class="en">A welcome in Filipino Sign Language</span><span class="fil">Isang pagbati sa Filipino Sign Language</span></h2>
+      <p class="lead"><span class="en">For Deaf and hard-of-hearing visitors: what FlashLearn PWD is and how to get it, signed in FSL.</span><span class="fil">Para sa mga Deaf at mahina ang pandinig: kung ano ang FlashLearn PWD at paano ito makukuha, sa FSL.</span></p>
+    </div>
+    <div class="welcome-video">
+      <video controls playsinline preload="metadata" width="854" height="480" poster="assets/videos/fsl-welcome-poster.webp" src="assets/videos/fsl-welcome.mp4" aria-label="A welcome in Filipino Sign Language" data-label-en="A welcome in Filipino Sign Language" data-label-fil="Isang pagbati sa Filipino Sign Language"></video>
+    </div>
+    <details class="disclosure welcome-words">
+      <summary><span class="en">Read the welcome in English</span><span class="fil">Basahin ang pagbati sa Filipino</span></summary>
+      <div class="d-body"><p><span class="en">Hello, and welcome! This is FlashLearn PWD, a free learning app for children with disabilities. It teaches everyday words in English, Filipino and Filipino Sign Language, with games, stories and a sign dictionary you can watch on this website. There are no ads and no account. To get the app, press the <a href="download.html">Download</a> button, then follow the steps. Thank you, and enjoy learning!</span><span class="fil">Kumusta, at maligayang pagdating! Ito ang FlashLearn PWD, isang libreng app sa pag-aaral para sa mga batang may kapansanan. Nagtuturo ito ng mga pang-araw-araw na salita sa English, Filipino at Filipino Sign Language, may mga laro, kuwento at diksyunaryo ng senyas na mapapanood sa website na ito. Walang ads at walang account. Para makuha ang app, pindutin ang <a href="download.html">Download</a>, at sundin ang mga hakbang. Salamat, at masayang pag-aaral!</span></p></div>
+    </details>
+  </div>
+</section>
+<!--/gen:fsl-welcome-->
 
 <!-- ============ What learners do ============ -->
 <section class="section tint" id="features">

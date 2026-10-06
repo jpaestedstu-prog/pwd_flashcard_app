@@ -33,7 +33,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
-<link rel="stylesheet" href="assets/site.css?v=bcb10f9c68">
+<link rel="stylesheet" href="assets/site.css?v=1032330bac">
 <script>(function(h){h.classList.add('js');try{var p=JSON.parse(localStorage.getItem('flp-a11y')||'{}');if(p.font==='lg'||p.font==='xl')h.classList.add('fs-'+p.font);if(p.dys)h.classList.add('dys');if(p.hc)h.classList.add('hc');if(p.fil){h.classList.add('fil');h.setAttribute('lang','fil');}if(p.fil||p.font==='lg'||p.font==='xl')h.classList.add('nav-compact');}catch(e){}})(document.documentElement);</script>
 <!--/gen:site-head-->
 <style>
@@ -91,7 +91,7 @@ html.hc .chip[aria-pressed="true"]{ background:#000; color:#fff; }
 .sign-fil{ color:var(--accent-ink); font-weight:700; font-size:.9em; }
 .sign-cat{ color:var(--ink-2); font-size:.78em; margin-top:5px; }
 html.hc .sign{ border-color:#12122A; }
-.sign[hidden]{ display:none; }
+.sign[hidden],.coming-soon[hidden],.soon-group[hidden],.soon-group li[hidden],.empty [hidden]{ display:none; }
 .empty{
   text-align:center; padding:3rem 1.25rem; color:var(--ink-2); margin-top:1.1rem;
   background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow-1);
@@ -200,10 +200,20 @@ html.hc .soon-group{ border-color:#12122A; }
     </div>
 
     <div class="empty" id="empty" hidden>
-      <span class="big" aria-hidden="true">🔍</span>
-      <b><span class="en">No signs match that search.</span><span class="fil">Walang senyas na tumugma.</span></b>
-      <p><span class="en">Try a shorter word, or check the spelling. You can also browse a category above.</span>
-         <span class="fil">Subukan ang mas maikling salita, o tingnan ang spelling. Maaari ka ring mag-browse ng kategorya sa itaas.</span></p>
+      <div id="emptyNone">
+        <span class="big" aria-hidden="true">🔍</span>
+        <b><span class="en">No signs match that search.</span><span class="fil">Walang senyas na tumugma.</span></b>
+        <p><span class="en">Try a shorter word, or check the spelling. You can also browse a category above.</span>
+           <span class="fil">Subukan ang mas maikling salita, o tingnan ang spelling. Maaari ka ring mag-browse ng kategorya sa itaas.</span></p>
+      </div>
+      <!-- The word is in the app but has no recorded sign: say so, rather than
+           "check the spelling" for a word that was spelled right. -->
+      <div id="emptySoon" hidden>
+        <span class="big" aria-hidden="true">🤟</span>
+        <b><span class="en">No sign video yet — coming soon</span><span class="fil">Wala pang video ng senyas — malapit na</span></b>
+        <p><span class="en">That word is in the app, but its sign has not been recorded yet. It is listed under <a href="#comingSoon">Signs coming soon</a> below.</span>
+           <span class="fil">Nasa app ang salitang iyan, pero hindi pa naire-record ang senyas nito. Nakalista ito sa <a href="#comingSoon">Mga senyas na paparating</a> sa ibaba.</span></p>
+      </div>
     </div>
 
     <!--COMING-->
@@ -296,6 +306,12 @@ html.hc .soon-group{ border-color:#12122A; }
   var qClear= document.getElementById('qClear');
   var count = document.getElementById('count');
   var empty = document.getElementById('empty');
+  var emptyNone = document.getElementById('emptyNone');
+  var emptySoon = document.getElementById('emptySoon');
+  // The app's words that are still waiting for a sign. They follow the same
+  // search box and category chip as the signs, so "Run" finds Run there.
+  var soon = document.getElementById('comingSoon');
+  var soonGroups = soon ? Array.prototype.slice.call(soon.querySelectorAll('.soon-group')) : [];
   var cat   = 'all';
 
   // Which cards are currently showing — the dialog's prev/next walk this list,
@@ -304,20 +320,39 @@ html.hc .soon-group{ border-color:#12122A; }
 
   function norm(s){ return (s || '').toLowerCase().trim(); }
 
+  function matches(el, term){
+    return !term ||
+      el.getAttribute('data-en').indexOf(term) !== -1 ||
+      el.getAttribute('data-fil').indexOf(term) !== -1;
+  }
+
   function apply(){
     var term = norm(q.value);
     visible = [];
     cards.forEach(function(c){
       var okCat = cat === 'all' || c.getAttribute('data-cat') === cat;
-      var okTerm = !term ||
-        c.getAttribute('data-en').indexOf(term) !== -1 ||
-        c.getAttribute('data-fil').indexOf(term) !== -1;
-      var show = okCat && okTerm;
+      var show = okCat && matches(c, term);
       c.hidden = !show;
       if (show) visible.push(c);
     });
+    var soonShown = 0;
+    soonGroups.forEach(function(g){
+      var okCat = cat === 'all' || g.getAttribute('data-cat') === cat;
+      var n = 0;
+      Array.prototype.forEach.call(g.querySelectorAll('li'), function(li){
+        var show = okCat && matches(li, term);
+        li.hidden = !show;
+        if (show) n++;
+      });
+      g.hidden = n === 0;
+      g.querySelector('.soon-n').textContent = n;
+      soonShown += n;
+    });
+    if (soon) soon.hidden = soonShown === 0;
     qClear.hidden = !term;
     empty.hidden = visible.length !== 0;
+    emptySoon.hidden = soonShown === 0;
+    emptyNone.hidden = soonShown !== 0;
     var fil = document.documentElement.classList.contains('fil');
     count.textContent = fil
       ? visible.length + ' sa ' + cards.length + ' senyas'

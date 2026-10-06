@@ -1045,7 +1045,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
-<link rel="stylesheet" href="assets/site.css?v=bcb10f9c68">
+<link rel="stylesheet" href="assets/site.css?v=1032330bac">
 <script>(function(h){h.classList.add('js');try{var p=JSON.parse(localStorage.getItem('flp-a11y')||'{}');if(p.font==='lg'||p.font==='xl')h.classList.add('fs-'+p.font);if(p.dys)h.classList.add('dys');if(p.hc)h.classList.add('hc');if(p.fil){h.classList.add('fil');h.setAttribute('lang','fil');}if(p.fil||p.font==='lg'||p.font==='xl')h.classList.add('nav-compact');}catch(e){}})(document.documentElement);</script>
 <!--/gen:site-head-->
 <style>
@@ -1103,7 +1103,7 @@ html.hc .chip[aria-pressed="true"]{ background:#000; color:#fff; }
 .sign-fil{ color:var(--accent-ink); font-weight:700; font-size:.9em; }
 .sign-cat{ color:var(--ink-2); font-size:.78em; margin-top:5px; }
 html.hc .sign{ border-color:#12122A; }
-.sign[hidden]{ display:none; }
+.sign[hidden],.coming-soon[hidden],.soon-group[hidden],.soon-group li[hidden],.empty [hidden]{ display:none; }
 .empty{
   text-align:center; padding:3rem 1.25rem; color:var(--ink-2); margin-top:1.1rem;
   background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow-1);
@@ -1366,20 +1366,30 @@ html.hc .soon-group{ border-color:#12122A; }
     </div>
 
     <div class="empty" id="empty" hidden>
-      <span class="big" aria-hidden="true">🔍</span>
-      <b><span class="en">No signs match that search.</span><span class="fil">Walang senyas na tumugma.</span></b>
-      <p><span class="en">Try a shorter word, or check the spelling. You can also browse a category above.</span>
-         <span class="fil">Subukan ang mas maikling salita, o tingnan ang spelling. Maaari ka ring mag-browse ng kategorya sa itaas.</span></p>
+      <div id="emptyNone">
+        <span class="big" aria-hidden="true">🔍</span>
+        <b><span class="en">No signs match that search.</span><span class="fil">Walang senyas na tumugma.</span></b>
+        <p><span class="en">Try a shorter word, or check the spelling. You can also browse a category above.</span>
+           <span class="fil">Subukan ang mas maikling salita, o tingnan ang spelling. Maaari ka ring mag-browse ng kategorya sa itaas.</span></p>
+      </div>
+      <!-- The word is in the app but has no recorded sign: say so, rather than
+           "check the spelling" for a word that was spelled right. -->
+      <div id="emptySoon" hidden>
+        <span class="big" aria-hidden="true">🤟</span>
+        <b><span class="en">No sign video yet — coming soon</span><span class="fil">Wala pang video ng senyas — malapit na</span></b>
+        <p><span class="en">That word is in the app, but its sign has not been recorded yet. It is listed under <a href="#comingSoon">Signs coming soon</a> below.</span>
+           <span class="fil">Nasa app ang salitang iyan, pero hindi pa naire-record ang senyas nito. Nakalista ito sa <a href="#comingSoon">Mga senyas na paparating</a> sa ibaba.</span></p>
+      </div>
     </div>
 
-    <section class="coming-soon" aria-labelledby="soonTitle">
+    <section class="coming-soon" id="comingSoon" aria-labelledby="soonTitle">
       <h2 id="soonTitle"><span class="en">Signs coming soon</span><span class="fil">Mga senyas na paparating</span></h2>
       <p class="soon-lead"><span class="en">The app teaches 33 more words that do not have a recorded sign yet. We would rather show nothing than a guessed sign, so these are listed here until a Deaf signer records them.</span><span class="fil">May 33 pang salita sa app na wala pang naka-record na senyas. Mas mabuting walang ipakita kaysa sa hulang senyas, kaya nakalista muna ang mga ito dito hanggang ma-record ng isang Deaf signer.</span></p>
       <div class="soon-grid">
-        <div class="soon-group"><h3><span aria-hidden="true">🎨</span> <span class="en">Colors &amp; Shapes</span><span class="fil">Mga Kulay at Hugis</span> <span class="soon-n">2</span></h3><ul><li><span class="soon-en">Green</span><span class="soon-fil">Berde</span></li><li><span class="soon-en">Flower</span><span class="soon-fil">Bulaklak</span></li></ul></div>
-        <div class="soon-group"><h3><span aria-hidden="true">🍎</span> <span class="en">Food &amp; Drinks</span><span class="fil">Pagkain at Inumin</span> <span class="soon-n">5</span></h3><ul><li><span class="soon-en">Bottle</span><span class="soon-fil">Bote</span></li><li><span class="soon-en">Cup</span><span class="soon-fil">Tasa</span></li><li><span class="soon-en">Spoon</span><span class="soon-fil">Kutsara</span></li><li><span class="soon-en">Fork</span><span class="soon-fil">Tinidor</span></li><li><span class="soon-en">Plate</span><span class="soon-fil">Plato</span></li></ul></div>
-        <div class="soon-group"><h3><span aria-hidden="true">🏫</span> <span class="en">Classroom</span><span class="fil">Silid-aralan</span> <span class="soon-n">7</span></h3><ul><li><span class="soon-en">Table</span><span class="soon-fil">Mesa</span></li><li><span class="soon-en">Paper</span><span class="soon-fil">Papel</span></li><li><span class="soon-en">Ball</span><span class="soon-fil">Bola</span></li><li><span class="soon-en">Door</span><span class="soon-fil">Pinto</span></li><li><span class="soon-en">Window</span><span class="soon-fil">Bintana</span></li><li><span class="soon-en">Television</span><span class="soon-fil">Telebisyon</span></li><li><span class="soon-en">Phone</span><span class="soon-fil">Telepono</span></li></ul></div>
-        <div class="soon-group"><h3><span aria-hidden="true">🏃</span> <span class="en">Actions</span><span class="fil">Mga Kilos</span> <span class="soon-n">19</span></h3><ul><li><span class="soon-en">Run</span><span class="soon-fil">Tumakbo</span></li><li><span class="soon-en">Jump</span><span class="soon-fil">Tumalon</span></li><li><span class="soon-en">Eat</span><span class="soon-fil">Kumain</span></li><li><span class="soon-en">Drink</span><span class="soon-fil">Uminom</span></li><li><span class="soon-en">Sleep</span><span class="soon-fil">Matulog</span></li><li><span class="soon-en">Read</span><span class="soon-fil">Magbasa</span></li><li><span class="soon-en">Write</span><span class="soon-fil">Magsulat</span></li><li><span class="soon-en">Sing</span><span class="soon-fil">Kumanta</span></li><li><span class="soon-en">Dance</span><span class="soon-fil">Sumayaw</span></li><li><span class="soon-en">Clap</span><span class="soon-fil">Pumalakpak</span></li><li><span class="soon-en">Sit</span><span class="soon-fil">Umupo</span></li><li><span class="soon-en">Stand</span><span class="soon-fil">Tumayo</span></li><li><span class="soon-en">Open</span><span class="soon-fil">Magbukas</span></li><li><span class="soon-en">Close</span><span class="soon-fil">Magsara</span></li><li><span class="soon-en">Wave</span><span class="soon-fil">Kumaway</span></li><li><span class="soon-en">Cry</span><span class="soon-fil">Umiyak</span></li><li><span class="soon-en">Laugh</span><span class="soon-fil">Tumawa</span></li><li><span class="soon-en">Swim</span><span class="soon-fil">Lumangoy</span></li><li><span class="soon-en">Play</span><span class="soon-fil">Maglaro</span></li></ul></div>
+        <div class="soon-group" data-cat="1"><h3><span aria-hidden="true">🎨</span> <span class="en">Colors &amp; Shapes</span><span class="fil">Mga Kulay at Hugis</span> <span class="soon-n">2</span></h3><ul><li data-en="green" data-fil="berde"><span class="soon-en">Green</span><span class="soon-fil">Berde</span></li><li data-en="flower" data-fil="bulaklak"><span class="soon-en">Flower</span><span class="soon-fil">Bulaklak</span></li></ul></div>
+        <div class="soon-group" data-cat="4"><h3><span aria-hidden="true">🍎</span> <span class="en">Food &amp; Drinks</span><span class="fil">Pagkain at Inumin</span> <span class="soon-n">5</span></h3><ul><li data-en="bottle" data-fil="bote"><span class="soon-en">Bottle</span><span class="soon-fil">Bote</span></li><li data-en="cup" data-fil="tasa"><span class="soon-en">Cup</span><span class="soon-fil">Tasa</span></li><li data-en="spoon" data-fil="kutsara"><span class="soon-en">Spoon</span><span class="soon-fil">Kutsara</span></li><li data-en="fork" data-fil="tinidor"><span class="soon-en">Fork</span><span class="soon-fil">Tinidor</span></li><li data-en="plate" data-fil="plato"><span class="soon-en">Plate</span><span class="soon-fil">Plato</span></li></ul></div>
+        <div class="soon-group" data-cat="8"><h3><span aria-hidden="true">🏫</span> <span class="en">Classroom</span><span class="fil">Silid-aralan</span> <span class="soon-n">7</span></h3><ul><li data-en="table" data-fil="mesa"><span class="soon-en">Table</span><span class="soon-fil">Mesa</span></li><li data-en="paper" data-fil="papel"><span class="soon-en">Paper</span><span class="soon-fil">Papel</span></li><li data-en="ball" data-fil="bola"><span class="soon-en">Ball</span><span class="soon-fil">Bola</span></li><li data-en="door" data-fil="pinto"><span class="soon-en">Door</span><span class="soon-fil">Pinto</span></li><li data-en="window" data-fil="bintana"><span class="soon-en">Window</span><span class="soon-fil">Bintana</span></li><li data-en="television" data-fil="telebisyon"><span class="soon-en">Television</span><span class="soon-fil">Telebisyon</span></li><li data-en="phone" data-fil="telepono"><span class="soon-en">Phone</span><span class="soon-fil">Telepono</span></li></ul></div>
+        <div class="soon-group" data-cat="12"><h3><span aria-hidden="true">🏃</span> <span class="en">Actions</span><span class="fil">Mga Kilos</span> <span class="soon-n">19</span></h3><ul><li data-en="run" data-fil="tumakbo"><span class="soon-en">Run</span><span class="soon-fil">Tumakbo</span></li><li data-en="jump" data-fil="tumalon"><span class="soon-en">Jump</span><span class="soon-fil">Tumalon</span></li><li data-en="eat" data-fil="kumain"><span class="soon-en">Eat</span><span class="soon-fil">Kumain</span></li><li data-en="drink" data-fil="uminom"><span class="soon-en">Drink</span><span class="soon-fil">Uminom</span></li><li data-en="sleep" data-fil="matulog"><span class="soon-en">Sleep</span><span class="soon-fil">Matulog</span></li><li data-en="read" data-fil="magbasa"><span class="soon-en">Read</span><span class="soon-fil">Magbasa</span></li><li data-en="write" data-fil="magsulat"><span class="soon-en">Write</span><span class="soon-fil">Magsulat</span></li><li data-en="sing" data-fil="kumanta"><span class="soon-en">Sing</span><span class="soon-fil">Kumanta</span></li><li data-en="dance" data-fil="sumayaw"><span class="soon-en">Dance</span><span class="soon-fil">Sumayaw</span></li><li data-en="clap" data-fil="pumalakpak"><span class="soon-en">Clap</span><span class="soon-fil">Pumalakpak</span></li><li data-en="sit" data-fil="umupo"><span class="soon-en">Sit</span><span class="soon-fil">Umupo</span></li><li data-en="stand" data-fil="tumayo"><span class="soon-en">Stand</span><span class="soon-fil">Tumayo</span></li><li data-en="open" data-fil="magbukas"><span class="soon-en">Open</span><span class="soon-fil">Magbukas</span></li><li data-en="close" data-fil="magsara"><span class="soon-en">Close</span><span class="soon-fil">Magsara</span></li><li data-en="wave" data-fil="kumaway"><span class="soon-en">Wave</span><span class="soon-fil">Kumaway</span></li><li data-en="cry" data-fil="umiyak"><span class="soon-en">Cry</span><span class="soon-fil">Umiyak</span></li><li data-en="laugh" data-fil="tumawa"><span class="soon-en">Laugh</span><span class="soon-fil">Tumawa</span></li><li data-en="swim" data-fil="lumangoy"><span class="soon-en">Swim</span><span class="soon-fil">Lumangoy</span></li><li data-en="play" data-fil="maglaro"><span class="soon-en">Play</span><span class="soon-fil">Maglaro</span></li></ul></div>
       </div>
       <p class="soon-help"><span aria-hidden="true">🤟</span> <span class="en">Do you sign FSL, or teach Deaf learners? <a href="faq.html#feedback">Send us a message</a> — help recording these signs is very welcome. Until then, the app teaches each of these words with its picture, both written words and spoken English and Filipino.</span><span class="fil">Marunong ba kayo ng FSL, o nagtuturo sa mga Deaf na mag-aaral? <a href="faq.html#feedback">Magpadala ng mensahe</a> — malaking tulong ang pag-record ng mga senyas na ito. Hanggang doon, itinuturo ng app ang bawat salitang ito gamit ang larawan, ang nakasulat na salita, at binibigkas na English at Filipino.</span></p>
     </section>
@@ -1472,6 +1482,12 @@ html.hc .soon-group{ border-color:#12122A; }
   var qClear= document.getElementById('qClear');
   var count = document.getElementById('count');
   var empty = document.getElementById('empty');
+  var emptyNone = document.getElementById('emptyNone');
+  var emptySoon = document.getElementById('emptySoon');
+  // The app's words that are still waiting for a sign. They follow the same
+  // search box and category chip as the signs, so "Run" finds Run there.
+  var soon = document.getElementById('comingSoon');
+  var soonGroups = soon ? Array.prototype.slice.call(soon.querySelectorAll('.soon-group')) : [];
   var cat   = 'all';
 
   // Which cards are currently showing — the dialog's prev/next walk this list,
@@ -1480,20 +1496,39 @@ html.hc .soon-group{ border-color:#12122A; }
 
   function norm(s){ return (s || '').toLowerCase().trim(); }
 
+  function matches(el, term){
+    return !term ||
+      el.getAttribute('data-en').indexOf(term) !== -1 ||
+      el.getAttribute('data-fil').indexOf(term) !== -1;
+  }
+
   function apply(){
     var term = norm(q.value);
     visible = [];
     cards.forEach(function(c){
       var okCat = cat === 'all' || c.getAttribute('data-cat') === cat;
-      var okTerm = !term ||
-        c.getAttribute('data-en').indexOf(term) !== -1 ||
-        c.getAttribute('data-fil').indexOf(term) !== -1;
-      var show = okCat && okTerm;
+      var show = okCat && matches(c, term);
       c.hidden = !show;
       if (show) visible.push(c);
     });
+    var soonShown = 0;
+    soonGroups.forEach(function(g){
+      var okCat = cat === 'all' || g.getAttribute('data-cat') === cat;
+      var n = 0;
+      Array.prototype.forEach.call(g.querySelectorAll('li'), function(li){
+        var show = okCat && matches(li, term);
+        li.hidden = !show;
+        if (show) n++;
+      });
+      g.hidden = n === 0;
+      g.querySelector('.soon-n').textContent = n;
+      soonShown += n;
+    });
+    if (soon) soon.hidden = soonShown === 0;
     qClear.hidden = !term;
     empty.hidden = visible.length !== 0;
+    emptySoon.hidden = soonShown === 0;
+    emptyNone.hidden = soonShown !== 0;
     var fil = document.documentElement.classList.contains('fil');
     count.textContent = fil
       ? visible.length + ' sa ' + cards.length + ' senyas'

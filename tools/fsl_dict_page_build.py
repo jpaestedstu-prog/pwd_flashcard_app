@@ -97,23 +97,27 @@ def coming_soon(cats, entries):
             continue
         idx = SEED_CATEGORY_ORDER.index(cat)
         label = cats[idx] if idx < len(cats) else ACTIONS
-        out.append((label, groups[cat]))
+        # idx is also the chip's data-cat, so a chip filters this group too.
+        out.append((idx, label, groups[cat]))
     return out
 
 
 def render_coming_soon(groups):
-    total = sum(len(words) for _, words in groups)
+    total = sum(len(words) for _, _, words in groups)
     if not total:
         return ""
     blocks = []
-    for label, words in groups:
+    for idx, label, words in groups:
+        # data-en / data-fil let the search box filter these words exactly as
+        # it filters the sign cards (lower-case, same attribute names).
         items = "".join(
-            f'<li><span class="soon-en">{html.escape(en)}</span>'
+            f'<li data-en="{html.escape(en.lower())}" data-fil="{html.escape(fil.lower())}">'
+            f'<span class="soon-en">{html.escape(en)}</span>'
             f'<span class="soon-fil">{html.escape(fil)}</span></li>'
             for en, fil in words
         )
         blocks.append(
-            '<div class="soon-group">'
+            f'<div class="soon-group" data-cat="{idx}">'
             f'<h3><span aria-hidden="true">{label["e"]}</span> '
             f'<span class="en">{html.escape(label["en"])}</span>'
             f'<span class="fil">{html.escape(label["fil"])}</span>'
@@ -121,7 +125,7 @@ def render_coming_soon(groups):
             f'<ul>{items}</ul></div>'
         )
     return (
-        '<section class="coming-soon" aria-labelledby="soonTitle">\n'
+        '<section class="coming-soon" id="comingSoon" aria-labelledby="soonTitle">\n'
         '      <h2 id="soonTitle"><span class="en">Signs coming soon</span>'
         '<span class="fil">Mga senyas na paparating</span></h2>\n'
         f'      <p class="soon-lead"><span class="en">The app teaches {total} more words that do not '
@@ -230,8 +234,8 @@ def main():
     print(f"wrote {OUT.relative_to(ROOT)}")
     print(f"  {len(entries)} signs across {replacements['__CATCOUNT__']} categories")
     print(f"  every referenced clip exists in {CLIPS.relative_to(ROOT)}")
-    print(f"  {sum(len(w) for _, w in soon)} app words listed as coming soon "
-          f"({', '.join(f'{l['en']} {len(w)}' for l, w in soon)})")
+    print(f"  {sum(len(w) for _, _, w in soon)} app words listed as coming soon "
+          f"({', '.join(f'{l['en']} {len(w)}' for _, l, w in soon)})")
 
 
 if __name__ == "__main__":

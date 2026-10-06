@@ -157,21 +157,40 @@ def render_jsonld(version, apks):
 WELCOME = os.path.join(SITE, "assets", "videos", "fsl-welcome.mp4")
 
 
+WELCOME_POSTER = os.path.join(SITE, "assets", "videos", "fsl-welcome-poster.webp")
+
+# What the welcome says, for hearing visitors who do not sign. This is the
+# message the signer was given (docs/fsl_welcome_video.md); if the recording
+# says something different, change it here to match what was signed.
+WELCOME_WORDS_EN = (
+    "Hello, and welcome! This is FlashLearn PWD, a free learning app for children with "
+    "disabilities. It teaches everyday words in English, Filipino and Filipino Sign Language, "
+    "with games, stories and a sign dictionary you can watch on this website. There are no ads "
+    "and no account. To get the app, press the <a href=\"download.html\">Download</a> button, "
+    "then follow the steps. Thank you, and enjoy learning!")
+WELCOME_WORDS_FIL = (
+    "Kumusta, at maligayang pagdating! Ito ang FlashLearn PWD, isang libreng app sa pag-aaral "
+    "para sa mga batang may kapansanan. Nagtuturo ito ng mga pang-araw-araw na salita sa English, "
+    "Filipino at Filipino Sign Language, may mga laro, kuwento at diksyunaryo ng senyas na "
+    "mapapanood sa website na ito. Walang ads at walang account. Para makuha ang app, pindutin ang "
+    "<a href=\"download.html\">Download</a>, at sundin ang mga hakbang. Salamat, at masayang pag-aaral!")
+
+
 def render_fsl_welcome():
     """The FSL welcome for Deaf visitors — only once a signer has recorded it.
 
-    Drop the clip at website/assets/videos/fsl-welcome.mp4 (and, optionally,
-    fsl-welcome.en.vtt / fsl-welcome.fil.vtt captions) and re-run this script.
-    Until then the section renders as nothing: no empty player, no placeholder.
-    See docs/fsl_welcome_video.md for the script and the recording recipe.
+    Drop the clip at website/assets/videos/fsl-welcome.mp4 (and a poster at
+    fsl-welcome-poster.webp) and re-run this script. Until then the section
+    renders as nothing: no empty player, no placeholder. See
+    docs/fsl_welcome_video.md for the script and the recording recipe.
+
+    No caption track, on purpose: captions are drawn over the bottom of the
+    picture, which is where the signer's hands are. Hearing visitors get the
+    same words in the "Read the welcome" panel under the video instead.
     """
     if not os.path.isfile(WELCOME):
         return ""
-    tracks = ""
-    for lang, label, default in (("en", "English", " default"), ("fil", "Filipino", "")):
-        if os.path.isfile(WELCOME.replace(".mp4", f".{lang}.vtt")):
-            tracks += (f'\n        <track kind="captions" src="assets/videos/fsl-welcome.{lang}.vtt" '
-                       f'srclang="{lang}" label="{label}"{default}>')
+    poster = ' poster="assets/videos/fsl-welcome-poster.webp"' if os.path.isfile(WELCOME_POSTER) else ""
     return f"""
 <section id="fsl-welcome" class="section tint" aria-labelledby="fslWelcomeTitle">
   <div class="container">
@@ -181,9 +200,12 @@ def render_fsl_welcome():
       <p class="lead">{bi("For Deaf and hard-of-hearing visitors: what FlashLearn PWD is and how to get it, signed in FSL.", "Para sa mga Deaf at mahina ang pandinig: kung ano ang FlashLearn PWD at paano ito makukuha, sa FSL.")}</p>
     </div>
     <div class="welcome-video">
-      <video controls playsinline preload="metadata" src="assets/videos/fsl-welcome.mp4">{tracks}
-      </video>
+      <video controls playsinline preload="metadata" width="854" height="480"{poster} src="assets/videos/fsl-welcome.mp4" aria-label="A welcome in Filipino Sign Language" data-label-en="A welcome in Filipino Sign Language" data-label-fil="Isang pagbati sa Filipino Sign Language"></video>
     </div>
+    <details class="disclosure welcome-words">
+      <summary>{bi("Read the welcome in English", "Basahin ang pagbati sa Filipino")}</summary>
+      <div class="d-body"><p>{bi(WELCOME_WORDS_EN, WELCOME_WORDS_FIL)}</p></div>
+    </details>
   </div>
 </section>
 """
