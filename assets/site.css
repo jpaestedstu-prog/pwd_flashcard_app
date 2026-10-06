@@ -659,7 +659,8 @@ html.hc .qr-card img{ border-color:#000; }
 .chapters button:hover{ background:var(--brand-soft); }
 .chapters .t{ font-variant-numeric:tabular-nums; color:var(--brand-ink); min-width:2.6em; font-weight:800; }
 .welcome-video{ max-width:44rem; margin:0 auto; border-radius:22px; overflow:hidden; background:#000; box-shadow:var(--shadow-2); }
-.welcome-video video{ width:100%; height:auto; }
+.welcome-video video{ display:block; width:100%; height:auto; }
+.welcome-words{ max-width:44rem; margin:1.25rem auto 0; }
 .tour{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1.25rem; }
 @media (max-width:1000px){ .tour{ grid-template-columns:minmax(0,1fr); } }
 .tour-step{
