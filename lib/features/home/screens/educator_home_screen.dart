@@ -564,6 +564,16 @@ class _QuickActions extends ConsumerWidget {
               accent: AppColors.primary,
               onTap: () => context.push('/tv-cast'),
             ),
+            // Shared with the teacher's grid. When the quick actions were
+            // split by role, the parent's copy left Worksheets out — and this
+            // tile was a Parent's only way to /worksheets.
+            ProActionTile(
+              compact: true,
+              icon: Icons.print_rounded,
+              label: t.eduWorksheets,
+              accent: AppColors.sectionWellbeing,
+              onTap: () => context.push('/worksheets'),
+            ),
             ProActionTile(
               compact: true,
               icon: Icons.message_rounded,

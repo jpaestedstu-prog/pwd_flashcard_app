@@ -20,6 +20,10 @@ import 'package:pwdpwdpwd/providers/app_providers.dart';
 ///
 /// The two rosters differ in one place by design: a teacher's fourth tile
 /// manages classes, a parent's manages home groups.
+///
+/// Worksheets went missing the same way: it was a shared quick action until
+/// the grids were split by role, and the parent's copy left it out, so a
+/// Parent had no way into /worksheets at all.
 
 class _StubProfileNotifier extends ProfileNotifier {
   _StubProfileNotifier(this._role);
@@ -110,6 +114,15 @@ void main() {
       expect(find.text('Assessments'), findsOneWidget);
       expect(find.text('Assign Tasks'), findsOneWidget);
       expect(find.text('Track Progress'), findsOneWidget);
+    });
+  }
+
+  for (final role in const [UserRole.teacher, UserRole.parent]) {
+    testWidgets('${role.name} home carries Worksheets', (tester) async {
+      await pumpHome(tester, role);
+      await scrollTo(tester, find.text('Worksheets'));
+
+      expect(find.text('Worksheets'), findsOneWidget);
     });
   }
 

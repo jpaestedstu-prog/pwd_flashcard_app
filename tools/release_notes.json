@@ -5,14 +5,15 @@
       "version": "1.2.6",
       "build": 10,
       "date": "2026-10-06",
-      "summary_en": "Printing and Gaze Control fixes. Certificates, worksheets and the learning portfolio now print apostrophes, dashes and bullets — they came out as empty boxes in names, titles and page footers. When a learner uses <strong>scanning with a switch</strong>, games and the Talk Board now ask them to press their switch, not to blink. Installs over v1.2.5 and keeps your profiles.",
-      "summary_fil": "Mga ayos sa pag-print at sa Gaze Control. Naipi-print na ng mga certificate, worksheet at learning portfolio ang mga apostrophe, gitling at bullet — dati, lumalabas ang mga ito bilang walang lamang kahon sa mga pangalan, pamagat at footer ng pahina. Kapag gumagamit ang mag-aaral ng <strong>scanning gamit ang switch</strong>, pindot na ng switch ang hinihingi ng mga laro at ng Talk Board, hindi pagkurap. Nai-i-install sa ibabaw ng v1.2.5 at nananatili ang inyong mga profile.",
-      "notes_en": "Certificates, worksheets and the portfolio print every character, and switch scanning in games and the Talk Board asks for a press, not a blink.",
-      "notes_fil": "Naipi-print na ang bawat titik sa mga certificate, worksheet at portfolio, at pindot na ang hinihingi ng switch scanning sa mga laro at Talk Board, hindi pagkurap.",
+      "summary_en": "Printing and Gaze Control fixes. Certificates, worksheets and the learning portfolio now print apostrophes, dashes and bullets — they came out as empty boxes in names, titles and page footers. When a learner uses <strong>scanning with a switch</strong>, games and the Talk Board now ask them to press their switch, not to blink. Parents have their <strong>Worksheets</strong> button back on the home screen, so they can print practice sheets again. Installs over v1.2.5 and keeps your profiles.",
+      "summary_fil": "Mga ayos sa pag-print at sa Gaze Control. Naipi-print na ng mga certificate, worksheet at learning portfolio ang mga apostrophe, gitling at bullet — dati, lumalabas ang mga ito bilang walang lamang kahon sa mga pangalan, pamagat at footer ng pahina. Kapag gumagamit ang mag-aaral ng <strong>scanning gamit ang switch</strong>, pindot na ng switch ang hinihingi ng mga laro at ng Talk Board, hindi pagkurap. Nakabalik na ang <strong>Worksheets</strong> button sa home screen ng mga magulang, kaya muli silang makakapag-print ng mga worksheet. Nai-i-install sa ibabaw ng v1.2.5 at nananatili ang inyong mga profile.",
+      "notes_en": "Certificates, worksheets and the portfolio print every character, switch scanning in games and the Talk Board asks for a press, not a blink, and parents have their Worksheets button back.",
+      "notes_fil": "Naipi-print na ang bawat titik sa mga certificate, worksheet at portfolio, pindot na ang hinihingi ng switch scanning sa mga laro at Talk Board, hindi pagkurap, at nakabalik na ang Worksheets button ng mga magulang.",
       "bullets_en": [
         "Certificates, worksheets and the learning portfolio print apostrophes, dashes and bullets (they printed as empty boxes)",
         "Italic text on worksheets uses the same font as the rest of the page",
-        "Scanning with a switch: games and the Talk Board say to press the switch, not to blink"
+        "Scanning with a switch: games and the Talk Board say to press the switch, not to blink",
+        "Parents have the Worksheets button on their home screen again (an earlier redesign left it out)"
       ]
     },
     {
