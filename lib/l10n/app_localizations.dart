@@ -17279,7 +17279,7 @@ abstract class AppLocalizations {
   /// No description provided for @wscIntro.
   ///
   /// In en, this message translates to:
-  /// **'Create practice worksheets your students can print and use offline!'**
+  /// **'Create practice worksheets to print and use offline!'**
   String get wscIntro;
 
   /// No description provided for @wscType.

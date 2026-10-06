@@ -10373,8 +10373,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get wscTitle => 'Printable Worksheets';
 
   @override
-  String get wscIntro =>
-      'Create practice worksheets your students can print and use offline!';
+  String get wscIntro => 'Create practice worksheets to print and use offline!';
 
   @override
   String get wscType => 'Worksheet Type';

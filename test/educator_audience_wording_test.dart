@@ -7,6 +7,8 @@ import 'package:pwdpwdpwd/data/models/enums.dart';
 import 'package:pwdpwdpwd/data/models/models.dart';
 import 'package:pwdpwdpwd/features/parent/screens/educator_dashboard_screen.dart';
 import 'package:pwdpwdpwd/features/teacher_analytics/screens/teacher_analytics_screen.dart';
+import 'package:pwdpwdpwd/l10n/app_localizations_en.dart';
+import 'package:pwdpwdpwd/l10n/app_localizations_fil.dart';
 import 'package:pwdpwdpwd/providers/app_providers.dart';
 import 'package:pwdpwdpwd/providers/parent_provider.dart';
 
@@ -444,6 +446,22 @@ void main() {
           EducatorAudience.teacher,
           reason: role.name,
         );
+      }
+    });
+  });
+
+  // Worksheets is on both educator homes but has no audience to switch on, so
+  // its intro names nobody. It said "your students" when only teachers could
+  // reach it.
+  group('Worksheets', () {
+    test('the intro reads right to a parent and to a teacher', () {
+      final en = AppLocalizationsEn().wscIntro.toLowerCase();
+      final fil = AppLocalizationsFil().wscIntro.toLowerCase();
+      for (final noun in ['student', 'child', 'class']) {
+        expect(en, isNot(contains(noun)), reason: en);
+      }
+      for (final noun in ['estudyante', 'anak', 'klase']) {
+        expect(fil, isNot(contains(noun)), reason: fil);
       }
     });
   });
