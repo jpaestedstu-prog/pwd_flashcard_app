@@ -4,12 +4,17 @@
     {
       "version": "1.2.5",
       "build": 9,
-      "date": "2026-10-05",
-      "summary_en": "Gaze Control fits each learner. A learner can set their own <strong>resting position</strong>, steady a shaky head with <strong>smoothing</strong>, choose by <strong>keeping still</strong>, type with the new <strong>gaze keyboard</strong>, or use <strong>one switch</strong> — any button on a Bluetooth controller — with scanning, and the camera off. The highlighted button can be read aloud, teachers and parents can set a learner’s Gaze Control from the learner’s card, and gaze use is measured for the research data export. Installs over v1.2.4 and keeps your profiles.",
-      "summary_fil": "Iniaangkop na ang Gaze Control sa bawat mag-aaral. Maitatakda na ng mag-aaral ang sarili niyang <strong>posisyon ng pahinga</strong>, mapapakinis ang nanginginig na galaw ng ulo gamit ang <strong>smoothing</strong>, makakapili sa pamamagitan ng <strong>pananatiling nakatigil</strong>, makakapag-type gamit ang bagong <strong>gaze keyboard</strong>, o makakagamit ng <strong>isang switch</strong> — kahit anong button ng Bluetooth controller — kasama ang scanning, at sarado ang camera. Mababasa na nang malakas ang naka-highlight na button, maitatakda na ng guro at magulang ang Gaze Control ng mag-aaral mula sa kard ng mag-aaral, at nasusukat na ang paggamit ng gaze para sa research data export. Nai-i-install sa ibabaw ng v1.2.4 at nananatili ang inyong mga profile.",
-      "notes_en": "Gaze Control adds a resting position, smoothing, look-and-hold, a gaze keyboard, one-switch scanning, spoken highlights, educator controls and usage measurements.",
-      "notes_fil": "May posisyon ng pahinga, smoothing, tingin-at-tigil, gaze keyboard, scanning gamit ang isang switch, binibigkas na highlight, kontrol ng guro at magulang, at pagsukat ng paggamit ang Gaze Control.",
+      "date": "2026-10-06",
+      "summary_en": "Gaze Control works on every screen and fits each learner. A learner who uses head movements and blinks can now operate every screen — sheets, dialogs and a game’s pause card included — and leave any of them with the new <strong>Back</strong> button. They can set their own <strong>resting position</strong>, steady a shaky head with <strong>smoothing</strong>, choose by <strong>keeping still</strong>, type with the new <strong>gaze keyboard</strong>, or use <strong>one switch</strong> — any button on a Bluetooth controller — with scanning, and the camera off. The highlighted button can be read aloud, teachers and parents can set a learner’s Gaze Control from the learner’s card, and gaze use is measured for the research data export. Installs over v1.2.3 and keeps your profiles.",
+      "summary_fil": "Gumagana na ang Gaze Control sa bawat screen at iniaangkop na sa bawat mag-aaral. Ang mag-aaral na gumagamit ng galaw ng ulo at pagkurap ay makakagamit na ng bawat screen — kasama ang mga sheet, dialog at pause card ng laro — at makakaalis sa alinman sa mga ito gamit ang bagong <strong>Back</strong> button. Maitatakda na niya ang sarili niyang <strong>posisyon ng pahinga</strong>, mapapakinis ang nanginginig na galaw ng ulo gamit ang <strong>smoothing</strong>, makakapili sa pamamagitan ng <strong>pananatiling nakatigil</strong>, makakapag-type gamit ang bagong <strong>gaze keyboard</strong>, o makakagamit ng <strong>isang switch</strong> — kahit anong button ng Bluetooth controller — kasama ang scanning, at sarado ang camera. Mababasa na nang malakas ang naka-highlight na button, maitatakda na ng guro at magulang ang Gaze Control ng mag-aaral mula sa kard ng mag-aaral, at nasusukat na ang paggamit ng gaze para sa research data export. Nai-i-install sa ibabaw ng v1.2.3 at nananatili ang inyong mga profile.",
+      "notes_en": "Gaze Control works on every screen and adds a resting position, smoothing, look-and-hold, a gaze keyboard, one-switch scanning, spoken highlights, educator controls and usage measurements.",
+      "notes_fil": "Gumagana na ang Gaze Control sa bawat screen, at may posisyon ng pahinga, smoothing, tingin-at-tigil, gaze keyboard, scanning gamit ang isang switch, binibigkas na highlight, kontrol ng guro at magulang, at pagsukat ng paggamit.",
       "bullets_en": [
+        "Every sheet, dialog, pause card and celebration can be used and closed by gaze",
+        "Scanning mode lights up rows, then buttons, on every screen",
+        "Settings and Gaze Control are reachable hands-free; children open Gaze Control from their accessibility panel",
+        "Sensitivity, hold time and blink changes take effect immediately",
+        "Learners who choose gaze at setup can open every tile, not only the tabs",
         "Set my resting position: movements are measured from the way the learner usually sits",
         "Smoothing (off, light, strong) steadies tremors without slowing a deliberate turn",
         "Look and hold: keep still on a highlighted button to choose it — no blink needed",
@@ -27,22 +32,6 @@
         "The Game Controller pages say when Gaze Control is using the controller",
         "A locked story says how many more words open it, instead of doing nothing when chosen",
         "Gaze use (time, choices, speed, mistakes) is measured and added to the research export"
-      ]
-    },
-    {
-      "version": "1.2.4",
-      "build": 8,
-      "date": "2026-10-05",
-      "summary_en": "Gaze Control works everywhere. A learner who uses head movements and blinks can now operate every screen — sheets, dialogs, a game's pause card and celebrations included — and leave any of them with the new <strong>Back</strong> button. Scanning mode works on every screen, Settings and Gaze Control can be reached hands-free, a child's Gaze Control opens from their accessibility panel, and changes to sensitivity or hold time take effect straight away. Installs over v1.2.3 and keeps your profiles.",
-      "summary_fil": "Gumagana na ang Gaze Control kahit saan. Ang mag-aaral na gumagamit ng galaw ng ulo at pagkurap ay makakagamit na ng bawat screen — kasama ang mga sheet, dialog, pause card ng laro at mga pagdiriwang — at makakaalis sa alinman sa mga ito gamit ang bagong <strong>Back</strong> button. Gumagana na ang Scanning mode sa bawat screen, naaabot na nang walang kamay ang Settings at Gaze Control, nabubuksan na ang Gaze Control ng bata mula sa kanyang accessibility panel, at agad nang gumagana ang mga pagbabago sa sensitivity o hold time. Nai-i-install sa ibabaw ng v1.2.3 at nananatili ang inyong mga profile.",
-      "notes_en": "Gaze Control now works on every screen, scanning included, with a hands-free way out of every sheet and dialog.",
-      "notes_fil": "Gumagana na ang Gaze Control sa bawat screen, kasama ang scanning, at may paraan nang lumabas nang walang kamay sa bawat sheet at dialog.",
-      "bullets_en": [
-        "Every sheet, dialog, pause card and celebration can be used and closed by gaze",
-        "Scanning mode lights up rows, then buttons, on every screen",
-        "Settings and Gaze Control are reachable hands-free; children open Gaze Control from their accessibility panel",
-        "Sensitivity, hold time and blink changes take effect immediately",
-        "Learners who choose gaze at setup can open every tile, not only the tabs"
       ]
     },
     {
