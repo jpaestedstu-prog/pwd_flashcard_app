@@ -3,6 +3,9 @@ import 'package:pwdpwdpwd/core/services/worksheet_service.dart';
 import 'package:pwdpwdpwd/data/models/enums.dart';
 
 void main() {
+  // Loads the bundled fonts the worksheets are drawn with (see PdfTheme).
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('WorksheetType', () {
     test('all types have unique labels', () {
       final labels = WorksheetType.values.map((t) => t.label).toSet();

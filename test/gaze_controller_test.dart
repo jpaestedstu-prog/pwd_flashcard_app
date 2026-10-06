@@ -8,6 +8,7 @@ import 'package:pwdpwdpwd/features/gaze_control/models/gaze_action.dart';
 import 'package:pwdpwdpwd/features/gaze_control/models/gaze_settings.dart';
 import 'package:pwdpwdpwd/features/gaze_control/services/gaze_detector.dart';
 import 'package:pwdpwdpwd/features/gaze_control/widgets/gaze_overlay.dart';
+import 'package:pwdpwdpwd/l10n/app_localizations_en.dart';
 
 class _FakeDetector implements GazeDetector {
   @override
@@ -88,6 +89,51 @@ void main() {
       );
       await tester.pump();
       expect(find.textContaining('no front camera'), findsOneWidget);
+      c.dispose();
+    });
+
+    testWidgets('the scanning hint names what actually picks', (tester) async {
+      // Games and the Talk Board told a switch user "Blink to choose" while
+      // the shell and dialogs said "press" — the hint must follow the
+      // learner's own settings (GazeHints), not assume a blink.
+      final c = GazeController(
+        settings: const GazeSettings(
+          enabled: true,
+          scanMode: true,
+          pickWith: GazePick.switchButton,
+        ),
+        camerasLoader: () async => const <CameraDescription>[],
+        detectorFactory: _FakeDetector.new,
+      );
+      await c.start(); // switch scanning needs no camera: ready at once
+      final t = AppLocalizationsEn();
+      Future<void> show(GazePick pick) => tester.pumpWidget(
+            MaterialApp(
+              home: Scaffold(
+                body: Stack(
+                  children: [
+                    GazeOverlay(
+                      controller: c,
+                      actions: _overlayActions,
+                      scanIndex: 0,
+                      settings: GazeSettings(
+                        enabled: true,
+                        scanMode: true,
+                        pickWith: pick,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+      await show(GazePick.switchButton);
+      expect(find.text(t.gzHintScanSwitch), findsOneWidget);
+      expect(find.textContaining('Blink'), findsNothing);
+      await show(GazePick.either);
+      expect(find.text(t.gzHintScanEither), findsOneWidget);
+      await show(GazePick.blink);
+      expect(find.text(t.gzFocusHintScan), findsOneWidget);
       c.dispose();
     });
 

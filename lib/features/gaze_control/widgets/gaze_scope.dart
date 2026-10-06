@@ -431,6 +431,7 @@ class _GazeScopeState extends ConsumerState<GazeScope>
                 controller: gaze,
                 actions: widget.actions,
                 scanIndex: _scanning ? _scanIndex : null,
+                settings: _settings,
               ),
             ),
           if (chip != null)

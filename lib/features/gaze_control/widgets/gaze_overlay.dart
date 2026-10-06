@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../controllers/gaze_controller.dart';
 import '../models/gaze_action.dart';
 import '../models/gaze_models.dart';
+import '../models/gaze_settings.dart';
+import 'gaze_hints.dart';
 import 'gaze_widgets.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
@@ -16,7 +18,8 @@ import '../../../l10n/app_localizations_en.dart';
 /// wrapped in [IgnorePointer] — touches fall straight through to the real UI.
 ///
 /// In **scanning mode** [scanIndex] is non-null: the highlighted action lights
-/// up (no dwell ring) and a "blink to choose" hint is shown.
+/// up (no dwell ring) and a hint says what picks it — a blink, a switch press
+/// or either, from the learner's [settings] (see [GazeHints.scan]).
 class GazeOverlay extends StatelessWidget {
   final GazeController controller;
   final List<GazeAction> actions;
@@ -24,11 +27,16 @@ class GazeOverlay extends StatelessWidget {
   /// Non-null only in scanning mode — the index of the action being highlighted.
   final int? scanIndex;
 
+  /// The learner's settings, which word the scanning hint: a switch user was
+  /// told "Blink to choose" here while every other gaze surface said "press".
+  final GazeSettings? settings;
+
   const GazeOverlay({
     super.key,
     required this.controller,
     required this.actions,
     this.scanIndex,
+    this.settings,
   });
 
   bool get _scanning => scanIndex != null;
@@ -75,7 +83,8 @@ class GazeOverlay extends StatelessWidget {
     if (!faceVisible) {
       text = _t(context).gzLook;
     } else if (_scanning) {
-      text = _t(context).gzBlink;
+      final s = settings;
+      text = s == null ? _t(context).gzBlink : GazeHints.scan(_t(context), s);
     } else {
       return null;
     }

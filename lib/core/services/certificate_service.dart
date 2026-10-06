@@ -5,6 +5,7 @@ import '../../data/models/enums.dart';
 import '../../l10n/app_localizations.dart';
 import '../../l10n/app_localizations_en.dart';
 import '../utils/localized_date.dart';
+import '../utils/pdf_theme.dart';
 
 /// Types of certificates that can be generated.
 enum CertificateType {
@@ -53,7 +54,7 @@ class CertificateService {
     AppLocalizations? l10n,
   }) async {
     final l = l10n ?? AppLocalizationsEn();
-    final pdf = pw.Document();
+    final pdf = pw.Document(theme: await PdfTheme.unicode());
     final certDate = date ?? DateTime.now();
     final dateStr = LocalizedDate.monthDayYear(certDate, l);
 

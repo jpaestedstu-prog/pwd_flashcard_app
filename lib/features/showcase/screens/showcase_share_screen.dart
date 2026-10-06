@@ -14,6 +14,7 @@ import '../providers/showcase_provider.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/utils/pdf_theme.dart';
 
 /// Screen that generates and previews a PDF portfolio summary for sharing
 class ShowcaseShareScreen extends ConsumerWidget {
@@ -87,7 +88,7 @@ class ShowcaseShareScreen extends ConsumerWidget {
           ),
           Expanded(
             child: PdfPreview(
-              build: (_) => _generatePortfolioPdf(
+              build: (_) => generatePortfolioPdf(
                 profileName:
                     profile?.name ?? _t(context).playerFallbackName,
                 l10n: _t(context),
@@ -108,10 +109,11 @@ class ShowcaseShareScreen extends ConsumerWidget {
   }
 
   /// The language of the portfolio PDF being built, set at the top of
-  /// [_generatePortfolioPdf] from the app's language.
+  /// [generatePortfolioPdf] from the app's language.
   static AppLocalizations _l = AppLocalizationsEn();
 
-  static Future<Uint8List> _generatePortfolioPdf({
+  @visibleForTesting
+  static Future<Uint8List> generatePortfolioPdf({
     required String profileName,
     required ShowcasePortfolio portfolio,
     required int totalStars,
@@ -120,7 +122,7 @@ class ShowcaseShareScreen extends ConsumerWidget {
     required AppLocalizations l10n,
   }) async {
     _l = l10n;
-    final pdf = pw.Document();
+    final pdf = pw.Document(theme: await PdfTheme.unicode());
     final now = DateTime.now();
 
     final headerColor = PdfColor.fromHex('#7C4DFF');

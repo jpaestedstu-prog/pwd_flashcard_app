@@ -7,6 +7,7 @@ import '../../data/models/models.dart';
 import '../../l10n/app_localizations.dart';
 import '../../l10n/app_localizations_en.dart';
 import '../../data/local/seed_data.dart';
+import '../utils/pdf_theme.dart';
 
 /// Types of printable worksheets.
 enum WorksheetType {
@@ -92,7 +93,7 @@ class WorksheetService {
     FlashcardCategory category,
     GameDifficulty difficulty,
   ) async {
-    final pdf = pw.Document();
+    final pdf = pw.Document(theme: await PdfTheme.unicode());
     final headerColor = PdfColor.fromHex('#B39DDB');
 
     pdf.addPage(
@@ -196,7 +197,7 @@ class WorksheetService {
     FlashcardCategory category,
     GameDifficulty difficulty,
   ) async {
-    final pdf = pw.Document();
+    final pdf = pw.Document(theme: await PdfTheme.unicode());
     final shuffledFilipino = cards.map((c) => c.wordFilipino).toList()..shuffle();
 
     pdf.addPage(
@@ -286,7 +287,7 @@ class WorksheetService {
     FlashcardCategory category,
     GameDifficulty difficulty,
   ) async {
-    final pdf = pw.Document();
+    final pdf = pw.Document(theme: await PdfTheme.unicode());
     final cardsWithSentences =
         cards.where((c) => c.exampleSentence != null).toList();
 
@@ -385,7 +386,7 @@ class WorksheetService {
     FlashcardCategory category,
     GameDifficulty difficulty,
   ) async {
-    final pdf = pw.Document();
+    final pdf = pw.Document(theme: await PdfTheme.unicode());
     final gridSize = switch (difficulty) {
       GameDifficulty.easy => 10,
       GameDifficulty.medium => 12,
