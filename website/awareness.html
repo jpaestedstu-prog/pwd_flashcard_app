@@ -1,26 +1,28 @@
 <!DOCTYPE html>
-<!-- GENERATED FILE - do not edit website/games.html by hand.
-     Edit tools/games_page.template.html (or the app's own game data) and run
-     `python tools/games_page_build.py`. -->
-<html lang="en" data-title-en="Learning Games — FlashLearn PWD" data-title-fil="Mga Larong Pampagkatuto — FlashLearn PWD">
+<html lang="en"
+      data-title-en="PWD Awareness — FlashLearn PWD"
+      data-title-fil="Kamalayang PWD — FlashLearn PWD">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Learning Games — FlashLearn PWD</title>
-<meta name="description" content="All __COUNT__ learning games in FlashLearn PWD, and the ten each accessibility type is given. Free, offline, bilingual English and Filipino.">
-<link rel="canonical" href="https://jpaestedstu-prog.github.io/pwd_flashcard_app/games.html">
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://jpaestedstu-prog.github.io/pwd_flashcard_app/games.html">
-<meta property="og:title" content="Learning Games — FlashLearn PWD">
-<meta property="og:description" content="__COUNT__ bilingual learning games, and the curated ten each accessibility type receives.">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PWD Awareness — FlashLearn PWD</title>
+<meta name="description" content="PWD awareness for families and classrooms: the Philippine laws that protect persons with disability (RA 7277, RA 11106, RA 11650) and small, everyday habits that make inclusion real.">
+<link rel="canonical" href="https://jpaestedstu-prog.github.io/pwd_flashcard_app/awareness.html">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://jpaestedstu-prog.github.io/pwd_flashcard_app/awareness.html">
+<meta property="og:site_name" content="FlashLearn PWD">
+<meta property="og:title" content="PWD Awareness — FlashLearn PWD">
+<meta property="og:description" content="PWD rights in the Philippines and everyday inclusion — what to do, and what to avoid.">
 <meta property="og:image" content="https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="FlashLearn PWD — free bilingual flashcard app for students with disabilities.">
+<meta property="og:locale" content="en_PH">
+<meta property="og:locale:alternate" content="fil_PH">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Learning Games — FlashLearn PWD">
-<meta name="twitter:description" content="__COUNT__ bilingual learning games, free and offline.">
+<meta name="twitter:title" content="PWD Awareness — FlashLearn PWD">
+<meta name="twitter:description" content="PWD rights in the Philippines and everyday inclusion.">
 <meta name="twitter:image" content="https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/og-image.png">
-<script type="application/ld+json">
-<!--JSONLD-->
-</script>
 <!--gen:site-head-->
 <meta name="theme-color" content="#6C5CE7">
 <link rel="manifest" href="manifest.webmanifest">
@@ -29,61 +31,6 @@
 <link rel="stylesheet" href="assets/site.css?v=bcb10f9c68">
 <script>(function(h){h.classList.add('js');try{var p=JSON.parse(localStorage.getItem('flp-a11y')||'{}');if(p.font==='lg'||p.font==='xl')h.classList.add('fs-'+p.font);if(p.dys)h.classList.add('dys');if(p.hc)h.classList.add('hc');if(p.fil){h.classList.add('fil');h.setAttribute('lang','fil');}if(p.fil||p.font==='lg'||p.font==='xl')h.classList.add('nav-compact');}catch(e){}})(document.documentElement);</script>
 <!--/gen:site-head-->
-<style>
-/* Games page - only what is unique to this page. Everything shared (header,
-   footer, buttons, cards, colours) comes from assets/site.css. */
-.games-stats{ grid-template-columns:repeat(4,minmax(0,1fr)); margin-top:1.75rem; max-width:46rem; }
-@media (max-width:640px){ .games-stats{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
-.chips{ display:flex; flex-wrap:wrap; gap:.45rem; justify-content:center; margin-bottom:1.25rem; }
-.chip{
-  display:inline-flex; align-items:center; gap:.4em; cursor:pointer; font-weight:800; font-size:.92rem; color:var(--ink-2);
-  background:var(--surface); border:2px solid var(--border); border-radius:999px; padding:.45rem .9rem; min-height:2.75rem;
-}
-.chip:hover{ border-color:var(--brand); color:var(--brand-ink); }
-.chip[aria-pressed="true"]{ background:var(--brand); color:#fff; border-color:var(--brand); }
-html.hc .chip{ border-color:#000; color:#000; }
-html.hc .chip[aria-pressed="true"]{ background:#000; color:#fff; }
-.chip-n{ font-size:.85em; font-weight:800; font-variant-numeric:tabular-nums; }
-.game-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(15rem,1fr)); gap:1rem; }
-.game{
-  position:relative; text-align:left; padding:1.1rem 1.1rem 1.1rem 1.4rem; border-radius:var(--radius-sm);
-  background:var(--surface); border:1px solid var(--border); box-shadow:var(--shadow-1); overflow:hidden;
-  display:flex; flex-direction:column; gap:.35rem; min-width:0;
-}
-/* The stripe carries each game's real accent colour from the app. */
-.game::before{ content:""; position:absolute; inset:0 auto 0 0; width:6px; background:var(--g); }
-.game .g-emoji{ font-size:1.9rem; line-height:1; }
-.game h3{ font-size:1.06rem; margin:0; }
-.game .g-alt{ font-size:.9em; color:var(--brand-ink); font-weight:700; }
-.game p{ font-size:.93em; margin:0; }
-.game .g-tag{ margin-top:.35rem; align-self:flex-start; font-size:.76em; font-weight:800; padding:.15rem .6rem; border-radius:999px; background:var(--brand-soft); color:var(--brand-ink); }
-html.hc .game{ border:2px solid #000; }
-html.hc .game .g-tag{ background:#000; color:#fff; }
-/* Roster explorer */
-.roster{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.4rem; box-shadow:var(--shadow-1); }
-html.hc .roster{ border:2px solid #000; }
-.roster-head{ display:flex; align-items:center; gap:.75rem; flex-wrap:wrap; margin-bottom:.4rem; }
-.roster-head .r-emoji{ font-size:1.7rem; }
-.roster-head h3{ font-size:1.25rem; margin:0; }
-.roster-head .r-count{ font-size:.8em; font-weight:800; padding:.15rem .65rem; border-radius:999px; background:var(--brand-soft); color:var(--brand-ink); }
-.roster .r-why{ font-size:.97em; margin:0 0 1rem; }
-.roster-list{ display:grid; grid-template-columns:repeat(auto-fill,minmax(12rem,1fr)); gap:.6rem; margin-bottom:1.25rem; }
-.r-game{
-  display:flex; align-items:center; gap:.55rem; padding:.6rem .75rem; border-radius:.8rem; min-width:0;
-  background:var(--surface-2); border:1px solid var(--border); font-weight:700; font-size:.93em; color:var(--ink);
-}
-.r-game .r-dot{ width:11px; height:11px; border-radius:50%; background:var(--g); flex:0 0 auto; }
-.r-game span{ min-width:0; overflow-wrap:anywhere; }
-html.hc .r-game{ border-color:#000; }
-.r-out{ border-top:1px dashed var(--border); padding-top:1rem; }
-.r-out h4{ font-size:1rem; margin:0 0 .35rem; }
-.r-out p{ font-size:.93em; margin:0 0 .6rem; }
-.r-out ul{ display:flex; flex-wrap:wrap; gap:.5rem; list-style:none; }
-.r-out li{ font-size:.87em; font-weight:700; padding:.3rem .7rem; border-radius:999px; background:var(--surface-2); border:1px dashed var(--border); color:var(--ink-2); }
-html.hc .r-out li{ border-color:#000; }
-@media (max-width:560px){ .roster{ padding:1rem; } .roster-list{ grid-template-columns:minmax(0,1fr) minmax(0,1fr); } }
-@media (max-width:400px){ .roster-list{ grid-template-columns:minmax(0,1fr); } }
-</style>
 </head>
 <body>
 <!--gen:site-header-->
@@ -97,7 +44,7 @@ html.hc .r-out li{ border-color:#000; }
         <li><a href="try.html"><span class="nav-ico" aria-hidden="true">🎴</span><span class="nav-txt"><span class="nav-main"><span class="en">Try It</span><span class="fil">Subukan</span></span><span class="nav-sub"><span class="en">Flashcards and a game, right in your browser</span><span class="fil">Flashcard at laro, mismo sa browser</span></span></span></a></li>
         <li><a href="download.html"><span class="nav-ico" aria-hidden="true">⬇️</span><span class="nav-txt"><span class="nav-main"><span class="en">Download</span><span class="fil">I-download</span></span><span class="nav-sub"><span class="en">Free for Android 10 and newer</span><span class="fil">Libre para sa Android 10 pataas</span></span></span></a></li>
         <li><a href="how-to-use.html"><span class="nav-ico" aria-hidden="true">📖</span><span class="nav-txt"><span class="nav-main"><span class="en">How to Use</span><span class="fil">Paano Gamitin</span></span><span class="nav-sub"><span class="en">A short video and a picture tour</span><span class="fil">Maikling video at tour na may larawan</span></span></span></a></li>
-        <li><a href="games.html" aria-current="page"><span class="nav-ico" aria-hidden="true">🎮</span><span class="nav-txt"><span class="nav-main"><span class="en">Games</span><span class="fil">Mga Laro</span></span><span class="nav-sub"><span class="en">Every learning game in the app</span><span class="fil">Bawat larong pampagkatuto sa app</span></span></span></a></li>
+        <li><a href="games.html"><span class="nav-ico" aria-hidden="true">🎮</span><span class="nav-txt"><span class="nav-main"><span class="en">Games</span><span class="fil">Mga Laro</span></span><span class="nav-sub"><span class="en">Every learning game in the app</span><span class="fil">Bawat larong pampagkatuto sa app</span></span></span></a></li>
         <li><a href="fsl-dictionary.html"><span class="nav-ico" aria-hidden="true">🤟</span><span class="nav-txt"><span class="nav-main"><span class="en">FSL Dictionary</span><span class="fil">Diksyunaryo ng FSL</span></span><span class="nav-sub"><span class="en">Watch everyday words signed</span><span class="fil">Panoorin ang senyas ng mga salita</span></span></span></a></li>
         <li><a href="teachers-guide.html"><span class="nav-ico" aria-hidden="true">🧑‍🏫</span><span class="nav-txt"><span class="nav-main"><span class="en">Teacher’s Guide</span><span class="fil">Gabay ng Guro</span></span><span class="nav-sub"><span class="en">Set up a class, printable</span><span class="fil">Pag-set up ng klase, napi-print</span></span></span></a></li>
         <li><a href="faq.html"><span class="nav-ico" aria-hidden="true">❓</span><span class="nav-txt"><span class="nav-main"><span class="en">FAQ</span><span class="fil">Mga Tanong</span></span><span class="nav-sub"><span class="en">Answers, and how to reach us</span><span class="fil">Mga sagot, at paano kami makakausap</span></span></span></a></li>
@@ -131,63 +78,92 @@ html.hc .r-out li{ border-color:#000; }
   </div>
 </header>
 <!--/gen:site-header-->
+
 <main id="main">
-  <section class="page-hero">
-    <div class="container">
-      <!--gen:site-crumbs--><nav class="crumbs" aria-label="Breadcrumb" data-label-en="Breadcrumb" data-label-fil="Kinaroroonan"><ol><li><a href="index.html"><span class="en">Home</span><span class="fil">Home</span></a></li><li aria-current="page"><span class="en">Games</span><span class="fil">Mga Laro</span></li></ol></nav><!--/gen:site-crumbs-->
-      <p class="eyebrow"><span aria-hidden="true">🎮</span> <span class="en">Learning games</span><span class="fil">Mga larong pampagkatuto</span></p>
-      <h1><span class="en">__COUNT__ games, and not every learner gets the same ten</span><span class="fil">__COUNT__ laro, at hindi pare-pareho ang sampung nakukuha ng bawat mag-aaral</span></h1>
-      <p class="lead">
-        <span class="en">Every game teaches the same __WORDS__ bilingual words, but a learner's Games tab is built for their accessibility needs — a student with a visual impairment and a student who is Deaf open the app and see different games, each set chosen so nothing in it works against them.</span>
-        <span class="fil">Itinuturo ng bawat laro ang parehong __WORDS__ salitang bilingguwal, ngunit ang Games tab ng isang mag-aaral ay ginawa ayon sa kanyang pangangailangan — magkaiba ang nakikitang laro ng mag-aaral na may kapansanan sa paningin at ng mag-aaral na Bingi, bawat set ay piniling walang lalaban sa kanila.</span>
-      </p>
-      <div class="stats games-stats" role="list">
-        <div class="stat" role="listitem"><b class="num">__COUNT__</b><span class="en">Learning games</span><span class="fil">Larong pampagkatuto</span></div>
-        <div class="stat" role="listitem"><b class="num">__PER__</b><span class="en">Games per learner</span><span class="fil">Laro bawat mag-aaral</span></div>
-        <div class="stat" role="listitem"><b class="num">__CATS__</b><span class="en">Curated rosters</span><span class="fil">Mga piling roster</span></div>
-        <div class="stat" role="listitem"><b class="num">3</b><span class="en">Difficulty levels</span><span class="fil">Antas ng hirap</span></div>
+<section class="page-hero">
+  <div class="container">
+    <!--gen:site-crumbs--><nav class="crumbs" aria-label="Breadcrumb" data-label-en="Breadcrumb" data-label-fil="Kinaroroonan"><ol><li><a href="index.html"><span class="en">Home</span><span class="fil">Home</span></a></li><li aria-current="page"><span class="en">PWD Awareness</span><span class="fil">Kamalayang PWD</span></li></ol></nav><!--/gen:site-crumbs-->
+    <p class="eyebrow"><span aria-hidden="true">💜</span> <span class="en">Understanding matters</span><span class="fil">Mahalaga ang pag-unawa</span></p>
+    <h1><span class="en">PWD Awareness</span><span class="fil">Kamalayang PWD</span></h1>
+    <p class="lead"><span class="en">Around <strong>1.57 million Filipinos</strong> live with a disability (PSA, 2020 Census). Many children with disabilities face barriers to education — not because they can't learn, but because learning materials weren't designed for them. Awareness is the first step to inclusion.</span><span class="fil">Humigit-kumulang <strong>1.57 milyong Pilipino</strong> ang may kapansanan (PSA, 2020 Census). Maraming batang may kapansanan ang nahihirapan sa edukasyon — hindi dahil hindi sila kayang matuto, kundi dahil ang mga kagamitan sa pag-aaral ay hindi dinisenyo para sa kanila. Ang kamalayan ang unang hakbang tungo sa inklusyon.</span></p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="section-head">
+      <p class="eyebrow"><span aria-hidden="true">⚖️</span> <span class="en">Know the law</span><span class="fil">Alamin ang batas</span></p>
+      <h2><span class="en">PWD rights in the Philippines</span><span class="fil">Mga karapatan ng PWD sa Pilipinas</span></h2>
+    </div>
+    <div class="grid grid-3">
+      <div class="card law"><h3>RA 7277 — Magna Carta for Persons with Disability</h3><p><span class="en">Guarantees the rights of PWDs to education, employment, health, and accessibility, and prohibits discrimination.</span><span class="fil">Ginagarantiyahan ang karapatan ng mga PWD sa edukasyon, trabaho, kalusugan, at accessibility, at ipinagbabawal ang diskriminasyon.</span></p></div>
+      <div class="card law"><h3>RA 11106 — Filipino Sign Language Act</h3><p><span class="en">Declares FSL the national sign language of the Philippines, to be used in schools, media, and government services.</span><span class="fil">Idineklara ang FSL bilang pambansang sign language ng Pilipinas, gagamitin sa mga paaralan, media, at serbisyo ng gobyerno.</span></p></div>
+      <div class="card law"><h3>RA 11650 — Inclusive Education Act</h3><p><span class="en">Ensures learners with disabilities can enroll in any school, with Inclusive Learning Resource Centers to support them.</span><span class="fil">Tinitiyak na makakapag-enroll ang mga mag-aaral na may kapansanan sa alinmang paaralan, may mga Inclusive Learning Resource Center bilang suporta.</span></p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section tint">
+  <div class="container">
+    <div class="section-head">
+      <p class="eyebrow"><span aria-hidden="true">🤝</span> <span class="en">Everyday inclusion</span><span class="fil">Pang-araw-araw na inklusyon</span></p>
+      <h2><span class="en">Small things that help</span><span class="fil">Maliliit na bagay na nakakatulong</span></h2>
+    </div>
+    <div class="grid grid-2">
+      <div class="card">
+        <h3><span aria-hidden="true">💚</span> <span class="en">Do</span><span class="fil">Gawin</span></h3>
+        <ul class="checklist do">
+          <li><span class="en">Say "person with disability" — the person always comes first.</span><span class="fil">Sabihing "taong may kapansanan" — laging una ang tao.</span></li>
+          <li><span class="en">Speak directly to the person, not only to their companion.</span><span class="fil">Direktang kausapin ang tao, hindi lang ang kasama niya.</span></li>
+          <li><span class="en">Ask before helping — then follow their lead.</span><span class="fil">Magtanong bago tumulong — at sundin ang gusto nila.</span></li>
+          <li><span class="en">Be patient; give extra time to speak, move, or respond.</span><span class="fil">Maging matiyaga; bigyan ng dagdag na oras sa pagsasalita, paggalaw, o pagsagot.</span></li>
+          <li><span class="en">Celebrate ability: focus on what a child <em>can</em> do.</span><span class="fil">Ipagdiwang ang kakayahan: tumuon sa <em>kaya</em> ng bata.</span></li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3><span aria-hidden="true">💔</span> <span class="en">Avoid</span><span class="fil">Iwasan</span></h3>
+        <ul class="checklist dont">
+          <li><span class="en">Labels like "abnormal" or using disability words as insults.</span><span class="fil">Mga katawagang tulad ng "abnormal" o paggamit ng kapansanan bilang insulto.</span></li>
+          <li><span class="en">Grabbing wheelchairs, canes, or guiding arms without asking.</span><span class="fil">Paghawak sa wheelchair, tungkod, o braso nang walang paalam.</span></li>
+          <li><span class="en">Assuming a person can't understand, decide, or learn.</span><span class="fil">Pag-aakalang hindi nakakaintindi, nakakapagdesisyon, o natututo ang isang tao.</span></li>
+          <li><span class="en">Shouting at Deaf people — face them and speak clearly instead.</span><span class="fil">Pagsigaw sa mga Bingi — harapin sila at magsalita nang malinaw.</span></li>
+          <li><span class="en">Treating accessibility as a favor — it's a right.</span><span class="fil">Pagturing sa accessibility bilang pabor — ito ay karapatan.</span></li>
+        </ul>
       </div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <section class="section tint" id="rosters"><div class="container">
+<section class="section">
+  <div class="container">
     <div class="section-head center">
-      <h2><span class="en">Ten games, chosen for each learner</span><span class="fil">Sampung laro, piniling para sa bawat mag-aaral</span></h2>
-      <p class="lead"><span class="en">Pick an accessibility type to see the exact set that learner is given, and what is deliberately left out.</span><span class="fil">Pumili ng uri ng kapansanan para makita ang eksaktong set na ibinibigay sa mag-aaral na iyon, at kung ano ang sinadyang hindi isama.</span></p>
+      <h2><span class="en">Where FlashLearn PWD comes in</span><span class="fil">Ang papel ng FlashLearn PWD</span></h2>
+      <p class="lead"><span class="en">Learning materials designed for every learner from the start — in English, Filipino and Filipino Sign Language.</span><span class="fil">Mga kagamitan sa pag-aaral na dinisenyo para sa bawat mag-aaral mula pa sa simula — sa English, Filipino at Filipino Sign Language.</span></p>
     </div>
-    <div class="chips" role="group" aria-label="Accessibility type" data-label-en="Accessibility type" data-label-fil="Uri ng kapansanan">
-      <!--CATCHIPS-->
+    <div class="grid grid-3">
+      <article class="card link-card">
+        <div class="ico t-purple" aria-hidden="true">♿</div>
+        <h3><a href="index.html#learners"><span class="en">How the app adapts</span><span class="fil">Paano umaangkop ang app</span></a></h3>
+        <p><span class="en">A preset for each disability, and the supports built into every profile.</span><span class="fil">Isang preset para sa bawat kapansanan, at ang mga suportang kasama sa bawat profile.</span></p>
+        <span class="go" aria-hidden="true"><span class="en">Made for every learner</span><span class="fil">Para sa bawat mag-aaral</span></span>
+      </article>
+      <article class="card link-card">
+        <div class="ico t-teal" aria-hidden="true">🤟</div>
+        <h3><a href="fsl-dictionary.html"><span class="en">Learn a few signs</span><span class="fil">Matuto ng ilang senyas</span></a></h3>
+        <p><span class="en">Everyday words signed in Filipino Sign Language, free to watch.</span><span class="fil">Mga pang-araw-araw na salita sa Filipino Sign Language, libreng panoorin.</span></p>
+        <span class="go" aria-hidden="true"><span class="en">FSL Dictionary</span><span class="fil">Diksyunaryo ng FSL</span></span>
+      </article>
+      <article class="card link-card">
+        <div class="ico t-orange" aria-hidden="true">🧑‍🏫</div>
+        <h3><a href="teachers-guide.html#cheat-sheet"><span class="en">A classroom cheat-sheet</span><span class="fil">Cheat-sheet para sa klase</span></a></h3>
+        <p><span class="en">What to switch on when a learner squints, can't hear, or struggles to tap.</span><span class="fil">Ano ang bubuksan kapag nakapikit-pikit, hindi nakakarinig, o nahihirapang pumindot ang mag-aaral.</span></p>
+        <span class="go" aria-hidden="true"><span class="en">Teacher’s Guide</span><span class="fil">Gabay ng Guro</span></span>
+      </article>
     </div>
-    <!--ROSTERS-->
-  </div></section>
-
-  <section class="section" id="all"><div class="container">
-    <div class="section-head center">
-      <h2><span class="en">Every game in the app</span><span class="fil">Lahat ng laro sa app</span></h2>
-      <p class="lead"><span class="en">All __COUNT__ games, with the name and description exactly as they appear in the app.</span><span class="fil">Lahat ng __COUNT__ laro, kasama ang pangalan at paglalarawang tulad mismo ng nasa app.</span></p>
-    </div>
-    <div class="game-grid">
-      <!--GAMES-->
-    </div>
-    <div class="callout info mt-2">
-      <span class="c-ico" aria-hidden="true">🎚️</span>
-      <p><span class="en">Difficulty adapts as a learner plays — Easy, Medium and Hard adjust the number of choices and the time allowed. __STORYNOTE__</span><span class="fil">Umaangkop ang hirap habang naglalaro — inaayos ng Madali, Katamtaman at Mahirap ang dami ng pagpipilian at ang oras. __STORYNOTE_FIL__</span></p>
-    </div>
-  </div></section>
-
-  <section class="section tint"><div class="container">
-    <div class="cta-band">
-      <div>
-        <h2><span class="en">Play them on a real tablet</span><span class="fil">Laruin ang mga ito sa tunay na tablet</span></h2>
-        <p><span class="en">Every game works offline, with no account and no ads.</span><span class="fil">Gumagana offline ang bawat laro, walang account at walang ads.</span></p>
-        <div class="actions mt-2">
-          <a class="btn btn-primary btn-lg" href="download.html"><span aria-hidden="true">⬇️</span> <span class="en">Download the app</span><span class="fil">I-download ang app</span></a>
-          <a class="btn btn-secondary btn-lg" href="try.html"><span aria-hidden="true">🎮</span> <span class="en">Play Word Match here</span><span class="fil">Laruin dito ang Word Match</span></a>
-        </div>
-      </div>
-    </div>
-  </div></section>
+  </div>
+</section>
 </main>
+
 <!--gen:site-footer-->
 <footer class="site-footer">
   <div class="container">
@@ -234,6 +210,5 @@ html.hc .r-out li{ border-color:#000; }
 </footer>
 <script src="assets/site.js?v=66570b5b38"></script>
 <!--/gen:site-footer-->
-<!--PAGEJS-->
 </body>
 </html>

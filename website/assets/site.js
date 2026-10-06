@@ -1,112 +1,225 @@
-/* FlashLearn PWD site — shared accessibility + language toggles.
-   Used by every page; preferences persist in localStorage ('flp-a11y') so a
-   choice made on one page follows the visitor across the whole site.
-   Pages set their bilingual <title> via data-title-en / data-title-fil on <html>. */
+/* FlashLearn PWD site — behaviour shared by every page.
+
+   * Preferences (text size, dyslexia font, high contrast, language) persist in
+     localStorage 'flp-a11y', so a choice made on one page follows the visitor
+     everywhere. A tiny script in each page's <head> applies them before the
+     first paint; this file wires up the controls.
+   * Header: the menu button (narrow screens, or whenever the links do not fit)
+     and the accessibility panel.
+   * Language: shows .en or .fil spans, and also swaps the things a span cannot
+     hold — aria-labels (data-label-en/-fil), <option> text (data-en/-fil),
+     placeholders (data-ph-en/-fil), the page title and video captions.
+   * Small helpers: screenshot zoom (img.zoomable), the "On this page" spy,
+     --header-h, and the offline copy (service worker). */
 (function(){
   var html = document.documentElement;
+  html.classList.add('js');
   var prefs = {};
-  try { prefs = JSON.parse(localStorage.getItem('flp-a11y') || '{}'); } catch(e){}
-  function save(){ try{ localStorage.setItem('flp-a11y', JSON.stringify(prefs)); }catch(e){} }
+  try { prefs = JSON.parse(localStorage.getItem('flp-a11y') || '{}') || {}; } catch(e){ prefs = {}; }
+  function save(){ try { localStorage.setItem('flp-a11y', JSON.stringify(prefs)); } catch(e){} }
+  function $(id){ return document.getElementById(id); }
+  function each(sel, fn, root){ Array.prototype.forEach.call((root || document).querySelectorAll(sel), fn); }
 
-  var btnFont = document.getElementById('btnFont');
-  var btnDys  = document.getElementById('btnDys');
-  var btnHC   = document.getElementById('btnHC');
-  var btnLang = document.getElementById('btnLang');
-  if (!btnFont || !btnDys || !btnHC || !btnLang) return;
-
-  // font size cycles: normal -> lg -> xl -> normal
+  // ---- Preferences ------------------------------------------------------
   function applyFont(){
     html.classList.toggle('fs-lg', prefs.font === 'lg');
     html.classList.toggle('fs-xl', prefs.font === 'xl');
-    btnFont.setAttribute('aria-pressed', prefs.font ? 'true' : 'false');
-    btnFont.textContent = prefs.font === 'lg' ? 'A++' : (prefs.font === 'xl' ? 'A' : 'A+');
-    btnFont.title = prefs.font === 'xl' ? 'Reset text size' : 'Larger text';
+    each('[data-font]', function(b){
+      b.setAttribute('aria-pressed', String((b.getAttribute('data-font') || '') === (prefs.font || '')));
+    });
   }
-  function applyDys(){
-    html.classList.toggle('dys', !!prefs.dys);
-    btnDys.setAttribute('aria-pressed', prefs.dys ? 'true' : 'false');
-  }
-  function applyHC(){
-    html.classList.toggle('hc', !!prefs.hc);
-    btnHC.setAttribute('aria-pressed', prefs.hc ? 'true' : 'false');
+  function applySwitch(id, on, cls){
+    html.classList.toggle(cls, !!on);
+    var b = $(id); if (b) b.setAttribute('aria-checked', on ? 'true' : 'false');
   }
   function applyLang(){
     var fil = !!prefs.fil;
     html.classList.toggle('fil', fil);
     html.setAttribute('lang', fil ? 'fil' : 'en');
-    btnLang.setAttribute('aria-pressed', fil ? 'true' : 'false');
-    btnLang.textContent = fil ? 'EN' : 'FIL';
-    btnLang.title = fil ? 'Switch to English' : 'Lumipat sa Filipino';
+    var en = $('btnLangEn'), fl = $('btnLangFil');
+    if (en) en.setAttribute('aria-pressed', String(!fil));
+    if (fl) fl.setAttribute('aria-pressed', String(fil));
     var title = html.getAttribute(fil ? 'data-title-fil' : 'data-title-en');
     if (title) document.title = title;
-    // <option> text can't hold the usual .en/.fil spans, so it carries both
-    // languages in data-en / data-fil and is swapped here instead.
-    document.querySelectorAll('option[data-en]').forEach(function(o){
-      o.textContent = (fil ? o.getAttribute('data-fil') : o.getAttribute('data-en')) || o.textContent;
+    var lang = fil ? 'fil' : 'en';
+    each('[data-label-en]', function(el){
+      var v = el.getAttribute('data-label-' + lang); if (v) el.setAttribute('aria-label', v);
     });
-    // Video captions follow the site language (only tracks the visitor hasn't
-    // manually disabled with the CC button stay in sync).
-    document.querySelectorAll('video').forEach(function(v){
-      var tracks = v.textTracks || [];
-      var anyShowing = false;
-      for (var i = 0; i < tracks.length; i++) anyShowing = anyShowing || tracks[i].mode === 'showing';
-      for (var j = 0; j < tracks.length; j++) {
-        var want = tracks[j].language === (fil ? 'fil' : 'en');
-        if (anyShowing || tracks[j].mode !== 'disabled') tracks[j].mode = want ? 'showing' : 'hidden';
+    each('option[data-en]', function(o){
+      o.textContent = o.getAttribute('data-' + lang) || o.textContent;
+    });
+    each('[data-ph-en]', function(el){
+      var v = el.getAttribute('data-ph-' + lang); if (v) el.setAttribute('placeholder', v);
+    });
+    // Captions follow the site language (tracks the visitor switched off stay off).
+    each('video', function(v){
+      var tracks = v.textTracks || [], anyShowing = false, i;
+      for (i = 0; i < tracks.length; i++) anyShowing = anyShowing || tracks[i].mode === 'showing';
+      for (i = 0; i < tracks.length; i++) {
+        if (anyShowing || tracks[i].mode !== 'disabled') tracks[i].mode = tracks[i].language === lang ? 'showing' : 'hidden';
       }
     });
   }
-  btnFont.addEventListener('click', function(){
-    prefs.font = prefs.font === 'lg' ? 'xl' : (prefs.font === 'xl' ? '' : 'lg');
-    applyFont(); save();
-  });
-  btnDys.addEventListener('click', function(){ prefs.dys = !prefs.dys; applyDys(); save(); });
-  btnHC.addEventListener('click', function(){ prefs.hc = !prefs.hc; applyHC(); save(); });
-  btnLang.addEventListener('click', function(){ prefs.fil = !prefs.fil; applyLang(); save(); });
-  applyFont(); applyDys(); applyHC(); applyLang();
-
-  // "You are here" for in-page nav links, so the header marks the current
-  // section the same way sub-pages mark the current page. Sub-page links
-  // (href without a leading #) already carry a static aria-current.
-  // Position-based, not intersection-ratio based: sections here differ in
-  // height by 5x, and the tallest one never wins on ratio alone.
-  var spy = [].slice.call(document.querySelectorAll('nav.links a[href^="#"]'))
-    .map(function(a){ return { a: a, el: document.querySelector(a.getAttribute('href')) }; })
-    .filter(function(x){ return x.el; });
-  if (spy.length) {
-    var ticking = false;
-    var markSpy = function(){
-      ticking = false;
-      // The line a section counts as "reached" is the same one the browser
-      // parks it on (html{scroll-padding-top}), never less than the header.
-      var header = document.querySelector('header');
-      var headerH = header ? header.getBoundingClientRect().height : 0;
-      var pad = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
-      var line = Math.max(pad, headerH) + 4;
-      var current = null;
-      spy.forEach(function(x){
-        if (x.el.getBoundingClientRect().top <= line) current = x.a;
-      });
-      // Nothing reached yet (still in the hero) leaves every link unmarked.
-      spy.forEach(function(x){
-        if (x.a === current) x.a.setAttribute('aria-current', 'true');
-        else x.a.removeAttribute('aria-current');
-      });
-    };
-    var onScroll = function(){
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(markSpy);
-    };
-    addEventListener('scroll', onScroll, { passive: true });
-    addEventListener('resize', onScroll);
-    markSpy();
+  function applyAll(){
+    applyFont();
+    applySwitch('btnDys', prefs.dys, 'dys');
+    applySwitch('btnHC', prefs.hc, 'hc');
+    applyLang();
+    layoutChanged();
   }
 
-  // PWA: register the service worker (http/https only) once the page has
-  // finished loading. Its install downloads the offline copy of the whole site
-  // (about a megabyte), and started straight away it competed with the
-  // screenshots on a first visit over a slow connection.
+  each('[data-font]', function(b){
+    b.addEventListener('click', function(){ prefs.font = b.getAttribute('data-font') || ''; save(); applyAll(); });
+  });
+  if ($('btnDys')) $('btnDys').addEventListener('click', function(){ prefs.dys = !prefs.dys; save(); applyAll(); });
+  if ($('btnHC')) $('btnHC').addEventListener('click', function(){ prefs.hc = !prefs.hc; save(); applyAll(); });
+  if ($('btnA11yReset')) $('btnA11yReset').addEventListener('click', function(){
+    prefs.font = ''; prefs.dys = false; prefs.hc = false; save(); applyAll();
+  });
+  if ($('btnLangEn')) $('btnLangEn').addEventListener('click', function(){ prefs.fil = false; save(); applyAll(); });
+  if ($('btnLangFil')) $('btnLangFil').addEventListener('click', function(){ prefs.fil = true; save(); applyAll(); });
+
+  // ---- Header: menu + accessibility panel --------------------------------
+  var header = document.querySelector('.site-header');
+  var nav = $('siteNav'), menuBtn = $('btnMenu');
+  var panel = $('a11yPanel'), a11yBtn = $('btnA11y');
+
+  function setMenu(open, focusBack){
+    if (!nav || !menuBtn) return;
+    nav.classList.toggle('open', open);
+    menuBtn.setAttribute('aria-expanded', String(open));
+    if (open) { setPanel(false); var cur = nav.querySelector('a[aria-current]') || nav.querySelector('a'); if (cur) cur.focus(); }
+    else if (focusBack) menuBtn.focus();
+  }
+  function setPanel(open, focusBack){
+    if (!panel || !a11yBtn) return;
+    panel.hidden = !open;
+    a11yBtn.setAttribute('aria-expanded', String(open));
+    if (open) { setMenu(false); var first = panel.querySelector('[aria-pressed="true"]') || panel.querySelector('button'); if (first) first.focus(); }
+    else if (focusBack) a11yBtn.focus();
+  }
+  if (menuBtn) menuBtn.addEventListener('click', function(){ setMenu(!nav.classList.contains('open')); });
+  if (a11yBtn) a11yBtn.addEventListener('click', function(){ setPanel(panel.hidden); });
+  document.addEventListener('keydown', function(e){
+    if (e.key !== 'Escape') return;
+    if (nav && nav.classList.contains('open')) setMenu(false, true);
+    if (panel && !panel.hidden) setPanel(false, true);
+  });
+  // A click or focus outside either one closes it.
+  function outside(e){
+    if (!header || header.contains(e.target)) return;
+    if (nav && nav.classList.contains('open')) setMenu(false);
+    if (panel && !panel.hidden) setPanel(false);
+  }
+  document.addEventListener('click', outside);
+  document.addEventListener('focusin', outside);
+  if (panel) panel.addEventListener('focusout', function(e){
+    if (e.relatedTarget && !panel.contains(e.relatedTarget) && e.relatedTarget !== a11yBtn) setPanel(false);
+  });
+
+  // The links stay in the header only when they actually fit. Measured, not
+  // guessed: Filipino labels and the larger text sizes are much wider.
+  function fitNav(){
+    if (!nav) return;
+    // Measure the inline layout (menu closed, not compact), all in one task so
+    // nothing is painted in between.
+    var wasOpen = nav.classList.contains('open');
+    nav.classList.remove('open');
+    html.classList.remove('nav-compact');
+    var ul = nav.querySelector('ul');
+    var inline = getComputedStyle(nav).display !== 'none';   // false below the CSS breakpoint
+    if (inline && ul && ul.scrollWidth > ul.clientWidth + 1) html.classList.add('nav-compact');
+    var compact = !inline || html.classList.contains('nav-compact');
+    if (wasOpen && compact) nav.classList.add('open');
+    else if (wasOpen && menuBtn) menuBtn.setAttribute('aria-expanded', 'false');
+  }
+  function measureHeader(){
+    if (header) html.style.setProperty('--header-h', Math.round(header.getBoundingClientRect().height) + 'px');
+  }
+  var raf = 0;
+  function layoutChanged(){
+    if (raf) return;
+    raf = requestAnimationFrame(function(){ raf = 0; fitNav(); measureHeader(); });
+  }
+  addEventListener('resize', layoutChanged);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(layoutChanged);
+
+  // ---- Screenshot zoom ----------------------------------------------------
+  var zoom = null;
+  function openZoom(img){
+    if (!zoom) {
+      zoom = document.createElement('dialog');
+      zoom.className = 'lightbox';
+      zoom.setAttribute('aria-label', html.classList.contains('fil') ? 'Pinalaking larawan' : 'Enlarged screenshot');
+      zoom.innerHTML = '<button class="close" type="button" aria-label="Close">✕</button><img alt="">';
+      document.body.appendChild(zoom);
+      zoom.querySelector('.close').addEventListener('click', function(){ zoom.close(); });
+      zoom.addEventListener('click', function(e){ if (e.target === zoom) zoom.close(); });
+      zoom.addEventListener('close', function(){ var i = zoom.querySelector('img'); i.removeAttribute('src'); i.alt = ''; });
+    }
+    var big = zoom.querySelector('img');
+    big.src = img.currentSrc || img.src; big.alt = img.alt;
+    zoom.querySelector('.close').setAttribute('aria-label', html.classList.contains('fil') ? 'Isara' : 'Close');
+    zoom.showModal();
+  }
+  if (typeof HTMLDialogElement === 'function') {
+    each('img.zoomable', function(img){
+      img.setAttribute('tabindex', '0');
+      img.setAttribute('role', 'button');
+      img.addEventListener('click', function(){ openZoom(img); });
+      img.addEventListener('keydown', function(e){
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openZoom(img); }
+      });
+    });
+  }
+
+  // ---- Video chapters: <ol class="chapters" data-video="id"> of [data-t] buttons
+  each('.chapters[data-video]', function(list){
+    var v = document.getElementById(list.getAttribute('data-video'));
+    if (!v) return;
+    each('[data-t]', function(b){
+      b.addEventListener('click', function(){
+        try { v.currentTime = parseFloat(b.getAttribute('data-t')) || 0; } catch(e){}
+        var p = v.play(); if (p && p.catch) p.catch(function(){});
+        v.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      });
+    }, list);
+  });
+
+  // ---- "On this page": mark the section being read -------------------------
+  var tocLinks = [].slice.call(document.querySelectorAll('.toc a[href^="#"]'))
+    .map(function(a){ return { a: a, el: document.getElementById(decodeURIComponent(a.getAttribute('href').slice(1))) }; })
+    .filter(function(x){ return x.el; });
+  if (tocLinks.length) {
+    var spyTick = false;
+    var spy = function(){
+      spyTick = false;
+      var line = (header ? header.getBoundingClientRect().height : 0) + 24, cur = null;
+      tocLinks.forEach(function(x){ if (x.el.getBoundingClientRect().top <= line) cur = x.a; });
+      tocLinks.forEach(function(x){
+        if (x.a === cur) x.a.setAttribute('aria-current', 'true'); else x.a.removeAttribute('aria-current');
+      });
+    };
+    addEventListener('scroll', function(){ if (!spyTick) { spyTick = true; requestAnimationFrame(spy); } }, { passive: true });
+    spy();
+    // On a narrow screen the contents box starts closed (it would push the
+    // guide a screen down) and closes again after a jump.
+    if (matchMedia('(max-width:980px)').matches) each('.toc details', function(d){ d.open = false; });
+    each('.toc a', function(a){
+      a.addEventListener('click', function(){
+        var d = a.closest('details');
+        if (d && matchMedia('(max-width:980px)').matches) d.open = false;
+      });
+    });
+  }
+
+  applyAll();
+  fitNav();
+  measureHeader();
+
+  // ---- Offline copy --------------------------------------------------------
+  // Registered after the page has loaded: the install downloads the offline
+  // copy of the site, which must not compete with the page's own images.
   if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
     var registerSw = function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); };
     if (document.readyState === 'complete') registerSw();

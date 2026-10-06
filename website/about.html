@@ -1,26 +1,28 @@
 <!DOCTYPE html>
-<!-- GENERATED FILE - do not edit website/games.html by hand.
-     Edit tools/games_page.template.html (or the app's own game data) and run
-     `python tools/games_page_build.py`. -->
-<html lang="en" data-title-en="Learning Games — FlashLearn PWD" data-title-fil="Mga Larong Pampagkatuto — FlashLearn PWD">
+<html lang="en"
+      data-title-en="About the Project — FlashLearn PWD"
+      data-title-fil="Tungkol sa Proyekto — FlashLearn PWD">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Learning Games — FlashLearn PWD</title>
-<meta name="description" content="All __COUNT__ learning games in FlashLearn PWD, and the ten each accessibility type is given. Free, offline, bilingual English and Filipino.">
-<link rel="canonical" href="https://jpaestedstu-prog.github.io/pwd_flashcard_app/games.html">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>About the Project — FlashLearn PWD</title>
+<meta name="description" content="FlashLearn PWD is an undergraduate thesis / capstone project (2023–2027) exploring how mobile technology can make early vocabulary learning accessible to Filipino students with disabilities. Meet the team.">
+<link rel="canonical" href="https://jpaestedstu-prog.github.io/pwd_flashcard_app/about.html">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://jpaestedstu-prog.github.io/pwd_flashcard_app/games.html">
-<meta property="og:title" content="Learning Games — FlashLearn PWD">
-<meta property="og:description" content="__COUNT__ bilingual learning games, and the curated ten each accessibility type receives.">
+<meta property="og:url" content="https://jpaestedstu-prog.github.io/pwd_flashcard_app/about.html">
+<meta property="og:site_name" content="FlashLearn PWD">
+<meta property="og:title" content="About FlashLearn PWD">
+<meta property="og:description" content="A student thesis project making early vocabulary learning accessible to Filipino learners with disabilities.">
 <meta property="og:image" content="https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="FlashLearn PWD — free bilingual flashcard app for students with disabilities.">
+<meta property="og:locale" content="en_PH">
+<meta property="og:locale:alternate" content="fil_PH">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Learning Games — FlashLearn PWD">
-<meta name="twitter:description" content="__COUNT__ bilingual learning games, free and offline.">
+<meta name="twitter:title" content="About FlashLearn PWD">
+<meta name="twitter:description" content="A student thesis project for Filipino learners with disabilities.">
 <meta name="twitter:image" content="https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/og-image.png">
-<script type="application/ld+json">
-<!--JSONLD-->
-</script>
 <!--gen:site-head-->
 <meta name="theme-color" content="#6C5CE7">
 <link rel="manifest" href="manifest.webmanifest">
@@ -29,61 +31,6 @@
 <link rel="stylesheet" href="assets/site.css?v=bcb10f9c68">
 <script>(function(h){h.classList.add('js');try{var p=JSON.parse(localStorage.getItem('flp-a11y')||'{}');if(p.font==='lg'||p.font==='xl')h.classList.add('fs-'+p.font);if(p.dys)h.classList.add('dys');if(p.hc)h.classList.add('hc');if(p.fil){h.classList.add('fil');h.setAttribute('lang','fil');}if(p.fil||p.font==='lg'||p.font==='xl')h.classList.add('nav-compact');}catch(e){}})(document.documentElement);</script>
 <!--/gen:site-head-->
-<style>
-/* Games page - only what is unique to this page. Everything shared (header,
-   footer, buttons, cards, colours) comes from assets/site.css. */
-.games-stats{ grid-template-columns:repeat(4,minmax(0,1fr)); margin-top:1.75rem; max-width:46rem; }
-@media (max-width:640px){ .games-stats{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
-.chips{ display:flex; flex-wrap:wrap; gap:.45rem; justify-content:center; margin-bottom:1.25rem; }
-.chip{
-  display:inline-flex; align-items:center; gap:.4em; cursor:pointer; font-weight:800; font-size:.92rem; color:var(--ink-2);
-  background:var(--surface); border:2px solid var(--border); border-radius:999px; padding:.45rem .9rem; min-height:2.75rem;
-}
-.chip:hover{ border-color:var(--brand); color:var(--brand-ink); }
-.chip[aria-pressed="true"]{ background:var(--brand); color:#fff; border-color:var(--brand); }
-html.hc .chip{ border-color:#000; color:#000; }
-html.hc .chip[aria-pressed="true"]{ background:#000; color:#fff; }
-.chip-n{ font-size:.85em; font-weight:800; font-variant-numeric:tabular-nums; }
-.game-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(15rem,1fr)); gap:1rem; }
-.game{
-  position:relative; text-align:left; padding:1.1rem 1.1rem 1.1rem 1.4rem; border-radius:var(--radius-sm);
-  background:var(--surface); border:1px solid var(--border); box-shadow:var(--shadow-1); overflow:hidden;
-  display:flex; flex-direction:column; gap:.35rem; min-width:0;
-}
-/* The stripe carries each game's real accent colour from the app. */
-.game::before{ content:""; position:absolute; inset:0 auto 0 0; width:6px; background:var(--g); }
-.game .g-emoji{ font-size:1.9rem; line-height:1; }
-.game h3{ font-size:1.06rem; margin:0; }
-.game .g-alt{ font-size:.9em; color:var(--brand-ink); font-weight:700; }
-.game p{ font-size:.93em; margin:0; }
-.game .g-tag{ margin-top:.35rem; align-self:flex-start; font-size:.76em; font-weight:800; padding:.15rem .6rem; border-radius:999px; background:var(--brand-soft); color:var(--brand-ink); }
-html.hc .game{ border:2px solid #000; }
-html.hc .game .g-tag{ background:#000; color:#fff; }
-/* Roster explorer */
-.roster{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.4rem; box-shadow:var(--shadow-1); }
-html.hc .roster{ border:2px solid #000; }
-.roster-head{ display:flex; align-items:center; gap:.75rem; flex-wrap:wrap; margin-bottom:.4rem; }
-.roster-head .r-emoji{ font-size:1.7rem; }
-.roster-head h3{ font-size:1.25rem; margin:0; }
-.roster-head .r-count{ font-size:.8em; font-weight:800; padding:.15rem .65rem; border-radius:999px; background:var(--brand-soft); color:var(--brand-ink); }
-.roster .r-why{ font-size:.97em; margin:0 0 1rem; }
-.roster-list{ display:grid; grid-template-columns:repeat(auto-fill,minmax(12rem,1fr)); gap:.6rem; margin-bottom:1.25rem; }
-.r-game{
-  display:flex; align-items:center; gap:.55rem; padding:.6rem .75rem; border-radius:.8rem; min-width:0;
-  background:var(--surface-2); border:1px solid var(--border); font-weight:700; font-size:.93em; color:var(--ink);
-}
-.r-game .r-dot{ width:11px; height:11px; border-radius:50%; background:var(--g); flex:0 0 auto; }
-.r-game span{ min-width:0; overflow-wrap:anywhere; }
-html.hc .r-game{ border-color:#000; }
-.r-out{ border-top:1px dashed var(--border); padding-top:1rem; }
-.r-out h4{ font-size:1rem; margin:0 0 .35rem; }
-.r-out p{ font-size:.93em; margin:0 0 .6rem; }
-.r-out ul{ display:flex; flex-wrap:wrap; gap:.5rem; list-style:none; }
-.r-out li{ font-size:.87em; font-weight:700; padding:.3rem .7rem; border-radius:999px; background:var(--surface-2); border:1px dashed var(--border); color:var(--ink-2); }
-html.hc .r-out li{ border-color:#000; }
-@media (max-width:560px){ .roster{ padding:1rem; } .roster-list{ grid-template-columns:minmax(0,1fr) minmax(0,1fr); } }
-@media (max-width:400px){ .roster-list{ grid-template-columns:minmax(0,1fr); } }
-</style>
 </head>
 <body>
 <!--gen:site-header-->
@@ -97,7 +44,7 @@ html.hc .r-out li{ border-color:#000; }
         <li><a href="try.html"><span class="nav-ico" aria-hidden="true">🎴</span><span class="nav-txt"><span class="nav-main"><span class="en">Try It</span><span class="fil">Subukan</span></span><span class="nav-sub"><span class="en">Flashcards and a game, right in your browser</span><span class="fil">Flashcard at laro, mismo sa browser</span></span></span></a></li>
         <li><a href="download.html"><span class="nav-ico" aria-hidden="true">⬇️</span><span class="nav-txt"><span class="nav-main"><span class="en">Download</span><span class="fil">I-download</span></span><span class="nav-sub"><span class="en">Free for Android 10 and newer</span><span class="fil">Libre para sa Android 10 pataas</span></span></span></a></li>
         <li><a href="how-to-use.html"><span class="nav-ico" aria-hidden="true">📖</span><span class="nav-txt"><span class="nav-main"><span class="en">How to Use</span><span class="fil">Paano Gamitin</span></span><span class="nav-sub"><span class="en">A short video and a picture tour</span><span class="fil">Maikling video at tour na may larawan</span></span></span></a></li>
-        <li><a href="games.html" aria-current="page"><span class="nav-ico" aria-hidden="true">🎮</span><span class="nav-txt"><span class="nav-main"><span class="en">Games</span><span class="fil">Mga Laro</span></span><span class="nav-sub"><span class="en">Every learning game in the app</span><span class="fil">Bawat larong pampagkatuto sa app</span></span></span></a></li>
+        <li><a href="games.html"><span class="nav-ico" aria-hidden="true">🎮</span><span class="nav-txt"><span class="nav-main"><span class="en">Games</span><span class="fil">Mga Laro</span></span><span class="nav-sub"><span class="en">Every learning game in the app</span><span class="fil">Bawat larong pampagkatuto sa app</span></span></span></a></li>
         <li><a href="fsl-dictionary.html"><span class="nav-ico" aria-hidden="true">🤟</span><span class="nav-txt"><span class="nav-main"><span class="en">FSL Dictionary</span><span class="fil">Diksyunaryo ng FSL</span></span><span class="nav-sub"><span class="en">Watch everyday words signed</span><span class="fil">Panoorin ang senyas ng mga salita</span></span></span></a></li>
         <li><a href="teachers-guide.html"><span class="nav-ico" aria-hidden="true">🧑‍🏫</span><span class="nav-txt"><span class="nav-main"><span class="en">Teacher’s Guide</span><span class="fil">Gabay ng Guro</span></span><span class="nav-sub"><span class="en">Set up a class, printable</span><span class="fil">Pag-set up ng klase, napi-print</span></span></span></a></li>
         <li><a href="faq.html"><span class="nav-ico" aria-hidden="true">❓</span><span class="nav-txt"><span class="nav-main"><span class="en">FAQ</span><span class="fil">Mga Tanong</span></span><span class="nav-sub"><span class="en">Answers, and how to reach us</span><span class="fil">Mga sagot, at paano kami makakausap</span></span></span></a></li>
@@ -131,63 +78,61 @@ html.hc .r-out li{ border-color:#000; }
   </div>
 </header>
 <!--/gen:site-header-->
+
 <main id="main">
-  <section class="page-hero">
-    <div class="container">
-      <!--gen:site-crumbs--><nav class="crumbs" aria-label="Breadcrumb" data-label-en="Breadcrumb" data-label-fil="Kinaroroonan"><ol><li><a href="index.html"><span class="en">Home</span><span class="fil">Home</span></a></li><li aria-current="page"><span class="en">Games</span><span class="fil">Mga Laro</span></li></ol></nav><!--/gen:site-crumbs-->
-      <p class="eyebrow"><span aria-hidden="true">🎮</span> <span class="en">Learning games</span><span class="fil">Mga larong pampagkatuto</span></p>
-      <h1><span class="en">__COUNT__ games, and not every learner gets the same ten</span><span class="fil">__COUNT__ laro, at hindi pare-pareho ang sampung nakukuha ng bawat mag-aaral</span></h1>
-      <p class="lead">
-        <span class="en">Every game teaches the same __WORDS__ bilingual words, but a learner's Games tab is built for their accessibility needs — a student with a visual impairment and a student who is Deaf open the app and see different games, each set chosen so nothing in it works against them.</span>
-        <span class="fil">Itinuturo ng bawat laro ang parehong __WORDS__ salitang bilingguwal, ngunit ang Games tab ng isang mag-aaral ay ginawa ayon sa kanyang pangangailangan — magkaiba ang nakikitang laro ng mag-aaral na may kapansanan sa paningin at ng mag-aaral na Bingi, bawat set ay piniling walang lalaban sa kanila.</span>
-      </p>
-      <div class="stats games-stats" role="list">
-        <div class="stat" role="listitem"><b class="num">__COUNT__</b><span class="en">Learning games</span><span class="fil">Larong pampagkatuto</span></div>
-        <div class="stat" role="listitem"><b class="num">__PER__</b><span class="en">Games per learner</span><span class="fil">Laro bawat mag-aaral</span></div>
-        <div class="stat" role="listitem"><b class="num">__CATS__</b><span class="en">Curated rosters</span><span class="fil">Mga piling roster</span></div>
-        <div class="stat" role="listitem"><b class="num">3</b><span class="en">Difficulty levels</span><span class="fil">Antas ng hirap</span></div>
-      </div>
-    </div>
-  </section>
+<section class="page-hero">
+  <div class="container">
+    <!--gen:site-crumbs--><nav class="crumbs" aria-label="Breadcrumb" data-label-en="Breadcrumb" data-label-fil="Kinaroroonan"><ol><li><a href="index.html"><span class="en">Home</span><span class="fil">Home</span></a></li><li aria-current="page"><span class="en">About</span><span class="fil">Tungkol sa Amin</span></li></ol></nav><!--/gen:site-crumbs-->
+    <p class="eyebrow"><span aria-hidden="true">🎓</span> <span class="en">The team</span><span class="fil">Ang pangkat</span></p>
+    <h1><span class="en">About this project</span><span class="fil">Tungkol sa proyektong ito</span></h1>
+    <p class="lead"><span class="en">FlashLearn PWD is an undergraduate thesis / capstone project (2023–2027) exploring how mobile technology can make early vocabulary learning accessible to Filipino students with disabilities. Everything — the app, this website, and the study behind them — was built by students, for students.</span><span class="fil">Ang FlashLearn PWD ay isang undergraduate thesis / capstone project (2023–2027) na sumusuri kung paano magagawang accessible ng mobile technology ang maagang pagkatuto ng bokabularyo para sa mga mag-aaral na Pilipinong may kapansanan. Lahat — ang app, ang website na ito, at ang pag-aaral sa likod ng mga ito — ay ginawa ng mga estudyante, para sa mga estudyante.</span></p>
+  </div>
+</section>
 
-  <section class="section tint" id="rosters"><div class="container">
+<section class="section">
+  <div class="container">
     <div class="section-head center">
-      <h2><span class="en">Ten games, chosen for each learner</span><span class="fil">Sampung laro, piniling para sa bawat mag-aaral</span></h2>
-      <p class="lead"><span class="en">Pick an accessibility type to see the exact set that learner is given, and what is deliberately left out.</span><span class="fil">Pumili ng uri ng kapansanan para makita ang eksaktong set na ibinibigay sa mag-aaral na iyon, at kung ano ang sinadyang hindi isama.</span></p>
+      <h2><span class="en">Meet the team</span><span class="fil">Kilalanin ang pangkat</span></h2>
     </div>
-    <div class="chips" role="group" aria-label="Accessibility type" data-label-en="Accessibility type" data-label-fil="Uri ng kapansanan">
-      <!--CATCHIPS-->
+    <div class="team">
+      <div class="card member"><div class="ava" aria-hidden="true">🧑‍💻</div><h3>Jules Antonio Jose Paeste</h3><p><span class="en">Leader &amp; Programmer</span><span class="fil">Pinuno at Programmer</span></p></div>
+      <div class="card member"><div class="ava" aria-hidden="true">🧑‍🎨</div><h3>Zeira Abary</h3><p><span class="en">Designer</span><span class="fil">Taga-disenyo</span></p></div>
+      <div class="card member"><div class="ava" aria-hidden="true">🧑‍🔬</div><h3>Andrei Lim</h3><p><span class="en">Researcher</span><span class="fil">Mananaliksik</span></p></div>
+      <div class="card member"><div class="ava" aria-hidden="true">🤝</div><h3>Nesty Bustamante</h3><p><span class="en">Supporter</span><span class="fil">Tagasuporta</span></p></div>
     </div>
-    <!--ROSTERS-->
-  </div></section>
+  </div>
+</section>
 
-  <section class="section" id="all"><div class="container">
+<section class="section tint">
+  <div class="container">
     <div class="section-head center">
-      <h2><span class="en">Every game in the app</span><span class="fil">Lahat ng laro sa app</span></h2>
-      <p class="lead"><span class="en">All __COUNT__ games, with the name and description exactly as they appear in the app.</span><span class="fil">Lahat ng __COUNT__ laro, kasama ang pangalan at paglalarawang tulad mismo ng nasa app.</span></p>
+      <h2><span class="en">Get in touch</span><span class="fil">Makipag-ugnayan</span></h2>
+      <p class="lead"><span class="en">Tried the app with your class or your child? Every piece of feedback helps the research.</span><span class="fil">Nasubukan na ang app kasama ang inyong klase o anak? Tumutulong sa pananaliksik ang bawat feedback.</span></p>
     </div>
-    <div class="game-grid">
-      <!--GAMES-->
+    <div class="grid grid-3">
+      <article class="card link-card">
+        <div class="ico t-pink" aria-hidden="true">💌</div>
+        <h3><a href="faq.html#feedback"><span class="en">Send feedback</span><span class="fil">Magpadala ng feedback</span></a></h3>
+        <p><span class="en">A short form that opens in your own email app — no account needed.</span><span class="fil">Maikling form na bumubukas sa sarili ninyong email app — walang kailangang account.</span></p>
+        <span class="go" aria-hidden="true"><span class="en">Feedback form</span><span class="fil">Feedback form</span></span>
+      </article>
+      <article class="card link-card">
+        <div class="ico t-purple" aria-hidden="true">🐙</div>
+        <h3><a href="https://github.com/jpaestedstu-prog/pwd_flashcard_app" rel="noopener"><span class="en">The project on GitHub</span><span class="fil">Ang proyekto sa GitHub</span></a></h3>
+        <p><span class="en">Releases, and the issues page where problems can be reported and followed.</span><span class="fil">Mga release, at ang issues page kung saan maiuulat at masusubaybayan ang mga problema.</span></p>
+        <span class="go" aria-hidden="true">GitHub</span>
+      </article>
+      <article class="card link-card">
+        <div class="ico t-teal" aria-hidden="true">🔒</div>
+        <h3><a href="privacy.html"><span class="en">Privacy &amp; data</span><span class="fil">Privacy at datos</span></a></h3>
+        <p><span class="en">What the app keeps, who can see it, and how to delete it.</span><span class="fil">Ano ang itinatago ng app, sino ang nakakakita nito, at paano ito burahin.</span></p>
+        <span class="go" aria-hidden="true"><span class="en">Read the details</span><span class="fil">Basahin ang detalye</span></span>
+      </article>
     </div>
-    <div class="callout info mt-2">
-      <span class="c-ico" aria-hidden="true">🎚️</span>
-      <p><span class="en">Difficulty adapts as a learner plays — Easy, Medium and Hard adjust the number of choices and the time allowed. __STORYNOTE__</span><span class="fil">Umaangkop ang hirap habang naglalaro — inaayos ng Madali, Katamtaman at Mahirap ang dami ng pagpipilian at ang oras. __STORYNOTE_FIL__</span></p>
-    </div>
-  </div></section>
-
-  <section class="section tint"><div class="container">
-    <div class="cta-band">
-      <div>
-        <h2><span class="en">Play them on a real tablet</span><span class="fil">Laruin ang mga ito sa tunay na tablet</span></h2>
-        <p><span class="en">Every game works offline, with no account and no ads.</span><span class="fil">Gumagana offline ang bawat laro, walang account at walang ads.</span></p>
-        <div class="actions mt-2">
-          <a class="btn btn-primary btn-lg" href="download.html"><span aria-hidden="true">⬇️</span> <span class="en">Download the app</span><span class="fil">I-download ang app</span></a>
-          <a class="btn btn-secondary btn-lg" href="try.html"><span aria-hidden="true">🎮</span> <span class="en">Play Word Match here</span><span class="fil">Laruin dito ang Word Match</span></a>
-        </div>
-      </div>
-    </div>
-  </div></section>
+  </div>
+</section>
 </main>
+
 <!--gen:site-footer-->
 <footer class="site-footer">
   <div class="container">
@@ -234,6 +179,5 @@ html.hc .r-out li{ border-color:#000; }
 </footer>
 <script src="assets/site.js?v=66570b5b38"></script>
 <!--/gen:site-footer-->
-<!--PAGEJS-->
 </body>
 </html>

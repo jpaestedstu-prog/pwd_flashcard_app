@@ -131,6 +131,12 @@ def render_coming_soon(groups):
         'Mas mabuting walang ipakita kaysa sa hulang senyas, kaya nakalista muna ang mga ito '
         'dito hanggang ma-record ng isang Deaf signer.</span></p>\n'
         '      <div class="soon-grid">\n        ' + "\n        ".join(blocks) + "\n      </div>\n"
+        '      <p class="soon-help"><span aria-hidden="true">🤟</span> <span class="en">Do you sign FSL, or teach Deaf learners? '
+        '<a href="faq.html#feedback">Send us a message</a> — help recording these signs is very welcome. Until then, '
+        'the app teaches each of these words with its picture, both written words and spoken English and Filipino.</span>'
+        '<span class="fil">Marunong ba kayo ng FSL, o nagtuturo sa mga Deaf na mag-aaral? '
+        '<a href="faq.html#feedback">Magpadala ng mensahe</a> — malaking tulong ang pag-record ng mga senyas na ito. '
+        'Hanggang doon, itinuturo ng app ang bawat salitang ito gamit ang larawan, ang nakasulat na salita, at binibigkas na English at Filipino.</span></p>\n'
         "    </section>"
     )
 

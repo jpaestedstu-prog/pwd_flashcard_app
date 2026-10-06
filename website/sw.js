@@ -1,26 +1,40 @@
-/* FlashLearn PWD site service worker — offline support for the core pages. */
-const CACHE = 'flp-site-v19';
+/* FlashLearn PWD site service worker — offline support for every page.
+   Screenshots and videos are not precached (they load when shown, then stay
+   cached); assets/fsl-dict.js is build input for the dictionary page, not
+   something a page loads. */
+const CACHE = 'flp-site-v20-732aea88';
 const CORE = [
   './',
   'index.html',
-  'teachers-guide.html',
-  'fsl-dictionary.html',
+  'try.html',
+  'download.html',
+  'how-to-use.html',
   'games.html',
+  'fsl-dictionary.html',
+  'teachers-guide.html',
+  'faq.html',
+  'awareness.html',
+  'about.html',
   'privacy.html',
+  'gaze-control.html',
   'manifest.webmanifest',
-  'assets/site.js',
-  'assets/fsl-dict.js',
+  'assets/site.css?v=bcb10f9c68',
+  'assets/site.js?v=66570b5b38',
+  'assets/try.js?v=97e7687e01',
+  'assets/logo.webp',
   'assets/videos/app-demo.en.vtt',
   'assets/videos/app-demo.fil.vtt',
+  'assets/videos/gaze-demo.en.vtt',
+  'assets/videos/gaze-demo.fil.vtt',
   'assets/icon-192.png',
   'assets/qr-site.png',
-  'assets/fonts/Fredoka-SemiBold.ttf',
-  'assets/fonts/Fredoka-Medium.ttf',
-  'assets/fonts/Nunito-Regular.ttf',
-  'assets/fonts/Nunito-Bold.ttf',
-  'assets/fonts/Nunito-ExtraBold.ttf',
-  'assets/fonts/Lexend-Regular.ttf',
-  'assets/fonts/Lexend-SemiBold.ttf',
+  'assets/fonts/Fredoka-SemiBold.woff2',
+  'assets/fonts/Fredoka-Medium.woff2',
+  'assets/fonts/Nunito-Regular.woff2',
+  'assets/fonts/Nunito-Bold.woff2',
+  'assets/fonts/Nunito-ExtraBold.woff2',
+  'assets/fonts/Lexend-Regular.woff2',
+  'assets/fonts/Lexend-SemiBold.woff2',
 ];
 
 self.addEventListener('install', (e) => {

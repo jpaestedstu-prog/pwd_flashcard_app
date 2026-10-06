@@ -142,6 +142,31 @@ mode and replay them. They should still work (served from
   `flutter test` covers the wire format but nothing else exercises the
   TV-side rendering, so a bug there is invisible until a class is watching.
 
+## The website (`website/`)
+
+Eleven static pages with no build server; these scripts keep them honest.
+Each one has a `--check` (or is a pure regenerate) that fails on drift.
+
+| Script | Writes | Run it when |
+|---|---|---|
+| `site_chrome_build.py` | the shared head, header, breadcrumb and footer of every page (between `<!--gen:site-…-->` markers), the `?v=` fingerprints on `site.css` / `site.js` / `try.js`, and the matching precache list in `sw.js` | you change the navigation, the footer, or any of those three files |
+| `games_page_build.py` | `games.html` from `games_page.template.html` + the app's game data | games change |
+| `fsl_dict_page_build.py` | `fsl-dictionary.html` from `fsl_dict_page.template.html` + `website/assets/fsl-dict.js` | signs change |
+| `release_page_build.py` | the download card on `download.html`, the app JSON-LD on `index.html`, `version.json` (the app's update check opens its `page`, now `download.html`) | every release |
+
+Order after editing a template: the page builder first, then
+`site_chrome_build.py`. Never hand-edit `games.html` or `fsl-dictionary.html`.
+Styling lives in one file, `website/assets/site.css`; a page keeps only the
+rules that are truly its own. Old links into the former one-page site
+(`index.html#download`, `#try`, `#how`, `#faq`, `#feedback`, `#awareness`,
+`#about`) are redirected by a small script at the top of `index.html`.
+
+Web fonts (`website/assets/fonts/*.woff2`) are the app's own Fredoka, Nunito
+and Lexend from `google_fonts/`, subset to Latin text plus every character the
+pages use. To rebuild one: `pip install fonttools brotli`, then
+`pyftsubset X.ttf --unicodes=U+0020-007E,U+00A0-024F,U+0300-036F,U+1E00-1EFF,U+2000-206F,U+20A0-20CF,U+2100-214F,U+2190-21FF,U+2200-22FF,U+2460-24FF,U+25A0-25FF,U+FB00-FB06 --layout-features='*' --name-IDs='*' --flavor=woff2 --output-file=X.woff2`,
+and re-run `site_chrome_build.py` (the stylesheet's fingerprint changes).
+
 ## Known mapping notes
 
 - `GREEN.MOV` is **missing** — record one later and add an entry to

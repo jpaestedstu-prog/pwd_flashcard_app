@@ -10,7 +10,7 @@ One source of truth instead of ~12 hand edits per release:
   * changelog         <- tools/release_notes.json (newest first)
 
 It rewrites only what sits between <!--gen:NAME--> ... <!--/gen:NAME--> markers
-in website/index.html and website/teachers-guide.html, writes
+in website/index.html, website/download.html and website/teachers-guide.html, writes
 website/version.json (read by the app's "Check for updates"), writes the
 GitHub release notes to build/release-v<version>/RELEASE_NOTES.md, and bumps the
 service-worker cache when a precached page changed so returning visitors get
@@ -79,39 +79,63 @@ def bi(en, fil):
     return f'<span class="en">{en}</span><span class="fil">{fil}</span>'
 
 
+MONTHS_EN = ["January", "February", "March", "April", "May", "June", "July",
+             "August", "September", "October", "November", "December"]
+MONTHS_FIL = ["Enero", "Pebrero", "Marso", "Abril", "Mayo", "Hunyo", "Hulyo",
+              "Agosto", "Setyembre", "Oktubre", "Nobyembre", "Disyembre"]
+
+
+def long_date(iso):
+    y, m, d = (int(x) for x in iso.split("-"))
+    return f"{d} {MONTHS_EN[m - 1]} {y}", f"{d} {MONTHS_FIL[m - 1]} {y}"
+
+
 def render_download(version, releases, apks):
+    """The download card on download.html: button, facts, checksums, changelog."""
     std = apks[0]
+    d_en, d_fil = long_date(releases[0]["date"])
     rows = "\n".join(
-        f'              <tr><td><a href="{a["url"]}">{a["label_en"]}</a></td><td>{a["size"]}</td>'
+        f'                  <tr><td><a href="{a["url"]}">{a["label_en"]}</a></td><td>{a["size"]}</td>'
         f'<td><code>{a["sha256"]}</code></td></tr>' for a in apks)
     changes = "\n".join(
-        f'            <p><strong>v{r["version"]}</strong> — {r["date"]}<br>\n'
-        f'            {bi(r["summary_en"], r["summary_fil"])}</p>' for r in releases)
+        f'                <p><strong>v{r["version"]}</strong> — {r["date"]}<br>\n'
+        f'                {bi(r["summary_en"], r["summary_fil"])}</p>' for r in releases)
     return f"""
-        <ul class="dl-meta">
-          <li>📦 <span><b>{bi("Version:", "Bersyon:")}</b> {version}</span></li>
-          <li>🤖 <span><b>{bi("Requires:", "Kailangan:")}</b> {bi("Android 10 or newer", "Android 10 pataas")}</span></li>
-          <li>💾 <span><b>{bi("Size:", "Laki:")}</b> {std["size"]}</span></li>
-          <li>🔓 <span><b>Account:</b> {bi("none needed — open and learn", "hindi kailangan — buksan at matuto")}</span></li>
-        </ul>
-        <a class="btn btn-primary" href="{std["url"]}">⬇️ {bi(f"Download APK (v{version})", f"I-download ang APK (v{version})")}</a>
-        <details class="dl-versions">
-          <summary>{bi("Other versions &amp; checksums", "Iba pang bersyon at checksums")}</summary>
-          <div class="body">
-            <p style="font-size:.9em">{bi('If the standard APK says "app not compatible", try the 32-bit version. The universal APK works on every device but is larger.', 'Kung sinabi ng standard APK na "app not compatible", subukan ang 32-bit na bersyon. Gumagana ang universal APK sa lahat ng device ngunit mas malaki ito.')}</p>
-            <table>
-              <tr><th>APK</th><th>{bi("Size", "Laki")}</th><th>SHA-256</th></tr>
+          <div class="dl-app">
+            <img src="assets/logo.webp" width="72" height="72" alt="">
+            <div>
+              <h2>FlashLearn PWD {bi("for Android", "para sa Android")}</h2>
+              <p>{bi(f"Version {version} · {d_en}", f"Bersyon {version} · {d_fil}")}</p>
+            </div>
+          </div>
+          <a class="btn btn-primary btn-lg" href="{std["url"]}"><span aria-hidden="true">⬇️</span> {bi(f"Download APK (v{version})", f"I-download ang APK (v{version})")}</a>
+          <ul class="dl-facts">
+            <li><span aria-hidden="true">🤖</span> {bi("Android 10 or newer", "Android 10 pataas")}</li>
+            <li><span aria-hidden="true">💾</span> {bi(f"Size: {std['size']}", f"Laki: {std['size']}")}</li>
+            <li><span aria-hidden="true">🔓</span> {bi("No account needed", "Walang kailangang account")}</li>
+            <li><span aria-hidden="true">🆓</span> {bi("Free, no ads", "Libre, walang ads")}</li>
+          </ul>
+          <div class="dl-more">
+            <details class="disclosure" id="versions">
+              <summary>{bi("Other versions &amp; checksums", "Iba pang bersyon at checksums")}</summary>
+              <div class="d-body">
+                <p>{bi('If the standard APK says "app not compatible", try the 32-bit version. The universal APK works on every device but is larger.', 'Kung sinabi ng standard APK na "app not compatible", subukan ang 32-bit na bersyon. Gumagana ang universal APK sa lahat ng device ngunit mas malaki ito.')}</p>
+                <div class="table-scroll">
+                <table>
+                  <tr><th>APK</th><th>{bi("Size", "Laki")}</th><th>SHA-256</th></tr>
 {rows}
-            </table>
-          </div>
-        </details>
-        <details class="dl-versions">
-          <summary>{bi("What's new (changelog)", "Ano ang bago (changelog)")}</summary>
-          <div class="body">
+                </table>
+                </div>
+              </div>
+            </details>
+            <details class="disclosure" id="changelog">
+              <summary>{bi("What's new (changelog)", "Ano ang bago (changelog)")}</summary>
+              <div class="d-body changelog">
 {changes}
+              </div>
+            </details>
           </div>
-        </details>
-        """
+          """
 
 
 def render_jsonld(version, apks):
@@ -149,12 +173,14 @@ def render_fsl_welcome():
             tracks += (f'\n        <track kind="captions" src="assets/videos/fsl-welcome.{lang}.vtt" '
                        f'srclang="{lang}" label="{label}"{default}>')
     return f"""
-<section id="fsl-welcome" class="band" aria-labelledby="fslWelcomeTitle">
-  <div class="wrap">
-    <span class="section-label">🤟 {bi("Welcome in FSL", "Pagbati sa FSL")}</span>
-    <h2 class="title" id="fslWelcomeTitle">{bi("A welcome in Filipino Sign Language", "Isang pagbati sa Filipino Sign Language")}</h2>
-    <p class="lead">{bi("For Deaf and hard-of-hearing visitors: what FlashLearn PWD is and how to get it, signed in FSL.", "Para sa mga Deaf at mahina ang pandinig: kung ano ang FlashLearn PWD at paano ito makukuha, sa FSL.")}</p>
-    <div class="demo-video">
+<section id="fsl-welcome" class="section tint" aria-labelledby="fslWelcomeTitle">
+  <div class="container">
+    <div class="section-head center">
+      <p class="eyebrow"><span aria-hidden="true">🤟</span> {bi("Welcome in FSL", "Pagbati sa FSL")}</p>
+      <h2 id="fslWelcomeTitle">{bi("A welcome in Filipino Sign Language", "Isang pagbati sa Filipino Sign Language")}</h2>
+      <p class="lead">{bi("For Deaf and hard-of-hearing visitors: what FlashLearn PWD is and how to get it, signed in FSL.", "Para sa mga Deaf at mahina ang pandinig: kung ano ang FlashLearn PWD at paano ito makukuha, sa FSL.")}</p>
+    </div>
+    <div class="welcome-video">
       <video controls playsinline preload="metadata" src="assets/videos/fsl-welcome.mp4">{tracks}
       </video>
     </div>
@@ -171,7 +197,7 @@ def render_version_json(version, build, releases, apks):
             "version": version,
             "build": build,
             "date": top["date"],
-            "page": SITE_URL + "#download",
+            "page": SITE_URL + "download.html",
             "notes_en": top.get("notes_en", ""),
             "notes_fil": top.get("notes_fil", ""),
             "apks": {a["key"]: {"url": a["url"], "bytes": a["bytes"], "sha256": a["sha256"]} for a in apks},
@@ -190,7 +216,7 @@ def render_release_notes(version, releases, apks):
               f"- `{apks[1]['name']}` ({apks[1]['size']}) — for older 32-bit devices",
               f"- `{apks[2]['name']}` ({apks[2]['size']}) — works everywhere", "",
               "**SHA-256 checksums**", "```"]
-    lines += [f"{a['sha256']}  {a['name']}" for a in apks] + ["```", "", f"Website & install guide: {SITE_URL}", ""]
+    lines += [f"{a['sha256']}  {a['name']}" for a in apks] + ["```", "", f"Website & install guide: {SITE_URL}download.html", ""]
     return "\n".join(lines)
 
 
@@ -216,9 +242,12 @@ def main():
     p = os.path.join(SITE, "index.html")
     t = read(p)
     t = replace_region(t, "app-jsonld", render_jsonld(version, apks), path=p)
+    t = replace_region(t, "fsl-welcome", render_fsl_welcome(), path=p)
+    outputs[p] = t
+    p = os.path.join(SITE, "download.html")
+    t = read(p)
     t = replace_region(t, "download", render_download(version, releases, apks), path=p)
     t = replace_region(t, "apk-name", apks[0]["name"], expect=2, path=p)
-    t = replace_region(t, "fsl-welcome", render_fsl_welcome(), path=p)
     outputs[p] = t
     p = os.path.join(SITE, "teachers-guide.html")
     outputs[p] = replace_region(read(p), "apk-size", apks[0]["size"], expect=2, path=p)
@@ -240,7 +269,7 @@ def main():
     print("wrote", os.path.relpath(notes, ROOT))
 
     # Precached pages changed -> new cache name, or returning visitors keep the old text.
-    precached = {os.path.join(SITE, n) for n in ("index.html", "teachers-guide.html")}
+    precached = {os.path.join(SITE, n) for n in os.listdir(SITE) if n.endswith(".html")}
     if precached & set(changed):
         sw = os.path.join(SITE, "sw.js")
         s = read(sw)
