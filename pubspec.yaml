@@ -112,6 +112,9 @@ dev_dependencies:
   # Direct dev dep so the voice-command controller tests can drive its
   # timers on a fake clock (already in the graph via flutter_test).
   fake_async: ^1.3.3
+  # Direct dev dep so the gaze camera tests can stand in for the camera
+  # (already in the graph via camera).
+  camera_platform_interface: ^2.13.0
 
 flutter:
   generate: true

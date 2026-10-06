@@ -132,6 +132,14 @@ class StoryListScreen extends ConsumerWidget {
                               () {
                                 final unlocked =
                                     _isUnlocked(story, wordsLearned);
+                                // A locked cover says what opens it. It used
+                                // to do nothing at all when chosen: on the
+                                // tablet a learner picking one with a switch
+                                // could not tell a lock from a missed press.
+                                void lockedHint() => _showUnlockHint(
+                                  context,
+                                  _wordsToUnlock(story) - wordsLearned,
+                                );
                                 return (
                                   tile: StoryCoverCard(
                                     story: story,
@@ -145,6 +153,7 @@ class StoryListScreen extends ConsumerWidget {
                                         ? () => context
                                             .push('/stories/read/${story.id}')
                                         : null,
+                                    onLockedTap: lockedHint,
                                   )
                                       .animate()
                                       .fadeIn(
@@ -153,13 +162,17 @@ class StoryListScreen extends ConsumerWidget {
                                       )
                                       .slideY(begin: 0.08, end: 0),
                                   // Locked covers stay focusable for consistent
-                                  // navigation but do nothing when opened.
+                                  // navigation, are named as locked (spoken
+                                  // highlights), and say what opens them.
                                   cell: GazeTileCell(
-                                    label: story.titleEn,
+                                    label: unlocked
+                                        ? story.titleEn
+                                        : AppLocalizations.of(context)!
+                                            .storyLocked(story.titleEn),
                                     onActivate: unlocked
                                         ? () => context
                                             .push('/stories/read/${story.id}')
-                                        : () {},
+                                        : lockedHint,
                                   ),
                                 );
                               }(),
@@ -185,13 +198,32 @@ class StoryListScreen extends ConsumerWidget {
   /// First story of each category: 0 words (always unlocked)
   /// Second story: 10 words learned
   /// Third story: 25 words learned
-  bool _isUnlocked(Story story, int wordsLearned) {
+  bool _isUnlocked(Story story, int wordsLearned) =>
+      wordsLearned >= _wordsToUnlock(story);
+
+  /// Words learned that open [story].
+  static int _wordsToUnlock(Story story) {
     final stories = SeedStories.getByCategory(story.category);
     final index = stories.indexOf(story);
     return switch (index) {
-      0 => true,
-      1 => wordsLearned >= 10,
-      _ => wordsLearned >= 25,
+      0 => 0,
+      1 => 10,
+      _ => 25,
     };
+  }
+
+  static void _showUnlockHint(BuildContext context, int wordsMissing) {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) return;
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            AppLocalizations.of(context)!
+                .storyUnlockHint(wordsMissing < 1 ? 1 : wordsMissing),
+          ),
+        ),
+      );
   }
 }

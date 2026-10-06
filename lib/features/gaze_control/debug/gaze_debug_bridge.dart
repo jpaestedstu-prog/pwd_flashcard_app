@@ -212,6 +212,18 @@ abstract final class GazeDebugBridge {
           'presses': GazeSwitchInput.instance.debugPresses,
           'steps': GazeSwitchInput.instance.debugSteps,
         };
+      case 'fault':
+        // Fault drills on the running camera: `hang=N` — the next N face
+        // detections never answer; `stop=1` — the camera stops sending
+        // frames. The controller must recover from both by itself.
+        final live = GazeController.debugLive
+            .where((c) => c.usesCamera && !c.suspended)
+            .lastOrNull;
+        if (live == null) return {'ok': false, 'error': 'no running camera'};
+        final hangs = int.tryParse(p['hang'] ?? '');
+        if (hangs != null) live.debugHangDetections(hangs);
+        if (p['stop'] == '1') live.debugStopFrames().ignore();
+        return {'ok': true, 'controller': live.debugDescribe()};
       case 'metrics':
         String? id = p['profile'];
         if (id == null && context != null) {

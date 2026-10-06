@@ -49,8 +49,17 @@ class TtsService {
   /// Speak text using the currently set language (default English).
   Future<void> speak(String text) async {
     if (!_isInitialized) await init();
-    await _tts.stop();
+    await _stopped();
     await _tts.speak(text);
+  }
+
+  /// Stops the engine, and counts it as no longer speaking even if it never
+  /// says so — an engine cut off with the app (sent to the background
+  /// mid-sentence) can stay silent about it, and [speaking] must not then
+  /// claim speech that is long over.
+  Future<void> _stopped() async {
+    await _tts.stop();
+    _setSpeaking(false);
   }
 
   /// Switch the engine to [language], remembering it only if the engine
@@ -80,7 +89,7 @@ class TtsService {
   /// Speak text in English (en-US).
   Future<void> speakEnglish(String text) async {
     if (!_isInitialized) await init();
-    await _tts.stop();
+    await _stopped();
     await _useLanguage('en-US');
     await _tts.speak(text);
   }
@@ -88,14 +97,12 @@ class TtsService {
   /// Speak text in Filipino (fil-PH).
   Future<void> speakFilipino(String text) async {
     if (!_isInitialized) await init();
-    await _tts.stop();
+    await _stopped();
     await _useLanguage('fil-PH');
     await _tts.speak(text);
   }
 
-  Future<void> stop() async {
-    await _tts.stop();
-  }
+  Future<void> stop() => _stopped();
 
   /// Register a callback that fires when TTS finishes speaking.
   void setCompletionHandler(void Function() handler) {
@@ -106,9 +113,7 @@ class TtsService {
     await _tts.setSpeechRate(speed);
   }
 
-  Future<void> dispose() async {
-    await _tts.stop();
-  }
+  Future<void> dispose() => _stopped();
 }
 
 /// Global TTS provider

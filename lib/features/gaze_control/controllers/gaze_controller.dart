@@ -82,8 +82,8 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
   /// blinks did nothing at all until the screen was left.
   static const Duration detectTimeout = Duration(seconds: 2);
 
-  /// How long the camera may go without delivering a frame before the stream
-  /// is restarted.
+  /// How long the camera may go without a frame being processed before the
+  /// stream is restarted.
   static const Duration streamStallLimit = Duration(seconds: 5);
   DwellTracker _dwell;
   final BlinkDetector _blink = BlinkDetector();
@@ -362,7 +362,7 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
-  void _teardownController() {
+  Future<void> _teardownController() {
     final controller = _controller;
     // Null it first so any in-flight `_initCameraInner` sees itself as stale and
     // disposes the controller *after* initialize() finishes.
@@ -370,33 +370,50 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
     _streaming = false;
     _isDetecting = false;
     _stopWatchdog();
-    _dwell.reset();
-    _blink.reset();
-    _clock
-      ..stop()
-      ..reset();
-    if (controller == null) return;
+    // A keep-still pending when the camera went must not fire when it is back.
+    disarmRestSelect();
+    _resetTiming();
+    if (controller == null) return Future.value();
     if (controller.value.isInitialized) {
-      _disposeController(controller);
+      return _disposeController(controller);
     }
     // If it isn't initialized yet, do NOT dispose here: CameraX throws
     // `releaseFlutterSurfaceTexture() ... not yet been initialized` when the
     // preview surface doesn't exist. The init path disposes it once ready.
+    return Future.value();
+  }
+
+  /// Everything measured on [_clock], which starts over with each camera
+  /// session — reset together with it.
+  ///
+  /// Only the clock used to be reset. The time of the last processed frame
+  /// was kept, so after any camera restart (the app back from the background,
+  /// a covering camera screen closed) every frame looked too soon for as long
+  /// as the camera had already been running: tracking stayed dead with the
+  /// camera "ready" and the old face reading on screen. Found by stopping the
+  /// tablet's camera on purpose; the same state as the freeze the learner hit.
+  void _resetTiming() {
+    _clock
+      ..stop()
+      ..reset();
+    _lastProcessed = Duration.zero;
+    _dwell.reset();
+    _blink.reset();
+    _turnFilter?.reset();
+    _tiltFilter?.reset();
   }
 
   /// Disposes a camera controller defensively — stops the image stream first
   /// and swallows the platform errors that can surface during teardown.
-  void _disposeController(CameraController controller) {
-    () async {
-      try {
-        if (controller.value.isStreamingImages) {
-          await controller.stopImageStream();
-        }
-      } catch (_) {}
-      try {
-        await controller.dispose();
-      } catch (_) {}
-    }();
+  Future<void> _disposeController(CameraController controller) async {
+    try {
+      if (controller.value.isStreamingImages) {
+        await controller.stopImageStream();
+      }
+    } catch (_) {}
+    try {
+      await controller.dispose();
+    } catch (_) {}
   }
 
   Future<void> _initCamera() async {
@@ -464,9 +481,8 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
         _disposeController(controller);
         return;
       }
-      _clock
-        ..reset()
-        ..start();
+      _resetTiming();
+      _clock.start();
       await controller.startImageStream(_onFrame);
       if (_disposed || !identical(_controller, controller)) {
         _disposeController(controller);
@@ -496,7 +512,6 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> _onFrame(CameraImage image) async {
-    _lastFrameAt = _clock.elapsed;
     if (_isDetecting || !_streaming || _disposed) return;
     final now = _clock.elapsed;
     if (now - _lastProcessed < _minFrameGap) return;
@@ -539,7 +554,15 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> _detectFrame(InputImage input, Duration now) async {
     final FaceSignal signal;
     try {
-      signal = await _detector.detect(input).timeout(detectTimeout);
+      final Future<FaceSignal> reading;
+      if (!kReleaseMode && _debugHangs > 0) {
+        // A fault drill (debug bridge): this reading never comes back.
+        _debugHangs--;
+        reading = Completer<FaceSignal>().future;
+      } else {
+        reading = _detector.detect(input);
+      }
+      signal = await reading.timeout(detectTimeout);
     } on TimeoutException {
       _replaceDetector();
       return;
@@ -575,15 +598,34 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
   // ── Watchdog ───────────────────────────────────────────────────────────
 
   Timer? _watchdog;
-  Duration _lastFrameAt = Duration.zero;
 
   /// Times the detector or the camera stream was restarted (debug bridge).
   int debugDetectorRestarts = 0;
   int debugStreamRestarts = 0;
 
+  /// Fault drills for the debug bridge, so the recovery can be watched on a
+  /// real device — the hang that froze tracking on the tablet could not be
+  /// made to happen on demand. Compiled out of release builds.
+  int _debugHangs = 0;
+
+  /// The next [count] face detections never answer.
+  void debugHangDetections(int count) {
+    if (kReleaseMode || _disposed) return;
+    _debugHangs = count;
+  }
+
+  /// The camera stops sending frames without any error, as a camera can.
+  Future<void> debugStopFrames() async {
+    if (kReleaseMode || _disposed) return;
+    final controller = _controller;
+    if (controller == null) return;
+    try {
+      await controller.stopImageStream();
+    } catch (_) {}
+  }
+
   void _startWatchdog() {
     _watchdog?.cancel();
-    _lastFrameAt = _clock.elapsed;
     _watchdog = Timer.periodic(const Duration(milliseconds: 1500), (_) {
       checkStream();
     });
@@ -594,18 +636,21 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
     _watchdog = null;
   }
 
-  /// Restarts the camera when it has stopped delivering frames altogether
-  /// (the stream can die without an error). Called by the watchdog; public
-  /// for tests.
+  /// Restarts the camera when no frame has been processed for
+  /// [streamStallLimit] — the stream died without an error, or frames arrive
+  /// but something keeps them from being read. The old camera is closed
+  /// before the new one opens. Called by the watchdog; public for tests.
   @visibleForTesting
   void checkStream() {
     if (_disposed || _suspended || !_streaming || _initInFlight) return;
-    if (_clock.elapsed - _lastFrameAt < streamStallLimit) return;
+    if (_clock.elapsed - _lastProcessed < streamStallLimit) return;
     debugStreamRestarts++;
-    _teardownController();
+    final closed = _teardownController();
     _status = GazeStatus.initializing;
     _notify();
-    _initCamera();
+    closed.whenComplete(() {
+      if (!_disposed && !_suspended && _controller == null) _initCamera();
+    });
   }
 
   void _applySignal(FaceSignal raw, Duration now) {

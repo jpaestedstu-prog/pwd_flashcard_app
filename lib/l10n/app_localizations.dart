@@ -11012,6 +11012,12 @@ abstract class AppLocalizations {
   /// **'{title} — locked'**
   String storyLocked(String title);
 
+  /// No description provided for @storyUnlockHint.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Learn 1 more word to open this story} other{Learn {count} more words to open this story}}'**
+  String storyUnlockHint(int count);
+
   /// No description provided for @storyTapToRead.
   ///
   /// In en, this message translates to:

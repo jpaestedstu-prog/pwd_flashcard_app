@@ -1040,6 +1040,19 @@ void main() {
     await engine('speak.onComplete');
     expect(TtsService.speaking.value, isFalse);
     expect(finished, 1);
+
+    // A stop ends "speaking" even when the engine never says so (cut off
+    // with the app in the background) — or the scan would wait on it.
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    const channel = MethodChannel('flutter_tts');
+    messenger.setMockMethodCallHandler(channel, (_) async => 1);
+    await engine('speak.onStart');
+    expect(TtsService.speaking.value, isTrue);
+    await tts.stop();
+    expect(TtsService.speaking.value, isFalse);
+    expect(finished, 1, reason: 'and a stop is still not a finish');
+    messenger.setMockMethodCallHandler(channel, null);
     tts.setCompletionHandler(() {});
   });
 }

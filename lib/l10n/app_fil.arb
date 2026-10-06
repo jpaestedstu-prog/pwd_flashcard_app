@@ -1819,6 +1819,7 @@
   "splAge": "{age} taong gulang",
   "splNoAge": "Walang nakatakdang edad o antas",
   "storyLocked": "{title} — nakakandado",
+  "storyUnlockHint": "Matuto ng {count} pang salita para mabuksan ang kuwentong ito",
   "storyTapToRead": "{title} — pindutin para basahin",
   "storyReadSuffix": ", nabasa na",
   "storyRead": "Nabasa",

@@ -4810,6 +4810,14 @@
   },
   "splNoAge": "No age or level set",
   "storyLocked": "{title} — locked",
+  "storyUnlockHint": "{count, plural, =1{Learn 1 more word to open this story} other{Learn {count} more words to open this story}}",
+  "@storyUnlockHint": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "@storyLocked": {
     "placeholders": {
       "title": {

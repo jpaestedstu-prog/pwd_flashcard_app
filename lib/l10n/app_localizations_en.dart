@@ -6711,6 +6711,17 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String storyUnlockHint(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Learn $count more words to open this story',
+      one: 'Learn 1 more word to open this story',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String storyTapToRead(String title) {
     return '$title — tap to read';
   }

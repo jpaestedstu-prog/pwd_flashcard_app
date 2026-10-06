@@ -33,6 +33,10 @@ class StoryCoverCard extends StatefulWidget {
   final bool kidMode;
   final VoidCallback? onTap;
 
+  /// A tap on a locked cover — to say what opens it. The cover itself stays
+  /// still (no press effect): it is not a button yet.
+  final VoidCallback? onLockedTap;
+
   const StoryCoverCard({
     super.key,
     required this.story,
@@ -41,6 +45,7 @@ class StoryCoverCard extends StatefulWidget {
     this.stars = 0,
     this.kidMode = false,
     this.onTap,
+    this.onLockedTap,
   });
 
   @override
@@ -72,7 +77,9 @@ class _StoryCoverCardState extends State<StoryCoverCard> {
           : '${_t(context).storyTapToRead(title)}'
                 '${widget.read ? _t(context).storyReadSuffix : ''}',
       child: GestureDetector(
-        onTap: widget.unlocked ? () => widget.onTap?.call() : null,
+        onTap: widget.unlocked
+            ? () => widget.onTap?.call()
+            : widget.onLockedTap,
         // Pressable3D adds the press-scale + gentle tilt (reduced-motion aware);
         // disabled on locked cards so they stay completely static.
         child: Pressable3D(

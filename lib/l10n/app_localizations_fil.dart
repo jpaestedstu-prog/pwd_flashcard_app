@@ -6625,6 +6625,11 @@ class AppLocalizationsFil extends AppLocalizations {
   }
 
   @override
+  String storyUnlockHint(int count) {
+    return 'Matuto ng $count pang salita para mabuksan ang kuwentong ito';
+  }
+
+  @override
   String storyTapToRead(String title) {
     return '$title — pindutin para basahin';
   }

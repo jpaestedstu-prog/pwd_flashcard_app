@@ -23,8 +23,9 @@
         "A mistaken blink can’t lock a learner out: turning gaze off or moving to a switch is undone unless confirmed",
         "Teachers and parents set a learner’s Gaze Control from the learner’s card",
         "Peer Collab can be set up and started hands-free, partner’s name included",
-        "Face tracking no longer freezes after a few minutes of use",
+        "Face tracking no longer freezes: it recovers by itself when a reading stalls, the camera goes quiet, or the app comes back from the background",
         "The Game Controller pages say when Gaze Control is using the controller",
+        "A locked story says how many more words open it, instead of doing nothing when chosen",
         "Gaze use (time, choices, speed, mistakes) is measured and added to the research export"
       ]
     },
