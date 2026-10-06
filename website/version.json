@@ -5,23 +5,23 @@
     "build": 10,
     "date": "2026-10-06",
     "page": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/download.html",
-    "notes_en": "Certificates, worksheets and the portfolio print every character, and switch scanning in games and the Talk Board asks for a press, not a blink.",
-    "notes_fil": "Naipi-print na ang bawat titik sa mga certificate, worksheet at portfolio, at pindot na ang hinihingi ng switch scanning sa mga laro at Talk Board, hindi pagkurap.",
+    "notes_en": "Certificates, worksheets and the portfolio print every character, switch scanning in games and the Talk Board asks for a press, not a blink, and parents have their Worksheets button back.",
+    "notes_fil": "Naipi-print na ang bawat titik sa mga certificate, worksheet at portfolio, pindot na ang hinihingi ng switch scanning sa mga laro at Talk Board, hindi pagkurap, at nakabalik na ang Worksheets button ng mga magulang.",
     "apks": {
       "arm64": {
         "url": "https://github.com/jpaestedstu-prog/pwd_flashcard_app/releases/download/v1.2.6/FlashLearnPWD-v1.2.6-arm64.apk",
         "bytes": 76655050,
-        "sha256": "b3f61e590e4311462ca757efb8152552d112126d2081e211fef61ad21ea77127"
+        "sha256": "2464548e14c82b8ed5a0b812585d1a831d8af05dbdc796c5dce9d4c5497a86bf"
       },
       "arm32": {
         "url": "https://github.com/jpaestedstu-prog/pwd_flashcard_app/releases/download/v1.2.6/FlashLearnPWD-v1.2.6-arm32.apk",
-        "bytes": 68887614,
-        "sha256": "135892385addaf8d2fd524351eeae632f7815b24178ab81fbe07e78489336101"
+        "bytes": 68903998,
+        "sha256": "e9bfbe09ce29a6654786e0a59c66de7763ea5b5e6c88e1319999d7abf359c7e6"
       },
       "universal": {
         "url": "https://github.com/jpaestedstu-prog/pwd_flashcard_app/releases/download/v1.2.6/FlashLearnPWD-v1.2.6-universal.apk",
-        "bytes": 178925284,
-        "sha256": "a1f55c0f4f97d00bca70cb814e20842419127a423b71c14705234d25a139f947"
+        "bytes": 178941668,
+        "sha256": "e102384b5109c238ca72283bfbb95381dc8887070fee8282bd4ac34f41c1f17a"
       }
     }
   }

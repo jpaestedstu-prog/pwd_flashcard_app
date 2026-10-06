@@ -144,7 +144,7 @@ mode and replay them. They should still work (served from
 
 ## The website (`website/`)
 
-Eleven static pages with no build server; these scripts keep them honest.
+Twelve static pages with no build server; these scripts keep them honest.
 Each one has a `--check` (or is a pure regenerate) that fails on drift.
 
 | Script | Writes | Run it when |
