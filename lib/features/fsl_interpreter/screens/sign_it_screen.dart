@@ -980,7 +980,7 @@ class _CameraFallback extends StatelessWidget {
     final (IconData icon, String message) = switch (status) {
       _CamStatus.initializing => (
         Icons.hourglass_top_rounded,
-        'Starting camera…',
+        _t(context).siStartingCamera,
       ),
       _CamStatus.permissionDenied => (
         Icons.no_photography_rounded,

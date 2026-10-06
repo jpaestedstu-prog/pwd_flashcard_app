@@ -7,8 +7,12 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:pwdpwdpwd/core/services/sync_queue/sync_queue_storage.dart';
 import 'package:pwdpwdpwd/data/models/enums.dart';
 import 'package:pwdpwdpwd/data/models/models.dart';
+import 'package:pwdpwdpwd/core/widgets/pro_surface.dart';
+import 'package:pwdpwdpwd/features/home/models/educator_home_tiles.dart';
 import 'package:pwdpwdpwd/features/home/screens/educator_home_screen.dart';
+import 'package:pwdpwdpwd/features/parent/models/educator_audience.dart';
 import 'package:pwdpwdpwd/l10n/app_localizations.dart';
+import 'package:pwdpwdpwd/l10n/app_localizations_en.dart';
 import 'package:pwdpwdpwd/providers/app_providers.dart';
 
 /// Both educator roles get the Assessments & Progress group.
@@ -114,6 +118,29 @@ void main() {
       expect(find.text('Assessments'), findsOneWidget);
       expect(find.text('Assign Tasks'), findsOneWidget);
       expect(find.text('Track Progress'), findsOneWidget);
+    });
+  }
+
+  // The homes are built from the one list in educator_home_tiles.dart; this is
+  // the on-screen half of educator_home_tiles_test — every tile the list gives
+  // a role is really on that role's home.
+  for (final role in const [UserRole.teacher, UserRole.parent]) {
+    testWidgets('${role.name} home shows every tile the list gives it', (
+      tester,
+    ) async {
+      await pumpHome(tester, role);
+      final audience = role == UserRole.parent
+          ? EducatorAudience.parent
+          : EducatorAudience.teacher;
+      final t = AppLocalizationsEn();
+      for (final tile in educatorHomeTiles.where((x) => x.isFor(audience))) {
+        final label = tile.label(t, audience);
+        final finder = find.byWidgetPredicate(
+          (w) => w is ProActionTile && w.label == label,
+        );
+        await scrollTo(tester, finder);
+        expect(finder, findsOneWidget, reason: tile.id);
+      }
     });
   }
 

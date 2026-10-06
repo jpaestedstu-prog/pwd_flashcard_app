@@ -117,7 +117,7 @@ void main() {
     }
 
     expect(
-      find.text('No FSL video available yet for “Run”.'),
+      find.text('The sign for “Run” is coming soon. For now, learn this word with its picture and words.'),
       findsOneWidget,
       reason: 'the persistent sheet every other FSL surface shows',
     );
@@ -178,7 +178,7 @@ void main() {
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 100));
     }
-    expect(find.text('No FSL video available yet for “Run”.'), findsOneWidget);
+    expect(find.text('The sign for “Run” is coming soon. For now, learn this word with its picture and words.'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());
   });

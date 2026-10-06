@@ -585,23 +585,36 @@ class _FslWordCard extends StatelessWidget {
                         color: card.category.color,
                         size: context.scaleIcon(18),
                       ),
-                      const Spacer(),
-                      if (watched)
-                        Padding(
-                          padding: const EdgeInsets.only(right: 4),
-                          child: Icon(
-                            Icons.check_circle_rounded,
-                            color: hc.success,
-                            size: context.scaleIcon(16),
+                      if (hasVideo) ...[
+                        const Spacer(),
+                        if (watched)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 4),
+                            child: Icon(
+                              Icons.check_circle_rounded,
+                              color: hc.success,
+                              size: context.scaleIcon(16),
+                            ),
+                          ),
+                        Icon(
+                          Icons.play_circle_rounded,
+                          color: HCColor.of(context).graphic(AppColors.secondary),
+                          size: context.scaleIcon(22),
+                        ),
+                      ] else ...[
+                        const SizedBox(width: 8),
+                        // Scales down rather than overflowing the narrowest
+                        // cell at a large Font Size.
+                        const Expanded(
+                          child: Align(
+                            alignment: AlignmentDirectional.centerEnd,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: _SignSoonTag(),
+                            ),
                           ),
                         ),
-                      Icon(
-                        hasVideo
-                            ? Icons.play_circle_rounded
-                            : Icons.videocam_off_rounded,
-                        color: hasVideo ? HCColor.of(context).graphic(AppColors.secondary) : hc.textHint,
-                        size: context.scaleIcon(22),
-                      ),
+                      ],
                     ],
                   ),
                   // Flexible so that even if a font fallback makes the words taller
@@ -675,6 +688,45 @@ class _FslWordCard extends StatelessWidget {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// "Coming soon" on a word whose sign has not been recorded yet — the same
+/// words the website's dictionary lists under "Signs coming soon". Read out
+/// as part of the card's own label, so it is hidden from screen readers here.
+class _SignSoonTag extends StatelessWidget {
+  const _SignSoonTag();
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    return ExcludeSemantics(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: hc.border, width: 1.5),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.schedule_rounded,
+              size: context.scaleIcon(13),
+              color: hc.textSecondary,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              _t(context).signSoonShort,
+              style: AppTypography.labelSmall.copyWith(
+                color: hc.textSecondary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
         ),
       ),
     );

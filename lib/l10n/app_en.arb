@@ -982,6 +982,7 @@
     }
   },
   "comingSoon": "Coming soon",
+  "signSoonShort": "Coming soon",
   "gameReviewTitle": "{game} Review",
   "@gameReviewTitle": {
     "placeholders": {
@@ -3897,7 +3898,7 @@
       }
     }
   },
-  "fslNoVideoSemantics": "{english}, {filipino}. No sign video yet.",
+  "fslNoVideoSemantics": "{english}, {filipino}. Sign coming soon.",
   "@fslNoVideoSemantics": {
     "placeholders": {
       "english": {
@@ -6217,6 +6218,7 @@
   "siYou": "You",
   "siNoPermission": "Camera permission off.\nYou can still watch and practise!",
   "siNoCamera": "No camera found.\nJust watch and practise the sign!",
+  "siStartingCamera": "Starting camera…",
   "siCameraOff": "Camera unavailable.\nJust watch and practise the sign!",
   "fvNeedsInternet": "The sign for “{word}” needs the internet to load the first time. Connect and try again — after that it works offline.",
   "@fvNeedsInternet": {
@@ -6226,7 +6228,10 @@
       }
     }
   },
-  "fvNoVideo": "No FSL video available yet for “{word}”.",
+  "fvNoVideo": "The sign for “{word}” is coming soon. For now, learn this word with its picture and words.",
+  "fvComingSoonTitle": "Sign coming soon",
+  "fvNoSignForWord": "There is no sign video for “{word}”. Signs are recorded for the app’s own words.",
+  "@fvNoSignForWord": {"placeholders": {"word": {"type": "String"}}},
   "@fvNoVideo": {
     "placeholders": {
       "word": {

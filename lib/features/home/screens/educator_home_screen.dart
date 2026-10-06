@@ -20,6 +20,7 @@ import '../../../l10n/app_localizations_en.dart';
 import '../../parent/models/educator_audience.dart';
 import '../../messaging/providers/messaging_providers.dart';
 import '../../assessment/providers/assessment_provider.dart';
+import '../models/educator_home_tiles.dart';
 
 /// Home screen shown to teachers and parents.
 ///
@@ -499,342 +500,56 @@ class _QuickActions extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context) ?? AppLocalizationsEn();
+    final audience = isParent
+        ? EducatorAudience.parent
+        : EducatorAudience.teacher;
     // Unread messages from the educator's learners, badged onto the Messages
     // tile so a teacher doesn't have to open the inbox to discover that a
     // student wrote to them.
     final unreadMessages = ref.watch(messagesTileBadgeProvider);
-    if (isParent) {
-      return _buildParentChips(context, unreadMessages);
-    }
-    return _buildTeacherChips(context, unreadMessages);
-  }
 
-  Widget _buildParentChips(BuildContext context, int unreadMessages) {
-    final t = AppLocalizations.of(context) ?? AppLocalizationsEn();
-    // Primary actions as large, easy-to-tap professional tiles; the rest tuck
-    // into a compact "More" grid. (Family View lives in the hero CTA above, so
-    // it isn't duplicated here.)
+    // Both homes come from the one list in `educator_home_tiles.dart`, so a
+    // tile can no longer go missing from one of them by accident (Worksheets
+    // did, when these were two hand-written lists).
+    ProActionGrid grid(EducatorTileSection section, {bool compact = true}) =>
+        ProActionGrid(
+          compact: compact,
+          tiles: [
+            for (final tile in educatorTilesFor(audience, section))
+              ProActionTile(
+                compact: compact,
+                icon: tile.iconFor?.call(audience) ?? tile.icon,
+                label: tile.label(t, audience),
+                caption: compact ? null : tile.caption?.call(t, audience),
+                accent: tile.accent,
+                onTap: () => context.push(tile.route(audience)),
+                badgeCount: tile.showsUnreadMessages ? unreadMessages : null,
+              ),
+          ],
+        );
+
+    // Large primary tiles for the daily essentials, then the long tail of
+    // actions grouped under a compact "More" section. (The role's dashboard
+    // lives in the hero button above, so it isn't repeated here.)
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ProActionGrid(
-          tiles: [
-            ProActionTile(
-              icon: Icons.assessment_rounded,
-              label: t.eduReports,
-              caption: t.eduWeeklySummary,
-              accent: AppColors.warning,
-              onTap: () => context.push('/weekly-reports'),
-            ),
-            ProActionTile(
-              icon: Icons.shield_rounded,
-              label: t.eduParentalControlsTile,
-              caption: t.eduLimitsSafety,
-              accent: AppColors.sectionAssessment,
-              onTap: () => context.push('/parental-controls'),
-            ),
-            ProActionTile(
-              icon: Icons.style_rounded,
-              label: t.eduCards,
-              caption: t.eduBrowseDecks,
-              accent: AppColors.info,
-              onTap: () => context.push('/flashcards'),
-            ),
-            ProActionTile(
-              icon: Icons.qr_code_2_rounded,
-              label: t.eduShareCode,
-              caption: t.eduInviteChild,
-              accent: AppColors.success,
-              onTap: () => context.push('/home-group-manage'),
-            ),
-          ],
-        ),
+        grid(EducatorTileSection.primary, compact: false),
         const SizedBox(height: 24),
         ProSectionHeader(title: t.eduMore),
         const SizedBox(height: 12),
         _GroupLabel(text: t.eduContent, color: hc.textSecondary),
         const SizedBox(height: 8),
-        ProActionGrid(
-          compact: true,
-          tiles: [
-            ProActionTile(
-              compact: true,
-              icon: Icons.tv_rounded,
-              label: t.eduTvCast,
-              accent: AppColors.primary,
-              onTap: () => context.push('/tv-cast'),
-            ),
-            // Shared with the teacher's grid. When the quick actions were
-            // split by role, the parent's copy left Worksheets out — and this
-            // tile was a Parent's only way to /worksheets.
-            ProActionTile(
-              compact: true,
-              icon: Icons.print_rounded,
-              label: t.eduWorksheets,
-              accent: AppColors.sectionWellbeing,
-              onTap: () => context.push('/worksheets'),
-            ),
-            ProActionTile(
-              compact: true,
-              icon: Icons.message_rounded,
-              label: t.eduMessages,
-              accent: AppColors.sectionSocial,
-              onTap: () => context.push('/messages'),
-              badgeCount: unreadMessages,
-            ),
-            ProActionTile(
-              compact: true,
-              icon: Icons.sticky_note_2_rounded,
-              label: t.eduTeacherNotes,
-              accent: AppColors.sectionCommunication,
-              onTap: () => context.push('/parent-teacher-notes'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 18),
-        // Same group as the teacher's, pointed at the parent's own surfaces.
-        // A Parent had no route into the assessment module at all: no tile
-        // here, and the hub itself only opened its educator sections for
-        // `role == teacher`. Both roles enrol learners and both should be able
-        // to set them work — see `UserRoleX.isEnrollableLearner`.
-        _GroupLabel(text: t.eduAssessmentsProgress, color: hc.textSecondary),
-        const SizedBox(height: 8),
-        ProActionGrid(
-          compact: true,
-          tiles: [
-            ProActionTile(
-              compact: true,
-              icon: Icons.quiz_rounded,
-              label: t.eduAssessments,
-              accent: AppColors.sectionAssessment,
-              onTap: () => context.push('/assessment'),
-            ),
-            ProActionTile(
-              compact: true,
-              icon: Icons.assignment_turned_in_rounded,
-              label: t.eduAssignTasks,
-              accent: AppColors.success,
-              onTap: () => context.push('/assessment/assign'),
-            ),
-            ProActionTile(
-              compact: true,
-              icon: Icons.track_changes_rounded,
-              label: t.eduTrackProgress,
-              accent: AppColors.info,
-              onTap: () => context.push('/assessment/tracking'),
-            ),
-            ProActionTile(
-              compact: true,
-              icon: Icons.insights_rounded,
-              label: t.eduClassReport,
-              accent: AppColors.sectionAssessment,
-              onTap: () => context.push('/assessment/class-report'),
-            ),
-            ProActionTile(
-              compact: true,
-              icon: Icons.family_restroom_rounded,
-              label: t.eduManageGroups,
-              accent: AppColors.sectionCommunication,
-              onTap: () => context.push('/home-group-manage'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 18),
-        // The study has parents answer the SUS and have home learners' data
-        // exported, and neither had a way in: the whole Research group lived
-        // on the teacher's home only. Experiment Setup stays teacher-side —
-        // the study runs no control groups, so a parent has nothing to set.
-        _GroupLabel(text: t.eduResearch, color: hc.textSecondary),
-        const SizedBox(height: 8),
-        ProActionGrid(
-          compact: true,
-          tiles: [
-            ProActionTile(
-              compact: true,
-              icon: Icons.poll_rounded,
-              label: t.eduSusSurvey,
-              accent: AppColors.sectionCommunication,
-              onTap: () => context.push('/survey-results'),
-            ),
-            ProActionTile(
-              compact: true,
-              icon: Icons.file_download_rounded,
-              label: t.eduResearchExport,
-              accent: AppColors.primaryDark,
-              onTap: () => context.push('/research-export'),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTeacherChips(BuildContext context, int unreadMessages) {
-    final t = AppLocalizations.of(context) ?? AppLocalizationsEn();
-    const audience = EducatorAudience.teacher;
-    final filipino = t.localeName.startsWith('fil');
-    // Six large primary tiles for the daily essentials, then the long tail of
-    // actions grouped under a compact "More" section.
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ProActionGrid(
-          tiles: [
-            ProActionTile(
-              icon: Icons.people_rounded,
-              label: audience.allLearnersTitleOf(filipino: filipino),
-              caption: t.eduRosterProgress,
-              accent: AppColors.sectionLearning,
-              onTap: () => context.push('/multi-dashboard'),
-            ),
-            ProActionTile(
-              icon: Icons.analytics_rounded,
-              label: t.eduAnalytics,
-              caption: t.eduClassInsights,
-              accent: AppColors.sectionCommunication,
-              onTap: () => context.push('/teacher-analytics'),
-            ),
-            ProActionTile(
-              icon: Icons.assessment_rounded,
-              label: t.eduReports,
-              caption: t.eduWeeklySummary,
-              accent: AppColors.warning,
-              onTap: () => context.push('/weekly-reports'),
-            ),
-            ProActionTile(
-              icon: Icons.cast_for_education_rounded,
-              label: t.eduClassroomTile,
-              caption: t.eduLiveSession,
-              accent: AppColors.accent,
-              onTap: () => context.push('/classroom'),
-            ),
-            ProActionTile(
-              icon: Icons.style_rounded,
-              label: t.eduCards,
-              caption: t.eduBrowseDecks,
-              accent: AppColors.info,
-              onTap: () => context.push('/flashcards'),
-            ),
-            ProActionTile(
-              icon: Icons.qr_code_2_rounded,
-              label: t.eduShareCode,
-              caption: t.eduInviteStudents,
-              accent: AppColors.success,
-              onTap: () => context.push('/classroom-manage'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
-        ProSectionHeader(title: t.eduMore),
-        const SizedBox(height: 12),
-        _GroupLabel(text: t.eduContent, color: hc.textSecondary),
-        const SizedBox(height: 8),
-        ProActionGrid(
-          compact: true,
-          tiles: [
-            ProActionTile(
-              compact: true,
-              icon: Icons.tv_rounded,
-              label: t.eduTvCast,
-              accent: AppColors.primary,
-              onTap: () => context.push('/tv-cast'),
-            ),
-            ProActionTile(
-              compact: true,
-              icon: Icons.print_rounded,
-              label: t.eduWorksheets,
-              accent: AppColors.sectionWellbeing,
-              onTap: () => context.push('/worksheets'),
-            ),
-            ProActionTile(
-              compact: true,
-              icon: Icons.message_rounded,
-              label: t.eduMessages,
-              accent: AppColors.sectionSocial,
-              onTap: () => context.push('/messages'),
-              badgeCount: unreadMessages,
-            ),
-            ProActionTile(
-              compact: true,
-              icon: Icons.sticky_note_2_rounded,
-              label: t.eduParentNotes,
-              accent: AppColors.sectionCommunication,
-              onTap: () => context.push('/parent-teacher-notes'),
-            ),
-          ],
-        ),
+        grid(EducatorTileSection.content),
         const SizedBox(height: 18),
         _GroupLabel(text: t.eduAssessmentsProgress, color: hc.textSecondary),
         const SizedBox(height: 8),
-        ProActionGrid(
-          compact: true,
-          tiles: [
-            ProActionTile(
-              compact: true,
-              icon: Icons.quiz_rounded,
-              label: t.eduAssessments,
-              accent: AppColors.sectionAssessment,
-              onTap: () => context.push('/assessment'),
-            ),
-            ProActionTile(
-              compact: true,
-              icon: Icons.assignment_turned_in_rounded,
-              label: t.eduAssignTasks,
-              accent: AppColors.success,
-              onTap: () => context.push('/assessment/assign'),
-            ),
-            ProActionTile(
-              compact: true,
-              icon: Icons.track_changes_rounded,
-              label: t.eduTrackProgress,
-              accent: AppColors.info,
-              onTap: () => context.push('/assessment/tracking'),
-            ),
-            ProActionTile(
-              compact: true,
-              icon: Icons.insights_rounded,
-              label: t.eduClassReport,
-              accent: AppColors.sectionAssessment,
-              onTap: () => context.push('/assessment/class-report'),
-            ),
-            ProActionTile(
-              compact: true,
-              icon: Icons.qr_code_2_rounded,
-              label: t.eduManageClasses,
-              accent: AppColors.sectionCommunication,
-              onTap: () => context.push('/classroom-manage'),
-            ),
-          ],
-        ),
+        grid(EducatorTileSection.assessments),
         const SizedBox(height: 18),
         _GroupLabel(text: t.eduResearch, color: hc.textSecondary),
         const SizedBox(height: 8),
-        ProActionGrid(
-          compact: true,
-          tiles: [
-            ProActionTile(
-              compact: true,
-              icon: Icons.science_rounded,
-              label: t.eduExperimentSetup,
-              accent: AppColors.sectionWellbeing,
-              onTap: () => context.push('/experiment-setup'),
-            ),
-            ProActionTile(
-              compact: true,
-              icon: Icons.poll_rounded,
-              label: t.eduSusSurvey,
-              accent: AppColors.sectionCommunication,
-              onTap: () => context.push('/survey-results'),
-            ),
-            ProActionTile(
-              compact: true,
-              icon: Icons.file_download_rounded,
-              label: t.eduResearchExport,
-              accent: AppColors.primaryDark,
-              onTap: () => context.push('/research-export'),
-            ),
-          ],
-        ),
+        grid(EducatorTileSection.research),
       ],
     );
   }

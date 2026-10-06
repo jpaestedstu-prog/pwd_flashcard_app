@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
 import '../core/services/fsl_assets_service.dart';
+import '../data/local/seed_data.dart';
 import '../data/models/enums.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
@@ -52,6 +53,14 @@ Future<void> showFslVideoSheet(
       onMasteryChanged: onMasteryChanged,
     ),
   );
+}
+
+/// Whether [english] is one of the app's own words (not an educator's custom
+/// card, a routine step or free text). Only those are promised a sign: the
+/// website lists the ones still unrecorded as "Signs coming soon".
+bool isAppWord(String english) {
+  final w = english.trim().toLowerCase();
+  return SeedData.allFlashcards.any((c) => c.wordEnglish.toLowerCase() == w);
 }
 
 /// Shows the friendly "no FSL video available yet" bottom sheet for
@@ -466,6 +475,7 @@ class _FslUnavailableSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final comingSoon = !unreachable && isAppWord(wordEnglish);
     // SafeArea + scroll wrapper keeps the sheet usable at any font scale /
     // device height: it sizes to its content and only scrolls if the content
     // would otherwise be taller than the screen (e.g. XL accessibility fonts
@@ -511,15 +521,25 @@ class _FslUnavailableSheet extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
+              // "Sign coming soon" — the website's dictionary says the same
+              // for the app's own words still waiting for a recorded sign.
+              // Not for an offline learner (that sign exists) and not for a
+              // teacher's own card or a routine step: nobody will record
+              // those, so "coming soon" would be a promise nobody keeps.
               Text(
-                AppLocalizations.of(context)!.filipinoSignLanguage,
+                comingSoon
+                    ? _t(context).fvComingSoonTitle
+                    : AppLocalizations.of(context)!.filipinoSignLanguage,
                 style: AppTypography.titleLarge,
+                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
                 unreachable
                     ? _t(context).fvNeedsInternet(wordEnglish)
-                    : _t(context).fvNoVideo(wordEnglish),
+                    : comingSoon
+                    ? _t(context).fvNoVideo(wordEnglish)
+                    : _t(context).fvNoSignForWord(wordEnglish),
                 style: AppTypography.bodyMedium.copyWith(
                   color: HCColor.of(context).textSecondary,
                 ),

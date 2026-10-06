@@ -3382,6 +3382,12 @@ abstract class AppLocalizations {
   /// **'Coming soon'**
   String get comingSoon;
 
+  /// No description provided for @signSoonShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Coming soon'**
+  String get signSoonShort;
+
   /// No description provided for @gameReviewTitle.
   ///
   /// In en, this message translates to:
@@ -8999,7 +9005,7 @@ abstract class AppLocalizations {
   /// No description provided for @fslNoVideoSemantics.
   ///
   /// In en, this message translates to:
-  /// **'{english}, {filipino}. No sign video yet.'**
+  /// **'{english}, {filipino}. Sign coming soon.'**
   String fslNoVideoSemantics(String english, String filipino);
 
   /// No description provided for @fslRemoveMySigns.
@@ -15176,6 +15182,12 @@ abstract class AppLocalizations {
   /// **'No camera found.\nJust watch and practise the sign!'**
   String get siNoCamera;
 
+  /// No description provided for @siStartingCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting camera…'**
+  String get siStartingCamera;
+
   /// No description provided for @siCameraOff.
   ///
   /// In en, this message translates to:
@@ -15191,8 +15203,20 @@ abstract class AppLocalizations {
   /// No description provided for @fvNoVideo.
   ///
   /// In en, this message translates to:
-  /// **'No FSL video available yet for “{word}”.'**
+  /// **'The sign for “{word}” is coming soon. For now, learn this word with its picture and words.'**
   String fvNoVideo(String word);
+
+  /// No description provided for @fvComingSoonTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign coming soon'**
+  String get fvComingSoonTitle;
+
+  /// No description provided for @fvNoSignForWord.
+  ///
+  /// In en, this message translates to:
+  /// **'There is no sign video for “{word}”. Signs are recorded for the app’s own words.'**
+  String fvNoSignForWord(String word);
 
   /// No description provided for @fvCanYou.
   ///

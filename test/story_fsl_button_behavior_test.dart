@@ -50,7 +50,7 @@ void main() {
       // Same friendly bottom sheet Flashcards → Cards → FSL shows.
       expect(find.byType(BottomSheet), findsOneWidget);
       expect(
-        find.text('No FSL video available yet for “Apple”.'),
+        find.text('The sign for “Apple” is coming soon. For now, learn this word with its picture and words.'),
         findsOneWidget,
       );
       // The old Stories behaviour (a SnackBar) must be gone.

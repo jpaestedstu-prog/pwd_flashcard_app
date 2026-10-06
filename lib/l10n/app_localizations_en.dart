@@ -1816,6 +1816,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get comingSoon => 'Coming soon';
 
   @override
+  String get signSoonShort => 'Coming soon';
+
+  @override
   String gameReviewTitle(String game) {
     return '$game Review';
   }
@@ -5499,7 +5502,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String fslNoVideoSemantics(String english, String filipino) {
-    return '$english, $filipino. No sign video yet.';
+    return '$english, $filipino. Sign coming soon.';
   }
 
   @override
@@ -9124,6 +9127,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'No camera found.\nJust watch and practise the sign!';
 
   @override
+  String get siStartingCamera => 'Starting camera…';
+
+  @override
   String get siCameraOff =>
       'Camera unavailable.\nJust watch and practise the sign!';
 
@@ -9134,7 +9140,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String fvNoVideo(String word) {
-    return 'No FSL video available yet for “$word”.';
+    return 'The sign for “$word” is coming soon. For now, learn this word with its picture and words.';
+  }
+
+  @override
+  String get fvComingSoonTitle => 'Sign coming soon';
+
+  @override
+  String fvNoSignForWord(String word) {
+    return 'There is no sign video for “$word”. Signs are recorded for the app’s own words.';
   }
 
   @override

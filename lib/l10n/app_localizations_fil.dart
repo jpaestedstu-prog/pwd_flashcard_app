@@ -1838,6 +1838,9 @@ class AppLocalizationsFil extends AppLocalizations {
   String get comingSoon => 'Malapit nang dumating';
 
   @override
+  String get signSoonShort => 'Malapit na';
+
+  @override
   String gameReviewTitle(String game) {
     return 'Balik-aral sa $game';
   }
@@ -5429,7 +5432,7 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String fslNoVideoSemantics(String english, String filipino) {
-    return '$english, $filipino. Wala pang video ng senyas.';
+    return '$english, $filipino. Malapit na ang senyas.';
   }
 
   @override
@@ -9052,6 +9055,9 @@ class AppLocalizationsFil extends AppLocalizations {
       'Walang nakitang camera.\nManood at sanayin lang ang senyas!';
 
   @override
+  String get siStartingCamera => 'Binubuksan ang camera…';
+
+  @override
   String get siCameraOff =>
       'Hindi magamit ang camera.\nManood at sanayin lang ang senyas!';
 
@@ -9062,7 +9068,15 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String fvNoVideo(String word) {
-    return 'Wala pang video ng FSL para sa “$word”.';
+    return 'Malapit nang idagdag ang senyas para sa “$word”. Sa ngayon, pag-aralan ang salitang ito gamit ang larawan at mga salita nito.';
+  }
+
+  @override
+  String get fvComingSoonTitle => 'Malapit na ang senyas';
+
+  @override
+  String fvNoSignForWord(String word) {
+    return 'Walang video ng senyas para sa “$word”. Para lang sa mga salita ng app ang mga naka-record na senyas.';
   }
 
   @override

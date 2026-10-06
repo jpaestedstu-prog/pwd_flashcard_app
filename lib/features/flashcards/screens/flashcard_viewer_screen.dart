@@ -332,6 +332,16 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
     );
     final l10n = AppLocalizations.of(context)!;
     final card = _cards.isNotEmpty ? _cards[_currentIndex] : null;
+    // One of the app's own words whose sign is not recorded yet: the FSL
+    // button says "Coming soon" before the tap, as the website's dictionary
+    // does. Unknown while availability loads, so it keeps the plain label.
+    final fslAvailability = ref.watch(fslAvailabilityProvider).valueOrNull;
+    final signSoon =
+        card != null &&
+        !card.isCustom &&
+        fslAvailability != null &&
+        !fslAvailability.hasVideo(card) &&
+        isAppWord(card.wordEnglish);
 
     // The bottom action bar as one hands-free D-pad row: look ◀ ▶ to move the
     // highlight across the controls, blink (or look-up) to open the focused one
@@ -348,8 +358,12 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
       if (showFsl)
         _ViewerAction(
           icon: Icons.sign_language_rounded,
-          label: l10n.fsl,
-          color: AppColors.secondary,
+          label: signSoon ? l10n.signSoonShort : l10n.fsl,
+          semanticLabel: signSoon ? l10n.fvComingSoonTitle : null,
+          // Muted but still a button: the tap explains in full.
+          color: signSoon
+              ? HCColor.of(context).textSecondary
+              : AppColors.secondary,
           onTap: card != null ? () => _showFslVideo(card) : null,
         ),
       if (card != null && ActionClipService.hasClip(card))
@@ -383,7 +397,7 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
       [
         for (final a in actions)
           GazeDpadCell(
-            label: a.label,
+            label: a.semanticLabel ?? a.label,
             enabled: a.enabled && a.onTap != null,
             onActivate: a.onTap ?? () {},
           ),
@@ -715,6 +729,7 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
                                 _ActionButton(
                                   icon: a.icon,
                                   label: a.label,
+                                  semanticLabel: a.semanticLabel,
                                   color: a.color,
                                   onTap: a.onTap,
                                   enabled: a.enabled,
@@ -1459,6 +1474,9 @@ class _MiniListenButton extends StatelessWidget {
 class _ActionButton extends StatelessWidget {
   final IconData icon;
   final String label;
+
+  /// Read out instead of "[label] button" when set.
+  final String? semanticLabel;
   final VoidCallback? onTap;
   final Color? color;
   final bool enabled;
@@ -1471,6 +1489,7 @@ class _ActionButton extends StatelessWidget {
   const _ActionButton({
     required this.icon,
     required this.label,
+    this.semanticLabel,
     this.onTap,
     this.color,
     this.enabled = true,
@@ -1489,7 +1508,7 @@ class _ActionButton extends StatelessWidget {
     return Semantics(
       button: true,
       enabled: enabled,
-      label: AppLocalizations.of(context)!.viewerButton(label),
+      label: semanticLabel ?? AppLocalizations.of(context)!.viewerButton(label),
       child: GestureDetector(
         onTap: enabled ? onTap : null,
         child: Column(
@@ -1569,6 +1588,11 @@ class _ActionButton extends StatelessWidget {
 class _ViewerAction {
   final IconData icon;
   final String label;
+
+  /// What a screen reader and the spoken gaze highlight say, when the short
+  /// visible [label] is not enough on its own ("Coming soon" → "Sign coming
+  /// soon").
+  final String? semanticLabel;
   final Color? color;
   final VoidCallback? onTap;
   final bool enabled;
@@ -1576,6 +1600,7 @@ class _ViewerAction {
   const _ViewerAction({
     required this.icon,
     required this.label,
+    this.semanticLabel,
     this.onTap,
     this.color,
     this.enabled = true,
