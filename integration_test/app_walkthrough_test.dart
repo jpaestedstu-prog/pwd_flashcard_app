@@ -23,6 +23,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:pwdpwdpwd/core/utils/error_handler.dart';
 import 'package:pwdpwdpwd/main.dart' as app;
 import 'package:pwdpwdpwd/navigation/app_router.dart' show rootNavigatorKey;
@@ -221,8 +222,77 @@ class _Walk {
     await _tap(find.text('Flip'));
     await _settle(const Duration(seconds: 2));
     await _shot('viewer_flipped');
-    _router.go('/home');
+
+    await _checkSettings();
+    await _deleteOwnProfile();
+  }
+
+  /// Settings shows the installed version, the privacy page and "Delete
+  /// this profile"; "Check for updates" only in a website APK (never iOS).
+  Future<void> _checkSettings() async {
+    _router.go('/settings');
+    await _settle(const Duration(seconds: 3));
+    final info = await PackageInfo.fromPlatform();
+    final expected = <String, bool>{
+      'Version ${info.version}': true,
+      'Privacy & data': true,
+      'Delete this profile': true,
+      'Check for updates': Platform.isAndroid,
+    };
+    for (final entry in expected.entries) {
+      final shown = await _scrollTo(find.textContaining(entry.key));
+      // ignore: avoid_print
+      print('WALK settings "${entry.key}": ${shown ? 'shown' : 'not shown'}');
+      if (shown != entry.value) {
+        failures.add('Settings: "${entry.key}" '
+            '${entry.value ? 'is missing' : 'should not be shown'}');
+      }
+    }
+    await _scrollTo(find.textContaining('Version ${info.version}'));
+    await _shot('settings_about');
+  }
+
+  /// The store account-deletion rule, end to end: the profile deletes itself
+  /// and the app goes back to choosing a profile.
+  Future<void> _deleteOwnProfile() async {
+    if (!await _scrollTo(find.text('Delete this profile'))) return;
+    await _tap(find.text('Delete this profile'));
+    if (!await _waitFor(find.text('Delete'), const Duration(seconds: 10))) {
+      failures.add('Delete this profile: no confirmation dialog');
+      return;
+    }
+    await _settle(const Duration(seconds: 1));
+    await _shot('delete_profile_confirm');
+    await _tap(find.text('Delete'));
+    final back = await _waitForAny({
+      'choose': find.text('Player (with Progress)'),
+      'switcher': find.text('Add New Profile'),
+    }, const Duration(seconds: 20));
     await _settle(const Duration(seconds: 2));
+    await _shot('after_delete_profile');
+    if (back == null) {
+      failures.add('Delete this profile: did not return to choosing a profile');
+    } else if (find.text(_profileName).evaluate().isNotEmpty) {
+      failures.add('Delete this profile: "$_profileName" is still listed');
+    }
+    // ignore: avoid_print
+    print('WALK delete profile -> ${back ?? 'stuck'}');
+  }
+
+  /// Scrolls the page's main (vertical) list until [finder] is built.
+  Future<bool> _scrollTo(Finder finder) async {
+    if (finder.evaluate().isNotEmpty) return true;
+    final lists = find.byWidgetPredicate(
+      (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
+    );
+    if (lists.evaluate().isEmpty) return false;
+    try {
+      await tester.scrollUntilVisible(finder, 300, scrollable: lists.first,
+          maxScrolls: 40);
+      return true;
+    } catch (_) {
+      return finder.evaluate().isNotEmpty;
+    }
   }
 
   Future<void> _createProgressPlayer() async {
@@ -299,7 +369,19 @@ class _Walk {
     // router's _slow wrapper), which a debug build on an emulator takes long
     // to finish.
     await _settle(Duration(milliseconds: route.contains('viewer') ? 5000 : 2800));
-    final landed = _location();
+    var landed = _location();
+    if (landed != '/home') {
+      // A big screen in a debug build can still be mid-transition: wait
+      // until Home's greeting is really covered (it is offstage, and so not
+      // found, once a page sits on top of it) before taking the picture.
+      final greeting = find.textContaining('Hi, $_profileName');
+      final end = DateTime.now().add(const Duration(seconds: 10));
+      while (greeting.evaluate().isNotEmpty && DateTime.now().isBefore(end)) {
+        await _settle(const Duration(milliseconds: 500));
+      }
+      await _settle(const Duration(milliseconds: 800));
+      landed = _location();
+    }
     final label = name ?? route.substring(1).replaceAll('/', '_');
     await _shot(label.isEmpty ? 'home' : label);
 
