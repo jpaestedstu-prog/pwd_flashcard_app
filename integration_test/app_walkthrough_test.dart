@@ -11,6 +11,10 @@
 // overflowed. FLASHLEARN_OFFLINE keeps the app off Firebase, exactly as when
 // the cloud is unreachable, so a test run creates nothing online; Firebase
 // itself is covered by firebase_smoke_test.dart.
+//
+// NEVER point it at a tablet with real profiles: when `flutter drive`
+// finishes it stops AND UNINSTALLS the app (drive_service.dart), which wipes
+// every profile on the device. Emulators and simulators only.
 
 import 'dart:io' show Platform;
 import 'dart:ui' show PlatformDispatcher;
@@ -95,13 +99,15 @@ void main() {
       final walk = _Walk(tester, binding);
       final flutterOnError = FlutterError.onError;
       final platformOnError = PlatformDispatcher.instance.onError;
+      final errorWidgetBuilder = ErrorWidget.builder;
       try {
         await walk.run();
       } finally {
-        // The app installs its own handlers; the test framework insists on
-        // getting its own back.
+        // The app installs its own handlers and error box; the test framework
+        // insists on getting its own back.
         FlutterError.onError = flutterOnError;
         PlatformDispatcher.instance.onError = platformOnError;
+        ErrorWidget.builder = errorWidgetBuilder;
       }
       walk.report();
       expect(walk.failures, isEmpty, reason: walk.failures.join('\n'));
@@ -133,6 +139,12 @@ class _Walk {
       _frameworkErrors.add(details.exceptionAsString().split('\n').first);
       appOnError?.call(details);
     };
+    if (Platform.isAndroid) {
+      // Android screenshots read the Flutter surface as an image; done early
+      // so that even a screen stuck at launch can be captured.
+      await _settle(const Duration(seconds: 2));
+      await binding.convertFlutterSurfaceToImage();
+    }
 
     final first = await _waitForAny({
       'welcome': find.text('Skip'),
@@ -142,12 +154,8 @@ class _Walk {
     }, const Duration(seconds: 120));
     if (first == null) {
       await _shot('stuck_at_start');
-      failures.add('No first screen within 120 s');
+      failures.add('No first screen within 120 s. On screen: ${_visibleTexts()}');
       return;
-    }
-    if (Platform.isAndroid) {
-      // Android screenshots read the Flutter surface as an image.
-      await binding.convertFlutterSurfaceToImage();
     }
     await _settle(const Duration(seconds: 1));
 
@@ -186,6 +194,16 @@ class _Walk {
     await _settle(const Duration(seconds: 2));
     await _shot('home');
 
+    // A new profile's first visit opens the Daily Reward. Collect it, or it
+    // comes back over Home on every visit below.
+    final collect = find.textContaining('Collect');
+    if (await _waitFor(collect, const Duration(seconds: 6))) {
+      await _shot('daily_reward');
+      await _tap(collect);
+      await _settle(const Duration(seconds: 3));
+      await _shot('home_after_reward');
+    }
+
     // One real tap on the tab bar, then the rest through the router.
     await _tap(find.text('Games').last);
     await _settle(const Duration(seconds: 2));
@@ -200,8 +218,7 @@ class _Walk {
 
     // A flashcard flip, by hand.
     await _visit('/flashcards/viewer/0', push: true, name: 'viewer_before_flip');
-    final size = tester.view.physicalSize / tester.view.devicePixelRatio;
-    await tester.tapAt(Offset(size.width / 2, size.height * 0.42));
+    await _tap(find.text('Flip'));
     await _settle(const Duration(seconds: 2));
     await _shot('viewer_flipped');
     _router.go('/home');
@@ -251,6 +268,16 @@ class _Walk {
 
   GoRouter get _router => GoRouter.of(rootNavigatorKey.currentContext!);
 
+  /// Where the router really is. The browser-style URL only follows go(), so
+  /// a pushed page (or a redirect away from one) shows up on the stack only.
+  String _location() {
+    final config = _router.routerDelegate.currentConfiguration;
+    if (config.isEmpty) return '?';
+    final top = config.last;
+    if (top is ImperativeRouteMatch) return top.matches.uri.toString();
+    return config.uri.toString();
+  }
+
   /// Opens [route], waits for it to draw, screenshots it and records any
   /// error raised while it was on screen.
   Future<void> _visit(String route, {required bool push, String? name}) async {
@@ -268,14 +295,23 @@ class _Walk {
       failures.add('$route: navigation threw $e');
       return;
     }
-    await _settle(const Duration(milliseconds: 2800));
-    final landed = _router.routeInformationProvider.value.uri.toString();
+    // The flashcard viewer builds its card after the page transition (the
+    // router's _slow wrapper), which a debug build on an emulator takes long
+    // to finish.
+    await _settle(Duration(milliseconds: route.contains('viewer') ? 5000 : 2800));
+    final landed = _location();
     final label = name ?? route.substring(1).replaceAll('/', '_');
     await _shot(label.isEmpty ? 'home' : label);
 
     final newFramework = _frameworkErrors.sublist(errorsBefore);
     final newLogged = _appErrors().sublist(logBefore);
-    final errorWidget = find.byType(ErrorWidget).evaluate().isNotEmpty;
+    // Flutter's red box, or the app's own friendlier one (error_boundary.dart).
+    final errorWidget = find
+        .byWidgetPredicate((w) =>
+            w is ErrorWidget ||
+            w.runtimeType.toString() == '_FriendlyErrorWidget')
+        .evaluate()
+        .isNotEmpty;
     final problems = <String>[
       ...newFramework,
       for (final e in newLogged)
@@ -317,6 +353,16 @@ class _Walk {
       return const [];
     }
   }
+
+  /// The texts on screen, for a failure message that says where it stopped.
+  String _visibleTexts() => find
+      .byType(Text)
+      .evaluate()
+      .map((e) => (e.widget as Text).data)
+      .whereType<String>()
+      .where((t) => t.trim().isNotEmpty)
+      .take(25)
+      .join(' | ');
 
   void report() {
     // ignore: avoid_print
