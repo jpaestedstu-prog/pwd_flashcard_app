@@ -11,17 +11,17 @@
       "arm64": {
         "url": "https://github.com/jpaestedstu-prog/pwd_flashcard_app/releases/download/v1.3.0/FlashLearnPWD-v1.3.0-arm64.apk",
         "bytes": 76658102,
-        "sha256": "cfb31372c62425adc64273328f3f198a36e05c5d9141f10572bc488dabf8d9c6"
+        "sha256": "e3cb71e1c2380fffc85cc3ab2ebe25215b24d492e6a697d90837c12bccdf1fd5"
       },
       "arm32": {
         "url": "https://github.com/jpaestedstu-prog/pwd_flashcard_app/releases/download/v1.3.0/FlashLearnPWD-v1.3.0-arm32.apk",
         "bytes": 68907050,
-        "sha256": "c224654a5de09b982e7265cf6b8087bbefc9e4f7e8428ee59a85dbc742f7032b"
+        "sha256": "7151f519943e55d3385c8aec9425d77c7d28ab47fd4864c63591cac0da9de6a7"
       },
       "universal": {
         "url": "https://github.com/jpaestedstu-prog/pwd_flashcard_app/releases/download/v1.3.0/FlashLearnPWD-v1.3.0-universal.apk",
         "bytes": 178944716,
-        "sha256": "724d5fbc07cb572f19da2a991f4150f90b89715bee4917444cd9f2bbd7eb1b64"
+        "sha256": "44c7f91e0726da33d80cfb71568dc5956ae85864c009e2374f3476ea320a4879"
       }
     }
   }
