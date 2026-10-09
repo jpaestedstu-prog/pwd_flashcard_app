@@ -2,6 +2,21 @@
   "_comment": "Newest first. tools/release_page_build.py renders the website's download section, changelog, website/version.json and the GitHub release notes from this file plus pubspec.yaml and the built APKs. The first entry must match the pubspec version.",
   "releases": [
     {
+      "version": "1.3.0",
+      "build": 12,
+      "date": "2026-10-09",
+      "summary_en": "Any profile that is saved online can now delete itself, together with all of its online data: <strong>Settings → Data → Delete this profile</strong> (a learner’s profile needs a grown-up to say yes). A deletion made without internet is finished the next time the tablet connects. Settings → About now shows the app’s real version — it said 1.2.3 — and opens the privacy page. Behind the scenes, FlashLearn PWD now also builds for iPhone and iPad and for the Google Play Store; those versions will be announced here when they are published. Installs over v1.2.7 and keeps your profiles.",
+      "summary_fil": "Maaari nang burahin ng anumang profile na naka-save online ang sarili nito, kasama ang lahat ng datos nito online: <strong>Settings → Data → Delete this profile</strong> (kailangang pumayag ang isang nakatatanda para sa profile ng mag-aaral). Ang pagburang ginawa nang walang internet ay tatapusin sa susunod na pagkonekta ng tablet. Ipinapakita na ng Settings → About ang totoong bersyon ng app — 1.2.3 ang nakasulat dati — at binubuksan nito ang pahina ng privacy. Sa likod ng mga eksena, nabubuo na rin ang FlashLearn PWD para sa iPhone at iPad at para sa Google Play Store; ipapaalam dito ang mga bersyong iyon kapag nailathala na. Nai-i-install sa ibabaw ng v1.2.7 at nananatili ang inyong mga profile.",
+      "notes_en": "Any online profile can now delete itself with its online data, and Settings shows the real version and the privacy page.",
+      "notes_fil": "Maaari nang burahin ng anumang profile online ang sarili nito kasama ang datos nito online, at ipinapakita ng Settings ang totoong bersyon at ang pahina ng privacy.",
+      "bullets_en": [
+        "Settings → Data → Delete this profile: any profile saved online deletes itself and its online data (a learner’s needs a grown-up)",
+        "A deletion made offline is queued and finished the next time the tablet connects",
+        "Settings → About shows the installed version (it said 1.2.3) and opens the privacy page",
+        "Groundwork for the iPhone/iPad and Google Play versions: those copies update through their store, so they have no website update check"
+      ]
+    },
+    {
       "version": "1.2.7",
       "build": 11,
       "date": "2026-10-07",

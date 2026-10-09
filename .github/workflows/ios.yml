@@ -82,10 +82,56 @@ jobs:
             ios/Runner.xcworkspace/contents.xcworkspacedata
           retention-days: 14
 
+  # Diagnostic: why the arm64 (Apple Silicon) simulator build fails to link
+  # ("Framework 'Pods_Runner' not found"). Prints the real linker errors.
+  simulator-arm64-diagnostic:
+    name: arm64 simulator build (diagnostic)
+    runs-on: macos-15
+    timeout-minutes: 60
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use the newest stable Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_*.app | grep -iv beta | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Build for the simulator, verbose
+        run: |
+          mkdir -p logs
+          set +e
+          flutter build ios --simulator --debug --verbose > logs/sim-build.log 2>&1
+          status=$?
+          set -e
+          grep -E "error:|ld: |warning: ignoring file|building for|Undefined symbol|not found|EXCLUDED_ARCHS|ARCHS =" logs/sim-build.log | sort | uniq -c | sort -rn | head -60
+          exit $status
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sim-build-arm64-log
+          path: logs/
+          retention-days: 14
+
   simulator:
     name: Walkthrough on ${{ matrix.kind }}
-    runs-on: macos-15
-    timeout-minutes: 80
+    # Intel runner (standard, free on a public repository - never a "-large"
+    # or "-xlarge" label, those are billed). On Apple Silicon the debug
+    # simulator build fails to link (see the diagnostic job above - suspected:
+    # Google ML Kit ships no arm64-simulator slice); an x86_64 simulator does
+    # not need one.
+    runs-on: macos-15-intel
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
