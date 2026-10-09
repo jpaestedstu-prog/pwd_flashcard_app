@@ -256,6 +256,12 @@ class _Walk {
   /// The store account-deletion rule, end to end: the profile deletes itself
   /// and the app goes back to choosing a profile.
   Future<void> _deleteOwnProfile() async {
+    // From the top of a fresh Settings page, not wherever the checks above
+    // left the list.
+    _router.go('/home');
+    await _settle(const Duration(seconds: 1));
+    _router.go('/settings');
+    await _settle(const Duration(seconds: 3));
     if (!await _scrollTo(find.text('Delete this profile'))) {
       failures.add('Delete this profile: row not found in Settings');
       return;
@@ -285,22 +291,30 @@ class _Walk {
 
   /// Scrolls the page's main (vertical) list until [finder] is built —
   /// downwards first, then back up (it may be above the current position).
+  /// iOS lists keep gliding after a drag (bouncing physics), so the momentum
+  /// is let settle and the answer re-checked: on the small iPhone a row found
+  /// mid-glide had slid out of the list by the time it was tapped.
   Future<bool> _scrollTo(Finder finder) async {
-    if (finder.evaluate().isNotEmpty) return true;
     final lists = find.byWidgetPredicate(
       (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
     );
-    if (lists.evaluate().isEmpty) return false;
-    for (final delta in const [300.0, -300.0]) {
-      try {
-        await tester.scrollUntilVisible(finder, delta,
-            scrollable: lists.first, maxScrolls: 40);
-        return true;
-      } catch (_) {
+    for (var attempt = 0; attempt < 3; attempt++) {
+      if (finder.evaluate().isNotEmpty) {
+        await _settle(const Duration(milliseconds: 900));
         if (finder.evaluate().isNotEmpty) return true;
       }
+      if (lists.evaluate().isEmpty) return false;
+      for (final delta in const [300.0, -300.0]) {
+        try {
+          await tester.scrollUntilVisible(finder, delta,
+              scrollable: lists.first, maxScrolls: 40);
+          break;
+        } catch (_) {
+          if (finder.evaluate().isNotEmpty) break;
+        }
+      }
     }
-    return false;
+    return finder.evaluate().isNotEmpty;
   }
 
   Future<void> _createProgressPlayer() async {
