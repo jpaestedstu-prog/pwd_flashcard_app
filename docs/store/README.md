@@ -199,7 +199,7 @@ with a profile that has stars, streaks and a routine for a livelier listing.
 ## Building the iPhone app on a Mac
 
 The project is set up so a Mac only needs Xcode 26, CocoaPods and Flutter
-3.44 (`flutter build ipa`, or open `ios/Runner.xcworkspace`). Three settings
+3.44 (`flutter build ipa`, or open `ios/Runner.xcworkspace`). Four settings
 in it are deliberate — keep them:
 
 - `pubspec.yaml` → `enable-swift-package-manager: false`. With Swift Package
@@ -209,6 +209,13 @@ in it are deliberate — keep them:
   `Pods_Runner.framework` from the app's link phase. Without it a Debug
   simulator build fails: "Framework 'Pods_Runner' not found" (Xcode never
   scheduled that umbrella target; every real pod is linked anyway).
+- `EXCLUDED_ARCHS[sdk=iphonesimulator*] = i386 arm64` (both
+  `ios/Flutter/*.xcconfig` files and the Podfile): Google ML Kit ships no
+  arm64 *simulator* slice, so simulator copies are built for x86_64 and run
+  under Rosetta. On an Apple Silicon Mac use an **iOS 18 simulator** (the
+  default iOS 26 simulator runs arm64 apps only), or download the universal
+  iOS 26 simulator: `xcodebuild -downloadPlatform iOS -architectureVariant
+  universal`. Real iPhones and iPads are not affected.
 - `ios/Podfile` → iOS 15.5 minimum (ML Kit's), and Firestore built from
   source. The precompiled Firestore that FlutterFire suggests cannot be
   installed at this version (a broken archive link), so a clean first build

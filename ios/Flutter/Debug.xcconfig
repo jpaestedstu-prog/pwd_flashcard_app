@@ -1,2 +1,6 @@
 #include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"
 #include "Generated.xcconfig"
+// Google ML Kit's simulator slice is x86_64 only, so simulator builds are too
+// (they run under Rosetta on an iOS 18 or universal iOS 26 simulator). Device
+// builds are unaffected. Matches the pods (ios/Podfile post_install).
+EXCLUDED_ARCHS[sdk=iphonesimulator*] = i386 arm64

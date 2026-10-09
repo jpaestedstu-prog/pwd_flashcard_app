@@ -75,6 +75,11 @@ post_install do |installer|
     target.build_configurations.each do |config|
       # ML Kit ships 64-bit slices only.
       config.build_settings['EXCLUDED_ARCHS[sdk=iphoneos*]'] = 'armv7'
+      # ...and its simulator slice is x86_64 only (no arm64-simulator), so a
+      # simulator build is x86_64 and runs under Rosetta - on an iOS 18
+      # simulator, or the universal iOS 26 one (the default iOS 26 simulator
+      # on Apple Silicon is arm64-only). Device builds are unaffected.
+      config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'i386 arm64'
       # Pods that still declare an older floor would warn (or fail on newer
       # Xcode versions that dropped those SDKs); lift them to the app's.
       if Gem::Version.new($iOSVersion) > Gem::Version.new(config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] || '0')

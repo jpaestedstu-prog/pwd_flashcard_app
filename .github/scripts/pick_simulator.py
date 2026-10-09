@@ -3,7 +3,10 @@ the runner has none.
 
 Device names change with every Xcode ("iPhone SE (3rd generation)" became
 "iPhone 16e"), so each kind is a list of name patterns, tried in order, on
-the newest iOS runtime installed.
+the newest iOS runtime that can run an x86_64 app: Google ML Kit's simulator
+slice is x86_64 only, and on Apple Silicon the default iOS 26 simulator runs
+arm64 apps only (iOS 18 runtimes, or the universal iOS 26 one, run x86_64
+under Rosetta).
 
     python3 pick_simulator.py iphone-small|iphone-large|ipad-mini|ipad-large
 """
@@ -34,13 +37,21 @@ def version_key(runtime):
     return [int(p) for p in re.findall(r"\d+", runtime.get("version", "0"))]
 
 
+def runs_x86_64(runtime):
+    archs = runtime.get("supportedArchitectures")
+    if archs is None:  # metadata without the list: every runtime before iOS 26
+        return version_key(runtime)[0] < 26
+    return "x86_64" in archs
+
+
 def main():
     kind = sys.argv[1]
     patterns = KINDS[kind]
     runtimes = [r for r in simctl("list", "runtimes")["runtimes"]
-                if r.get("platform") == "iOS" and r.get("isAvailable")]
+                if r.get("platform") == "iOS" and r.get("isAvailable")
+                and runs_x86_64(r)]
     if not runtimes:
-        sys.exit("no iOS simulator runtime installed")
+        sys.exit("no iOS simulator runtime that runs x86_64 apps (see the docstring)")
     runtime = max(runtimes, key=version_key)
     devices = simctl("list", "devices", "available")["devices"].get(runtime["identifier"], [])
     for pattern in patterns:

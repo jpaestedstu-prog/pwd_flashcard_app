@@ -59,6 +59,19 @@ jobs:
           key: pods-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('ios/Podfile', 'pubspec.lock') }}
           restore-keys: pods-${{ runner.os }}-${{ runner.arch }}-
 
+      # flutter build/drive would run pod install themselves, but the runner's
+      # network sometimes drops in the middle of a clone ("Failed to connect to
+      # github.com port 443") and ends a 40-minute job; install here, retried.
+      - name: pod install (retried)
+        working-directory: ios
+        run: |
+          for attempt in 1 2 3; do
+            if pod install; then exit 0; fi
+            echo "pod install failed (attempt $attempt); retrying in 30 s"
+            sleep 30
+          done
+          exit 1
+
       - name: Build (release, unsigned)
         run: flutter build ios --release --no-codesign
 
@@ -126,6 +139,19 @@ jobs:
           key: pods-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('ios/Podfile', 'pubspec.lock') }}
           restore-keys: pods-${{ runner.os }}-${{ runner.arch }}-
 
+      # flutter build/drive would run pod install themselves, but the runner's
+      # network sometimes drops in the middle of a clone ("Failed to connect to
+      # github.com port 443") and ends a 40-minute job; install here, retried.
+      - name: pod install (retried)
+        working-directory: ios
+        run: |
+          for attempt in 1 2 3; do
+            if pod install; then exit 0; fi
+            echo "pod install failed (attempt $attempt); retrying in 30 s"
+            sleep 30
+          done
+          exit 1
+
       - name: Build for the simulator, verbose
         run: |
           mkdir -p logs
@@ -179,6 +205,23 @@ jobs:
           path: ~/Library/Caches/CocoaPods
           key: pods-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('ios/Podfile', 'pubspec.lock') }}
           restore-keys: pods-${{ runner.os }}-${{ runner.arch }}-
+
+      # flutter build/drive would run pod install themselves, but the runner's
+      # network sometimes drops in the middle of a clone ("Failed to connect to
+      # github.com port 443") and ends a 40-minute job; install here, retried.
+      - name: pod install (retried)
+        working-directory: ios
+        run: |
+          for attempt in 1 2 3; do
+            if pod install; then exit 0; fi
+            echo "pod install failed (attempt $attempt); retrying in 30 s"
+            sleep 30
+          done
+          exit 1
+
+      # The simulator app is x86_64 (ML Kit), so it runs under Rosetta.
+      - name: Rosetta
+        run: sudo /usr/sbin/softwareupdate --install-rosetta --agree-to-license || true
 
       - name: Boot the simulator
         run: |
