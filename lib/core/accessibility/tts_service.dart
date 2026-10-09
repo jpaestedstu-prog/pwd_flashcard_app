@@ -38,12 +38,34 @@ class TtsService {
 
   Future<void> init({double speed = 0.5, double pitch = 1.0}) async {
     if (_isInitialized) return;
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+      await _useIosPlaybackSession();
+    }
     await _tts.setLanguage('en-US');
     _currentLanguage = 'en-US';
     await _tts.setSpeechRate(speed);
     await _tts.setPitch(pitch);
     await _tts.setVolume(1.0);
     _isInitialized = true;
+  }
+
+  /// iOS speaks in its default audio session, which the Ring/Silent switch
+  /// mutes: on an iPhone with the switch on, a learner who depends on hearing
+  /// the word would hear nothing, and nothing on screen would say why.
+  /// "Playback" is the session for sound the user asked for and ignores the
+  /// switch; mixing leaves other sound (a parent's music, the class TV) on —
+  /// the same session the app's sound effects already use (audioplayers'
+  /// default). Best-effort: a failure keeps the engine's default.
+  Future<void> _useIosPlaybackSession() async {
+    try {
+      await _tts.setSharedInstance(true);
+      await _tts.setIosAudioCategory(
+        IosTextToSpeechAudioCategory.playback,
+        const [IosTextToSpeechAudioCategoryOptions.mixWithOthers],
+      );
+    } catch (e) {
+      if (kDebugMode) debugPrint('TtsService: iOS audio session not set: $e');
+    }
   }
 
   /// Speak text using the currently set language (default English).
