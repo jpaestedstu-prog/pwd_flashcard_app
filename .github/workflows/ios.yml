@@ -82,13 +82,21 @@ jobs:
             ios/Runner.xcworkspace/contents.xcworkspacedata
           retention-days: 14
 
-  # Diagnostic: why the arm64 (Apple Silicon) simulator build fails to link
-  # ("Framework 'Pods_Runner' not found"). Prints the real linker errors.
+  # Diagnostic: the arm64 (Apple Silicon) debug simulator build fails to link
+  # Runner.debug.dylib - "Framework 'Pods_Runner' not found": Xcode's
+  # dependency graph never schedules the Pods-Runner target for it. Each
+  # variant tries one build setting (passed to xcodebuild as FLUTTER_XCODE_*).
   simulator-arm64-diagnostic:
-    name: arm64 simulator build (diagnostic)
+    name: arm64 simulator build (${{ matrix.variant }})
     runs-on: macos-15
     timeout-minutes: 60
     continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [no-debug-dylib]
+    env:
+      FLUTTER_XCODE_ENABLE_DEBUG_DYLIB: ${{ matrix.variant == 'no-debug-dylib' && 'NO' || '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -119,7 +127,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: sim-build-arm64-log
+          name: sim-build-arm64-${{ matrix.variant }}
           path: logs/
           retention-days: 14
 

@@ -255,7 +255,10 @@ class _Walk {
   /// The store account-deletion rule, end to end: the profile deletes itself
   /// and the app goes back to choosing a profile.
   Future<void> _deleteOwnProfile() async {
-    if (!await _scrollTo(find.text('Delete this profile'))) return;
+    if (!await _scrollTo(find.text('Delete this profile'))) {
+      failures.add('Delete this profile: row not found in Settings');
+      return;
+    }
     await _tap(find.text('Delete this profile'));
     if (!await _waitFor(find.text('Delete'), const Duration(seconds: 10))) {
       failures.add('Delete this profile: no confirmation dialog');
@@ -279,20 +282,24 @@ class _Walk {
     print('WALK delete profile -> ${back ?? 'stuck'}');
   }
 
-  /// Scrolls the page's main (vertical) list until [finder] is built.
+  /// Scrolls the page's main (vertical) list until [finder] is built —
+  /// downwards first, then back up (it may be above the current position).
   Future<bool> _scrollTo(Finder finder) async {
     if (finder.evaluate().isNotEmpty) return true;
     final lists = find.byWidgetPredicate(
       (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
     );
     if (lists.evaluate().isEmpty) return false;
-    try {
-      await tester.scrollUntilVisible(finder, 300, scrollable: lists.first,
-          maxScrolls: 40);
-      return true;
-    } catch (_) {
-      return finder.evaluate().isNotEmpty;
+    for (final delta in const [300.0, -300.0]) {
+      try {
+        await tester.scrollUntilVisible(finder, delta,
+            scrollable: lists.first, maxScrolls: 40);
+        return true;
+      } catch (_) {
+        if (finder.evaluate().isNotEmpty) return true;
+      }
     }
+    return false;
   }
 
   Future<void> _createProgressPlayer() async {
