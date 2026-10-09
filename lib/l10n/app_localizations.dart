@@ -758,6 +758,30 @@ abstract class AppLocalizations {
   /// **'Version {version} • Thesis Capstone Project'**
   String aboutVersionLine(String version);
 
+  /// No description provided for @settingPrivacyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy & data'**
+  String get settingPrivacyTitle;
+
+  /// No description provided for @settingPrivacyDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'What the app saves, where it goes, and how to delete it'**
+  String get settingPrivacyDesc;
+
+  /// No description provided for @settingPrivacyAdultReason.
+  ///
+  /// In en, this message translates to:
+  /// **'This opens a web page. A grown-up needs to say yes first.'**
+  String get settingPrivacyAdultReason;
+
+  /// No description provided for @settingPrivacyOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Open {url} in a web browser to read it.'**
+  String settingPrivacyOpenFailed(String url);
+
   /// No description provided for @deleteMyProfileTitle.
   ///
   /// In en, this message translates to:

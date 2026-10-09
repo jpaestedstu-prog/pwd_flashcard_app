@@ -187,6 +187,17 @@
   "openSettings": "Open settings",
   "openShop": "Open star shop",
   "aboutVersionLine": "Version {version} • Thesis Capstone Project",
+  "settingPrivacyTitle": "Privacy & data",
+  "settingPrivacyDesc": "What the app saves, where it goes, and how to delete it",
+  "settingPrivacyAdultReason": "This opens a web page. A grown-up needs to say yes first.",
+  "settingPrivacyOpenFailed": "Open {url} in a web browser to read it.",
+  "@settingPrivacyOpenFailed": {
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
   "deleteMyProfileTitle": "Delete this profile",
   "deleteMyProfileDesc": "Remove it and everything saved for it, here and online",
   "deleteMyProfileConfirmTitle": "Delete “{name}”?",

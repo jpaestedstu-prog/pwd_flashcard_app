@@ -371,6 +371,22 @@ class AppLocalizationsFil extends AppLocalizations {
   }
 
   @override
+  String get settingPrivacyTitle => 'Privacy at datos';
+
+  @override
+  String get settingPrivacyDesc =>
+      'Ano ang sine-save ng app, saan ito napupunta, at paano ito burahin';
+
+  @override
+  String get settingPrivacyAdultReason =>
+      'Magbubukas ito ng web page. Kailangang pumayag muna ang isang nakatatanda.';
+
+  @override
+  String settingPrivacyOpenFailed(String url) {
+    return 'Buksan ang $url sa web browser para mabasa ito.';
+  }
+
+  @override
   String get deleteMyProfileTitle => 'Burahin ang profile na ito';
 
   @override

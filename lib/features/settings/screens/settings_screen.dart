@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/security/pin_credential_helper.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -1016,6 +1018,14 @@ class SettingsScreen extends ConsumerWidget {
                 trailing: const SizedBox.shrink(),
               ),
 
+              _SettingsTile(
+                icon: Icons.privacy_tip_rounded,
+                title: l10n?.settingPrivacyTitle ?? 'Privacy & data',
+                subtitle: l10n?.settingPrivacyDesc ??
+                    'What the app saves, where it goes, and how to delete it',
+                onTap: () => _openPrivacyPolicy(context, ref),
+              ),
+
               // A website APK has nothing else to tell a tablet that a newer
               // one exists. Store copies are updated by the store, and both
               // stores forbid pointing anywhere else.
@@ -1100,6 +1110,33 @@ class SettingsScreen extends ConsumerWidget {
     final period = hour >= 12 ? 'PM' : 'AM';
     final h = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
     return '$h:${minute.toString().padLeft(2, '0')} $period';
+  }
+
+  /// Opens the privacy page in the browser. Leaving the app is a grown-up's
+  /// call for a learner (requireAdult lets everyone else straight through).
+  Future<void> _openPrivacyPolicy(BuildContext context, WidgetRef ref) async {
+    final t = _t(context);
+    final allowed = await requireAdult(
+      context,
+      ref,
+      reason: t.settingPrivacyAdultReason,
+    );
+    if (!allowed || !context.mounted) return;
+    var opened = false;
+    try {
+      opened = await launchUrl(
+        Uri.parse(AppConstants.privacyPolicyUrl),
+        mode: LaunchMode.externalApplication,
+      );
+    } catch (_) {
+      opened = false;
+    }
+    if (!opened && context.mounted) {
+      AppSnackBar.info(
+        context,
+        message: t.settingPrivacyOpenFailed(AppConstants.privacyPolicyUrl),
+      );
+    }
   }
 
   /// Deletes the signed-in profile, on this device and online, then leaves

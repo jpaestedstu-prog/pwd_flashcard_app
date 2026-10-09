@@ -369,6 +369,22 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get settingPrivacyTitle => 'Privacy & data';
+
+  @override
+  String get settingPrivacyDesc =>
+      'What the app saves, where it goes, and how to delete it';
+
+  @override
+  String get settingPrivacyAdultReason =>
+      'This opens a web page. A grown-up needs to say yes first.';
+
+  @override
+  String settingPrivacyOpenFailed(String url) {
+    return 'Open $url in a web browser to read it.';
+  }
+
+  @override
   String get deleteMyProfileTitle => 'Delete this profile';
 
   @override

@@ -2,6 +2,14 @@
 class AppConstants {
   AppConstants._();
 
+  // ─── Project website ────────────────────────────────
+  static const String websiteUrl =
+      'https://jpaestedstu-prog.github.io/pwd_flashcard_app/';
+
+  /// What the app saves, where, and how to delete it. Both app stores want
+  /// it reachable from inside the app, not only from the store page.
+  static const String privacyPolicyUrl = '${websiteUrl}privacy.html';
+
   // ─── Animation Durations ────────────────────────────
   static const Duration instantDuration = Duration(milliseconds: 100);
   static const Duration fastDuration = Duration(milliseconds: 200);
