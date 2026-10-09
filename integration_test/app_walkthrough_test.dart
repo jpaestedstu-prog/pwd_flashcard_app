@@ -127,6 +127,7 @@ class _Walk {
   final List<String> visited = [];
   final List<String> _frameworkErrors = [];
   int _shots = 0;
+  bool _errorBannerSeen = false;
   late final DateTime _started;
 
   Future<void> run() async {
@@ -327,12 +328,17 @@ class _Walk {
     FocusManager.instance.primaryFocus?.unfocus();
     await _settle(const Duration(seconds: 1));
 
-    // Birth date: the picker opens on a date 7 years back; OK keeps it.
+    // Birth date: the picker opens on a date 7 years back; its OK keeps it.
+    // (Only the picker's OK: an error banner has an OK button too.)
     await _tap(find.byIcon(Icons.cake_rounded));
-    if (await _waitFor(find.text('OK'), const Duration(seconds: 10))) {
+    final pickerOk = find.descendant(
+      of: find.byType(DatePickerDialog),
+      matching: find.text('OK'),
+    );
+    if (await _waitFor(pickerOk, const Duration(seconds: 10))) {
       await _settle(const Duration(seconds: 1));
       await _shot('birth_date_picker');
-      await _tap(find.text('OK'));
+      await _tap(pickerOk);
       await _settle(const Duration(seconds: 1));
     } else {
       failures.add('Birth date picker did not open');
@@ -428,7 +434,6 @@ class _Walk {
         m.contains('Failed host lookup') ||
         m.contains('No camera') ||
         m.contains('CameraException') ||
-        m.contains('MissingPluginException') ||
         m.contains('speech') ||
         m.contains('Speech');
   }
@@ -515,6 +520,13 @@ class _Walk {
   }
 
   Future<void> _shot(String name) async {
+    // The app's global "Something went wrong" banner means an error reached
+    // a learner - always a failure, whichever screen it shows up on.
+    if (!_errorBannerSeen &&
+        find.textContaining('Something went wrong').evaluate().isNotEmpty) {
+      _errorBannerSeen = true;
+      failures.add('"Something went wrong" banner on screen at "$name"');
+    }
     _shots++;
     final file = '${_shots.toString().padLeft(3, '0')}_$name';
     try {

@@ -14,6 +14,7 @@ import '../../../core/services/analytics_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/review_reminder_service.dart';
 import '../../../core/constants/distribution.dart';
+import '../../gamepad/services/gamepad_service.dart';
 import '../../../core/services/update_check_service.dart';
 import '../../../widgets/update_available_card.dart' show openUpdatePage;
 import '../../../data/local/hive_service.dart';
@@ -429,13 +430,15 @@ class SettingsScreen extends ConsumerWidget {
               // Bluetooth game controller. Sits next to Gaze Control because
               // it answers the same question — how does a learner who cannot
               // use the touchscreen drive the app — with different hardware.
-              _SettingsTile(
-                icon: Icons.sports_esports_rounded,
-                title: l10n?.settingGamepadTitle ?? 'Game Controller',
-                subtitle: l10n?.settingGamepadDesc ??
-                      'Navigate by Bluetooth gamepad, with spoken feedback',
-                onTap: () => context.push('/gamepad-settings'),
-              ),
+              // Android only for now: the controller bridge is GamepadBridge.kt.
+              if (GamepadService.isSupported)
+                _SettingsTile(
+                  icon: Icons.sports_esports_rounded,
+                  title: l10n?.settingGamepadTitle ?? 'Game Controller',
+                  subtitle: l10n?.settingGamepadDesc ??
+                        'Navigate by Bluetooth gamepad, with spoken feedback',
+                  onTap: () => context.push('/gamepad-settings'),
+                ),
 
               const SizedBox(height: 28),
 
