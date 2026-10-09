@@ -12,6 +12,7 @@ import '../../../data/remote/firestore_repository.dart';
 import 'sync_queue_models.dart';
 import 'sync_queue_storage.dart';
 import '../../accessibility/learner_support.dart';
+import '../../../features/messaging/services/profile_directory_service.dart';
 
 /// Processes the persistent sync queue, pushing queued operations to
 /// Firestore with exponential back-off retry.
@@ -99,7 +100,9 @@ class SyncQueueService {
           await _executeOperation(op);
           await SyncQueueStorage.markCompleted(op.id);
         } catch (e, stack) {
-          ErrorHandler.report(e, stack, 'SyncQueueService');
+          // A background retry — nobody is waiting on it, so it never pops
+          // the global error snackbar; the op stays queued for next time.
+          ErrorHandler.report(e, stack, 'SyncQueueService:silent');
           await SyncQueueStorage.markFailed(op.id, e.toString());
 
           // Exponential back-off: if we hit an error, stop processing
@@ -154,6 +157,11 @@ class SyncQueueService {
       case SyncEntity.profile:
         if (op.type == SyncOperationType.delete) {
           await _remote.deleteProfile(op.entityId);
+          // Its public messaging handle lives in a document of its own.
+          await ProfileDirectoryService.instance.remove(
+            profileId: op.entityId,
+            username: payload['username'] as String?,
+          );
           return;
         }
         await _remote.saveProfile(_profileFromPayload(payload));

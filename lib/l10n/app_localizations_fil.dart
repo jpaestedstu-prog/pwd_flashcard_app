@@ -371,6 +371,35 @@ class AppLocalizationsFil extends AppLocalizations {
   }
 
   @override
+  String get deleteMyProfileTitle => 'Burahin ang profile na ito';
+
+  @override
+  String get deleteMyProfileDesc =>
+      'Alisin ito at lahat ng naka-save para dito, dito at online';
+
+  @override
+  String deleteMyProfileConfirmTitle(String name) {
+    return 'Burahin ang “$name”?';
+  }
+
+  @override
+  String get deleteMyProfileConfirmBody =>
+      'Aalisin nito ang profile at lahat ng naka-save para dito — progreso, mga badge, mga tala, ang mga mensaheng ipinadala nito, at anumang pagsusulit o routine na ginawa nito — sa device na ito at sa cloud. Hindi na ito maibabalik. Kung offline ang device na ito, mabubura ang kopya online sa susunod na pagkonekta nito.';
+
+  @override
+  String get deleteMyProfileEducatorNote =>
+      ' Mawawalan ng namamahala ang mga klase at family group na ginawa mo.';
+
+  @override
+  String get deleteMyProfileAdultReason =>
+      'Kailangang pumayag ang isang nakatatanda bago burahin ang profile ng isang mag-aaral.';
+
+  @override
+  String deleteMyProfileDone(String name) {
+    return 'Nabura ang “$name”.';
+  }
+
+  @override
   String get flashLearnPwd => 'FlashLearn PWD';
 
   @override

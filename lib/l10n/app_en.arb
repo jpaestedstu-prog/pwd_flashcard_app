@@ -187,6 +187,27 @@
   "openSettings": "Open settings",
   "openShop": "Open star shop",
   "aboutVersionLine": "Version {version} • Thesis Capstone Project",
+  "deleteMyProfileTitle": "Delete this profile",
+  "deleteMyProfileDesc": "Remove it and everything saved for it, here and online",
+  "deleteMyProfileConfirmTitle": "Delete “{name}”?",
+  "@deleteMyProfileConfirmTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteMyProfileConfirmBody": "This removes the profile and everything saved for it — progress, badges, notes, the messages it sent, and any tests or routines it made — from this device and from the cloud. It cannot be undone. If this device is offline, the online copy is removed the next time it connects.",
+  "deleteMyProfileEducatorNote": " Classes and family groups you made will no longer have anyone managing them.",
+  "deleteMyProfileAdultReason": "A grown-up needs to say yes before a learner’s profile is deleted.",
+  "deleteMyProfileDone": "“{name}” was deleted.",
+  "@deleteMyProfileDone": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "@aboutVersionLine": {
     "description": "Settings → About. {version} is the installed app version, e.g. 1.3.0.",
     "placeholders": {

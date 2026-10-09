@@ -10,6 +10,9 @@ import '../models/classroom_member.dart';
 import '../remote/firestore_repository.dart';
 import '../repository.dart';
 import '../../core/services/firebase_service.dart';
+import '../../core/services/sync_queue/sync_queue_models.dart';
+import '../../core/services/sync_queue/sync_queue_storage.dart';
+import '../../core/utils/error_handler.dart';
 import '../../features/messaging/services/profile_directory_service.dart';
 import '../../features/messaging/services/username_generator.dart';
 import 'hive_service.dart';
@@ -167,17 +170,46 @@ class LocalRepository implements DataRepository {
       await RoutineReminderScheduler.forgetProfile(profileId);
     } catch (_) {}
     if (wasGuest) return;
-    await _remoteWrite(
-        'deleteProfile', () => _remote.deleteProfile(profileId));
-    // The public handle lives in its own document, keyed by username, so
-    // the profile cascade never touched it: a deleted learner stayed
-    // findable by username in messaging.
-    await _remoteWrite(
-        'profileDirectoryRemove',
-        () => ProfileDirectoryService.instance.remove(
-              profileId: profileId,
-              username: profile?.username,
-            ));
+    unawaited(deleteOnline(profileId, profile?.username));
+  }
+
+  /// Deletes the online copy of a deleted profile — and makes sure it
+  /// happens. Both app stores require a deletion request to be honoured, and
+  /// a plain fire-and-forget delete was lost whenever the tablet was offline
+  /// or the app closed before the cascade finished (Firestore holds an
+  /// awaited delete until the server answers). So the delete is written to
+  /// the sync queue FIRST, then tried at once; only success takes it off the
+  /// queue. Anything else leaves it there for [SyncQueueService] to retry on
+  /// the next start or reconnect — the cascade is safe to run again.
+  @visibleForTesting
+  static Future<void> deleteOnline(String profileId, String? username) async {
+    final op = SyncOperation(
+      id: 'delete-profile-$profileId',
+      type: SyncOperationType.delete,
+      entity: SyncEntity.profile,
+      entityId: profileId,
+      payload: {'username': ?username},
+      createdAt: DateTime.now(),
+    );
+    try {
+      await SyncQueueStorage.addOperation(op);
+    } catch (e, stack) {
+      ErrorHandler.report(e, stack, 'LocalRepository.deleteProfile:silent');
+    }
+    if (!FirebaseService.isConfigured) return;
+    try {
+      await _remote.deleteProfile(profileId);
+      // The public handle lives in its own document, keyed by username, so
+      // the profile cascade never touched it: a deleted learner stayed
+      // findable by username in messaging.
+      await ProfileDirectoryService.instance.remove(
+        profileId: profileId,
+        username: username,
+      );
+      await SyncQueueStorage.markCompleted(op.id);
+    } catch (e, stack) {
+      ErrorHandler.report(e, stack, 'LocalRepository.deleteProfile:silent');
+    }
   }
 
   @override

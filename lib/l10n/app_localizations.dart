@@ -758,6 +758,48 @@ abstract class AppLocalizations {
   /// **'Version {version} • Thesis Capstone Project'**
   String aboutVersionLine(String version);
 
+  /// No description provided for @deleteMyProfileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this profile'**
+  String get deleteMyProfileTitle;
+
+  /// No description provided for @deleteMyProfileDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove it and everything saved for it, here and online'**
+  String get deleteMyProfileDesc;
+
+  /// No description provided for @deleteMyProfileConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete “{name}”?'**
+  String deleteMyProfileConfirmTitle(String name);
+
+  /// No description provided for @deleteMyProfileConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This removes the profile and everything saved for it — progress, badges, notes, the messages it sent, and any tests or routines it made — from this device and from the cloud. It cannot be undone. If this device is offline, the online copy is removed the next time it connects.'**
+  String get deleteMyProfileConfirmBody;
+
+  /// No description provided for @deleteMyProfileEducatorNote.
+  ///
+  /// In en, this message translates to:
+  /// **' Classes and family groups you made will no longer have anyone managing them.'**
+  String get deleteMyProfileEducatorNote;
+
+  /// No description provided for @deleteMyProfileAdultReason.
+  ///
+  /// In en, this message translates to:
+  /// **'A grown-up needs to say yes before a learner’s profile is deleted.'**
+  String get deleteMyProfileAdultReason;
+
+  /// No description provided for @deleteMyProfileDone.
+  ///
+  /// In en, this message translates to:
+  /// **'“{name}” was deleted.'**
+  String deleteMyProfileDone(String name);
+
   /// No description provided for @flashLearnPwd.
   ///
   /// In en, this message translates to:

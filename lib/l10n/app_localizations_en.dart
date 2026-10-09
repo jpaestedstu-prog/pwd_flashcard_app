@@ -369,6 +369,35 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get deleteMyProfileTitle => 'Delete this profile';
+
+  @override
+  String get deleteMyProfileDesc =>
+      'Remove it and everything saved for it, here and online';
+
+  @override
+  String deleteMyProfileConfirmTitle(String name) {
+    return 'Delete “$name”?';
+  }
+
+  @override
+  String get deleteMyProfileConfirmBody =>
+      'This removes the profile and everything saved for it — progress, badges, notes, the messages it sent, and any tests or routines it made — from this device and from the cloud. It cannot be undone. If this device is offline, the online copy is removed the next time it connects.';
+
+  @override
+  String get deleteMyProfileEducatorNote =>
+      ' Classes and family groups you made will no longer have anyone managing them.';
+
+  @override
+  String get deleteMyProfileAdultReason =>
+      'A grown-up needs to say yes before a learner’s profile is deleted.';
+
+  @override
+  String deleteMyProfileDone(String name) {
+    return '“$name” was deleted.';
+  }
+
+  @override
   String get flashLearnPwd => 'FlashLearn PWD';
 
   @override

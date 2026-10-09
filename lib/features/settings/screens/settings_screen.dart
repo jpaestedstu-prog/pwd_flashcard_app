@@ -15,6 +15,9 @@ import '../../../core/constants/distribution.dart';
 import '../../../core/services/update_check_service.dart';
 import '../../../widgets/update_available_card.dart' show openUpdatePage;
 import '../../../data/local/hive_service.dart';
+import '../../../data/local/local_repository.dart';
+import '../../../navigation/app_router.dart' show rootNavigatorKey;
+import '../../../widgets/adult_gate_dialog.dart' show requireAdult;
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../widgets/sync_status_widget.dart';
@@ -940,6 +943,23 @@ class SettingsScreen extends ConsumerWidget {
                   onTap: () => context.push('/manage-profiles'),
                 ),
 
+              // Every profile saved online can be deleted by its owner, right
+              // here: both app stores require it (Apple 5.1.1(v), Google
+              // Play's account deletion policy). Manage Profiles only reaches
+              // OTHER profiles, so a lone teacher or a player had no way.
+              if (canDeleteOwnProfile(
+                profile,
+                viewingAsStudent:
+                    ref.read(profileProvider.notifier).isViewingAsStudent,
+              ))
+                _SettingsTile(
+                  icon: Icons.person_remove_rounded,
+                  title: l10n?.deleteMyProfileTitle ?? 'Delete this profile',
+                  subtitle: l10n?.deleteMyProfileDesc ??
+                      'Remove it and everything saved for it, here and online',
+                  onTap: () => _deleteOwnProfile(context, ref),
+                ),
+
               if (isMonitor)
                 _SettingsTile(
                   icon: Icons.family_restroom_rounded,
@@ -1082,6 +1102,60 @@ class SettingsScreen extends ConsumerWidget {
     return '$h:${minute.toString().padLeft(2, '0')} $period';
   }
 
+  /// Deletes the signed-in profile, on this device and online, then leaves
+  /// it. A learner's profile needs a grown-up's yes first.
+  Future<void> _deleteOwnProfile(BuildContext context, WidgetRef ref) async {
+    final profile = ref.read(profileProvider);
+    if (profile == null) return;
+    final t = _t(context);
+    if (profile.role.isEnrollableLearner) {
+      final allowed = await requireAdult(
+        context,
+        ref,
+        reason: t.deleteMyProfileAdultReason,
+      );
+      if (!allowed || !context.mounted) return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(t.deleteMyProfileConfirmTitle(profile.name)),
+        content: Text(
+          '${t.deleteMyProfileConfirmBody}'
+          '${profile.role.isEducator ? t.deleteMyProfileEducatorNote : ''}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(t.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: HCColor.of(ctx).fillFor(AppColors.error),
+            ),
+            child: Text(t.delete),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final container = ProviderScope.containerOf(context, listen: false);
+    final router = GoRouter.of(context);
+    final done = t.deleteMyProfileDone(profile.name);
+    // Off this device first — its online copy follows straight away, or from
+    // the sync queue once the device is online (LocalRepository)...
+    await const LocalRepository().deleteProfile(profile.id);
+    // ...then out of it in one go, as Reset All Data does, so nothing is left
+    // showing a profile that no longer exists.
+    container.read(profileProvider.notifier).clearProfile();
+    container.invalidate(allProfilesWithProgressProvider);
+    router.go(HiveService.getProfiles().isEmpty ? '/profile' : '/profile-switcher');
+    final root = rootNavigatorKey.currentContext;
+    if (root != null && root.mounted) AppSnackBar.info(root, message: done);
+  }
+
   void _showResetDialog(BuildContext context, WidgetRef ref) {
     showAnimatedDialog(
       context,
@@ -1124,6 +1198,12 @@ class SettingsScreen extends ConsumerWidget {
 /// never reach it. (It used to show for every profile.)
 bool canResetAllData(UserProfile? profile) =>
     profile?.role == UserRole.teacher || profile?.role == UserRole.parent;
+
+/// Whether "Delete this profile" is offered: to every profile that exists
+/// online — a Guest Player never did — and never to an educator who is only
+/// previewing a learner (that would delete the learner).
+bool canDeleteOwnProfile(UserProfile? profile, {required bool viewingAsStudent}) =>
+    profile != null && !profile.isGuestPlayer && !viewingAsStudent;
 
 // ────────────────────────────────────────
 // PIN Setup Dialog

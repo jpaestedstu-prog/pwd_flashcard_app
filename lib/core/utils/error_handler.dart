@@ -144,6 +144,12 @@ class ErrorHandler {
     // `applyLifecycle:silent`: nobody asked for it and nothing is blocked on
     // it, so it must not greet a learner at launch.
     'startupBackground:silent',
+    // A profile's online copy that could not be deleted yet (offline, or the
+    // cloud not up): the delete waits in the sync queue and is retried on the
+    // next start or reconnect. The profile is already gone from the tablet,
+    // and a retry in the background is nothing a learner can act on.
+    'LocalRepository.deleteProfile:silent',
+    'SyncQueueService:silent',
   };
 
   /// Whether [source] is suppressed from the global snackbar.
