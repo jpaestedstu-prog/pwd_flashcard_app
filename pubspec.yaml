@@ -124,6 +124,12 @@ dev_dependencies:
 
 flutter:
   generate: true
+  config:
+    # iOS plugins come from CocoaPods only. Flutter 3.44 turns Swift Package
+    # Manager on by default and mixes the two, and that mix failed to link
+    # ("Framework 'Pods_Runner' not found") in the simulator build, while
+    # Google ML Kit, printing and flutter_tts are CocoaPods-only anyway.
+    enable-swift-package-manager: false
   uses-material-design: true
 
   assets:
