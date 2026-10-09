@@ -187,3 +187,28 @@ flutter drive --driver=test_driver/integration_test.dart \
 GitHub Actions run (Actions tab → the run → Artifacts). **Never run
 `flutter drive` on a tablet with real profiles** — when it finishes it
 uninstalls the app, which deletes every profile on that device.
+
+`python tools/store_screenshots_build.py <walkthrough folder> <set name>
+[--play]` picks the same eight screens from any device and saves them as
+JPEGs in `docs/store/screenshots/<set name>/`. Use `--play` for Google Play
+sets: Play refuses a screenshot whose long side is more than twice the short
+side, and a 1080 × 2400 phone is 2.22 : 1, so `--play` crops it to 2 : 1. The
+sets made so far come from a test profile with no progress yet — retake them
+with a profile that has stars, streaks and a routine for a livelier listing.
+
+## Building the iPhone app on a Mac
+
+The project is set up so a Mac only needs Xcode 26, CocoaPods and Flutter
+3.44 (`flutter build ipa`, or open `ios/Runner.xcworkspace`). Three settings
+in it are deliberate — keep them:
+
+- `pubspec.yaml` → `enable-swift-package-manager: false`. With Swift Package
+  Manager on, Flutter mixes it with CocoaPods (Google ML Kit, printing and
+  flutter_tts exist only as pods) and the simulator build failed to link.
+- `ios/Flutter/Debug.xcconfig` → `ENABLE_DEBUG_DYLIB = NO`. On Apple Silicon
+  the Debug build otherwise links `Runner.debug.dylib` before the CocoaPods
+  framework exists: "Framework 'Pods_Runner' not found".
+- `ios/Podfile` → iOS 15.5 minimum (ML Kit's), and Firestore built from
+  source. The precompiled Firestore that FlutterFire suggests cannot be
+  installed at this version (a broken archive link), so a clean first build
+  takes about 20 minutes; later builds are quick.
