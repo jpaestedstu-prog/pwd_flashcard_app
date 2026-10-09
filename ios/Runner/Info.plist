@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Pwdpwdpwd</string>
+	<string>FlashLearn PWD</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -15,7 +15,12 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>pwdpwdpwd</string>
+	<string>FlashLearn PWD</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>fil</string>
+	</array>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -53,19 +58,36 @@
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
+	<!-- Portrait only on every device, like the Android build: the layouts,
+	     the Gaze Control grid and the front-camera head/blink geometry are
+	     all authored for a fixed portrait frame. An iPad app that does not
+	     support every orientation must opt out of Split View / Stage Manager
+	     (UIRequiresFullScreen), or App Store validation rejects the build. -->
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>UIRequiresFullScreen</key>
+	<true/>
+	<!-- Only HTTPS and on-device PIN hashing: exempt from export filings. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<!-- Why each permission is asked for. iOS shows these in the prompt. -->
+	<key>NSCameraUsageDescription</key>
+	<string>FlashLearn uses the camera for Word Hunt (finding real objects), for hands-free Gaze Control (head movements and blinks), for practising signs, and for photos or videos a teacher adds to a lesson. Word Hunt and Gaze Control look at the camera on this device only and never upload it.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>FlashLearn uses the microphone for spoken answers in pronunciation games, for voice commands, for dictating notes, and for the sound of videos a teacher records for a lesson.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>FlashLearn turns what a learner says into text to check pronunciation answers and to understand voice commands.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>FlashLearn lets you choose a photo from your library for a custom flashcard or a lesson.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>FlashLearn lets you save certificates, reports and pictures to your photo library from the share menu.</string>
 	<!-- TV Cast: required for iOS 14+ local-network permission prompt
 	     so the in-app HTTP server can accept connections from TVs on
 	     the same Wi-Fi. No data leaves the local network. -->
