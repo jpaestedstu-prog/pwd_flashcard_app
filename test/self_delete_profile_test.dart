@@ -17,7 +17,6 @@ UserProfile _profile(UserRole role, {bool guest = false}) => UserProfile(
       id: 'p-${role.name}',
       name: 'Ana',
       role: role,
-      avatarIndex: 0,
       createdAt: DateTime(2026, 10, 9),
       isGuestPlayer: guest,
     );
