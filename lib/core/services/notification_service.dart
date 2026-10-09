@@ -51,8 +51,15 @@ class NotificationService {
     await DeviceTimezone.init();
 
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+    // This runs at launch, before onboarding. iOS would put up its
+    // notification prompt right here, before anyone knows what reminders are
+    // for; Android asks only when a learner starts using the app or a
+    // reminder is switched on. Same on iOS now: the schedulers ask when they
+    // start, and [requestPermission] asks for real.
     const iosInit = DarwinInitializationSettings(
-      
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
     );
 
     const initSettings = InitializationSettings(
@@ -100,7 +107,16 @@ class NotificationService {
       return granted ?? false;
     }
 
-    // iOS handled via initialization settings
+    final ios = _plugin.resolvePlatformSpecificImplementation<
+        IOSFlutterLocalNotificationsPlugin>();
+    if (ios != null) {
+      final granted = await ios.requestPermissions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+      return granted ?? false;
+    }
     return true;
   }
 

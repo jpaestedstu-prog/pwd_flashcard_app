@@ -303,7 +303,11 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
     // and a refusal is fine: the service still runs, just silently.
     unawaited(() async {
       try {
-        await NotificationService.requestPermission();
+        // Only where the keep-alive notification exists: on iOS the prompt
+        // would ask for something the cast never shows.
+        if (TvCastKeepAlive.isSupported) {
+          await NotificationService.requestPermission();
+        }
       } catch (_) {
         // Never let a permission hiccup block a cast that's already serving.
       }
