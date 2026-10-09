@@ -50,6 +50,15 @@ jobs:
 
       - run: flutter pub get
 
+      # Downloaded pods (incl. the precompiled Firestore framework) between
+      # runs; the compiled app is never cached.
+      - name: Cache CocoaPods downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/CocoaPods
+          key: pods-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('ios/Podfile', 'pubspec.lock') }}
+          restore-keys: pods-${{ runner.os }}-${{ runner.arch }}-
+
       - name: Build (release, unsigned)
         run: flutter build ios --release --no-codesign
 
@@ -82,21 +91,15 @@ jobs:
             ios/Runner.xcworkspace/contents.xcworkspacedata
           retention-days: 14
 
-  # Diagnostic: the arm64 (Apple Silicon) debug simulator build fails to link
-  # Runner.debug.dylib - "Framework 'Pods_Runner' not found": Xcode's
-  # dependency graph never schedules the Pods-Runner target for it. Each
-  # variant tries one build setting (passed to xcodebuild as FLUTTER_XCODE_*).
-  simulator-arm64-diagnostic:
-    name: arm64 simulator build (${{ matrix.variant }})
+  # The debug simulator build with a full verbose log, kept as an artifact:
+  # when the walkthroughs cannot build, this says why. (It is how the
+  # Runner.debug.dylib / "Framework 'Pods_Runner' not found" link failure on
+  # Apple Silicon was found - see ios/Flutter/Debug.xcconfig.)
+  simulator-build-log:
+    name: Simulator build (verbose log)
     runs-on: macos-15
     timeout-minutes: 60
     continue-on-error: true
-    strategy:
-      fail-fast: false
-      matrix:
-        variant: [no-debug-dylib]
-    env:
-      FLUTTER_XCODE_ENABLE_DEBUG_DYLIB: ${{ matrix.variant == 'no-debug-dylib' && 'NO' || '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -114,6 +117,15 @@ jobs:
 
       - run: flutter pub get
 
+      # Downloaded pods (incl. the precompiled Firestore framework) between
+      # runs; the compiled app is never cached.
+      - name: Cache CocoaPods downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/CocoaPods
+          key: pods-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('ios/Podfile', 'pubspec.lock') }}
+          restore-keys: pods-${{ runner.os }}-${{ runner.arch }}-
+
       - name: Build for the simulator, verbose
         run: |
           mkdir -p logs
@@ -127,19 +139,17 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: sim-build-arm64-${{ matrix.variant }}
+          name: simulator-build-log
           path: logs/
           retention-days: 14
 
   simulator:
     name: Walkthrough on ${{ matrix.kind }}
-    # Intel runner (standard, free on a public repository - never a "-large"
-    # or "-xlarge" label, those are billed). On Apple Silicon the debug
-    # simulator build fails to link (see the diagnostic job above - suspected:
-    # Google ML Kit ships no arm64-simulator slice); an x86_64 simulator does
-    # not need one.
-    runs-on: macos-15-intel
-    timeout-minutes: 120
+    # Standard runners only (free on a public repository): never a "-large" or
+    # "-xlarge" label, those are billed. Apple Silicon: the Intel runner
+    # (macos-15-intel) spent 14-21 minutes on pod install alone and timed out.
+    runs-on: macos-15
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -160,6 +170,15 @@ jobs:
           cache: true
 
       - run: flutter pub get
+
+      # Downloaded pods (incl. the precompiled Firestore framework) between
+      # runs; the compiled app is never cached.
+      - name: Cache CocoaPods downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/CocoaPods
+          key: pods-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('ios/Podfile', 'pubspec.lock') }}
+          restore-keys: pods-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Boot the simulator
         run: |

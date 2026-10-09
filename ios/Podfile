@@ -37,6 +37,12 @@ flutter_ios_podfile_setup
 target 'Runner' do
   use_frameworks!
 
+  # Firestore as a precompiled framework (FlutterFire's own advice): built
+  # from source it compiles gRPC, abseil and BoringSSL - most of a 20-minute
+  # iOS build. The tag MUST equal the Firebase iOS SDK version firebase_core
+  # uses (firebase_core/ios/firebase_sdk_version.rb) - update both together.
+  pod 'FirebaseFirestore', :git => 'https://github.com/invertase/firestore-ios-sdk-frameworks.git', :tag => '11.15.0'
+
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
   target 'RunnerTests' do
     inherit! :search_paths
