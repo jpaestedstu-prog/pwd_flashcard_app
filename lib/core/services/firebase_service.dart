@@ -135,6 +135,13 @@ class FirebaseService {
   /// the UI banner and logs so the developer can act on it.
   static String? lastInitError;
 
+  /// `--dart-define=FLASHLEARN_OFFLINE=true` starts the app exactly as it
+  /// runs when Firebase cannot be reached: offline-only, nothing sent. The
+  /// device walkthrough in `integration_test/` uses it so that test runs on
+  /// simulators and emulators create no accounts or profiles in the real
+  /// project. Release builds never set it.
+  static const bool forceOffline = bool.fromEnvironment('FLASHLEARN_OFFLINE');
+
   /// The most recent [FirebaseOptions] passed to [init]. Used by
   /// [retryInit] so callers don't have to re-import the generated
   /// `firebase_options.dart` from feature widgets.
@@ -156,6 +163,10 @@ class FirebaseService {
   /// the reason. The app continues offline-only.
   static Future<void> init({FirebaseOptions? options}) async {
     if (_initialised) return;
+    if (forceOffline) {
+      lastInitError = 'Offline build (FLASHLEARN_OFFLINE)';
+      return;
+    }
     _lastUsedOptions = options ?? _lastUsedOptions;
     try {
       if (options != null) {

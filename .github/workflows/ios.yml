@@ -1,0 +1,150 @@
+name: iOS
+
+# Builds the iPhone/iPad app on GitHub's macOS machines (free for a public
+# repository) and runs the on-device walkthrough on four simulators: a small
+# and a large iPhone, an iPad mini and a 13-inch iPad. Nothing here signs the
+# app or sends it to Apple - that needs an Apple Developer account (see
+# docs/store/APP_STORE.md). Artifacts, kept 14 days: the unsigned IPA, every
+# walkthrough screenshot, and the test logs.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [work/ios-and-stores, work/sign-interpreter]
+    paths-ignore:
+      - 'website/**'
+      - 'docs/**'
+      - 'CHAPTER*/**'
+      - '**/*.md'
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  FLUTTER_VERSION: '3.44.0'
+
+jobs:
+  ipa:
+    name: Unsigned IPA
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use the newest stable Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_*.app | grep -iv beta | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Build (release, unsigned)
+        run: flutter build ios --release --no-codesign
+
+      - name: Package the IPA
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d+ -f1)
+          APP=build/ios/iphoneos/Runner.app
+          mkdir -p build/ipa/Payload
+          cp -R "$APP" build/ipa/Payload/
+          (cd build/ipa && zip -qry "FlashLearnPWD-v${VERSION}-ios-unsigned.ipa" Payload)
+          ls -la build/ipa
+          for key in CFBundleDisplayName CFBundleIdentifier CFBundleShortVersionString CFBundleVersion MinimumOSVersion; do
+            echo "$key = $(/usr/libexec/PlistBuddy -c "Print :$key" "$APP/Info.plist")"
+          done
+          du -sh "$APP"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-unsigned-ipa
+          path: build/ipa/*.ipa
+          retention-days: 14
+
+      # What `pod install` wrote, so the repository can carry it.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-pods
+          path: |
+            ios/Podfile.lock
+            ios/Runner.xcodeproj/project.pbxproj
+            ios/Runner.xcworkspace/contents.xcworkspacedata
+          retention-days: 14
+
+  simulator:
+    name: Walkthrough on ${{ matrix.kind }}
+    runs-on: macos-15
+    timeout-minutes: 80
+    strategy:
+      fail-fast: false
+      matrix:
+        kind: [iphone-small, iphone-large, ipad-mini, ipad-large]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use the newest stable Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_*.app | grep -iv beta | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Boot the simulator
+        run: |
+          UDID=$(python3 .github/scripts/pick_simulator.py ${{ matrix.kind }})
+          echo "UDID=$UDID" >> "$GITHUB_ENV"
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl ui "$UDID" appearance light
+          mkdir -p logs
+
+      # Firebase once is enough: the SDKs are the same on every simulator.
+      - name: Firebase smoke test
+        if: matrix.kind == 'iphone-large'
+        run: |
+          flutter drive --driver=test_driver/integration_test.dart \
+            --target=integration_test/firebase_smoke_test.dart \
+            -d "$UDID" 2>&1 | tee logs/firebase-smoke.log
+
+      - name: Walkthrough
+        env:
+          WALKTHROUGH_DIR: build/walkthrough/${{ matrix.kind }}
+        run: |
+          flutter drive --driver=test_driver/integration_test.dart \
+            --target=integration_test/app_walkthrough_test.dart \
+            --dart-define=FLASHLEARN_OFFLINE=true \
+            -d "$UDID" 2>&1 | tee logs/walkthrough.log
+
+      - name: Simulator log excerpt
+        if: always()
+        run: |
+          xcrun simctl spawn "$UDID" log show --last 30m --style compact \
+            --predicate 'process == "Runner"' > logs/simulator-runner.log 2>&1 || true
+          tail -n 40 logs/simulator-runner.log || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: walkthrough-${{ matrix.kind }}
+          path: |
+            build/walkthrough/
+            logs/
+          retention-days: 14
