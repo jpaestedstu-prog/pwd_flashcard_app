@@ -364,7 +364,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get openShop => 'Open star shop';
 
   @override
-  String get version => 'Version 1.2.3 • Thesis Capstone Project';
+  String aboutVersionLine(String version) {
+    return 'Version $version • Thesis Capstone Project';
+  }
 
   @override
   String get flashLearnPwd => 'FlashLearn PWD';

@@ -186,7 +186,15 @@
   "openDashboard": "Open progress dashboard",
   "openSettings": "Open settings",
   "openShop": "Open star shop",
-  "version": "Version 1.2.3 • Thesis Capstone Project",
+  "aboutVersionLine": "Version {version} • Thesis Capstone Project",
+  "@aboutVersionLine": {
+    "description": "Settings → About. {version} is the installed app version, e.g. 1.3.0.",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
   "flashLearnPwd": "FlashLearn PWD",
   "animals": "Animals",
   "colorsAndShapes": "Colors & Shapes",

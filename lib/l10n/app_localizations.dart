@@ -752,11 +752,11 @@ abstract class AppLocalizations {
   /// **'Open star shop'**
   String get openShop;
 
-  /// No description provided for @version.
+  /// Settings → About. {version} is the installed app version, e.g. 1.3.0.
   ///
   /// In en, this message translates to:
-  /// **'Version 1.2.3 • Thesis Capstone Project'**
-  String get version;
+  /// **'Version {version} • Thesis Capstone Project'**
+  String aboutVersionLine(String version);
 
   /// No description provided for @flashLearnPwd.
   ///

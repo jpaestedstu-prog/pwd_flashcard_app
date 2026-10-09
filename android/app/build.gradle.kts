@@ -1,4 +1,6 @@
+import com.android.build.api.artifact.SingleArtifact
 import java.io.FileInputStream
+import java.util.Base64
 import java.util.Properties
 
 plugins {
@@ -33,6 +35,30 @@ val signingProperties = Properties().apply {
     FileInputStream(signingPropertiesFile).use { load(it) }
 }
 
+// Which shop this build is for - the same `--dart-define` the Dart side reads
+// (lib/core/constants/distribution.dart), so one flag sets both:
+//   flutter build appbundle --dart-define=FLASHLEARN_DISTRIBUTION=play
+// Flutter hands Gradle its defines as `-Pdart-defines=<base64>,<base64>,...`.
+val dartDefines: Map<String, String> =
+    (project.findProperty("dart-defines") as String?)
+        ?.split(",")
+        ?.filter { it.isNotBlank() }
+        ?.map { String(Base64.getDecoder().decode(it), Charsets.UTF_8) }
+        ?.mapNotNull { define ->
+            val eq = define.indexOf('=')
+            if (eq > 0) define.substring(0, eq) to define.substring(eq + 1) else null
+        }
+        ?.toMap()
+        ?: emptyMap()
+val isPlayBuild = dartDefines["FLASHLEARN_DISTRIBUTION"] == "play"
+
+// The website APKs keep the original id, so every tablet that installed one
+// keeps accepting updates (and its profiles). Google Play refuses any
+// "com.example" id, so the Play build is published under its own - a separate
+// app on a device. The iOS bundle id is the same string.
+val websiteApplicationId = "com.example.pwdpwdpwd"
+val storeApplicationId = "io.github.jpaestedstuprog.flashlearnpwd"
+
 android {
     namespace = "com.example.pwdpwdpwd"
     compileSdk = flutter.compileSdkVersion
@@ -49,8 +75,7 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.pwdpwdpwd"
+        applicationId = if (isPlayBuild) storeApplicationId else websiteApplicationId
         // minSdk 29 (Android 10): guarantees gesture navigation,
         // edge-to-edge APIs, dynamic colors hooks, and Theme.Material3.*
         // parents without legacy compat shims. targetSdk 36 (Android 16).
@@ -92,6 +117,55 @@ android {
 
 flutter {
     source = "../.."
+}
+
+// Google Play allows USE_EXACT_ALARM only for apps whose core purpose is an
+// alarm clock or a calendar. The Play build drops it from the merged manifest
+// and keeps SCHEDULE_EXACT_ALARM, which the user grants ("Alarms &
+// reminders"); without that grant, RoutineAlarms.kt and the Dart schedulers
+// already fall back to inexact alarms. Website APKs are unchanged.
+abstract class DropPermissionsTask : DefaultTask() {
+    @get:InputFile
+    abstract val mergedManifest: RegularFileProperty
+
+    @get:OutputFile
+    abstract val updatedManifest: RegularFileProperty
+
+    @get:Input
+    abstract val permissions: ListProperty<String>
+
+    @TaskAction
+    fun drop() {
+        var manifest = mergedManifest.get().asFile.readText()
+        for (permission in permissions.get()) {
+            val element = Regex(
+                """\s*<uses-permission\s+android:name="${Regex.escape(permission)}"[^>]*/>""",
+            )
+            check(element.containsMatchIn(manifest)) {
+                "$permission is not in the merged manifest - update DropPermissionsTask."
+            }
+            manifest = manifest.replace(element, "")
+        }
+        updatedManifest.get().asFile.writeText(manifest)
+    }
+}
+
+androidComponents {
+    onVariants { variant ->
+        if (isPlayBuild) {
+            val task = project.tasks.register<DropPermissionsTask>(
+                "drop${variant.name.replaceFirstChar { it.uppercase() }}PlayPermissions",
+            ) {
+                permissions.set(listOf("android.permission.USE_EXACT_ALARM"))
+            }
+            variant.artifacts.use(task)
+                .wiredWithFiles(
+                    DropPermissionsTask::mergedManifest,
+                    DropPermissionsTask::updatedManifest,
+                )
+                .toTransform(SingleArtifact.MERGED_MANIFEST)
+        }
+    }
 }
 
 dependencies {

@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import '../constants/distribution.dart';
 import '../../data/local/hive_service.dart';
 
 /// The newest APK the project website offers, read from its `version.json`.
@@ -218,7 +219,21 @@ final updateCheckServiceProvider = Provider<UpdateCheckService>(
   (ref) => UpdateCheckService(),
 );
 
+/// The installed version name ("1.3.0"), for Settings → About. Read from the
+/// app itself, so it can never drift from the build — the About row was a
+/// fixed string and said 1.2.3 for four releases.
+final installedVersionProvider = FutureProvider<String>((ref) async {
+  final info = await PackageInfo.fromPlatform();
+  return info.version;
+});
+
 /// The once-a-day answer, for the educator home card and Settings.
-final updateStatusProvider = FutureProvider<UpdateStatus>(
-  (ref) => ref.watch(updateCheckServiceProvider).check(),
-);
+///
+/// A store copy (Google Play, the App Store) never asks the website: the store
+/// updates it, and both stores forbid pointing to another download.
+final updateStatusProvider = FutureProvider<UpdateStatus>((ref) async {
+  if (!Distribution.current.checksWebsiteForUpdates) {
+    return const UpdateUnknown();
+  }
+  return ref.watch(updateCheckServiceProvider).check();
+});

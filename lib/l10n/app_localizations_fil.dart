@@ -366,7 +366,9 @@ class AppLocalizationsFil extends AppLocalizations {
   String get openShop => 'Buksan ang tindahan ng bituin';
 
   @override
-  String get version => 'Bersyon 1.2.3 • Thesis Capstone Project';
+  String aboutVersionLine(String version) {
+    return 'Bersyon $version • Thesis Capstone Project';
+  }
 
   @override
   String get flashLearnPwd => 'FlashLearn PWD';

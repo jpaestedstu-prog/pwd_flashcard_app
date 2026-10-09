@@ -11,6 +11,7 @@ import '../../../widgets/app_snack_bar.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/review_reminder_service.dart';
+import '../../../core/constants/distribution.dart';
 import '../../../core/services/update_check_service.dart';
 import '../../../widgets/update_available_card.dart' show openUpdatePage;
 import '../../../data/local/hive_service.dart';
@@ -988,15 +989,18 @@ class SettingsScreen extends ConsumerWidget {
                 title:
                     AppLocalizations.of(context)?.flashLearnPwd ??
                     'FlashLearn PWD',
-                subtitle:
-                    AppLocalizations.of(context)?.version ??
-                    'Version 1.2.1 • Thesis Capstone Project',
+                subtitle: _aboutLine(
+                  l10n,
+                  ref.watch(installedVersionProvider).valueOrNull,
+                ),
                 trailing: const SizedBox.shrink(),
               ),
 
-              // The app comes as an APK, so nothing else tells a tablet a
-              // newer one exists.
-              const _UpdateCheckTile(),
+              // A website APK has nothing else to tell a tablet that a newer
+              // one exists. Store copies are updated by the store, and both
+              // stores forbid pointing anywhere else.
+              if (Distribution.current.checksWebsiteForUpdates)
+                const _UpdateCheckTile(),
 
               _SettingsTile(
                 icon: Icons.school_rounded,
@@ -1338,6 +1342,14 @@ class _SectionHeader extends StatelessWidget {
       ),
     );
   }
+}
+
+/// "Version 1.3.0 • Thesis Capstone Project" — the installed version, or just
+/// the project line until it is known.
+String _aboutLine(AppLocalizations? l10n, String? version) {
+  if (version == null || version.isEmpty) return 'Thesis Capstone Project';
+  return l10n?.aboutVersionLine(version) ??
+      'Version $version • Thesis Capstone Project';
 }
 
 // ────────────────────────────────────────
