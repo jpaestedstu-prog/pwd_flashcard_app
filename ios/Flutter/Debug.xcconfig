@@ -1,7 +1,2 @@
 #include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"
 #include "Generated.xcconfig"
-// Xcode 16+ links a Debug app as Runner.debug.dylib. On Apple Silicon
-// simulators that link was scheduled before the CocoaPods umbrella framework
-// was built ("Framework 'Pods_Runner' not found"); the classic executable
-// links after it, as Release always has.
-ENABLE_DEBUG_DYLIB = NO

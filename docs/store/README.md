@@ -205,9 +205,10 @@ in it are deliberate — keep them:
 - `pubspec.yaml` → `enable-swift-package-manager: false`. With Swift Package
   Manager on, Flutter mixes it with CocoaPods (Google ML Kit, printing and
   flutter_tts exist only as pods) and the simulator build failed to link.
-- `ios/Flutter/Debug.xcconfig` → `ENABLE_DEBUG_DYLIB = NO`. On Apple Silicon
-  the Debug build otherwise links `Runner.debug.dylib` before the CocoaPods
-  framework exists: "Framework 'Pods_Runner' not found".
+- `ios/Podfile` → the `post_integrate` hook that removes CocoaPods' empty
+  `Pods_Runner.framework` from the app's link phase. Without it a Debug
+  simulator build fails: "Framework 'Pods_Runner' not found" (Xcode never
+  scheduled that umbrella target; every real pod is linked anyway).
 - `ios/Podfile` → iOS 15.5 minimum (ML Kit's), and Firestore built from
   source. The precompiled Firestore that FlutterFire suggests cannot be
   installed at this version (a broken archive link), so a clean first build
