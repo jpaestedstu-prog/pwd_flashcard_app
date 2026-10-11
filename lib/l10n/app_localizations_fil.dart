@@ -2886,6 +2886,35 @@ class AppLocalizationsFil extends AppLocalizations {
   }
 
   @override
+  String get screenOrientation => 'Direksyon ng screen';
+
+  @override
+  String get orientationDevice => 'Sumusunod sa device';
+
+  @override
+  String get orientationPortrait => 'Patayo';
+
+  @override
+  String get orientationLandscape => 'Pahiga';
+
+  @override
+  String get orientationDeviceDesc =>
+      'Umiikot ang screen kapag iniikot ang device';
+
+  @override
+  String get orientationPortraitDesc =>
+      'Laging patayo, paano man hawakan ang device';
+
+  @override
+  String get orientationLandscapeDesc =>
+      'Laging pahiga, paano man hawakan ang device';
+
+  @override
+  String setOrientationTo(String choice) {
+    return 'Itakda ang direksyon ng screen sa $choice';
+  }
+
+  @override
   String get changeLabel => 'Baguhin';
 
   @override
@@ -8617,7 +8646,7 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String get gpPair =>
-      'Mag-pair ng isa sa Android Settings → Bluetooth, saka bumalik dito.';
+      'Mag-pair ng isa sa Settings → Bluetooth ng device, saka bumalik dito.';
 
   @override
   String get gppTitle => '🎮  Pagsasanay';

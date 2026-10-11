@@ -5,6 +5,9 @@
 //     --target=integration_test/app_walkthrough_test.dart \
 //     --dart-define=FLASHLEARN_OFFLINE=true -d <device>
 //
+// Add --dart-define=WALK_ORIENTATION=landscape to walk every screen sideways
+// (the app turns with the device since 1.4.0).
+//
 // It onboards a "Player (with Progress)" profile, opens every tab, a deck, and
 // every learner screen and game, saves a screenshot of each stop (the driver
 // writes them to build/walkthrough/), and fails if any screen threw or
@@ -17,9 +20,12 @@
 // every profile on the device. Emulators and simulators only.
 
 import 'dart:io' show Platform;
+import 'dart:math' as math;
+import 'dart:ui' as ui show ImageByteFormat, ImageDescriptor, ImmutableBuffer;
 import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:integration_test/integration_test.dart';
@@ -29,6 +35,18 @@ import 'package:pwdpwdpwd/main.dart' as app;
 import 'package:pwdpwdpwd/navigation/app_router.dart' show rootNavigatorKey;
 
 const _profileName = 'Store Tester';
+
+/// `landscape` walks every screen sideways; anything else, as the device is.
+const _orientation = String.fromEnvironment('WALK_ORIENTATION');
+const _landscape = _orientation == 'landscape';
+
+/// Keep Android screenshots at full size (for store pictures). By default
+/// they are scaled to [_maxShotSide]: every screenshot travels back to the
+/// driver in one JSON reply at the end, and 73 full-size ones (2400 px) made
+/// the app 851 MB, when Android's low-memory killer ended it and the run
+/// with it. iOS screenshots stay full size: the App Store sets come from them.
+const _fullScreenshots = bool.fromEnvironment('WALK_FULL_SCREENSHOTS');
+const _maxShotSide = 1280;
 
 /// Tabs, opened through the router (a tap on the bar is checked once).
 const _tabs = <String>['/home', '/flashcards', '/games', '/stories', '/progress'];
@@ -146,6 +164,17 @@ class _Walk {
       // so that even a screen stuck at launch can be captured.
       await _settle(const Duration(seconds: 2));
       await binding.convertFlutterSurfaceToImage();
+    }
+    if (_landscape) {
+      await _turnSideways();
+      final size = tester.view.physicalSize;
+      // ignore: avoid_print
+      print('WALK orientation: landscape requested, view '
+          '${size.width.toInt()}x${size.height.toInt()}');
+      if (size.width <= size.height) {
+        failures.add('Could not turn the app to landscape '
+            '(view ${size.width.toInt()}x${size.height.toInt()})');
+      }
     }
 
     final first = await _waitForAny({
@@ -375,11 +404,32 @@ class _Walk {
     return config.uri.toString();
   }
 
+  /// Asks for landscape and waits for the turn. Asked again before every
+  /// screen: the app's own orientation code (a profile's choice, a gaze
+  /// camera's hold) may set it back in between.
+  Future<void> _turnSideways() async {
+    await SystemChrome.setPreferredOrientations(const [
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    final end = DateTime.now().add(const Duration(seconds: 8));
+    while (DateTime.now().isBefore(end)) {
+      await _settle(const Duration(milliseconds: 300));
+      final size = tester.view.physicalSize;
+      if (size.width > size.height) break;
+    }
+    await _settle(const Duration(milliseconds: 800));
+  }
+
   /// Opens [route], waits for it to draw, screenshots it and records any
   /// error raised while it was on screen.
   Future<void> _visit(String route, {required bool push, String? name}) async {
     final errorsBefore = _frameworkErrors.length;
     final logBefore = _appErrors().length;
+    if (_landscape) {
+      final size = tester.view.physicalSize;
+      if (size.width <= size.height) await _turnSideways();
+    }
     _router.go('/home');
     await _settle(const Duration(milliseconds: 800));
     try {
@@ -590,9 +640,39 @@ class _Walk {
     final file = '${_shots.toString().padLeft(3, '0')}_$name';
     try {
       await binding.takeScreenshot(file);
+      if (Platform.isAndroid && !_fullScreenshots) await _shrinkLastShot();
     } catch (e) {
       // ignore: avoid_print
       print('WALK screenshot $file failed: $e');
     }
+  }
+
+  /// Re-encodes the screenshot just taken at no more than [_maxShotSide]
+  /// pixels on its longer side, in place in the report sent to the driver.
+  Future<void> _shrinkLastShot() async {
+    final shots = binding.reportData?['screenshots'] as List<dynamic>?;
+    if (shots == null || shots.isEmpty) return;
+    final entry = shots.last as Map<String, dynamic>;
+    final bytes = Uint8List.fromList(entry['bytes'] as List<int>);
+    final buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
+    final descriptor = await ui.ImageDescriptor.encoded(buffer);
+    final longest = math.max(descriptor.width, descriptor.height);
+    if (longest <= _maxShotSide) {
+      descriptor.dispose();
+      buffer.dispose();
+      return;
+    }
+    final scale = _maxShotSide / longest;
+    final codec = await descriptor.instantiateCodec(
+      targetWidth: (descriptor.width * scale).round(),
+      targetHeight: (descriptor.height * scale).round(),
+    );
+    final image = (await codec.getNextFrame()).image;
+    final png = await image.toByteData(format: ui.ImageByteFormat.png);
+    image.dispose();
+    codec.dispose();
+    descriptor.dispose();
+    buffer.dispose();
+    if (png != null) entry['bytes'] = png.buffer.asUint8List();
   }
 }

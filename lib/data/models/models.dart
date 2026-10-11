@@ -831,6 +831,10 @@ class AppSettings {
   /// for anyone else on the tablet. Default on, so it is discoverable.
   final bool routineEnabled;
 
+  /// Whether the screen turns with the device or stays portrait / landscape
+  /// for this profile (see `OrientationHold`). Default: follows the device.
+  final ScreenOrientationChoice screenOrientation;
+
   const AppSettings({
     this.fontScale = 1.0,
     this.highContrastMode = false,
@@ -853,6 +857,7 @@ class AppSettings {
     this.learningAssistEnabled = true,
     this.aiCompanionEnabled = true,
     this.routineEnabled = true,
+    this.screenOrientation = ScreenOrientationChoice.device,
   });
 
   AppSettings copyWith({
@@ -877,6 +882,7 @@ class AppSettings {
     bool? learningAssistEnabled,
     bool? aiCompanionEnabled,
     bool? routineEnabled,
+    ScreenOrientationChoice? screenOrientation,
   }) {
     return AppSettings(
       fontScale: fontScale ?? this.fontScale,
@@ -901,6 +907,7 @@ class AppSettings {
           learningAssistEnabled ?? this.learningAssistEnabled,
       aiCompanionEnabled: aiCompanionEnabled ?? this.aiCompanionEnabled,
       routineEnabled: routineEnabled ?? this.routineEnabled,
+      screenOrientation: screenOrientation ?? this.screenOrientation,
     );
   }
 }

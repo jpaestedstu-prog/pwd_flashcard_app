@@ -340,6 +340,44 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ),
 
+              // ─── Screen orientation ──────────
+              // The screen turns with the device unless this profile keeps
+              // it one way (a mounted tablet, a learner whom a turning screen
+              // unsettles). Head tracking holds it still on its own.
+              _SettingsTile(
+                icon: Icons.screen_rotation_rounded,
+                title: _t(context).screenOrientation,
+                subtitle: _orientationDesc(
+                  _t(context),
+                  settings.screenOrientation,
+                ),
+                onTap: () => settingsNotifier.update(
+                  settings.copyWith(
+                    screenOrientation: ScreenOrientationChoice.values[
+                        (settings.screenOrientation.index + 1) %
+                            ScreenOrientationChoice.values.length],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (final choice in ScreenOrientationChoice.values) ...[
+                      if (choice.index > 0) const SizedBox(width: 8),
+                      _OrientationChoiceButton(
+                        choice: choice,
+                        isActive: settings.screenOrientation == choice,
+                        onTap: () => settingsNotifier.update(
+                          settings.copyWith(screenOrientation: choice),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
               _SettingsTile(
                 icon: Icons.animation_rounded,
                 title:
@@ -430,7 +468,7 @@ class SettingsScreen extends ConsumerWidget {
               // Bluetooth game controller. Sits next to Gaze Control because
               // it answers the same question — how does a learner who cannot
               // use the touchscreen drive the app — with different hardware.
-              // Android only for now: the controller bridge is GamepadBridge.kt.
+              // Android and iOS (GamepadBridge.kt / GamepadBridge.swift).
               if (GamepadService.isSupported)
                 _SettingsTile(
                   icon: Icons.sports_esports_rounded,
@@ -1833,6 +1871,99 @@ class _SizePresetButton extends StatelessWidget {
                     : HCColor.of(context).textSecondary,
                 fontWeight: FontWeight.w700,
               ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+String _orientationLabel(AppLocalizations l, ScreenOrientationChoice c) =>
+    switch (c) {
+      ScreenOrientationChoice.device => l.orientationDevice,
+      ScreenOrientationChoice.portrait => l.orientationPortrait,
+      ScreenOrientationChoice.landscape => l.orientationLandscape,
+    };
+
+String _orientationDesc(AppLocalizations l, ScreenOrientationChoice c) =>
+    switch (c) {
+      ScreenOrientationChoice.device => l.orientationDeviceDesc,
+      ScreenOrientationChoice.portrait => l.orientationPortraitDesc,
+      ScreenOrientationChoice.landscape => l.orientationLandscapeDesc,
+    };
+
+/// One of the three orientation choices: an icon that shows the shape, and
+/// its name under it (two lines at the largest font sizes).
+class _OrientationChoiceButton extends StatelessWidget {
+  const _OrientationChoiceButton({
+    required this.choice,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  final ScreenOrientationChoice choice;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    final label = _orientationLabel(_t(context), choice);
+    final color = isActive ? hc.textOnPrimary : hc.textSecondary;
+    return Expanded(
+      child: Semantics(
+        button: true,
+        selected: isActive,
+        label: _t(context).setOrientationTo(label),
+        excludeSemantics: true,
+        child: GestureDetector(
+          onTap: onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+            decoration: BoxDecoration(
+              color: isActive ? hc.primary : hc.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isActive ? AppColors.primary : hc.border,
+              ),
+              boxShadow: isActive
+                  ? [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  switch (choice) {
+                    ScreenOrientationChoice.device =>
+                      Icons.screen_rotation_rounded,
+                    ScreenOrientationChoice.portrait =>
+                      Icons.stay_current_portrait_rounded,
+                    ScreenOrientationChoice.landscape =>
+                      Icons.stay_current_landscape_rounded,
+                  },
+                  color: color,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.labelMedium.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
             ),
           ),
         ),

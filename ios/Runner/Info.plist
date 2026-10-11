@@ -58,22 +58,25 @@
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
-	<!-- Portrait only on every device, like the Android build: the layouts,
-	     the Gaze Control grid and the front-camera head/blink geometry are
-	     all authored for a fixed portrait frame. An iPad app that does not
-	     support every orientation must opt out of Split View / Stage Manager
-	     (UIRequiresFullScreen), or App Store validation rejects the build. -->
+	<!-- Every orientation, like the Android build. On iPad that also means
+	     Split View, Slide Over and Stage Manager (no UIRequiresFullScreen),
+	     which App Store validation allows only with all four orientations.
+	     A profile may keep one orientation from Settings, and head tracking
+	     holds the current one while its camera runs (OrientationHold);
+	     iPadOS can still decide for an app sharing the screen. -->
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>UIRequiresFullScreen</key>
-	<true/>
 	<!-- Only HTTPS and on-device PIN hashing: exempt from export filings. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>

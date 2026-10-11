@@ -88,20 +88,13 @@
         android:fullBackupContent="false"
         android:dataExtractionRules="@xml/data_extraction_rules">
 
-        <!-- Portrait-only on large screens too. Android 16 (API 36) ignores an
-             app's orientation/resizability request on displays ≥ sw600dp by
-             default, which would let this app rotate to landscape on tablets
-             despite the `screenOrientation="portrait"` lock below. This
-             property opts back into compatibility mode so the portrait lock is
-             honored (the app is letterboxed on a landscape-held tablet instead
-             of stretching to landscape) — required for the fixed-portrait
-             spatial layout the Gaze Control D-pad depends on. The opt-out is
-             available through targetSdk 36; API 37 removes it, at which point
-             the app must adopt an adaptive layout. Unknown to Android ≤ 15,
-             which safely ignores the element. -->
-        <property
-            android:name="android.window.PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY"
-            android:value="true" />
+        <!-- Orientation and window size follow the device: phones and
+             tablets, portrait and landscape, split screen, freeform and
+             resizable windows. (Until 1.4.0 the activity was pinned to
+             portrait, with Android 16's large-screen compatibility opt-out;
+             that opt-out disappears at targetSdk 37 anyway.) A profile may
+             keep one orientation from Settings, and head tracking holds the
+             current one while its camera runs - see OrientationHold. -->
 
         <!-- Posts every scheduled notification when its alarm fires.
              flutter_local_notifications does NOT merge this receiver into the
@@ -140,7 +133,7 @@
             android:exported="true"
             android:launchMode="singleTop"
             android:taskAffinity=""
-            android:screenOrientation="portrait"
+            android:resizeableActivity="true"
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"

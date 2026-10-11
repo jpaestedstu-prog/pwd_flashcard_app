@@ -199,14 +199,10 @@ void main() {
     expect(gazeCameraOwners.isBusy, isFalse);
   });
 
-  // Like FlashcardQuiz in games_screens_overflow_test.dart, the portrait
-  // practice screen treats the 360 px-tall phone-landscape viewport as not
-  // applicable: the app is portrait-locked, and at 2.0× font that height
-  // cannot hold a reference video + mirror + controls. Every tablet size +
-  // orientation, plus phone portrait, at up to 2.0× font is still covered.
-  final devices = kTabletMatrix
-      .where((d) => d.label != 'phone landscape')
-      .toList();
+  // Every size, phone landscape included since 1.4.0 (the app now turns
+  // with the device): on a short wide screen the word and the buttons sit
+  // beside the two videos.
+  const devices = kTabletMatrix;
 
   testWidgets('practice layout survives the device × text-scale matrix', (
     tester,

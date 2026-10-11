@@ -116,17 +116,17 @@ jobs:
           retention-days: 14
 
   walkthrough:
-    name: Walkthrough on ${{ matrix.kind }}
+    name: Walkthrough on ${{ matrix.kind }} (${{ matrix.orientation }})
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
         include:
-          - kind: phone
-            profile: pixel_6
-          - kind: tablet
-            profile: pixel_tablet
+          - { kind: phone, profile: pixel_6, orientation: portrait }
+          - { kind: tablet, profile: pixel_tablet, orientation: portrait }
+          - { kind: phone, profile: pixel_6, orientation: landscape }
+          - { kind: tablet, profile: pixel_tablet, orientation: landscape }
     steps:
       - uses: actions/checkout@v4
 
@@ -153,9 +153,12 @@ jobs:
       - run: flutter pub get
 
       # Compiles the Android side once before the emulator takes the CPU;
-      # `flutter drive` then only rebuilds the Dart entry point.
+      # `flutter drive` then only rebuilds the Dart entry point. The Gradle
+      # daemon is stopped afterwards so the emulator gets its memory.
       - name: Warm-up debug build
-        run: flutter build apk --debug
+        run: |
+          flutter build apk --debug
+          (cd android && ./gradlew --stop) || true
 
       - name: Enable KVM
         run: |
@@ -173,14 +176,18 @@ jobs:
           profile: ${{ matrix.profile }}
           ram-size: 4096M
           disk-size: 8G
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none -camera-front none
+          # No Vulkan in the guest: Flutter's renderer picks Vulkan when it is
+          # there, and Vulkan on the runner's software GPU (SwiftShader via
+          # gfxstream) took the whole emulator down seconds into the first
+          # run. Without it Flutter draws with OpenGL ES, which is stable.
+          emulator-options: -no-window -gpu swiftshader_indirect -feature -Vulkan -no-snapshot -noaudio -no-boot-anim -camera-back none -camera-front none
           disable-animations: true
-          script: bash .github/scripts/android_walkthrough.sh ${{ matrix.kind }}
+          script: bash .github/scripts/android_walkthrough.sh ${{ matrix.kind }} ${{ matrix.orientation }}
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: walkthrough-android-${{ matrix.kind }}
+          name: walkthrough-android-${{ matrix.kind }}-${{ matrix.orientation }}
           path: |
             build/walkthrough/
             logs/

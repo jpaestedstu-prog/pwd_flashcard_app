@@ -2845,6 +2845,34 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get screenOrientation => 'Screen orientation';
+
+  @override
+  String get orientationDevice => 'Turns with device';
+
+  @override
+  String get orientationPortrait => 'Portrait';
+
+  @override
+  String get orientationLandscape => 'Landscape';
+
+  @override
+  String get orientationDeviceDesc => 'The screen turns when the device turns';
+
+  @override
+  String get orientationPortraitDesc =>
+      'Always tall, however the device is held';
+
+  @override
+  String get orientationLandscapeDesc =>
+      'Always wide, however the device is held';
+
+  @override
+  String setOrientationTo(String choice) {
+    return 'Set screen orientation to $choice';
+  }
+
+  @override
   String get changeLabel => 'Change';
 
   @override
@@ -8699,7 +8727,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gpPair =>
-      'Pair one in Android Settings → Bluetooth, then come back here.';
+      'Pair one in the device\'s Settings → Bluetooth, then come back here.';
 
   @override
   String get gppTitle => '🎮  Practice';

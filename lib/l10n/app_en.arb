@@ -1862,6 +1862,21 @@
       }
     }
   },
+  "screenOrientation": "Screen orientation",
+  "orientationDevice": "Turns with device",
+  "orientationPortrait": "Portrait",
+  "orientationLandscape": "Landscape",
+  "orientationDeviceDesc": "The screen turns when the device turns",
+  "orientationPortraitDesc": "Always tall, however the device is held",
+  "orientationLandscapeDesc": "Always wide, however the device is held",
+  "setOrientationTo": "Set screen orientation to {choice}",
+  "@setOrientationTo": {
+    "placeholders": {
+      "choice": {
+        "type": "String"
+      }
+    }
+  },
   "changeLabel": "Change",
   "changePinTitle": "Change PIN",
   "setProfilePinTitle": "Set Profile PIN",
@@ -6008,7 +6023,7 @@
   "gpNoController": "No controller connected",
   "gpConnected": "Controller connected",
   "gpNone": "No controller",
-  "gpPair": "Pair one in Android Settings → Bluetooth, then come back here.",
+  "gpPair": "Pair one in the device's Settings → Bluetooth, then come back here.",
   "gppTitle": "🎮  Practice",
   "gppNoController": "No controller connected. Switch it on and it will start responding here.",
   "gppPressAny": "Press any button on the controller",

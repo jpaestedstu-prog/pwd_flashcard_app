@@ -92,6 +92,22 @@ enum StudentSortField {
 /// Activity status filter for students
 enum ActivityStatus { all, activeToday, activeThisWeek, inactive7Days }
 
+/// How the screen may turn for a profile (Settings → Screen orientation).
+/// `device` follows the phone or tablet (and its own rotation lock); the
+/// other two keep the screen that way whichever way the device is held.
+/// Stored by [name]; anything unknown reads as `device`.
+enum ScreenOrientationChoice {
+  device,
+  portrait,
+  landscape;
+
+  static ScreenOrientationChoice fromName(Object? name) =>
+      ScreenOrientationChoice.values.firstWhere(
+        (c) => c.name == name,
+        orElse: () => ScreenOrientationChoice.device,
+      );
+}
+
 // ─── Extension helpers ─────────────────────────────────
 
 extension DisabilityTypeX on DisabilityType {

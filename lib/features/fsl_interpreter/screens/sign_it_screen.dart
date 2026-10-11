@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:io';
 
 import 'package:camera/camera.dart';
@@ -650,10 +651,9 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              // Progress
-              ClipRRect(
+          child: LayoutBuilder(
+            builder: (context, box) {
+              final progress = ClipRRect(
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
                   value: (_currentRound + 1) / _rounds,
@@ -663,74 +663,114 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
                   ),
                   valueColor: const AlwaysStoppedAnimation(AppColors.primary),
                 ),
-              ),
-              const SizedBox(height: 12),
-
-              // Word prompt
-              _WordPrompt(card: card),
-              const SizedBox(height: 12),
-
+              );
               // Split: reference video + live mirror. Side-by-side in
               // landscape / on wide screens, stacked in portrait.
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final wide = constraints.maxWidth > constraints.maxHeight;
-                    final reference = _ReferencePanel(
-                      controller: _videoController,
-                      ready: _videoReady,
-                      onReplay: _replay,
-                    );
-                    final mirror = _MirrorPanel(
-                      status: _camStatus,
-                      controller: _cameraController,
-                      recording: _recording,
-                      replay: _replayController,
-                      onRecord: _startRecording,
-                      onStop: _stopRecording,
-                    );
-                    final children = [
-                      Expanded(child: reference),
-                      SizedBox(width: wide ? 12 : 0, height: wide ? 0 : 12),
-                      Expanded(child: mirror),
-                    ];
-                    return wide
-                        ? Row(children: children)
-                        : Column(children: children);
-                  },
-                ),
-              ),
-              const SizedBox(height: 12),
-
+              final panels = LayoutBuilder(
+                builder: (context, constraints) {
+                  final wide = constraints.maxWidth > constraints.maxHeight;
+                  final reference = _ReferencePanel(
+                    controller: _videoController,
+                    ready: _videoReady,
+                    onReplay: _replay,
+                  );
+                  final mirror = _MirrorPanel(
+                    status: _camStatus,
+                    controller: _cameraController,
+                    recording: _recording,
+                    replay: _replayController,
+                    onRecord: _startRecording,
+                    onStop: _stopRecording,
+                  );
+                  final children = [
+                    Expanded(child: reference),
+                    SizedBox(width: wide ? 12 : 0, height: wide ? 0 : 12),
+                    Expanded(child: mirror),
+                  ];
+                  return wide
+                      ? Row(children: children)
+                      : Column(children: children);
+                },
+              );
               // Self-assessment controls
-              Row(
+              final notYet = OutlinedButton.icon(
+                onPressed: () => _confirm(false),
+                icon: const Icon(Icons.refresh_rounded),
+                label: Text(_t(context).lsNotYet),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+              );
+              final gotIt = FilledButton.icon(
+                onPressed: () => _confirm(true),
+                icon: const Icon(Icons.thumb_up_rounded),
+                label: Text(_t(context).siGotItBang),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  backgroundColor: HCColor.of(context).fillFor(AppColors.success),
+                ),
+              );
+
+              // A phone held sideways: stacked, the word and the buttons
+              // left the two videos too little height (found by the
+              // landscape walkthrough). There they move into a column
+              // beside the videos, which get the whole height.
+              final short = box.maxWidth > box.maxHeight && box.maxHeight < 480;
+              if (short) {
+                return Column(
+                  children: [
+                    progress,
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(child: panels),
+                          const SizedBox(width: 12),
+                          SizedBox(
+                            width: math.min(220.0, box.maxWidth * 0.3),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Expanded(
+                                  child: Center(
+                                    child: SingleChildScrollView(
+                                      child: _WordPrompt(card: card),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                gotIt,
+                                const SizedBox(height: 8),
+                                notYet,
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              }
+
+              return Column(
                 children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _confirm(false),
-                      icon: const Icon(Icons.refresh_rounded),
-                      label: Text(_t(context).lsNotYet),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    flex: 2,
-                    child: FilledButton.icon(
-                      onPressed: () => _confirm(true),
-                      icon: const Icon(Icons.thumb_up_rounded),
-                      label: Text(_t(context).siGotItBang),
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        backgroundColor: HCColor.of(context).fillFor(AppColors.success),
-                      ),
-                    ),
+                  progress,
+                  const SizedBox(height: 12),
+                  _WordPrompt(card: card),
+                  const SizedBox(height: 12),
+                  Expanded(child: panels),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(child: notYet),
+                      const SizedBox(width: 12),
+                      Expanded(flex: 2, child: gotIt),
+                    ],
                   ),
                 ],
-              ),
-            ],
+              );
+            },
           ),
         ),
       ),

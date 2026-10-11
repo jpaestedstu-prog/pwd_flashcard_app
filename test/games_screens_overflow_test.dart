@@ -19,15 +19,6 @@ import 'package:pwdpwdpwd/features/games/screens/word_match_screen.dart';
 import 'support/device_matrix.dart';
 import 'support/screen_matrix.dart';
 
-/// The full tablet matrix minus the 360 px-tall phone-landscape viewport.
-/// Used for the portrait swipe-card game (FlashcardQuiz): a portrait card with
-/// large, accessible swipe buttons is designed for tablet/portrait vertical
-/// room — landscape on a short phone is "not applicable" for it. Every tablet
-/// size + orientation, plus phone portrait, at up to 2.0× font, is still
-/// covered.
-final List<DeviceSize> _tabletAndPortrait =
-    kTabletMatrix.where((d) => d.label != 'phone landscape').toList();
-
 /// Overflow matrix for the in-game **play** screens. Each is rendered at its
 /// first gameplay frame (round 0) across every tablet size × orientation ×
 /// accessibility font scale and asserted to lay out without an overflow.
@@ -113,8 +104,9 @@ void main() {
       (tester) async {
     await expectScreenNoOverflowAcrossDevices(
       tester,
+      // Phone landscape included since 1.4.0, when the app began to turn
+      // with the device: the card then sits between its two buttons.
       () => const FlashcardQuizScreen(difficulty: _hard),
-      devices: _tabletAndPortrait,
     );
   });
 

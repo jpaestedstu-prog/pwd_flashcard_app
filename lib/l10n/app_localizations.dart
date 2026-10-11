@@ -5043,6 +5043,54 @@ abstract class AppLocalizations {
   /// **'Set font size to {size}'**
   String setFontSizeTo(String size);
 
+  /// No description provided for @screenOrientation.
+  ///
+  /// In en, this message translates to:
+  /// **'Screen orientation'**
+  String get screenOrientation;
+
+  /// No description provided for @orientationDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Turns with device'**
+  String get orientationDevice;
+
+  /// No description provided for @orientationPortrait.
+  ///
+  /// In en, this message translates to:
+  /// **'Portrait'**
+  String get orientationPortrait;
+
+  /// No description provided for @orientationLandscape.
+  ///
+  /// In en, this message translates to:
+  /// **'Landscape'**
+  String get orientationLandscape;
+
+  /// No description provided for @orientationDeviceDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'The screen turns when the device turns'**
+  String get orientationDeviceDesc;
+
+  /// No description provided for @orientationPortraitDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Always tall, however the device is held'**
+  String get orientationPortraitDesc;
+
+  /// No description provided for @orientationLandscapeDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Always wide, however the device is held'**
+  String get orientationLandscapeDesc;
+
+  /// No description provided for @setOrientationTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Set screen orientation to {choice}'**
+  String setOrientationTo(String choice);
+
   /// No description provided for @changeLabel.
   ///
   /// In en, this message translates to:
@@ -14405,7 +14453,7 @@ abstract class AppLocalizations {
   /// No description provided for @gpPair.
   ///
   /// In en, this message translates to:
-  /// **'Pair one in Android Settings → Bluetooth, then come back here.'**
+  /// **'Pair one in the device\'s Settings → Bluetooth, then come back here.'**
   String get gpPair;
 
   /// No description provided for @gppTitle.

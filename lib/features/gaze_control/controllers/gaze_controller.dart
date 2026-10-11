@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
+import '../../../core/services/orientation_hold.dart';
 import '../logic/blink_detector.dart';
 import '../logic/dwell_tracker.dart';
 import '../logic/gaze_zone_resolver.dart';
@@ -20,7 +21,9 @@ import '../services/gaze_detector.dart';
 enum GazeStatus { initializing, ready, noCamera, permissionDenied, failed }
 
 /// Maps each [DeviceOrientation] to the clockwise degrees ML Kit needs to
-/// rotate an Android frame upright. (iOS reports rotation directly.)
+/// rotate an Android frame upright, in any of the four ways a device can be
+/// held. (On iOS the camera plugin turns each frame upright itself and ML
+/// Kit's iOS side ignores the rotation it is given.)
 const Map<DeviceOrientation, int> _kOrientationDegrees = {
   DeviceOrientation.portraitUp: 0,
   DeviceOrientation.landscapeLeft: 90,
@@ -368,6 +371,7 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
     // disposes the controller *after* initialize() finishes.
     _controller = null;
     _streaming = false;
+    OrientationHold.release(this);
     _isDetecting = false;
     _stopWatchdog();
     // A keep-still pending when the camera went must not fire when it is back.
@@ -489,6 +493,9 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
         return;
       }
       _streaming = true;
+      // The resting head position is measured against where the camera
+      // sits; turning the device would move it to another edge mid-session.
+      OrientationHold.hold(this);
       _status = GazeStatus.ready;
       _startWatchdog();
       _notify();
@@ -568,8 +575,30 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
       return;
     }
     if (_disposed || !_streaming) return;
-    _applySignal(signal, now);
+    _applySignal(framesArriveMirrored ? unmirrored(signal) : signal, now);
   }
+
+  /// Whether front-camera frames reach the detector already mirrored.
+  ///
+  /// On iOS the camera plugin (camera_avfoundation) mirrors the front
+  /// camera's video connection (`isVideoMirrored = true`) — a selfie view —
+  /// while Android hands over the sensor's own, unmirrored frames. A head
+  /// turn reads with the opposite sign in a mirrored frame, so every iPhone
+  /// and iPad would have moved the highlight the wrong way. Readings are
+  /// kept in Android's (unmirrored) frame everywhere: that is what the
+  /// left/right setting and a stored resting position mean, so a learner's
+  /// settings mean the same on either kind of device.
+  @visibleForTesting
+  static bool framesArriveMirrored = Platform.isIOS;
+
+  /// [signal] as an unmirrored frame would have read it.
+  static FaceSignal unmirrored(FaceSignal signal) => FaceSignal(
+        hasFace: signal.hasFace,
+        headTurn: -signal.headTurn,
+        headTilt: signal.headTilt,
+        leftEyeOpen: signal.leftEyeOpen,
+        rightEyeOpen: signal.rightEyeOpen,
+      );
 
   /// Runs [_detectFrame] on [input], as a camera frame would (tests).
   @visibleForTesting

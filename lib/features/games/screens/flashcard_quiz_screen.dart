@@ -435,10 +435,9 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
                   ],
                 ),
               ),
-              body: Column(
-                children: [
-                  // ─── Single status block: rounded progress + score chips ───
-                  Padding(
+              body: LayoutBuilder(
+                builder: (context, box) {
+                  final progress = Padding(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                     child: Semantics(
                       label: l10n.flashcardProgressSemantics(
@@ -457,99 +456,141 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _StatChip(
-                        icon: Icons.check_circle_rounded,
-                        color: AppColors.success,
-                        value: _knowCount,
-                        semanticLabel: l10n.knownCount(_knowCount),
-                      ),
-                      const SizedBox(width: 12),
-                      _StatChip(
-                        icon: Icons.school_rounded,
-                        color: AppColors.warning,
-                        value: _learningCount,
-                        semanticLabel: l10n.stillLearningCount(_learningCount),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
+                  );
+                  final known = _StatChip(
+                    icon: Icons.check_circle_rounded,
+                    color: AppColors.success,
+                    value: _knowCount,
+                    semanticLabel: l10n.knownCount(_knowCount),
+                  );
+                  final learning = _StatChip(
+                    icon: Icons.school_rounded,
+                    color: AppColors.warning,
+                    value: _learningCount,
+                    semanticLabel: l10n.stillLearningCount(_learningCount),
+                  );
                   // ─── Swipeable Card ───────────────────
-                  // ConstrainedBox + AspectRatio keep a stable card footprint; the
-                  // card body sizes its words consistently (see [_QuizCard]) so every
-                  // card looks the same regardless of content length.
-                  Expanded(
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxWidth: context.responsive(phone: 320, tablet: 420),
-                          maxHeight: context.responsive(
-                            phone: 440,
-                            tablet: 560,
+                  // ConstrainedBox + AspectRatio keep a stable card footprint;
+                  // the card body sizes its words consistently (see
+                  // [_QuizCard]) so every card looks the same regardless of
+                  // content length.
+                  final cardArea = Center(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: context.responsive(phone: 320, tablet: 420),
+                        maxHeight: context.responsive(phone: 440, tablet: 560),
+                      ),
+                      child: AspectRatio(
+                        aspectRatio: 3 / 4,
+                        child: Semantics(
+                          label: l10n.flashcardSemantics(
+                            card.wordEnglish,
+                            card.wordFilipino,
+                            card.category.labelOf(l10n),
                           ),
-                        ),
-                        child: AspectRatio(
-                          aspectRatio: 3 / 4,
-                          child: Semantics(
-                            label: l10n.flashcardSemantics(
-                              card.wordEnglish,
-                              card.wordFilipino,
-                              card.category.labelOf(l10n),
-                            ),
-                            child: GestureDetector(
-                              onHorizontalDragUpdate: _onDragUpdate,
-                              onHorizontalDragEnd: _onDragEnd,
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 100),
-                                transform: Matrix4.identity()
-                                  ..storage[12] = _dragOffset.dx
-                                  ..rotateZ(_dragRotation),
-                                transformAlignment: Alignment.center,
-                                child: _QuizCard(
-                                  card: card,
-                                  dragX: _dragOffset.dx,
-                                ),
+                          child: GestureDetector(
+                            onHorizontalDragUpdate: _onDragUpdate,
+                            onHorizontalDragEnd: _onDragEnd,
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 100),
+                              transform: Matrix4.identity()
+                                ..storage[12] = _dragOffset.dx
+                                ..rotateZ(_dragRotation),
+                              transformAlignment: Alignment.center,
+                              child: _QuizCard(
+                                card: card,
+                                dragX: _dragOffset.dx,
                               ),
                             ),
                           ),
                         ),
                       ),
                     ),
-                  ),
+                  );
+                  // ─── Action Buttons (carry the swipe hints) ─────────
+                  final still = _ActionButton(
+                    icon: Icons.close_rounded,
+                    label: l10n.stillLearningSwipe,
+                    color: AppColors.error,
+                    onTap: () => _handleSwipe(false),
+                  );
+                  final know = _ActionButton(
+                    icon: Icons.check_rounded,
+                    label: l10n.iKnowThisSwipe,
+                    color: AppColors.success,
+                    onTap: () => _handleSwipe(true),
+                  );
 
-                  SizedBox(height: context.responsive(phone: 16, tablet: 24)),
-
-                  // ─── Action Buttons (carry the directional swipe hints) ──────
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 32),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  // A phone held sideways leaves a card too small to read
+                  // when everything is stacked (found by the landscape
+                  // walkthrough: ~110 x 146 dp, and its words overflowed).
+                  // There the counts and buttons move beside the card,
+                  // keeping their left/right order.
+                  final sideBySide = box.maxWidth > box.maxHeight * 1.25 &&
+                      box.maxHeight < 560;
+                  if (sideBySide) {
+                    return Column(
                       children: [
-                        _ActionButton(
-                          icon: Icons.close_rounded,
-                          label: AppLocalizations.of(
-                            context,
-                          )!.stillLearningSwipe,
-                          color: AppColors.error,
-                          onTap: () => _handleSwipe(false),
+                        progress,
+                        const SizedBox(height: 8),
+                        Expanded(
+                          child: Row(
+                            children: [
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Center(
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      still,
+                                      const SizedBox(width: 20),
+                                      Flexible(child: cardArea),
+                                      const SizedBox(width: 20),
+                                      know,
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  known,
+                                  const SizedBox(height: 12),
+                                  learning,
+                                ],
+                              ),
+                              const SizedBox(width: 16),
+                            ],
+                          ),
                         ),
-                        _ActionButton(
-                          icon: Icons.check_rounded,
-                          label: AppLocalizations.of(context)!.iKnowThisSwipe,
-                          color: AppColors.success,
-                          onTap: () => _handleSwipe(true),
-                        ),
+                        const SizedBox(height: 8),
                       ],
-                    ),
-                  ),
+                    );
+                  }
 
-                  SizedBox(height: context.responsive(phone: 12, tablet: 20)),
-                ],
+                  return Column(
+                    children: [
+                      progress,
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [known, const SizedBox(width: 12), learning],
+                      ),
+                      const SizedBox(height: 16),
+                      Expanded(child: cardArea),
+                      SizedBox(height: context.responsive(phone: 16, tablet: 24)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [still, know],
+                        ),
+                      ),
+                      SizedBox(height: context.responsive(phone: 12, tablet: 20)),
+                    ],
+                  );
+                },
               ),
             ),
             GameBreakButton(onHold: holdForBreak, onResume: resumeFromBreak),

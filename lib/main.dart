@@ -16,6 +16,7 @@ import 'core/security/username_migration.dart';
 import 'core/services/action_clip_service.dart';
 import 'core/services/active_time_tracker.dart';
 import 'core/services/alarm_scheduler.dart';
+import 'core/services/orientation_hold.dart';
 import 'core/services/schedule_ownership.dart';
 import 'features/routine/services/routine_reminder_scheduler.dart';
 import 'features/routine/providers/today_routine_provider.dart';
@@ -114,18 +115,11 @@ void main() {
     // This avoids ANR on devices with slow or no internet.
     GoogleFonts.config.allowRuntimeFetching = false;
 
-    // Orientation: portrait-only on every device — phones AND tablets.
-    // The layouts, the Gaze Control D-pad grid, and the front-camera head/
-    // blink geometry are all authored against a fixed portrait frame, so a
-    // consistent orientation is what keeps spatial navigation predictable
-    // for PWD learners. The AndroidManifest also pins the activity to
-    // `portrait` so there is no landscape flash before this runtime call
-    // (which overrides the manifest) takes effect. portraitDown is included
-    // so a 180° flip keeps content upright without ever entering landscape.
-    await SystemChrome.setPreferredOrientations(const [
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
+    // Orientation: the app turns with the device — phones and tablets,
+    // portrait and landscape, split screen and resizable windows (until
+    // 1.4.0 it was locked to portrait). A profile can keep it one way in
+    // Settings, and head tracking holds it still while its camera runs; both
+    // go through OrientationHold, applied in FlashLearnApp below.
 
     // Edge-to-edge: draw under status + nav bars. Android 15 (targetSdk
     // 35+) enforces this anyway; setting it explicitly gives consistent
@@ -285,6 +279,8 @@ class FlashLearnApp extends ConsumerWidget {
     // (see gazeKeyboardBypassProvider).
     ref.watch(gazeKeyboardBypassProvider);
     final settings = ref.watch(settingsProvider);
+    // The active profile's "Screen orientation" (deduplicated inside).
+    OrientationHold.prefer(settings.screenOrientation);
 
     // ── Active-time tracking + alarm scheduler lifecycle ──
     // When the active profile is a student/child, start the tracker

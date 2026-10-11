@@ -170,7 +170,7 @@ jobs:
           retention-days: 14
 
   simulator:
-    name: Walkthrough on ${{ matrix.kind }}
+    name: Walkthrough on ${{ matrix.kind }} (${{ matrix.orientation }})
     # Standard runners only (free on a public repository): never a "-large" or
     # "-xlarge" label, those are billed. Apple Silicon: the Intel runner
     # (macos-15-intel) spent 14-21 minutes on pod install alone and timed out.
@@ -179,7 +179,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        kind: [iphone-small, iphone-large, ipad-mini, ipad-large]
+        # Every size upright, and the two extremes sideways: the app turns
+        # with the device since 1.4.0.
+        include:
+          - { kind: iphone-small, orientation: portrait }
+          - { kind: iphone-large, orientation: portrait }
+          - { kind: ipad-mini, orientation: portrait }
+          - { kind: ipad-large, orientation: portrait }
+          - { kind: iphone-small, orientation: landscape }
+          - { kind: ipad-large, orientation: landscape }
     steps:
       - uses: actions/checkout@v4
 
@@ -234,7 +242,7 @@ jobs:
 
       # Firebase once is enough: the SDKs are the same on every simulator.
       - name: Firebase smoke test
-        if: matrix.kind == 'iphone-large'
+        if: matrix.kind == 'iphone-large' && matrix.orientation == 'portrait'
         run: |
           flutter drive --driver=test_driver/integration_test.dart \
             --target=integration_test/firebase_smoke_test.dart \
@@ -242,11 +250,12 @@ jobs:
 
       - name: Walkthrough
         env:
-          WALKTHROUGH_DIR: build/walkthrough/${{ matrix.kind }}
+          WALKTHROUGH_DIR: build/walkthrough/${{ matrix.kind }}-${{ matrix.orientation }}
         run: |
           flutter drive --driver=test_driver/integration_test.dart \
             --target=integration_test/app_walkthrough_test.dart \
             --dart-define=FLASHLEARN_OFFLINE=true \
+            --dart-define=WALK_ORIENTATION=${{ matrix.orientation }} \
             -d "$UDID" 2>&1 | tee logs/walkthrough.log
 
       - name: Simulator log excerpt
@@ -259,7 +268,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: walkthrough-${{ matrix.kind }}
+          name: walkthrough-${{ matrix.kind }}-${{ matrix.orientation }}
           path: |
             build/walkthrough/
             logs/

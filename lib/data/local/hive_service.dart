@@ -425,6 +425,9 @@ class HiveService {
       learningAssistEnabled: g('learningAssistEnabled', true),
       aiCompanionEnabled: g('aiCompanionEnabled', true),
       routineEnabled: g('routineEnabled', true),
+      screenOrientation: ScreenOrientationChoice.fromName(
+        _settBox.get(_settKey('screenOrientation', profileId)),
+      ),
     );
   }
 
@@ -455,6 +458,7 @@ class HiveService {
     await p('learningAssistEnabled', settings.learningAssistEnabled);
     await p('aiCompanionEnabled', settings.aiCompanionEnabled);
     await p('routineEnabled', settings.routineEnabled);
+    await p('screenOrientation', settings.screenOrientation.name);
   }
 
   /// Generic setting getter — read any key from the settings box.
