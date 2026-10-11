@@ -34,7 +34,6 @@ class _Learner extends ProfileNotifier {
         id: 'landscape-learner',
         name: 'Test Learner',
         role: UserRole.player,
-        disabilityType: DisabilityType.none,
         createdAt: DateTime(2026),
       );
 }

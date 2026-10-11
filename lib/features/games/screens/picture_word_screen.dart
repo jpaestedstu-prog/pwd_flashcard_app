@@ -25,6 +25,8 @@ import '../../../data/local/spaced_repetition_service.dart';
 import '../timed_game_mixin.dart';
 import '../game_pause_mixin.dart';
 import '../game_resume_mixin.dart';
+import '../widgets/prompt_and_answers.dart';
+import '../widgets/fitting_grid.dart';
 import '../widgets/pause_overlay.dart';
 import '../../break_time/break_time.dart';
 import '../../gaze_control/models/gaze_action.dart';
@@ -579,130 +581,139 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
       child: Column(
         children: [
           // ─── Word prompt ────────────────────
-          Semantics(
-                label: l10n.findPictureForSemantics(
-                  round.correctCard.wordEnglish,
-                ),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 20),
-                  decoration: BoxDecoration(
-                    color: round.correctCard.category.color.withValues(
-                      alpha: 0.12,
-                    ),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: round.correctCard.category.color.withValues(
-                        alpha: 0.3,
-                      ),
-                      width: 2,
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        l10n.findPictureFor,
-                        style: AppTypography.bodyMedium.copyWith(
-                          color: HCColor.of(context).textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        round.correctCard.wordEnglish,
-                        style: AppTypography.headlineMedium.copyWith(
-                          color: round.correctCard.category.darkColor,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        round.correctCard.wordFilipino,
-                        style: AppTypography.titleSmall.copyWith(
-                          color: HCColor.of(context).textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-              .animate(key: ValueKey(_currentRound))
-              .fadeIn(duration: 300.ms)
-              .slideX(begin: 0.1, end: 0),
-          // Optional "Show Me" action demo for verb cards. Adds nothing to
-          // the layout unless a clip is actually configured for this word.
-          if (ActionClipService.hasClip(round.correctCard)) ...[
-            const SizedBox(height: 12),
-            Center(child: ShowMeButton(card: round.correctCard)),
-          ],
-          const SizedBox(height: 24),
-
-          // ─── Picture choices grid ───────────
           Expanded(
-            child: GridView.builder(
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: context.isLargeTablet ? 4 : 2,
-                mainAxisSpacing: context.gridSpacing * 0.75,
-                crossAxisSpacing: context.gridSpacing * 0.75,
-              ),
-              itemCount: round.choices.length,
-              itemBuilder: (context, index) {
-                final choice = round.choices[index];
-                final isSelected = _selectedIndex == index;
-                final isCorrect = index == round.correctIndex;
-                final showCorrect = _answered && isCorrect;
-                final showWrong = _answered && isSelected && !isCorrect;
-                final highlighted = showCursor && index == _cursorIndex;
-
-                Color borderColor = AppColors.primary.withValues(alpha: 0.2);
-                if (highlighted) borderColor = AppColors.primary;
-                if (showCorrect) borderColor = AppColors.success;
-                if (showWrong) borderColor = AppColors.error;
-
-                return Semantics(
-                  button: true,
-                  label:
-                      '${l10n.pictureOfSemantics(choice.wordEnglish)}'
-                      '${showCorrect ? l10n.correctAnswerSuffix : ''}'
-                      '${showWrong ? l10n.wrongAnswerSuffix : ''}',
-                  child: GestureDetector(
-                    onTap: () => _selectAnswer(index),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      decoration: BoxDecoration(
-                        color: showCorrect
-                            ? AppColors.successLight
-                            : showWrong
-                            ? AppColors.errorLight
-                            : HCColor.of(context).surface,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: borderColor,
-                          width: highlighted ? 4 : 3,
+            child: PromptAndAnswers(
+              promptFlex: 0,
+              prompt: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Semantics(
+                        label: l10n.findPictureForSemantics(
+                          round.correctCard.wordEnglish,
                         ),
-                        boxShadow: [
-                          if ((isSelected || highlighted) && !_answered)
-                            BoxShadow(
-                              color: AppColors.primary.withValues(
-                                alpha: highlighted ? 0.35 : 0.2,
-                              ),
-                              blurRadius: highlighted ? 14 : 8,
-                              offset: const Offset(0, 4),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 20),
+                          decoration: BoxDecoration(
+                            color: round.correctCard.category.color.withValues(
+                              alpha: 0.12,
                             ),
-                        ],
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(10),
-                        child: FlashcardImage(
-                          card: choice,
-                          expand: true,
-                          borderRadius: 16,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: round.correctCard.category.color.withValues(
+                                alpha: 0.3,
+                              ),
+                              width: 2,
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Text(
+                                l10n.findPictureFor,
+                                style: AppTypography.bodyMedium.copyWith(
+                                  color: HCColor.of(context).textSecondary,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                round.correctCard.wordEnglish,
+                                style: AppTypography.headlineMedium.copyWith(
+                                  color: round.correctCard.category.darkColor,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                round.correctCard.wordFilipino,
+                                style: AppTypography.titleSmall.copyWith(
+                                  color: HCColor.of(context).textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
+                      )
+                      .animate(key: ValueKey(_currentRound))
+                      .fadeIn(duration: 300.ms)
+                      .slideX(begin: 0.1, end: 0),
+                  // Optional "Show Me" action demo for verb cards. Adds nothing to
+                  // the layout unless a clip is actually configured for this word.
+                  if (ActionClipService.hasClip(round.correctCard)) ...[
+                    const SizedBox(height: 12),
+                    Center(child: ShowMeButton(card: round.correctCard)),
+                  ],
+                ],
+              ),
+              answers: LayoutBuilder(
+                  builder: (context, box) => GridView.builder(
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: fittingGridDelegate(
+                      box: box,
+                      itemCount: round.choices.length,
+                      crossAxisCount: context.isLargeTablet ? 4 : 2,
+                      mainAxisSpacing: context.gridSpacing * 0.75,
+                      crossAxisSpacing: context.gridSpacing * 0.75,
                     ),
+                    itemCount: round.choices.length,
+                    itemBuilder: (context, index) {
+                      final choice = round.choices[index];
+                      final isSelected = _selectedIndex == index;
+                      final isCorrect = index == round.correctIndex;
+                      final showCorrect = _answered && isCorrect;
+                      final showWrong = _answered && isSelected && !isCorrect;
+                      final highlighted = showCursor && index == _cursorIndex;
+
+                      Color borderColor = AppColors.primary.withValues(alpha: 0.2);
+                      if (highlighted) borderColor = AppColors.primary;
+                      if (showCorrect) borderColor = AppColors.success;
+                      if (showWrong) borderColor = AppColors.error;
+
+                      return Semantics(
+                        button: true,
+                        label:
+                            '${l10n.pictureOfSemantics(choice.wordEnglish)}'
+                            '${showCorrect ? l10n.correctAnswerSuffix : ''}'
+                            '${showWrong ? l10n.wrongAnswerSuffix : ''}',
+                        child: GestureDetector(
+                          onTap: () => _selectAnswer(index),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            decoration: BoxDecoration(
+                              color: showCorrect
+                                  ? AppColors.successLight
+                                  : showWrong
+                                  ? AppColors.errorLight
+                                  : HCColor.of(context).surface,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: borderColor,
+                                width: highlighted ? 4 : 3,
+                              ),
+                              boxShadow: [
+                                if ((isSelected || highlighted) && !_answered)
+                                  BoxShadow(
+                                    color: AppColors.primary.withValues(
+                                      alpha: highlighted ? 0.35 : 0.2,
+                                    ),
+                                    blurRadius: highlighted ? 14 : 8,
+                                    offset: const Offset(0, 4),
+                                  ),
+                              ],
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(10),
+                              child: FlashcardImage(
+                                card: choice,
+                                expand: true,
+                                borderRadius: 16,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
+                ),
             ),
           ),
         ],
@@ -718,146 +729,146 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
         children: [
           // ─── Picture prompt ─────────────────
           Expanded(
-            flex: 3,
-            child:
-                Semantics(
-                      label: l10n.whichWordMatchesSemantics(
-                        round.correctCard.wordEnglish,
-                      ),
-                      child: Container(
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: round.correctCard.category.color.withValues(
-                            alpha: 0.12,
+            child: PromptAndAnswers(
+              promptFlex: 3,
+              answersFlex: 3,
+              prompt: Semantics(
+                          label: l10n.whichWordMatchesSemantics(
+                            round.correctCard.wordEnglish,
                           ),
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(
-                            color: round.correctCard.category.color.withValues(
-                              alpha: 0.3,
-                            ),
-                            width: 2,
-                          ),
-                        ),
-                        child: Center(
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                FlashcardImage(
-                                  card: round.correctCard,
-                                  size: 112,
-                                  // "Which word matches?" — this picture is
-                                  // the question.
-                                  revealsAnswer: false,
+                          child: Container(
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: round.correctCard.category.color.withValues(
+                                alpha: 0.12,
+                              ),
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                color: round.correctCard.category.color.withValues(
+                                  alpha: 0.3,
                                 ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  l10n.whichWordMatches,
-                                  style: AppTypography.titleMedium.copyWith(
-                                    color: HCColor.of(context).textSecondary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    )
-                    .animate(key: ValueKey(_currentRound))
-                    .fadeIn(duration: 300.ms)
-                    .slideX(begin: 0.1, end: 0),
-          ),
-          const SizedBox(height: 24),
-
-          // ─── Word choices ───────────────────
-          Expanded(
-            flex: 3,
-            child: GridView.builder(
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: context.responsiveTier<int>(
-                  phone: 2,
-                  tablet: 2,
-                  large: 3,
-                  xl: 4,
-                ),
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                // Shrink aspect ratio as text scales up so answer cells
-                // stay tall enough to hold scaled label text at XL font.
-                childAspectRatio:
-                    ((context.isLargeTablet ? 3.0 : 2.5) /
-                            MediaQuery.textScalerOf(context).scale(1.0))
-                        .clamp(1.4, 3.0),
-              ),
-              itemCount: round.choices.length,
-              itemBuilder: (context, index) {
-                final choice = round.choices[index];
-                final isSelected = _selectedIndex == index;
-                final isCorrect = index == round.correctIndex;
-                final showCorrect = _answered && isCorrect;
-                final showWrong = _answered && isSelected && !isCorrect;
-                final highlighted = showCursor && index == _cursorIndex;
-
-                Color bgColor = HCColor.of(context).surface;
-                Color borderColor = AppColors.primary.withValues(alpha: 0.2);
-                Color textColor = HCColor.of(context).textPrimary;
-
-                if (showCorrect) {
-                  bgColor = AppColors.successLight;
-                  borderColor = AppColors.success;
-                  textColor = AppColors.successDark;
-                } else if (showWrong) {
-                  bgColor = AppColors.errorLight;
-                  borderColor = AppColors.error;
-                  textColor = AppColors.errorDark;
-                } else if (highlighted) {
-                  borderColor = AppColors.primary;
-                }
-
-                return Semantics(
-                  button: true,
-                  label:
-                      '${l10n.answerSemantics(choice.wordEnglish)}'
-                      '${showCorrect ? l10n.correctAnswerSuffix : ''}'
-                      '${showWrong ? l10n.wrongAnswerSuffix : ''}',
-                  child: GestureDetector(
-                    onTap: () => _selectAnswer(index),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      decoration: BoxDecoration(
-                        color: bgColor,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: borderColor,
-                          width: highlighted ? 4 : 2,
-                        ),
-                      ),
-                      child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              choice.wordEnglish,
-                              style: AppTypography.titleMedium.copyWith(
-                                color: textColor,
-                                fontWeight: FontWeight.w700,
+                                width: 2,
                               ),
                             ),
-                            Text(
-                              choice.wordFilipino,
-                              style: AppTypography.bodySmall.copyWith(
-                                color: textColor.withValues(alpha: 0.7),
+                            child: Center(
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    FlashcardImage(
+                                      card: round.correctCard,
+                                      size: 112,
+                                      // "Which word matches?" — this picture is
+                                      // the question.
+                                      revealsAnswer: false,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      l10n.whichWordMatches,
+                                      style: AppTypography.titleMedium.copyWith(
+                                        color: HCColor.of(context).textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                        )
+                        .animate(key: ValueKey(_currentRound))
+                        .fadeIn(duration: 300.ms)
+                        .slideX(begin: 0.1, end: 0),
+              answers: LayoutBuilder(
+                  builder: (context, box) => GridView.builder(
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: fittingGridDelegate(
+                      box: box,
+                      itemCount: round.choices.length,
+                      crossAxisCount: context.responsiveTier<int>(
+                        phone: 2,
+                        tablet: 2,
+                        large: 3,
+                        xl: 4,
                       ),
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 12,
+                      // Shrink aspect ratio as text scales up so answer cells
+                      // stay tall enough to hold scaled label text at XL font.
+                      childAspectRatio:
+                          ((context.isLargeTablet ? 3.0 : 2.5) /
+                                  MediaQuery.textScalerOf(context).scale(1.0))
+                              .clamp(1.4, 3.0),
                     ),
+                    itemCount: round.choices.length,
+                    itemBuilder: (context, index) {
+                      final choice = round.choices[index];
+                      final isSelected = _selectedIndex == index;
+                      final isCorrect = index == round.correctIndex;
+                      final showCorrect = _answered && isCorrect;
+                      final showWrong = _answered && isSelected && !isCorrect;
+                      final highlighted = showCursor && index == _cursorIndex;
+
+                      Color bgColor = HCColor.of(context).surface;
+                      Color borderColor = AppColors.primary.withValues(alpha: 0.2);
+                      Color textColor = HCColor.of(context).textPrimary;
+
+                      if (showCorrect) {
+                        bgColor = AppColors.successLight;
+                        borderColor = AppColors.success;
+                        textColor = AppColors.successDark;
+                      } else if (showWrong) {
+                        bgColor = AppColors.errorLight;
+                        borderColor = AppColors.error;
+                        textColor = AppColors.errorDark;
+                      } else if (highlighted) {
+                        borderColor = AppColors.primary;
+                      }
+
+                      return Semantics(
+                        button: true,
+                        label:
+                            '${l10n.answerSemantics(choice.wordEnglish)}'
+                            '${showCorrect ? l10n.correctAnswerSuffix : ''}'
+                            '${showWrong ? l10n.wrongAnswerSuffix : ''}',
+                        child: GestureDetector(
+                          onTap: () => _selectAnswer(index),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            decoration: BoxDecoration(
+                              color: bgColor,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: borderColor,
+                                width: highlighted ? 4 : 2,
+                              ),
+                            ),
+                            child: Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    choice.wordEnglish,
+                                    style: AppTypography.titleMedium.copyWith(
+                                      color: textColor,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  Text(
+                                    choice.wordFilipino,
+                                    style: AppTypography.bodySmall.copyWith(
+                                      color: textColor.withValues(alpha: 0.7),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
+                ),
             ),
           ),
         ],

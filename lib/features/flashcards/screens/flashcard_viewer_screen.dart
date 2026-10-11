@@ -521,10 +521,10 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
               children: [
                 // Colourful, lit, depth-rich background behind everything.
                 _CardsBackdrop(category: widget.category),
-                Column(
-                  children: [
+                LayoutBuilder(
+                  builder: (context, box) {
                     // ─── Progress dots ──────────────────────
-                    Padding(
+                    final dots = Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 24,
                         vertical: 8,
@@ -563,184 +563,233 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
                           );
                         }),
                       ),
-                    ),
+                    );
 
                     // ─── Card Area ──────────────────────────
-                    Expanded(
-                      child: PageView.builder(
-                        controller: _pageController,
-                        itemCount: _cards.length,
-                        onPageChanged: (index) {
-                          setState(() {
-                            _currentIndex = index;
-                            _isFlipped = false;
-                          });
-                          _warmPictures(index);
-                          _announceCard(index);
-                        },
-                        itemBuilder: (context, index) {
-                          final card = _cards[index];
-                          // When the user reaches the last card, mark step complete
-                          if (_isLearningPathMode &&
-                              index == _cards.length - 1 &&
-                              _currentIndex == index) {
-                            _markStepCompleteIfNeeded();
-                          }
-                          return Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 24,
-                                  vertical: 16,
-                                ),
-                                child: _FlipCard(
-                                  card: card,
-                                  category: widget.category,
-                                  isFlipped:
-                                      _isFlipped && index == _currentIndex,
-                                  reducedMotion: ref.watch(
-                                    settingsProvider.select(
-                                      (s) => s.reducedMotion,
-                                    ),
+                    final cards = PageView.builder(
+                      controller: _pageController,
+                      itemCount: _cards.length,
+                      onPageChanged: (index) {
+                        setState(() {
+                          _currentIndex = index;
+                          _isFlipped = false;
+                        });
+                        _warmPictures(index);
+                        _announceCard(index);
+                      },
+                      itemBuilder: (context, index) {
+                        final card = _cards[index];
+                        // When the user reaches the last card, mark step complete
+                        if (_isLearningPathMode &&
+                            index == _cards.length - 1 &&
+                            _currentIndex == index) {
+                          _markStepCompleteIfNeeded();
+                        }
+                        return Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 16,
+                              ),
+                              child: _FlipCard(
+                                card: card,
+                                category: widget.category,
+                                isFlipped:
+                                    _isFlipped && index == _currentIndex,
+                                reducedMotion: ref.watch(
+                                  settingsProvider.select(
+                                    (s) => s.reducedMotion,
                                   ),
-                                  onFlip: () {
-                                    if (index == _currentIndex) {
-                                      setState(() => _isFlipped = !_isFlipped);
-                                    }
-                                  },
-                                  onSpeak: () =>
-                                      _speakEnglish(card.wordEnglish),
-                                  onSpeakFilipino: () =>
-                                      _speakFilipino(card.wordFilipino),
                                 ),
-                              )
-                              .animate()
-                              .scale(
-                                begin: const Offset(0.92, 0.92),
-                                end: const Offset(1, 1),
-                                duration: 400.ms,
-                                curve: Curves.easeOutBack,
-                              )
-                              .fadeIn(duration: 300.ms);
-                        },
-                      ),
-                    ),
+                                onFlip: () {
+                                  if (index == _currentIndex) {
+                                    setState(() => _isFlipped = !_isFlipped);
+                                  }
+                                },
+                                onSpeak: () =>
+                                    _speakEnglish(card.wordEnglish),
+                                onSpeakFilipino: () =>
+                                    _speakFilipino(card.wordFilipino),
+                              ),
+                            )
+                            .animate()
+                            .scale(
+                              begin: const Offset(0.92, 0.92),
+                              end: const Offset(1, 1),
+                              duration: 400.ms,
+                              curve: Curves.easeOutBack,
+                            )
+                            .fadeIn(duration: 300.ms);
+                      },
+                    );
 
-                    // ─── Bottom Action Bar ──────────────────
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 16,
-                      ),
-                      decoration: BoxDecoration(
-                        color: HCColor.of(context).surface,
-                        border: Border(
-                          top: BorderSide(
-                            color: widget.category.color.withValues(
-                              alpha: 0.15,
+                    // ─── Actions ────────────────────────────
+                    final actionPanel = Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Hands-free hint, shown only while gaze is driving.
+                        if (gaze.active)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _GazeViewerHint(
+                              ready: gaze.ready,
+                              faceVisible: gaze.faceVisible,
                             ),
                           ),
+                        // Prominent, single-tap audio replay — the accessible
+                        // alternative to a shake/motion gesture (motion actuation is
+                        // unreliable for motor-impaired learners and discouraged by
+                        // WCAG 2.1 SC 2.5.4). Both languages are shown explicitly so
+                        // a student who only understands one can hear it directly.
+                        if (ttsEnabled && _cards.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: LanguageReplayBar(
+                              onEnglish: () => _speakEnglish(
+                                _cards[_currentIndex].wordEnglish,
+                              ),
+                              onFilipino: () => _speakFilipino(
+                                _cards[_currentIndex].wordFilipino,
+                              ),
+                            ),
+                          ),
+                        // Edit / Delete row for custom cards
+                        if (_cards.isNotEmpty &&
+                            _cards[_currentIndex].isCustom)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: AppActionBar(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.info.withValues(
+                                      alpha: 0.12,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    AppLocalizations.of(context)!.customCard,
+                                    style: AppTypography.labelSmall.copyWith(
+                                      color: HCColor.of(context).infoText,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                                _ActionButton(
+                                  icon: Icons.edit_rounded,
+                                  label: AppLocalizations.of(context)!.edit,
+                                  color: AppColors.info,
+                                  onTap: () =>
+                                      _editCard(_cards[_currentIndex]),
+                                ),
+                                _ActionButton(
+                                  icon: Icons.delete_rounded,
+                                  label: AppLocalizations.of(context)!.delete,
+                                  color: AppColors.error,
+                                  onTap: () =>
+                                      _deleteCard(_cards[_currentIndex]),
+                                ),
+                              ],
+                            ),
+                          ),
+                        // Main controls — also the hands-free D-pad row. Each
+                        // button shows a bright ring while the head-driven
+                        // highlight rests on it (blink / look-up opens it).
+                        AppActionBar(
+                          alignment: WrapAlignment.spaceEvenly,
+                          children: [
+                            for (final (i, a) in actions.indexed)
+                              _ActionButton(
+                                icon: a.icon,
+                                label: a.label,
+                                semanticLabel: a.semanticLabel,
+                                color: a.color,
+                                onTap: a.onTap,
+                                enabled: a.enabled,
+                                focused: gaze.isFocused(0, i),
+                              ),
+                          ],
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.04),
-                            blurRadius: 12,
-                            offset: const Offset(0, -4),
+                      ],
+                    );
+
+                    // A phone held sideways: under a bottom action bar the
+                    // card shrank to a thumbnail you could not read (found
+                    // by the landscape walkthrough). There the actions sit
+                    // in a panel beside the card, which keeps the height.
+                    final sideBySide = box.maxWidth > box.maxHeight * 1.3 &&
+                        box.maxHeight < 520;
+                    if (sideBySide) {
+                      return Column(
+                        children: [
+                          dots,
+                          Expanded(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Expanded(child: cards),
+                                Container(
+                                  width: (box.maxWidth * 0.38).clamp(240.0, 360.0),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: HCColor.of(context).surface,
+                                    border: Border(
+                                      left: BorderSide(
+                                        color: widget.category.color.withValues(
+                                          alpha: 0.15,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  child: Center(
+                                    child: SingleChildScrollView(child: actionPanel),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Hands-free hint, shown only while gaze is driving.
-                          if (gaze.active)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: _GazeViewerHint(
-                                ready: gaze.ready,
-                                faceVisible: gaze.faceVisible,
-                              ),
-                            ),
-                          // Prominent, single-tap audio replay — the accessible
-                          // alternative to a shake/motion gesture (motion actuation is
-                          // unreliable for motor-impaired learners and discouraged by
-                          // WCAG 2.1 SC 2.5.4). Both languages are shown explicitly so
-                          // a student who only understands one can hear it directly.
-                          if (ttsEnabled && _cards.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: LanguageReplayBar(
-                                onEnglish: () => _speakEnglish(
-                                  _cards[_currentIndex].wordEnglish,
-                                ),
-                                onFilipino: () => _speakFilipino(
-                                  _cards[_currentIndex].wordFilipino,
+                      );
+                    }
+
+                    return Column(
+                      children: [
+                        dots,
+                        Expanded(child: cards),
+                        // ─── Bottom Action Bar ──────────────────
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 16,
+                          ),
+                          decoration: BoxDecoration(
+                            color: HCColor.of(context).surface,
+                            border: Border(
+                              top: BorderSide(
+                                color: widget.category.color.withValues(
+                                  alpha: 0.15,
                                 ),
                               ),
                             ),
-                          // Edit / Delete row for custom cards
-                          if (_cards.isNotEmpty &&
-                              _cards[_currentIndex].isCustom)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: AppActionBar(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.info.withValues(
-                                        alpha: 0.12,
-                                      ),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      AppLocalizations.of(context)!.customCard,
-                                      style: AppTypography.labelSmall.copyWith(
-                                        color: HCColor.of(context).infoText,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                  _ActionButton(
-                                    icon: Icons.edit_rounded,
-                                    label: AppLocalizations.of(context)!.edit,
-                                    color: AppColors.info,
-                                    onTap: () =>
-                                        _editCard(_cards[_currentIndex]),
-                                  ),
-                                  _ActionButton(
-                                    icon: Icons.delete_rounded,
-                                    label: AppLocalizations.of(context)!.delete,
-                                    color: AppColors.error,
-                                    onTap: () =>
-                                        _deleteCard(_cards[_currentIndex]),
-                                  ),
-                                ],
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.04),
+                                blurRadius: 12,
+                                offset: const Offset(0, -4),
                               ),
-                            ),
-                          // Main controls — also the hands-free D-pad row. Each
-                          // button shows a bright ring while the head-driven
-                          // highlight rests on it (blink / look-up opens it).
-                          AppActionBar(
-                            alignment: WrapAlignment.spaceEvenly,
-                            children: [
-                              for (final (i, a) in actions.indexed)
-                                _ActionButton(
-                                  icon: a.icon,
-                                  label: a.label,
-                                  semanticLabel: a.semanticLabel,
-                                  color: a.color,
-                                  onTap: a.onTap,
-                                  enabled: a.enabled,
-                                  focused: gaze.isFocused(0, i),
-                                ),
                             ],
                           ),
-                        ],
-                      ),
-                    ),
-                  ],
+                          child: actionPanel,
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ],
             ),

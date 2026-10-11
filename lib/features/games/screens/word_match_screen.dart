@@ -29,6 +29,8 @@ import '../../gaze_control/widgets/gaze_scope.dart';
 import '../timed_game_mixin.dart';
 import '../game_pause_mixin.dart';
 import '../game_resume_mixin.dart';
+import '../widgets/prompt_and_answers.dart';
+import '../widgets/fitting_grid.dart';
 import '../widgets/pause_overlay.dart';
 import '../../break_time/break_time.dart';
 import '../../../l10n/app_localizations.dart';
@@ -601,219 +603,219 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
 
                     // ─── Question Image Area ──────────────
                     Expanded(
-                      flex: 3,
-                      child:
-                          Semantics(
-                                label: l10n.questionEnglishFor(
-                                  round.correctCard.wordFilipino,
-                                ),
-                                child: Container(
-                                  width: double.infinity,
-                                  decoration: BoxDecoration(
-                                    color: round.correctCard.category.color
-                                        .withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(24),
-                                    border: Border.all(
-                                      color: round.correctCard.category.color
-                                          .withValues(alpha: 0.3),
-                                      width: 2,
+                      child: PromptAndAnswers(
+                        promptFlex: 3,
+                        answersFlex: 3,
+                        prompt: Semantics(
+                                    label: l10n.questionEnglishFor(
+                                      round.correctCard.wordFilipino,
                                     ),
-                                  ),
-                                  // Scale the prompt down to fit a short (landscape) viewport or
-                                  // a large font scale rather than overflowing the flex region.
-                                  child: Center(
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(16),
-                                      child: FittedBox(
-                                        fit: BoxFit.scaleDown,
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            FlashcardImage(
-                                              card: round.correctCard,
-                                              size: 84,
-                                              // The learner is being asked for
-                                              // this card's English word; a
-                                              // picture that names itself read
-                                              // the answer out before the
-                                              // choices were reached.
-                                              revealsAnswer: false,
+                                    child: Container(
+                                      width: double.infinity,
+                                      decoration: BoxDecoration(
+                                        color: round.correctCard.category.color
+                                            .withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(24),
+                                        border: Border.all(
+                                          color: round.correctCard.category.color
+                                              .withValues(alpha: 0.3),
+                                          width: 2,
+                                        ),
+                                      ),
+                                      // Scale the prompt down to fit a short (landscape) viewport or
+                                      // a large font scale rather than overflowing the flex region.
+                                      child: Center(
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(16),
+                                          child: FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                FlashcardImage(
+                                                  card: round.correctCard,
+                                                  size: 84,
+                                                  // The learner is being asked for
+                                                  // this card's English word; a
+                                                  // picture that names itself read
+                                                  // the answer out before the
+                                                  // choices were reached.
+                                                  revealsAnswer: false,
+                                                ),
+                                                const SizedBox(height: 16),
+                                                Text(
+                                                  AppLocalizations.of(
+                                                    context,
+                                                  )!.whatIsThisWord,
+                                                  style: AppTypography.titleMedium
+                                                      .copyWith(
+                                                        color: hc.textSecondary,
+                                                      ),
+                                                ),
+                                                const SizedBox(height: 8),
+                                                Text(
+                                                  round.correctCard.wordFilipino,
+                                                  style: AppTypography
+                                                      .headlineMedium
+                                                      .copyWith(
+                                                        color: round
+                                                            .correctCard
+                                                            .category
+                                                            .darkColor,
+                                                        fontWeight: FontWeight.w800,
+                                                      ),
+                                                ),
+                                              ],
                                             ),
-                                            const SizedBox(height: 16),
-                                            Text(
-                                              AppLocalizations.of(
-                                                context,
-                                              )!.whatIsThisWord,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                  .animate(key: ValueKey(_currentRound))
+                                  .fadeIn(duration: 300.ms)
+                                  .slideX(begin: 0.1, end: 0),
+                        answers: LayoutBuilder(
+                            builder: (context, box) => GridView.builder(
+                              physics: const NeverScrollableScrollPhysics(),
+                              gridDelegate: fittingGridDelegate(
+                                box: box,
+                                itemCount: round.choices.length,
+                                crossAxisCount: context.isLargeTablet ? 4 : 2,
+                                mainAxisSpacing: context.gridSpacing * 0.75,
+                                crossAxisSpacing: context.gridSpacing * 0.75,
+                                // Shrink aspect ratio as text scales up so answer cells
+                                // stay tall enough to hold scaled label text at XL font.
+                                childAspectRatio:
+                                    ((context.isLargeTablet ? 2.2 : 2.5) /
+                                            MediaQuery.textScalerOf(
+                                              context,
+                                            ).scale(1.0))
+                                        .clamp(1.2, 2.5),
+                              ),
+                              itemCount: round.choices.length,
+                              itemBuilder: (context, index) {
+                                final choice = round.choices[index];
+                                final isSelected = _selectedIndex == index;
+                                final isCorrect = index == round.correctIndex;
+                                final showCorrect = _answered && isCorrect;
+                                final showWrong =
+                                    _answered && isSelected && !isCorrect;
+
+                                final highlighted =
+                                    showCursor && index == _cursorIndex;
+
+                                Color bgColor = hc.surface;
+                                Color borderColor = AppColors.primary.withValues(
+                                  alpha: 0.2,
+                                );
+                                Color textColor = hc.textPrimary;
+
+                                if (highlighted) {
+                                  // Same bright ring the hub tiles use, so the hands-free
+                                  // highlight reads identically everywhere in the app.
+                                  borderColor = AppColors.accent;
+                                }
+                                if (showCorrect) {
+                                  bgColor = AppColors.successLight;
+                                  borderColor = AppColors.success;
+                                  textColor = AppColors.successDark;
+                                } else if (showWrong) {
+                                  bgColor = AppColors.errorLight;
+                                  borderColor = AppColors.error;
+                                  textColor = AppColors.errorDark;
+                                }
+
+                                Widget card = Semantics(
+                                  button: true,
+                                  label:
+                                      '${l10n.answerChoiceSemantics(choice.wordEnglish)}'
+                                      '${showCorrect ? l10n.correctAnswerSuffix : ''}'
+                                      '${showWrong ? l10n.wrongAnswerSuffix : ''}',
+                                  child: GestureDetector(
+                                    onTap: () => _selectAnswer(index),
+                                    child: AnimatedContainer(
+                                      duration: const Duration(milliseconds: 300),
+                                      decoration: BoxDecoration(
+                                        color: bgColor,
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: borderColor,
+                                          width: highlighted ? 4 : 2,
+                                        ),
+                                        boxShadow: highlighted
+                                            ? [
+                                                BoxShadow(
+                                                  color: AppColors.accent.withValues(
+                                                    alpha: 0.5,
+                                                  ),
+                                                  blurRadius: 14,
+                                                  spreadRadius: 1,
+                                                ),
+                                              ]
+                                            : AppColors.softShadow,
+                                      ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(8),
+                                        child: Center(
+                                          child: FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            child: Text(
+                                              choice.wordEnglish,
                                               style: AppTypography.titleMedium
                                                   .copyWith(
-                                                    color: hc.textSecondary,
+                                                    color: textColor,
+                                                    fontWeight: FontWeight.w700,
                                                   ),
+                                              textAlign: TextAlign.center,
                                             ),
-                                            const SizedBox(height: 8),
-                                            Text(
-                                              round.correctCard.wordFilipino,
-                                              style: AppTypography
-                                                  .headlineMedium
-                                                  .copyWith(
-                                                    color: round
-                                                        .correctCard
-                                                        .category
-                                                        .darkColor,
-                                                    fontWeight: FontWeight.w800,
-                                                  ),
-                                            ),
-                                          ],
+                                          ),
                                         ),
                                       ),
                                     ),
                                   ),
-                                ),
-                              )
-                              .animate(key: ValueKey(_currentRound))
-                              .fadeIn(duration: 300.ms)
-                              .slideX(begin: 0.1, end: 0),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // ─── Answer Choices ───────────────────
-                    Expanded(
-                      flex: 3,
-                      child: GridView.builder(
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: context.isLargeTablet ? 4 : 2,
-                          mainAxisSpacing: context.gridSpacing * 0.75,
-                          crossAxisSpacing: context.gridSpacing * 0.75,
-                          // Shrink aspect ratio as text scales up so answer cells
-                          // stay tall enough to hold scaled label text at XL font.
-                          childAspectRatio:
-                              ((context.isLargeTablet ? 2.2 : 2.5) /
-                                      MediaQuery.textScalerOf(
-                                        context,
-                                      ).scale(1.0))
-                                  .clamp(1.2, 2.5),
-                        ),
-                        itemCount: round.choices.length,
-                        itemBuilder: (context, index) {
-                          final choice = round.choices[index];
-                          final isSelected = _selectedIndex == index;
-                          final isCorrect = index == round.correctIndex;
-                          final showCorrect = _answered && isCorrect;
-                          final showWrong =
-                              _answered && isSelected && !isCorrect;
-
-                          final highlighted =
-                              showCursor && index == _cursorIndex;
-
-                          Color bgColor = hc.surface;
-                          Color borderColor = AppColors.primary.withValues(
-                            alpha: 0.2,
-                          );
-                          Color textColor = hc.textPrimary;
-
-                          if (highlighted) {
-                            // Same bright ring the hub tiles use, so the hands-free
-                            // highlight reads identically everywhere in the app.
-                            borderColor = AppColors.accent;
-                          }
-                          if (showCorrect) {
-                            bgColor = AppColors.successLight;
-                            borderColor = AppColors.success;
-                            textColor = AppColors.successDark;
-                          } else if (showWrong) {
-                            bgColor = AppColors.errorLight;
-                            borderColor = AppColors.error;
-                            textColor = AppColors.errorDark;
-                          }
-
-                          Widget card = Semantics(
-                            button: true,
-                            label:
-                                '${l10n.answerChoiceSemantics(choice.wordEnglish)}'
-                                '${showCorrect ? l10n.correctAnswerSuffix : ''}'
-                                '${showWrong ? l10n.wrongAnswerSuffix : ''}',
-                            child: GestureDetector(
-                              onTap: () => _selectAnswer(index),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 300),
-                                decoration: BoxDecoration(
-                                  color: bgColor,
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: borderColor,
-                                    width: highlighted ? 4 : 2,
-                                  ),
-                                  boxShadow: highlighted
-                                      ? [
-                                          BoxShadow(
-                                            color: AppColors.accent.withValues(
-                                              alpha: 0.5,
-                                            ),
-                                            blurRadius: 14,
-                                            spreadRadius: 1,
-                                          ),
-                                        ]
-                                      : AppColors.softShadow,
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8),
-                                  child: Center(
-                                    child: FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      child: Text(
-                                        choice.wordEnglish,
-                                        style: AppTypography.titleMedium
-                                            .copyWith(
-                                              color: textColor,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-
-                          // Shake animation for wrong answer
-                          if (showWrong) {
-                            card = card.animate().shakeX(
-                              hz: 6,
-                              amount: 4,
-                              duration: 400.ms,
-                            );
-                          }
-                          // Scale up for correct
-                          if (showCorrect) {
-                            card = card
-                                .animate()
-                                .scale(
-                                  begin: const Offset(1, 1),
-                                  end: const Offset(1.05, 1.05),
-                                  duration: 300.ms,
-                                )
-                                .then()
-                                .scale(
-                                  begin: const Offset(1.05, 1.05),
-                                  end: const Offset(1, 1),
-                                  duration: 200.ms,
                                 );
-                          }
 
-                          return GamepadFocusable(
-                            index: index,
-                            child: card
-                                .animate(
-                                  key: ValueKey('$_currentRound-$index'),
-                                )
-                                .fadeIn(
-                                  duration: 300.ms,
-                                  delay: (index * 80).ms,
-                                )
-                                .slideY(begin: 0.1, end: 0),
-                          );
-                        },
+                                // Shake animation for wrong answer
+                                if (showWrong) {
+                                  card = card.animate().shakeX(
+                                    hz: 6,
+                                    amount: 4,
+                                    duration: 400.ms,
+                                  );
+                                }
+                                // Scale up for correct
+                                if (showCorrect) {
+                                  card = card
+                                      .animate()
+                                      .scale(
+                                        begin: const Offset(1, 1),
+                                        end: const Offset(1.05, 1.05),
+                                        duration: 300.ms,
+                                      )
+                                      .then()
+                                      .scale(
+                                        begin: const Offset(1.05, 1.05),
+                                        end: const Offset(1, 1),
+                                        duration: 200.ms,
+                                      );
+                                }
+
+                                return GamepadFocusable(
+                                  index: index,
+                                  child: card
+                                      .animate(
+                                        key: ValueKey('$_currentRound-$index'),
+                                      )
+                                      .fadeIn(
+                                        duration: 300.ms,
+                                        delay: (index * 80).ms,
+                                      )
+                                      .slideY(begin: 0.1, end: 0),
+                                );
+                              },
+                            ),
+                          ),
                       ),
                     ),
                   ],

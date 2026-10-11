@@ -36,6 +36,59 @@ import '../../gamepad/providers/gamepad_screen.dart';
 import '../../gamepad/widgets/gamepad_screen_registrar.dart';
 import '../../../core/utils/seeded_random.dart';
 
+/// How many columns, and what card shape (width / height), put all [count]
+/// cards on screen in a [width] x [height] area with [spacing] between them.
+///
+/// The memory grid does not scroll — the game is played with every card in
+/// view — so the usual [columns] and portrait card [ratio] are kept whenever
+/// they fit. On a short screen they did not: on a phone held sideways only
+/// the first row showed, and the cards below could not be reached at all, so
+/// the game could not be finished. Then the column count that gives the
+/// biggest cards which all fit is taken, letting the cards turn squarer — up
+/// to 1.6 wide for 1 tall, past which a card face stops looking like a card
+/// (unless nothing else fits). Pure, so it is tested.
+@visibleForTesting
+(int, double) fitMemoryGrid({
+  required int count,
+  required double width,
+  required double height,
+  required double spacing,
+  required int columns,
+  required double ratio,
+}) {
+  if (count <= 0 || width <= 0 || height <= 0) return (columns, ratio);
+  double cellWidth(int cols) => (width - spacing * (cols - 1)) / cols;
+  int rowsFor(int cols) => (count / cols).ceil();
+  bool fits(int cols, double r) {
+    final rows = rowsFor(cols);
+    return rows * (cellWidth(cols) / r) + spacing * (rows - 1) <= height + 0.5;
+  }
+
+  if (fits(columns, ratio)) return (columns, ratio);
+  (int, double)? best;
+  var bestArea = -1.0;
+  (int, double)? squattest;
+  var squattestArea = -1.0;
+  for (var cols = 1; cols <= count; cols++) {
+    final w = cellWidth(cols);
+    final rows = rowsFor(cols);
+    final maxHeight = (height - spacing * (rows - 1)) / rows;
+    if (w <= 0 || maxHeight <= 0) continue;
+    final h = min(w / ratio, maxHeight);
+    final r = w / h;
+    final area = w * h;
+    if (r <= 1.6 && area > bestArea) {
+      bestArea = area;
+      best = (cols, r);
+    }
+    if (area > squattestArea) {
+      squattestArea = area;
+      squattest = (cols, r);
+    }
+  }
+  return best ?? squattest ?? (columns, ratio);
+}
+
 class MemoryMatchScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
   final List<FlashcardCategory> categories;
@@ -593,27 +646,42 @@ class _MemoryMatchScreenState extends ConsumerState<MemoryMatchScreen>
                     ),
 
                     // ─── Card Grid ────────────────────────
+                    // Every card on screen: see [fitMemoryGrid].
                     Expanded(
-                      child: GridView.builder(
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: _gridColumns,
-                          mainAxisSpacing: context.gridSpacing * 0.625,
-                          crossAxisSpacing: context.gridSpacing * 0.625,
-                          childAspectRatio:
-                              (0.78 /
-                                      MediaQuery.textScalerOf(
-                                        context,
-                                      ).scale(1.0))
-                                  .clamp(0.55, 0.95),
-                        ),
-                        itemCount: _cards.length,
-                        itemBuilder: (context, index) {
-                          final card = _cards[index];
-                          return _MemoryCardWidget(
-                            card: card,
-                            highlighted: showCursor && index == _cursorIndex,
-                            onTap: () => _flipCard(index),
+                      child: LayoutBuilder(
+                        builder: (context, box) {
+                          final spacing = context.gridSpacing * 0.625;
+                          final (columns, ratio) = fitMemoryGrid(
+                            count: _cards.length,
+                            width: box.maxWidth,
+                            height: box.maxHeight,
+                            spacing: spacing,
+                            columns: _gridColumns,
+                            ratio: (0.78 /
+                                    MediaQuery.textScalerOf(
+                                      context,
+                                    ).scale(1.0))
+                                .clamp(0.55, 0.95),
+                          );
+                          return GridView.builder(
+                            physics: const NeverScrollableScrollPhysics(),
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: columns,
+                              mainAxisSpacing: spacing,
+                              crossAxisSpacing: spacing,
+                              childAspectRatio: ratio,
+                            ),
+                            itemCount: _cards.length,
+                            itemBuilder: (context, index) {
+                              final card = _cards[index];
+                              return _MemoryCardWidget(
+                                card: card,
+                                highlighted:
+                                    showCursor && index == _cursorIndex,
+                                onTap: () => _flipCard(index),
+                              );
+                            },
                           );
                         },
                       ),
