@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
 
@@ -839,7 +840,7 @@ class _ReferencePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _PracticePanel(
+    return SignItPanel(
       label: _t(context).siReference,
       icon: Icons.sign_language_rounded,
       accent: const Color(0xFF7C4DFF),
@@ -1002,7 +1003,7 @@ class _MirrorPanel extends StatelessWidget {
       footer = null;
     }
 
-    return _PracticePanel(
+    return SignItPanel(
       label: replaying ? _t(context).siYourTake : _t(context).siYou,
       icon: Icons.videocam_rounded,
       accent: _accent,
@@ -1073,8 +1074,10 @@ class _CameraFallback extends StatelessWidget {
 /// Shared framed panel (label chip on top, media in the middle, optional
 /// footer) used by both the reference video and the camera mirror so they
 /// look like a matched pair.
-class _PracticePanel extends StatelessWidget {
-  const _PracticePanel({
+@visibleForTesting
+class SignItPanel extends StatelessWidget {
+  const SignItPanel({
+    super.key,
     required this.label,
     required this.icon,
     required this.accent,
@@ -1127,7 +1130,7 @@ class _PracticePanel extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Expanded(child: Center(child: child)),
+                  Expanded(child: _ShrinkableMedia(child: Center(child: child))),
                   ?footer,
                 ],
               ),
@@ -1137,6 +1140,35 @@ class _PracticePanel extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Lays the media out in whatever height the panel has left, but tells the
+/// panel's [IntrinsicHeight] it needs only [_RenderShrinkableMedia.minHeight].
+///
+/// The camera preview and the sign video are [AspectRatio]s, whose natural
+/// height is their width over the ratio: a 4:3 camera in a 500 dp wide panel
+/// asks for 375 dp. The panel grew past the screen and scrolled, and on a 10"
+/// tablet "Record" and "Replay" sat below the fold in both orientations, with
+/// nothing to show the panel scrolled (found on the tablet; tests and the CI
+/// emulators have no live camera). Reported small, the media takes the space
+/// the label and the button leave, and keeps its shape inside it.
+class _ShrinkableMedia extends SingleChildRenderObjectWidget {
+  const _ShrinkableMedia({required Widget super.child});
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderShrinkableMedia();
+}
+
+class _RenderShrinkableMedia extends RenderProxyBox {
+  /// Still a usable picture when very large text leaves the panel scrolling.
+  static const double minHeight = 120;
+
+  @override
+  double computeMinIntrinsicHeight(double width) => minHeight;
+
+  @override
+  double computeMaxIntrinsicHeight(double width) => minHeight;
 }
 
 /// `AppLocalizations.of` is nullable here, and a screen pumped in a test
