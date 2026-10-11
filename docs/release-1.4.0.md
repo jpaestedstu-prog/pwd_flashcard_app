@@ -40,7 +40,9 @@ Each needs the project owner's go-ahead (see "Waiting for approval").
 - **Android CI** on GitHub Actions: analyze, the whole test suite, release
   APKs with checked manifests, and walkthroughs on phone and tablet
   emulators in both orientations. The iOS CI also walks both iPhones
-  sideways.
+  sideways. The runner has no GPU: with Flutter's Impeller renderer on its
+  software Vulkan the emulator itself died within seconds, so the CI walk
+  draws with Skia (`--no-enable-impeller`). Real devices keep Impeller.
 - **Walkthrough options:** `WALK_ORIENTATION=landscape|portrait`,
   `WALK_DEVICE=true` (Word Hunt photo, Sign It recording, Gaze camera,
   speech), `WALK_SCREENSHOTS=false`; Android screenshots are scaled to keep
@@ -50,7 +52,18 @@ Each needs the project owner's go-ahead (see "Waiting for approval").
 
 ## Checks
 
-Filled in from the final runs: see the bottom of this page.
+| Check | Result |
+|---|---|
+| Unit and widget tests (`flutter test`) | **5,159 passed**, 0 failed (1.3.0: 5,094); also green on GitHub's Linux runner |
+| `flutter analyze` | no issues |
+| Firestore rules, local emulator | 20 + 118 + 14 checks passed |
+| Phone emulator (Android 16, 1080 x 2400), sideways, with camera and speech checks | 58 screens, 0 problems; Word Hunt photo, Sign It record + replay, Gaze camera streaming, speech spoke, recogniser present |
+| Tablet emulator (Android 16, 2560 x 1600), asked for portrait | the request was honoured (1200 x 1600 window); 58 screens; Word Hunt, Gaze and speech fine (Sign It's sign video did not load in time over the emulator's network) |
+| iOS on GitHub Actions (run 38136152361) | unsigned IPA; walkthroughs passed on iPhone SE and iPhone 16 Pro Max upright **and sideways**, iPad mini and 13" iPad; Firebase smoke test passed |
+| Android on GitHub Actions (run 38141730593) | analyze, all tests and the release APKs with their manifest checks pass; walkthroughs on the phone and the tablet emulator (Android 14), upright and sideways: 58 screens and 0 problems each, no crash in the logs. The upright phone also took a Word Hunt photo, recorded and replayed Sign It, streamed Gaze Control's camera (12 frames), spoke, and found a speech recogniser |
+| Release build | website APKs (arm64 / arm32 / universal) and the Play APK + bundle: application ids, permissions, version 1.4.0 (13), 16 KB alignment all checked; SHA-256s in `build/release-v1.4.0/SHA256SUMS.txt` |
+| Upgrade 1.2.7 → 1.4.0 (universal, emulator) | profile, XP and stars kept; Screen orientation reads "turns with the device" and Landscape turns the app |
+| Website (local server) | audit 1,378 passed / 0 failed; contrast sweep 0 failures in all six display modes |
 
 ## Waiting for approval
 
