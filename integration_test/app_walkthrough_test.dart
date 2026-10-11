@@ -182,7 +182,7 @@ class _Walk {
     // tour. Each has a Skip.
     for (var i = 0; i < 4; i++) {
       if (await _waitFor(find.text('Cards'), const Duration(seconds: 4))) break;
-      if (find.text('Skip').evaluate().isNotEmpty) {
+      if (await _has(find.text('Skip'))) {
         await _shot('setup_step_${i + 1}');
         await _tap(find.text('Skip'));
         await _settle(const Duration(seconds: 2));
@@ -282,7 +282,7 @@ class _Walk {
     await _shot('after_delete_profile');
     if (back == null) {
       failures.add('Delete this profile: did not return to choosing a profile');
-    } else if (find.text(_profileName).evaluate().isNotEmpty) {
+    } else if (await _has(find.text(_profileName))) {
       failures.add('Delete this profile: "$_profileName" is still listed');
     }
     // ignore: avoid_print
@@ -299,22 +299,22 @@ class _Walk {
       (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
     );
     for (var attempt = 0; attempt < 3; attempt++) {
-      if (finder.evaluate().isNotEmpty) {
+      if (await _has(finder)) {
         await _settle(const Duration(milliseconds: 900));
-        if (finder.evaluate().isNotEmpty) return true;
+        if (await _has(finder)) return true;
       }
-      if (lists.evaluate().isEmpty) return false;
+      if (!await _has(lists)) return false;
       for (final delta in const [300.0, -300.0]) {
         try {
           await tester.scrollUntilVisible(finder, delta,
               scrollable: lists.first, maxScrolls: 40);
           break;
         } catch (_) {
-          if (finder.evaluate().isNotEmpty) break;
+          if (await _has(finder)) break;
         }
       }
     }
-    return finder.evaluate().isNotEmpty;
+    return _has(finder);
   }
 
   Future<void> _createProgressPlayer() async {
@@ -396,6 +396,20 @@ class _Walk {
     // router's _slow wrapper), which a debug build on an emulator takes long
     // to finish.
     await _settle(Duration(milliseconds: route.contains('viewer') ? 5000 : 2800));
+    final skeleton = find.byWidgetPredicate(
+      (w) => w.runtimeType.toString().startsWith('Shimmer'),
+    );
+    final loadEnd = DateTime.now().add(const Duration(seconds: 25));
+    var waited = false;
+    while (await _has(skeleton) && DateTime.now().isBefore(loadEnd)) {
+      waited = true;
+      await _settle(const Duration(milliseconds: 500));
+    }
+    if (waited) {
+      // ignore: avoid_print
+      print('WALK $route: ${await _has(skeleton) ? 'still loading' : 'loaded'}');
+      await _settle(const Duration(milliseconds: 1500));
+    }
     var landed = _location();
     if (landed != '/home') {
       // A big screen in a debug build can still be mid-transition: wait
@@ -403,7 +417,7 @@ class _Walk {
       // found, once a page sits on top of it) before taking the picture.
       final greeting = find.textContaining('Hi, $_profileName');
       final end = DateTime.now().add(const Duration(seconds: 10));
-      while (greeting.evaluate().isNotEmpty && DateTime.now().isBefore(end)) {
+      while (await _has(greeting) && DateTime.now().isBefore(end)) {
         await _settle(const Duration(milliseconds: 500));
       }
       await _settle(const Duration(milliseconds: 800));
@@ -415,12 +429,9 @@ class _Walk {
     final newFramework = _frameworkErrors.sublist(errorsBefore);
     final newLogged = _appErrors().sublist(logBefore);
     // Flutter's red box, or the app's own friendlier one (error_boundary.dart).
-    final errorWidget = find
-        .byWidgetPredicate((w) =>
-            w is ErrorWidget ||
-            w.runtimeType.toString() == '_FriendlyErrorWidget')
-        .evaluate()
-        .isNotEmpty;
+    final errorWidget = await _has(find.byWidgetPredicate((w) =>
+        w is ErrorWidget ||
+        w.runtimeType.toString() == '_FriendlyErrorWidget'));
     final problems = <String>[
       ...newFramework,
       for (final e in newLogged)
@@ -463,14 +474,20 @@ class _Walk {
   }
 
   /// The texts on screen, for a failure message that says where it stopped.
-  String _visibleTexts() => find
-      .byType(Text)
-      .evaluate()
-      .map((e) => (e.widget as Text).data)
-      .whereType<String>()
-      .where((t) => t.trim().isNotEmpty)
-      .take(25)
-      .join(' | ');
+  String _visibleTexts() {
+    try {
+      return find
+          .byType(Text)
+          .evaluate()
+          .map((e) => (e.widget as Text).data)
+          .whereType<String>()
+          .where((t) => t.trim().isNotEmpty)
+          .take(25)
+          .join(' | ');
+    } catch (e) {
+      return '(could not read the screen: $e)';
+    }
+  }
 
   void report() {
     // ignore: avoid_print
@@ -498,7 +515,7 @@ class _Walk {
     final end = DateTime.now().add(timeout);
     while (DateTime.now().isBefore(end)) {
       await tester.pump(const Duration(milliseconds: 50));
-      if (finder.evaluate().isNotEmpty) return true;
+      if (await _has(finder)) return true;
       await Future<void>.delayed(const Duration(milliseconds: 100));
     }
     return false;
@@ -509,7 +526,7 @@ class _Walk {
     while (DateTime.now().isBefore(end)) {
       await tester.pump(const Duration(milliseconds: 50));
       for (final entry in finders.entries) {
-        if (entry.value.evaluate().isNotEmpty) return entry.key;
+        if (await _has(entry.value)) return entry.key;
       }
       await Future<void>.delayed(const Duration(milliseconds: 100));
     }
@@ -529,15 +546,43 @@ class _Walk {
       // Not inside a scrollable — already where it is.
     }
     await tester.pump(const Duration(milliseconds: 300));
-    await tester.tap(target, warnIfMissed: false);
+    for (var attempt = 0; attempt < 2; attempt++) {
+      try {
+        await tester.tap(target, warnIfMissed: false);
+        break;
+      } catch (e) {
+        if (attempt == 1) failures.add('Tapping $finder threw $e');
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+    }
     await tester.pump(const Duration(milliseconds: 100));
+  }
+
+  /// Whether [finder] finds anything. Searching the tree while a list is
+  /// part-way through laying out a new sliver can trip a debug check inside
+  /// the framework (`_ViewportElement.debugVisitOnstageChildren`: that sliver
+  /// has no geometry yet); a frame later the search works. Only a search that
+  /// keeps failing counts as "not found".
+  Future<bool> _has(Finder finder) async {
+    for (var attempt = 0; ; attempt++) {
+      try {
+        return finder.evaluate().isNotEmpty;
+      } catch (e) {
+        if (attempt == 2) {
+          // ignore: avoid_print
+          print('WALK search for $finder failed: $e');
+          return false;
+        }
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+    }
   }
 
   Future<void> _shot(String name) async {
     // The app's global "Something went wrong" banner means an error reached
     // a learner - always a failure, whichever screen it shows up on.
     if (!_errorBannerSeen &&
-        find.textContaining('Something went wrong').evaluate().isNotEmpty) {
+        await _has(find.textContaining('Something went wrong'))) {
       _errorBannerSeen = true;
       failures.add('"Something went wrong" banner on screen at "$name"');
     }

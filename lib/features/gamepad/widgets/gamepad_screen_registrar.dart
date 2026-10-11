@@ -139,8 +139,13 @@ class GamepadFocusable extends StatefulWidget {
   final int index;
   final Widget child;
 
-  /// False makes the ring size to the child rather than fill its parent — for
-  /// a child in an unbounded list, where [StackFit.expand] would throw.
+  /// True (the default) passes the parent's constraints straight through
+  /// ([StackFit.passthrough]): a grid cell's tight size makes the child and
+  /// ring fill the cell, while an unbounded list row lets the child pick its
+  /// own height. ([StackFit.expand] used to be the default, and it turned a
+  /// list row into an infinitely tall box: the Word → Sign answers broke as
+  /// soon as their videos loaded, found on the small iPhone simulator.)
+  /// False sizes the ring to the child even when the parent is bounded.
   final bool expand;
 
   /// Ring colour. Defaults to a high-contrast amber that reads against both the
@@ -207,7 +212,7 @@ class _GamepadFocusableState extends State<GamepadFocusable> {
   Widget build(BuildContext context) {
     final color = widget.color ?? const Color(0xFFFFB300);
     return Stack(
-      fit: widget.expand ? StackFit.expand : StackFit.loose,
+      fit: widget.expand ? StackFit.passthrough : StackFit.loose,
       children: [
         widget.child,
         if (_focused)
