@@ -325,9 +325,24 @@ class _Walk {
     }
 
     // Sign It: record two seconds, stop, and the replay offers "Re-record".
+    // The practice screen appears only once the round's sign video has
+    // loaded, which a slow network can hold back past any sensible wait (the
+    // Android 16 tablet emulator, 30 s): then the camera cannot be reached
+    // and the check is skipped rather than failed.
     await _open('/games/fsl-practice/sign-it');
+    final loadingSign = find.byWidgetPredicate(
+      (w) => w.runtimeType.toString().startsWith('Shimmer'),
+    );
+    final signEnd = DateTime.now().add(const Duration(seconds: 60));
+    while (await _has(loadingSign) && DateTime.now().isBefore(signEnd)) {
+      await _settle(const Duration(milliseconds: 500));
+    }
     final record = find.byIcon(Icons.fiber_manual_record_rounded);
-    if (await _waitFor(record, const Duration(seconds: 30))) {
+    if (await _has(loadingSign)) {
+      // ignore: avoid_print
+      print('WALK camera Sign It: skipped, its sign video did not load in 60 s');
+      await _shot('camera_sign_it_still_loading');
+    } else if (await _waitFor(record, const Duration(seconds: 30))) {
       await _settle(const Duration(seconds: 1));
       await _tap(record);
       final stop = find.byIcon(Icons.stop_rounded);
