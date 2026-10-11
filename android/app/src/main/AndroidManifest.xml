@@ -90,11 +90,22 @@
 
         <!-- Orientation and window size follow the device: phones and
              tablets, portrait and landscape, split screen, freeform and
-             resizable windows. (Until 1.4.0 the activity was pinned to
-             portrait, with Android 16's large-screen compatibility opt-out;
-             that opt-out disappears at targetSdk 37 anyway.) A profile may
-             keep one orientation from Settings, and head tracking holds the
-             current one while its camera runs - see OrientationHold. -->
+             resizable windows (until 1.4.0 the activity was pinned to
+             portrait). A profile may keep one orientation from Settings,
+             and head tracking holds the current one while its camera runs -
+             see OrientationHold.
+
+             Android 16 ignores every orientation request on large screens
+             (smallest width >= 600 dp) from an app targeting API 36 - so
+             on a tablet both of those would silently do nothing. This
+             property keeps them working there. It restricts nothing by
+             itself: the app declares no orientation, aspect ratio or
+             resizability limit, so it still turns and resizes with the
+             device. Unknown to Android 15 and earlier; removed at
+             targetSdk 37, when the gaze hold will need another way. -->
+        <property
+            android:name="android.window.PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY"
+            android:value="true" />
 
         <!-- Posts every scheduled notification when its alarm fires.
              flutter_local_notifications does NOT merge this receiver into the

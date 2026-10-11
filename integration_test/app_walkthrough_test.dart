@@ -5,10 +5,11 @@
 //     --target=integration_test/app_walkthrough_test.dart \
 //     --dart-define=FLASHLEARN_OFFLINE=true -d <device>
 //
-// Add --dart-define=WALK_ORIENTATION=landscape to walk every screen sideways
-// (the app turns with the device since 1.4.0), and
-// --dart-define=WALK_CAMERA=true on a device or emulator with cameras to
-// take a Word Hunt photo, record a Sign It clip and stream Gaze Control.
+// Add --dart-define=WALK_ORIENTATION=landscape (or =portrait) to walk every
+// screen that way round (the app turns with the device since 1.4.0), and
+// --dart-define=WALK_DEVICE=true on a device or emulator with cameras to
+// take a Word Hunt photo, record a Sign It clip, stream Gaze Control, have
+// the speech engine speak and look for a speech recogniser.
 //
 // It onboards a "Player (with Progress)" profile, opens every tab, a deck, and
 // every learner screen and game, saves a screenshot of each stop (the driver
@@ -33,6 +34,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:pwdpwdpwd/core/accessibility/stt_service.dart';
+import 'package:pwdpwdpwd/core/accessibility/tts_service.dart';
 import 'package:pwdpwdpwd/core/utils/error_handler.dart';
 import 'package:pwdpwdpwd/features/gaze_control/controllers/gaze_controller.dart';
 import 'package:pwdpwdpwd/features/gaze_control/providers/gaze_settings_provider.dart';
@@ -41,9 +44,15 @@ import 'package:pwdpwdpwd/navigation/app_router.dart' show rootNavigatorKey;
 
 const _profileName = 'Store Tester';
 
-/// `landscape` walks every screen sideways; anything else, as the device is.
+/// `landscape` or `portrait` asks the app for that orientation and walks every
+/// screen that way; anything else takes the device as it is. Asking matters
+/// for `portrait` too: a tablet whose natural orientation is landscape (the
+/// Pixel Tablet emulator) would otherwise be walked sideways, and on Android
+/// 16 a large screen honours the request only while the app keeps the
+/// large-screen compatibility property (AndroidManifest.xml).
 const _orientation = String.fromEnvironment('WALK_ORIENTATION');
 const _landscape = _orientation == 'landscape';
+const _portraitOnly = _orientation == 'portrait';
 
 /// Keep Android screenshots at full size (for store pictures). By default
 /// they are scaled to [_maxShotSide]: every screenshot travels back to the
@@ -52,9 +61,10 @@ const _landscape = _orientation == 'landscape';
 /// with it. iOS screenshots stay full size: the App Store sets come from them.
 const _fullScreenshots = bool.fromEnvironment('WALK_FULL_SCREENSHOTS');
 
-/// Use the cameras (an Android emulator's "emulated" cameras show a virtual
-/// room, which is enough to exercise every step).
-const _cameraChecks = bool.fromEnvironment('WALK_CAMERA');
+/// Use the device's cameras, microphone and speech engine (an Android
+/// emulator's "emulated" cameras show a virtual room, which is enough to
+/// exercise every step).
+const _deviceChecks = bool.fromEnvironment('WALK_DEVICE');
 
 /// False skips every screenshot. On GitHub's Android emulators (software
 /// GPU) turning the Flutter surface into an image for screenshots took the
@@ -183,14 +193,14 @@ class _Walk {
     } else {
       await _settle(const Duration(seconds: 2));
     }
-    if (_landscape) {
-      await _turnSideways();
+    if (_landscape || _portraitOnly) {
+      await _turnTo();
       final size = tester.view.physicalSize;
       // ignore: avoid_print
-      print('WALK orientation: landscape requested, view '
+      print('WALK orientation: $_orientation requested, view '
           '${size.width.toInt()}x${size.height.toInt()}');
-      if (size.width <= size.height) {
-        failures.add('Could not turn the app to landscape '
+      if (!_rightWayRound()) {
+        failures.add('Could not turn the app to $_orientation '
             '(view ${size.width.toInt()}x${size.height.toInt()})');
       }
     }
@@ -272,7 +282,7 @@ class _Walk {
     await _settle(const Duration(seconds: 2));
     await _shot('viewer_flipped');
 
-    if (_cameraChecks) await _checkCameras();
+    if (_deviceChecks) await _checkDevice();
     await _checkSettings();
     await _deleteOwnProfile();
   }
@@ -285,11 +295,12 @@ class _Walk {
     await _settle(const Duration(seconds: 3));
   }
 
-  /// The camera features end to end: Word Hunt takes a photo and labels it,
-  /// Sign It records the learner and plays it back, and Gaze Control streams
-  /// frames through face detection. Errors raised meanwhile are reported like
-  /// any screen's.
-  Future<void> _checkCameras() async {
+  /// The camera and voice features end to end: Word Hunt takes a photo and
+  /// labels it, Sign It records the learner and plays it back, Gaze Control
+  /// streams frames through face detection, the speech engine speaks, and a
+  /// speech recogniser is there for voice commands. Errors raised meanwhile
+  /// are reported like any screen's.
+  Future<void> _checkDevice() async {
     final errorsBefore = _frameworkErrors.length;
     final since = DateTime.now();
 
@@ -367,7 +378,37 @@ class _Walk {
     container.read(gazeSettingsProvider.notifier).setEnabled(false);
     await _settle(const Duration(seconds: 2));
 
-    _reportSince(since, 'camera checks', framework: errorsBefore);
+    // Voice. Speech is checked by the engine's own "started speaking"
+    // callback, so nobody has to listen. The app's own engine instance is
+    // used: a second one would take over its callbacks.
+    var spoke = TtsService.speaking.value;
+    void heardStart() {
+      if (TtsService.speaking.value) spoke = true;
+    }
+
+    TtsService.speaking.addListener(heardStart);
+    await container
+        .read(ttsServiceProvider)
+        .speak('FlashLearn is checking its voice.');
+    final ttsEnd = DateTime.now().add(const Duration(seconds: 15));
+    while (!spoke && DateTime.now().isBefore(ttsEnd)) {
+      await _settle(const Duration(milliseconds: 300));
+    }
+    TtsService.speaking.removeListener(heardStart);
+    // ignore: avoid_print
+    print('WALK voice: text to speech ${spoke ? 'spoke' : 'never started'}');
+    if (!spoke) failures.add('Voice: text to speech never started speaking');
+
+    // A recogniser depends on the device (Google's speech service on
+    // Android): reported, not failed, so a bare emulator image does not
+    // fail the walk.
+    final stt = container.read(sttServiceProvider);
+    final recogniser = await stt.init();
+    // ignore: avoid_print
+    print('WALK voice: speech recognition '
+        '${recogniser ? 'available' : 'NOT available on this device'}');
+
+    _reportSince(since, 'device checks', framework: errorsBefore);
   }
 
   /// Fails the walk for every error raised since [since] (app log) or since
@@ -532,19 +573,29 @@ class _Walk {
     return config.uri.toString();
   }
 
-  /// Asks for landscape and waits for the turn. Asked again before every
-  /// screen: the app's own orientation code (a profile's choice, a gaze
-  /// camera's hold) may set it back in between.
-  Future<void> _turnSideways() async {
-    await SystemChrome.setPreferredOrientations(const [
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+  bool _rightWayRound() {
+    final size = tester.view.physicalSize;
+    if (_landscape) return size.width > size.height;
+    if (_portraitOnly) return size.height > size.width;
+    return true;
+  }
+
+  /// Asks for the walk's orientation and waits for the turn. Asked again
+  /// before every screen: the app's own orientation code (a profile's choice,
+  /// a gaze camera's hold) may set it back in between.
+  Future<void> _turnTo() async {
+    await SystemChrome.setPreferredOrientations(
+      _landscape
+          ? const [
+              DeviceOrientation.landscapeLeft,
+              DeviceOrientation.landscapeRight,
+            ]
+          : const [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown],
+    );
     final end = DateTime.now().add(const Duration(seconds: 8));
     while (DateTime.now().isBefore(end)) {
       await _settle(const Duration(milliseconds: 300));
-      final size = tester.view.physicalSize;
-      if (size.width > size.height) break;
+      if (_rightWayRound()) break;
     }
     await _settle(const Duration(milliseconds: 800));
   }
@@ -554,10 +605,7 @@ class _Walk {
   Future<void> _visit(String route, {required bool push, String? name}) async {
     final errorsBefore = _frameworkErrors.length;
     final since = DateTime.now();
-    if (_landscape) {
-      final size = tester.view.physicalSize;
-      if (size.width <= size.height) await _turnSideways();
-    }
+    if (!_rightWayRound()) await _turnTo();
     _router.go('/home');
     await _settle(const Duration(milliseconds: 800));
     try {
