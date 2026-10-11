@@ -69,7 +69,7 @@ Each needs the project owner's go-ahead (see "Waiting for approval").
 | Tablet emulator (Android 16, 2560 x 1600), asked for portrait | the request was honoured (1200 x 1600 window); 58 screens; Word Hunt, Gaze and speech fine (Sign It's sign video did not load in time over the emulator's network) |
 | iOS on GitHub Actions (run 38136152361) | unsigned IPA; walkthroughs passed on iPhone SE and iPhone 16 Pro Max upright **and sideways**, iPad mini and 13" iPad; Firebase smoke test passed |
 | Android on GitHub Actions (run 38141730593) | analyze, all tests and the release APKs with their manifest checks pass; walkthroughs on the phone and the tablet emulator (Android 14), upright and sideways: 58 screens and 0 problems each, no crash in the logs. The upright phone also took a Word Hunt photo, recorded and replayed Sign It, streamed Gaze Control's camera (12 frames), spoke, and found a speech recogniser |
-| Release build | website APKs (arm64 / arm32 / universal) and the Play APK + bundle: application ids, permissions, version 1.4.0 (13), 16 KB alignment all checked; SHA-256s in `build/release-v1.4.0/SHA256SUMS.txt` |
+| Release build | website APKs (arm64 / arm32 / universal) and the Play APK + bundle: application ids, permissions, version 1.4.0 (13), 16 KB alignment all checked; rebuilt on 2026-10-12 with every fix above; SHA-256s in `build/release-v1.4.0/SHA256SUMS.txt` |
 | Upgrade 1.2.7 → 1.4.0 (universal, emulator) | profile, XP and stars kept; Screen orientation reads "turns with the device" and Landscape turns the app |
 | **Real tablet** (Honor NDL W09, Android 16, 1200 x 1920), release build installed over 1.2.7 with `adb install -r` | all 19 profiles kept; a learner's level, XP, streak, words and stars identical before and after. Upright and sideways: Home, Games, Memory Match (all 16 Hard cards), flashcard viewer, Progress, sheets. Word Hunt took a photo with the back camera and analysed it; Sign It played the sign video, recorded with the front camera and replayed the take; Gaze Control streamed the front camera; spoken progress played through the speech engine (the tablet's media volume was at 0, so it was silent on the device); a speech recogniser is installed. Portrait chosen in Settings held while the tablet was sideways (Android 16 shows the app in a tall window). Settings put back afterwards |
 | Website (local server) | audit 1,378 passed / 0 failed; contrast sweep 0 failures in all six display modes |
@@ -80,7 +80,10 @@ Each needs the project owner's go-ahead (see "Waiting for approval").
 2. Publishing 1.4.0: GitHub Release with the three APKs, then the website.
 3. Merging `work/v1.4.0` into `work/sign-interpreter` / `main`.
 4. Store uploads, after the Google Play Console and Apple Developer
-   accounts exist ([store/README.md](store/README.md)).
+   accounts exist ([store/README.md](store/README.md)). The Play bundle must
+   first be built with a separate upload key: the website key's certificate
+   is named `CN=Android Debug`, which Play refuses ("Signing" in the store
+   notes).
 
 ## Not possible in this round
 

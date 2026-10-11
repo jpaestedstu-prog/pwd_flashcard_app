@@ -41,6 +41,14 @@ password were deleted.
 - `FLASHLEARN_SIGNING_PROPERTIES` may point at a `key.properties` somewhere
   else (a backup restored to another folder).
 
+## Google Play
+
+This key cannot be the Play upload key: its certificate still carries the
+debug keystore's name, `CN=Android Debug`, and Play refuses uploads "signed in
+debug mode". Play builds use a separate upload key through
+`FLASHLEARN_SIGNING_PROPERTIES`; the steps are in
+[store/README.md](store/README.md) ("Signing"). The website APKs keep this key.
+
 ## Another PC
 
 - **To release from another PC**, restore the backup — its README has the

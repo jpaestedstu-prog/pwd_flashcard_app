@@ -34,8 +34,11 @@ flutter build appbundle --release --dart-define=FLASHLEARN_DISTRIBUTION=play
 
 Output: `build/app/outputs/bundle/release/app-release.aab`. That one flag gives
 the bundle the Play application id, drops `USE_EXACT_ALARM` (see below) and
-hides the website update check. It is signed with the same private key as the
-website APKs (`~/.flashlearn-signing`), which becomes your Play **upload key**.
+hides the website update check. Sign it with a **separate upload key** (see
+"Signing" below), not the website key: the website key began as this PC's
+Android debug key, its certificate is named `CN=Android Debug`, and Google
+Play turns away uploads "signed in debug mode". The website APKs must keep
+their key, because that is what lets installed copies update.
 
 **iPhone and iPad** need a Mac to sign. There is none here, so every push to
 `work/ios-and-stores` builds the app on GitHub's macOS machines (free for a
@@ -113,9 +116,29 @@ after November 2023 must run a **closed test with at least 12 testers for 14
 days in a row** before it may publish to everyone. (An organisation account —
 for example the school's — does not.) Start the closed test early.
 
-**Signing.** Let Google manage the app signing key (Play App Signing) and use
-the existing key as the upload key. Keep `~/.flashlearn-signing` backed up: a
-lost upload key can be reset through Play support, a lost website key cannot.
+**Signing.** Let Google manage the app signing key (Play App Signing) and sign
+your uploads with an **upload key** of your own. Make it once, free, with the
+`keytool` in Android Studio's `jbr\bin` folder (it asks for a password):
+
+```
+keytool -genkeypair -v -storetype PKCS12 -keystore "%USERPROFILE%\.flashlearn-signing\play-upload.p12" -alias upload -keyalg RSA -keysize 4096 -validity 10000 -dname "CN=FlashLearn PWD, C=PH"
+```
+
+Beside it, write `play-upload.properties` with the same four lines as
+`key.properties` (`storeFile=` the `.p12` above, `storePassword=`,
+`keyAlias=upload`, `keyPassword=`, the last the same as the store password),
+then build the bundle with it:
+
+```
+set FLASHLEARN_SIGNING_PROPERTIES=%USERPROFILE%\.flashlearn-signing\play-upload.properties
+flutter build appbundle --release --dart-define=FLASHLEARN_DISTRIBUTION=play
+```
+
+`keytool -printcert -jarfile build\app\outputs\bundle\release\app-release.aab`
+must name `CN=FlashLearn PWD`, not `CN=Android Debug`. Back the upload key up
+with the website key: a lost upload key can be reset through Play support, a
+lost website key cannot. (The bundle prepared in `build/store-v1.4.0` is signed
+with the website key, so build it again this way before the first upload.)
 
 **Graphics:** icon `graphics/play-icon-512.png`, feature graphic
 `graphics/play-feature-graphic.png`, at least 2 phone screenshots and, for the
