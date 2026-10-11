@@ -180,11 +180,12 @@ jobs:
           profile: ${{ matrix.profile }}
           ram-size: 4096M
           disk-size: 8G
-          # Rendering inside the guest: with the host-side software GPU
-          # (SwiftShader through gfxstream) the whole emulator died within
-          # seconds of the app starting in three of four runs - with guest
-          # Vulkan or without, screenshots or not.
-          emulator-options: -no-window -gpu guest -feature -Vulkan -no-snapshot -noaudio -no-boot-anim -camera-back ${{ matrix.cameras }} -camera-front ${{ matrix.cameras }}
+          # The runner has no GPU: SwiftShader draws in software. With
+          # Flutter's Impeller renderer on it, the whole emulator died within
+          # seconds of the app starting (guest Vulkan or not, screenshots or
+          # not, and the "guest" mode falls back to the same); the walk runs
+          # with Skia instead (--no-enable-impeller, android_walkthrough.sh).
+          emulator-options: -no-window -gpu swiftshader_indirect -feature -Vulkan -no-snapshot -noaudio -no-boot-anim -camera-back ${{ matrix.cameras }} -camera-front ${{ matrix.cameras }}
           disable-animations: true
           script: bash .github/scripts/android_walkthrough.sh ${{ matrix.kind }} ${{ matrix.orientation }} ${{ matrix.device }}
 

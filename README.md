@@ -65,7 +65,10 @@ flutter test                         # ~5,100 unit and widget tests
 - **On-device walkthrough** (emulators and simulators only, because `flutter drive`
   uninstalls the app when it finishes):
   `flutter drive --driver=test_driver/integration_test.dart --target=integration_test/app_walkthrough_test.dart --dart-define=FLASHLEARN_OFFLINE=true -d <device>`
-  Add `--dart-define=WALK_ORIENTATION=landscape` to walk every screen sideways.
+  Options: `--dart-define=WALK_ORIENTATION=landscape` (or `=portrait`) walks
+  every screen that way round; `WALK_DEVICE=true` also takes a Word Hunt photo,
+  records Sign It, streams Gaze Control and checks speech (an emulator's
+  "emulated" cameras are enough); `WALK_SCREENSHOTS=false` skips screenshots.
 - **Security rules**, against the local Firestore emulator:
   see [docs/security.md](docs/security.md#testing-the-rules).
 - **Continuous integration** (GitHub Actions, free for this public repository):

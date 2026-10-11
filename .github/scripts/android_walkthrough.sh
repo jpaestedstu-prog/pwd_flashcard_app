@@ -6,9 +6,9 @@
 # speech (WALK_DEVICE).
 #
 # `flutter drive` uninstalls the app when it finishes, which is fine on a CI
-# emulator and NEVER fine on a tablet with real profiles. No screenshots
-# here: on the runner's software GPU, turning the Flutter surface into an
-# image for them took the whole emulator down within seconds.
+# emulator and NEVER fine on a tablet with real profiles. No screenshots,
+# and Skia instead of Impeller (--no-enable-impeller): on the runner's
+# software GPU the emulator itself died within seconds of the app starting.
 set -euo pipefail
 
 kind="${1:?phone or tablet}"
@@ -55,4 +55,5 @@ WALKTHROUGH_DIR="$out" flutter drive \
   --dart-define=WALK_ORIENTATION="$orientation" \
   --dart-define=WALK_SCREENSHOTS=false \
   --dart-define=WALK_DEVICE="$device" \
+  --no-enable-impeller \
   -d "$serial" 2>&1 | tee logs/walkthrough.log
