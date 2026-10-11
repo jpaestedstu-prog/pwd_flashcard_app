@@ -179,15 +179,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Every size upright, and the two extremes sideways: the app turns
-        # with the device since 1.4.0.
+        # Every size upright, and both iPhones sideways: the app turns with
+        # the device since 1.4.0. (iPads cannot be walked sideways here: an
+        # app that supports Split View may not choose its orientation, so
+        # iPadOS ignores the walkthrough's request; their landscape layouts
+        # are covered by the widget tests' tablet-landscape sizes.)
         include:
           - { kind: iphone-small, orientation: portrait }
           - { kind: iphone-large, orientation: portrait }
           - { kind: ipad-mini, orientation: portrait }
           - { kind: ipad-large, orientation: portrait }
           - { kind: iphone-small, orientation: landscape }
-          - { kind: ipad-large, orientation: landscape }
+          - { kind: iphone-large, orientation: landscape }
     steps:
       - uses: actions/checkout@v4
 

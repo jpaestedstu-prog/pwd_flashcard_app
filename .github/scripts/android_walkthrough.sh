@@ -5,7 +5,9 @@
 # they name the screenshot folder.
 #
 # `flutter drive` uninstalls the app when it finishes, which is fine on a CI
-# emulator and NEVER fine on a tablet with real profiles.
+# emulator and NEVER fine on a tablet with real profiles. No screenshots
+# here: on the runner's software GPU, turning the Flutter surface into an
+# image for them took the whole emulator down within seconds.
 set -euo pipefail
 
 kind="${1:?phone or tablet}"
@@ -32,4 +34,5 @@ WALKTHROUGH_DIR="$out" flutter drive \
   --target=integration_test/app_walkthrough_test.dart \
   --dart-define=FLASHLEARN_OFFLINE=true \
   --dart-define=WALK_ORIENTATION="$orientation" \
+  --dart-define=WALK_SCREENSHOTS=false \
   -d "$serial" 2>&1 | tee logs/walkthrough.log

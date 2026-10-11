@@ -6,7 +6,9 @@
 //     --dart-define=FLASHLEARN_OFFLINE=true -d <device>
 //
 // Add --dart-define=WALK_ORIENTATION=landscape to walk every screen sideways
-// (the app turns with the device since 1.4.0).
+// (the app turns with the device since 1.4.0), and
+// --dart-define=WALK_CAMERA=true on a device or emulator with cameras to
+// take a Word Hunt photo, record a Sign It clip and stream Gaze Control.
 //
 // It onboards a "Player (with Progress)" profile, opens every tab, a deck, and
 // every learner screen and game, saves a screenshot of each stop (the driver
@@ -26,11 +28,14 @@ import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:pwdpwdpwd/core/utils/error_handler.dart';
+import 'package:pwdpwdpwd/features/gaze_control/controllers/gaze_controller.dart';
+import 'package:pwdpwdpwd/features/gaze_control/providers/gaze_settings_provider.dart';
 import 'package:pwdpwdpwd/main.dart' as app;
 import 'package:pwdpwdpwd/navigation/app_router.dart' show rootNavigatorKey;
 
@@ -46,6 +51,17 @@ const _landscape = _orientation == 'landscape';
 /// the app 851 MB, when Android's low-memory killer ended it and the run
 /// with it. iOS screenshots stay full size: the App Store sets come from them.
 const _fullScreenshots = bool.fromEnvironment('WALK_FULL_SCREENSHOTS');
+
+/// Use the cameras (an Android emulator's "emulated" cameras show a virtual
+/// room, which is enough to exercise every step).
+const _cameraChecks = bool.fromEnvironment('WALK_CAMERA');
+
+/// False skips every screenshot. On GitHub's Android emulators (software
+/// GPU) turning the Flutter surface into an image for screenshots took the
+/// whole emulator down within seconds, every run; the checks themselves do
+/// not need pictures.
+const _screenshots =
+    bool.fromEnvironment('WALK_SCREENSHOTS', defaultValue: true);
 const _maxShotSide = 1280;
 
 /// Tabs, opened through the router (a tap on the bar is checked once).
@@ -159,11 +175,13 @@ class _Walk {
       _frameworkErrors.add(details.exceptionAsString().split('\n').first);
       appOnError?.call(details);
     };
-    if (Platform.isAndroid) {
+    if (Platform.isAndroid && _screenshots) {
       // Android screenshots read the Flutter surface as an image; done early
       // so that even a screen stuck at launch can be captured.
       await _settle(const Duration(seconds: 2));
       await binding.convertFlutterSurfaceToImage();
+    } else {
+      await _settle(const Duration(seconds: 2));
     }
     if (_landscape) {
       await _turnSideways();
@@ -224,6 +242,7 @@ class _Walk {
     }
     await _settle(const Duration(seconds: 2));
     await _shot('home');
+    _reportSince(_started, 'start and onboarding', framework: 0);
 
     // A new profile's first visit opens the Daily Reward. Collect it, or it
     // comes back over Home on every visit below.
@@ -253,8 +272,117 @@ class _Walk {
     await _settle(const Duration(seconds: 2));
     await _shot('viewer_flipped');
 
+    if (_cameraChecks) await _checkCameras();
     await _checkSettings();
     await _deleteOwnProfile();
+  }
+
+  /// Pushes [route] from Home and lets it settle.
+  Future<void> _open(String route) async {
+    _router.go('/home');
+    await _settle(const Duration(milliseconds: 800));
+    _router.push(route);
+    await _settle(const Duration(seconds: 3));
+  }
+
+  /// The camera features end to end: Word Hunt takes a photo and labels it,
+  /// Sign It records the learner and plays it back, and Gaze Control streams
+  /// frames through face detection. Errors raised meanwhile are reported like
+  /// any screen's.
+  Future<void> _checkCameras() async {
+    final errorsBefore = _frameworkErrors.length;
+    final since = DateTime.now();
+
+    // Word Hunt: shutter → a reviewed photo ("New photo", and any words).
+    await _open('/object-scan');
+    final shutter = find.byIcon(Icons.camera_alt_rounded);
+    if (await _waitFor(shutter, const Duration(seconds: 30))) {
+      await _settle(const Duration(seconds: 2));
+      await _tap(shutter);
+      final result = await _waitForAny({
+        'words': find.textContaining('found these words'),
+        'reviewed': find.text('New photo'),
+      }, const Duration(seconds: 40));
+      // ignore: avoid_print
+      print('WALK camera Word Hunt: ${result ?? 'no result'}');
+      if (result == null) failures.add('Word Hunt: no result after a photo');
+      await _settle(const Duration(seconds: 1));
+      await _shot('camera_word_hunt');
+    } else {
+      failures.add('Word Hunt: the camera never became ready');
+      await _shot('camera_word_hunt_not_ready');
+    }
+
+    // Sign It: record two seconds, stop, and the replay offers "Re-record".
+    await _open('/games/fsl-practice/sign-it');
+    final record = find.byIcon(Icons.fiber_manual_record_rounded);
+    if (await _waitFor(record, const Duration(seconds: 30))) {
+      await _settle(const Duration(seconds: 1));
+      await _tap(record);
+      final stop = find.byIcon(Icons.stop_rounded);
+      if (await _waitFor(stop, const Duration(seconds: 10))) {
+        await _settle(const Duration(seconds: 2));
+        await _shot('camera_sign_it_recording');
+        await _tap(stop);
+        final replay = await _waitFor(
+          find.text('Re-record'),
+          const Duration(seconds: 20),
+        );
+        // ignore: avoid_print
+        print('WALK camera Sign It: ${replay ? 'recorded and replayed' : 'no replay'}');
+        if (!replay) failures.add('Sign It: the recording did not play back');
+      } else {
+        failures.add('Sign It: recording did not start');
+      }
+      await _shot('camera_sign_it_replay');
+    } else {
+      failures.add('Sign It: the camera never became ready');
+      await _shot('camera_sign_it_not_ready');
+    }
+
+    // Gaze Control: switched on for this profile, its camera must reach
+    // "ready" and process frames (an emulator's room has no face to follow).
+    final container =
+        ProviderScope.containerOf(rootNavigatorKey.currentContext!);
+    container.read(gazeSettingsProvider.notifier).setEnabled(true);
+    _router.go('/home');
+    final end = DateTime.now().add(const Duration(seconds: 30));
+    Map<String, Object?>? live;
+    while (DateTime.now().isBefore(end)) {
+      await _settle(const Duration(milliseconds: 500));
+      final ready = GazeController.debugLive
+          .map((c) => c.debugDescribe())
+          .where((d) => d['status'] == 'ready')
+          .toList();
+      if (ready.isNotEmpty && (ready.first['framesProcessed'] as int) > 10) {
+        live = ready.first;
+        break;
+      }
+    }
+    // ignore: avoid_print
+    print('WALK camera Gaze: ${live == null ? 'not streaming' : 'ready, '
+        '${live['framesProcessed']} frames, face ${live['faceVisible']}'}');
+    if (live == null) failures.add('Gaze Control: the camera never streamed');
+    await _shot('camera_gaze_home');
+    container.read(gazeSettingsProvider.notifier).setEnabled(false);
+    await _settle(const Duration(seconds: 2));
+
+    _reportSince(since, 'camera checks', framework: errorsBefore);
+  }
+
+  /// Fails the walk for every error raised since [since] (app log) or since
+  /// framework error number [framework], under [label].
+  void _reportSince(DateTime since, String label, {required int framework}) {
+    final problems = <String>[
+      ..._frameworkErrors.sublist(framework),
+      for (final e in _appErrorsSince(since))
+        if (!_benign(e)) '${e.source}: ${e.message.split('\n').first}',
+    ];
+    for (final p in problems.toSet()) {
+      // ignore: avoid_print
+      print('WALK   ! $label: $p');
+      failures.add('$label: $p');
+    }
   }
 
   /// Settings shows the installed version, the privacy page and "Delete
@@ -425,7 +553,7 @@ class _Walk {
   /// error raised while it was on screen.
   Future<void> _visit(String route, {required bool push, String? name}) async {
     final errorsBefore = _frameworkErrors.length;
-    final logBefore = _appErrors().length;
+    final since = DateTime.now();
     if (_landscape) {
       final size = tester.view.physicalSize;
       if (size.width <= size.height) await _turnSideways();
@@ -477,7 +605,7 @@ class _Walk {
     await _shot(label.isEmpty ? 'home' : label);
 
     final newFramework = _frameworkErrors.sublist(errorsBefore);
-    final newLogged = _appErrors().sublist(logBefore);
+    final newLogged = _appErrorsSince(since);
     // Flutter's red box, or the app's own friendlier one (error_boundary.dart).
     final errorWidget = await _has(find.byWidgetPredicate((w) =>
         w is ErrorWidget ||
@@ -513,10 +641,14 @@ class _Walk {
         m.contains('Speech');
   }
 
-  List<AppError> _appErrors() {
+  /// Errors the app logged at or after [since]. (The log is newest first and
+  /// capped, so only a timestamp says what is new.)
+  List<AppError> _appErrorsSince(DateTime since) {
     try {
       return ErrorHandler.getErrorLogs()
-          .where((e) => !e.timestamp.isBefore(_started))
+          .where((e) => !e.timestamp.isBefore(since))
+          .toList()
+          .reversed
           .toList();
     } catch (_) {
       return const [];
@@ -638,6 +770,7 @@ class _Walk {
     }
     _shots++;
     final file = '${_shots.toString().padLeft(3, '0')}_$name';
+    if (!_screenshots) return;
     try {
       await binding.takeScreenshot(file);
       if (Platform.isAndroid && !_fullScreenshots) await _shrinkLastShot();
