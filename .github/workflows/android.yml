@@ -122,11 +122,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # Phones get emulated cameras (a virtual room), and the portrait phone
+        # also takes a Word Hunt photo, records Sign It, streams Gaze Control
+        # and checks speech; tablets have no camera at all, which is how the
+        # unhandled no-camera error in Sign It and Word Hunt was found.
         include:
-          - { kind: phone, profile: pixel_6, orientation: portrait }
-          - { kind: tablet, profile: pixel_tablet, orientation: portrait }
-          - { kind: phone, profile: pixel_6, orientation: landscape }
-          - { kind: tablet, profile: pixel_tablet, orientation: landscape }
+          - { kind: phone, profile: pixel_6, orientation: portrait, cameras: emulated, device: true }
+          - { kind: tablet, profile: pixel_tablet, orientation: portrait, cameras: none, device: false }
+          - { kind: phone, profile: pixel_6, orientation: landscape, cameras: emulated, device: false }
+          - { kind: tablet, profile: pixel_tablet, orientation: landscape, cameras: none, device: false }
     steps:
       - uses: actions/checkout@v4
 
@@ -176,13 +180,13 @@ jobs:
           profile: ${{ matrix.profile }}
           ram-size: 4096M
           disk-size: 8G
-          # No Vulkan in the guest: Flutter's renderer picks Vulkan when it is
-          # there, and Vulkan on the runner's software GPU (SwiftShader via
-          # gfxstream) took the whole emulator down seconds into the first
-          # run. Without it Flutter draws with OpenGL ES, which is stable.
-          emulator-options: -no-window -gpu swiftshader_indirect -feature -Vulkan -no-snapshot -noaudio -no-boot-anim -camera-back none -camera-front none
+          # Rendering inside the guest: with the host-side software GPU
+          # (SwiftShader through gfxstream) the whole emulator died within
+          # seconds of the app starting in three of four runs - with guest
+          # Vulkan or without, screenshots or not.
+          emulator-options: -no-window -gpu guest -feature -Vulkan -no-snapshot -noaudio -no-boot-anim -camera-back ${{ matrix.cameras }} -camera-front ${{ matrix.cameras }}
           disable-animations: true
-          script: bash .github/scripts/android_walkthrough.sh ${{ matrix.kind }} ${{ matrix.orientation }}
+          script: bash .github/scripts/android_walkthrough.sh ${{ matrix.kind }} ${{ matrix.orientation }} ${{ matrix.device }}
 
       - uses: actions/upload-artifact@v4
         if: always()
