@@ -9,6 +9,7 @@ import 'package:video_player/video_player.dart';
 import '../../features/gaze_control/providers/gaze_camera_owners.dart';
 import '../../l10n/app_localizations.dart';
 import '../../l10n/app_localizations_en.dart';
+import '../theme/accessible_theme.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 
@@ -411,6 +412,7 @@ class _MediaCaptureScreenState extends State<MediaCaptureScreen>
       appBar: AppBar(
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
+        systemOverlayStyle: statusBarIcons(light: true),
         // Spelled out: the app theme's title colour is dark, and it wins over
         // [foregroundColor] — dark grey on black was barely there.
         titleTextStyle: AppTypography.titleLarge.copyWith(color: Colors.white),

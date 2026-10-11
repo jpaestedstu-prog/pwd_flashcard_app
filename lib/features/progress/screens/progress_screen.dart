@@ -6,6 +6,7 @@ import 'package:percent_indicator/circular_percent_indicator.dart';
 import '../../../core/accessibility/accessibility_content_policy.dart';
 import '../../../core/accessibility/tts_service.dart';
 import '../../../core/services/xp_level_service.dart';
+import '../../../core/theme/accessible_theme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
@@ -193,6 +194,14 @@ class ProgressScreen extends ConsumerWidget {
             SliverAppBar(
               expandedHeight: 150,
               pinned: true,
+              // Solid once folded: the gradient fades out as the header
+              // collapses, which left the title and the status bar on the
+              // light page. The status bar takes the title's own tone.
+              backgroundColor:
+                  headerGradient.colors[headerGradient.colors.length ~/ 2],
+              systemOverlayStyle: statusBarIcons(
+                light: bestOn(headerTextColor) != Colors.white,
+              ),
               actions: [
                 // Its own gaze row (the topmost), so the D-pad reaches the
                 // customize sheet too.

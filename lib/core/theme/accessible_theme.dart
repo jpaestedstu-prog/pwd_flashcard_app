@@ -2,6 +2,7 @@ import 'dart:collection';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Makes every standard control in [theme] readable — the last step of
 /// building each theme the app has.
@@ -139,7 +140,19 @@ ThemeData accessibleTheme(ThemeData theme) {
     preferred: _opaque(navLabel?.color, navBar) ?? quietText,
   );
 
+  // The clock and icons in the status bar, which sits on the app bar. An app
+  // bar picks them from its own colour, and the themes give it a transparent
+  // one, which Flutter reads as black: white icons, so on every light page
+  // with an app bar the clock vanished. Set from what is really behind them.
+  final appBarGround = _opaque(
+    theme.appBarTheme.backgroundColor ?? cs.surface,
+    page,
+  )!;
+
   return theme.copyWith(
+    appBarTheme: theme.appBarTheme.copyWith(
+      systemOverlayStyle: statusBarOn(appBarGround),
+    ),
     colorScheme: cs.copyWith(
       primary: ink,
       onPrimary: onInk,
@@ -213,6 +226,23 @@ double contrastOf(Color a, Color b) {
 Color bestOn(Color c) => contrastOf(c, Colors.white) >= contrastOf(c, Colors.black)
     ? Colors.white
     : const Color(0xFF1A1A1A);
+
+/// A status bar whose clock and icons read on [ground], the colour behind
+/// them.
+SystemUiOverlayStyle statusBarOn(Color ground) =>
+    statusBarIcons(light: bestOn(ground) == Colors.white);
+
+/// A status bar with white ([light]) or dark clock and icons. Only the status
+/// bar's own fields, as Flutter's app bar sets them, so the navigation bar
+/// keeps the app-wide style (main.dart).
+SystemUiOverlayStyle statusBarIcons({required bool light}) =>
+    SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: light ? Brightness.light : Brightness.dark,
+      // iOS names the bar's background rather than its icons.
+      statusBarBrightness: light ? Brightness.dark : Brightness.light,
+      systemStatusBarContrastEnforced: false,
+    );
 
 /// [preferred] when it reads at 4.5:1 (or [target]) on every one of
 /// [grounds]; otherwise the nearest of it, darkened or lightened, that does.

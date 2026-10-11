@@ -11,6 +11,7 @@ import '../core/constants/app_constants.dart';
 import '../core/utils/reduced_motion.dart';
 import '../l10n/app_localizations.dart';
 import '../l10n/app_localizations_en.dart';
+import '../core/theme/accessible_theme.dart';
 
 /// Opens the FSL fullscreen video player as a fullscreen dialog.
 ///
@@ -310,39 +311,44 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
       builder: (context, orientation) {
         _isLandscape = orientation == Orientation.landscape;
 
-        return Scaffold(
-          backgroundColor: Colors.black,
-          body: GestureDetector(
-            onTap: _toggleControls,
-            onDoubleTap: _resetZoom,
-            onHorizontalDragEnd: _onHorizontalDragEnd,
-            onVerticalDragEnd: _onVerticalDragEnd,
-            behavior: HitTestBehavior.opaque,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                // ─── Video ──────────────────────
-                _buildVideoLayer(),
-
-                // ─── Subtitle label ─────────────
-                if (_showSubtitles) _buildSubtitles(),
-
-                // ─── Controls overlay ───────────
-                _buildControlsOverlay(),
-
-                // ─── Seek feedback ──────────────
-                if (_seekFeedback != null) _buildCenterFeedback(_seekFeedback!),
-
-                // ─── Speed feedback ─────────────
-                if (_speedFeedback != null)
-                  _buildCenterFeedback(_speedFeedback!),
-
-                // ─── Buffering indicator ────────
-                if (_initialized && _controller.value.isBuffering)
-                  const Center(
-                    child: CircularProgressIndicator(color: Colors.white70),
-                  ),
-              ],
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          // A black page with no app bar: white clock and icons. Without a region
+          // of its own the status bar kept whatever the last screen left.
+          value: statusBarIcons(light: true),
+          child: Scaffold(
+            backgroundColor: Colors.black,
+            body: GestureDetector(
+              onTap: _toggleControls,
+              onDoubleTap: _resetZoom,
+              onHorizontalDragEnd: _onHorizontalDragEnd,
+              onVerticalDragEnd: _onVerticalDragEnd,
+              behavior: HitTestBehavior.opaque,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // ─── Video ──────────────────────
+                  _buildVideoLayer(),
+  
+                  // ─── Subtitle label ─────────────
+                  if (_showSubtitles) _buildSubtitles(),
+  
+                  // ─── Controls overlay ───────────
+                  _buildControlsOverlay(),
+  
+                  // ─── Seek feedback ──────────────
+                  if (_seekFeedback != null) _buildCenterFeedback(_seekFeedback!),
+  
+                  // ─── Speed feedback ─────────────
+                  if (_speedFeedback != null)
+                    _buildCenterFeedback(_speedFeedback!),
+  
+                  // ─── Buffering indicator ────────
+                  if (_initialized && _controller.value.isBuffering)
+                    const Center(
+                      child: CircularProgressIndicator(color: Colors.white70),
+                    ),
+                ],
+              ),
             ),
           ),
         );

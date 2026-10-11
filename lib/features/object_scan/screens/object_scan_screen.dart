@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -26,6 +27,7 @@ import '../widgets/discovered_word_sheet.dart';
 import '../widgets/hunt_target_strip.dart';
 import '../widgets/photo_results_panel.dart';
 import '../../../core/utils/seeded_random.dart';
+import '../../../core/theme/accessible_theme.dart';
 
 enum _ScanStatus { initializing, ready, noCamera, permissionDenied, failed }
 
@@ -477,46 +479,51 @@ class _ObjectScanScreenState extends ConsumerState<ObjectScanScreen>
     final l10n = AppLocalizations.of(context)!;
     final photoPath = _photoPath;
     final showPhoto = _phase == _CapturePhase.reviewing && photoPath != null;
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          if (showPhoto)
-            _PhotoView(path: photoPath)
-          else if (_status == _ScanStatus.ready && _controller != null)
-            _CameraCover(controller: _controller!)
-          else
-            _FallbackState(status: _status, l10n: l10n, onRetry: _initCamera),
-          SafeArea(
-            child: Column(
-              children: [
-                _topBar(context, l10n),
-                if (voiceActive)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: IgnorePointer(child: voiceChip()),
-                  ),
-                const Spacer(),
-                if (showPhoto)
-                  SingleChildScrollView(
-                    reverse: true,
-                    child: PhotoResultsPanel(
-                      matches: _photoMatches,
-                      searching: _searching,
-                      newWordIds: _newIdsIn(_photoMatches),
-                      targetsHit: _targetsHit,
-                      targets: _photoMatches.isEmpty ? _targets : const [],
-                      onWordTap: _openWord,
-                      onRetake: _retake,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      // A black page with no app bar: white clock and icons. Without a region
+      // of its own the status bar kept whatever the last screen left.
+      value: statusBarIcons(light: true),
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (showPhoto)
+              _PhotoView(path: photoPath)
+            else if (_status == _ScanStatus.ready && _controller != null)
+              _CameraCover(controller: _controller!)
+            else
+              _FallbackState(status: _status, l10n: l10n, onRetry: _initCamera),
+            SafeArea(
+              child: Column(
+                children: [
+                  _topBar(context, l10n),
+                  if (voiceActive)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: IgnorePointer(child: voiceChip()),
                     ),
-                  )
-                else if (_status == _ScanStatus.ready)
-                  _capturePanel(l10n),
-              ],
+                  const Spacer(),
+                  if (showPhoto)
+                    SingleChildScrollView(
+                      reverse: true,
+                      child: PhotoResultsPanel(
+                        matches: _photoMatches,
+                        searching: _searching,
+                        newWordIds: _newIdsIn(_photoMatches),
+                        targetsHit: _targetsHit,
+                        targets: _photoMatches.isEmpty ? _targets : const [],
+                        onWordTap: _openWord,
+                        onRetake: _retake,
+                      ),
+                    )
+                  else if (_status == _ScanStatus.ready)
+                    _capturePanel(l10n),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

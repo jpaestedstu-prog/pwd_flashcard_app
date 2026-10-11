@@ -565,9 +565,10 @@ class FlashLearnApp extends ConsumerWidget {
     // Adjust both status bar AND nav bar icons for dark themes. The
     // nav bar piece matters under edge-to-edge — without it, light icons
     // on a light Flutter background go invisible after a theme toggle.
-    SystemChrome.setSystemUIOverlayStyle(
-      _systemUiStyleFor(isDark: baseTheme.brightness == Brightness.dark),
+    final systemUi = _systemUiStyleFor(
+      isDark: baseTheme.brightness == Brightness.dark,
     );
+    SystemChrome.setSystemUIOverlayStyle(systemUi);
 
     // Reduced-motion contract: when on, strip page-route transitions too
     // so navigation is instant (Animate.defaultDuration already covers
@@ -607,40 +608,47 @@ class FlashLearnApp extends ConsumerWidget {
           final mediaQuery = MediaQuery.of(context);
           final systemScale = mediaQuery.textScaler.scale(1.0);
           final combined = (systemScale * settings.fontScale).clamp(0.85, 1.5);
-          return MediaQuery(
-            data: mediaQuery.copyWith(textScaler: TextScaler.linear(combined)),
-            // ErrorBoundary (global error snackbars), ConnectivityBanner (offline
-            // indicator), then MembershipEvictionGate above LockEnforcerGate so an
-            // educator-driven removal wins over a time-driven lock.
-            // LockWarningGate sits just *inside* LockEnforcerGate: its "nearly
-            // time" banner belongs over normal learner screens but never over a
-            // lock or eviction screen.
-            // CompanionHost sits *inside* the lock / eviction gates so the
-            // floating AI Companion never shows over a lock or eviction screen,
-            // but floats above every normal learner screen.
-            // CastStatusHost sits alongside it, for the mirror-image reason: the
-            // TV Cast server outlives the cast screen, so the "still casting"
-            // pill has to be able to float over any educator surface — but never
-            // over a lock or eviction screen.
-            // GamepadHost shares that placement, for a third reason: it drives
-            // navigation from a Bluetooth controller, and a lock screen is meant
-            // to be a dead end. Inside the gates, a locked-out learner cannot
-            // steer their way past it; the controller comes back the moment the
-            // lock lifts. Above the router, though, so it keeps working across
-            // every pushed screen, game and dialog.
-            child: ErrorBoundary(
-              child: ConnectivityBanner(
-                child: MembershipEvictionGate(
-                  child: LockEnforcerGate(
-                    child: LockWarningGate(
-                      // The gaze focus ring floats above every route and
-                      // dialog, so it can never end up under the scrim of the
-                      // very dialog it is pointing into.
-                      child: GazeFocusRingLayer(
-                        child: GamepadHost(
-                          child: CompanionHost(
-                            child: CastStatusHost(
-                              child: child ?? const SizedBox.shrink(),
+          return AnnotatedRegion<SystemUiOverlayStyle>(
+            // The status and navigation bars of every screen that does not set its
+            // own (an app bar does). Without a default, a screen kept whatever the
+            // last app bar left: white icons on the light Home after Progress, or
+            // dark ones over a camera.
+            value: systemUi,
+            child: MediaQuery(
+              data: mediaQuery.copyWith(textScaler: TextScaler.linear(combined)),
+              // ErrorBoundary (global error snackbars), ConnectivityBanner (offline
+              // indicator), then MembershipEvictionGate above LockEnforcerGate so an
+              // educator-driven removal wins over a time-driven lock.
+              // LockWarningGate sits just *inside* LockEnforcerGate: its "nearly
+              // time" banner belongs over normal learner screens but never over a
+              // lock or eviction screen.
+              // CompanionHost sits *inside* the lock / eviction gates so the
+              // floating AI Companion never shows over a lock or eviction screen,
+              // but floats above every normal learner screen.
+              // CastStatusHost sits alongside it, for the mirror-image reason: the
+              // TV Cast server outlives the cast screen, so the "still casting"
+              // pill has to be able to float over any educator surface — but never
+              // over a lock or eviction screen.
+              // GamepadHost shares that placement, for a third reason: it drives
+              // navigation from a Bluetooth controller, and a lock screen is meant
+              // to be a dead end. Inside the gates, a locked-out learner cannot
+              // steer their way past it; the controller comes back the moment the
+              // lock lifts. Above the router, though, so it keeps working across
+              // every pushed screen, game and dialog.
+              child: ErrorBoundary(
+                child: ConnectivityBanner(
+                  child: MembershipEvictionGate(
+                    child: LockEnforcerGate(
+                      child: LockWarningGate(
+                        // The gaze focus ring floats above every route and
+                        // dialog, so it can never end up under the scrim of the
+                        // very dialog it is pointing into.
+                        child: GazeFocusRingLayer(
+                          child: GamepadHost(
+                            child: CompanionHost(
+                              child: CastStatusHost(
+                                child: child ?? const SizedBox.shrink(),
+                              ),
                             ),
                           ),
                         ),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pwdpwdpwd/core/theme/accessible_theme.dart' show contrastOf;
 import 'package:pwdpwdpwd/core/theme/app_theme.dart';
 import 'package:pwdpwdpwd/data/models/enums.dart';
 
@@ -185,6 +187,46 @@ void main() {
         if (!reading.passes) failures.add(reading.toString());
       }
       expect(failures, isEmpty, reason: failures.join('\n'));
+    });
+
+    // Found on the tablet: the app bars are transparent, Flutter reads that
+    // as black and picks white status icons, so on every light page with an
+    // app bar the clock and battery vanished.
+    testWidgets('${entry.key}: the status bar reads on the app bar',
+        (tester) async {
+      final theme = entry.value();
+      await tester.pumpWidget(
+        MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: theme,
+          home: Scaffold(appBar: AppBar(title: const Text('Title'))),
+        ),
+      );
+
+      final style = tester
+          .widget<AnnotatedRegion<SystemUiOverlayStyle>>(
+            find.descendant(
+              of: find.byType(AppBar),
+              matching: find.byType(AnnotatedRegion<SystemUiOverlayStyle>),
+            ),
+          )
+          .value;
+      final bar =
+          theme.appBarTheme.backgroundColor ?? theme.colorScheme.surface;
+      final ground = Color.alphaBlend(bar, theme.scaffoldBackgroundColor);
+      final lightIcons = style.statusBarIconBrightness == Brightness.light;
+      final icons = lightIcons ? Colors.white : Colors.black;
+      // WCAG 1.4.11: icons need 3:1 against what is behind them.
+      expect(
+        contrastOf(icons, ground),
+        greaterThanOrEqualTo(3.0),
+        reason: '${lightIcons ? 'white' : 'dark'} icons on $ground',
+      );
+      // iOS reads the bar's background instead of its icons; it must agree.
+      expect(
+        style.statusBarBrightness,
+        lightIcons ? Brightness.dark : Brightness.light,
+      );
     });
   }
 }

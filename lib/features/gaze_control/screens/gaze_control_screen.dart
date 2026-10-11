@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/accessibility/haptic_service.dart'
@@ -21,6 +22,7 @@ import '../widgets/gaze_widgets.dart';
 import '../widgets/voice_control_mixin.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/theme/accessible_theme.dart';
 
 /// **Gaze Control practice** ("Try it now") — the learner tries every gesture
 /// once, hands-free, and sees it register: a hold toward each of the four
@@ -252,35 +254,40 @@ class _GazeControlScreenState extends ConsumerState<GazeControlScreen>
     final ready = gaze.status == GazeStatus.ready;
     final controller = gaze.cameraController;
     final chip = voiceChip();
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          if (ready && controller != null)
-            GazeCameraView(controller: controller)
-          else if (ready && !gaze.usesCamera)
-            // Switch scanning: no camera to show, only the targets.
-            const ColoredBox(color: Colors.black)
-          else
-            _FallbackState(status: gaze.status, onRetry: gaze.start),
-          if (ready) ...[
-            const ColoredBox(color: Colors.black38),
-            _targetsLayer(),
-            _centerHud(),
-          ],
-          SafeArea(child: _topBar(context)),
-          if (chip != null)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 16,
-              child: SafeArea(
-                child: IgnorePointer(child: Center(child: chip)),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      // A black page with no app bar: white clock and icons. Without a region
+      // of its own the status bar kept whatever the last screen left.
+      value: statusBarIcons(light: true),
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (ready && controller != null)
+              GazeCameraView(controller: controller)
+            else if (ready && !gaze.usesCamera)
+              // Switch scanning: no camera to show, only the targets.
+              const ColoredBox(color: Colors.black)
+            else
+              _FallbackState(status: gaze.status, onRetry: gaze.start),
+            if (ready) ...[
+              const ColoredBox(color: Colors.black38),
+              _targetsLayer(),
+              _centerHud(),
+            ],
+            SafeArea(child: _topBar(context)),
+            if (chip != null)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 16,
+                child: SafeArea(
+                  child: IgnorePointer(child: Center(child: chip)),
+                ),
               ),
-            ),
-          if (_lastAction != null) _confirmationBanner(_lastAction!),
-        ],
+            if (_lastAction != null) _confirmationBanner(_lastAction!),
+          ],
+        ),
       ),
     );
   }

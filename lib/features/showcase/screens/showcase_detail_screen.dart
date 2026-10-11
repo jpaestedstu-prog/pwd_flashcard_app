@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/theme/accessible_theme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart';
@@ -20,6 +21,13 @@ class ShowcaseDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final hc = HCColor.of(context);
+    // The type's colour, deepened just enough for the white title and pill
+    // (a gold header under white was 1.4:1).
+    final headerColors = [
+      hc.fillFor(item.type.color),
+      hc.fillFor(Color.lerp(item.type.color, const Color(0xFF536DFE), 0.4)!),
+      hc.fillFor(const Color(0xFF536DFE)),
+    ];
 
     return Scaffold(
       backgroundColor: hc.background,
@@ -33,6 +41,11 @@ class ShowcaseDetailScreen extends ConsumerWidget {
             expandedHeight: 220 *
                 MediaQuery.textScalerOf(context).scale(1.0).clamp(1.0, 1.5),
             pinned: true,
+            // Solid once folded: the gradient fades out as the header
+            // collapses, which left the white title, back button and status
+            // bar on the light page.
+            backgroundColor: headerColors[1],
+            systemOverlayStyle: statusBarIcons(light: true),
             leading: const AppBackButton(
               fallbackRoute: '/progress',
               color: AppColors.textOnPrimary,
@@ -49,20 +62,8 @@ class ShowcaseDetailScreen extends ConsumerWidget {
               ),
               background: Container(
                 decoration: BoxDecoration(
-                  // The type's colour, deepened just enough for the white
-                  // title and pill (a gold header under white was 1.4:1).
                   gradient: LinearGradient(
-                    colors: [
-                      hc.fillFor(item.type.color),
-                      hc.fillFor(
-                        Color.lerp(
-                          item.type.color,
-                          const Color(0xFF536DFE),
-                          0.4,
-                        )!,
-                      ),
-                      hc.fillFor(const Color(0xFF536DFE)),
-                    ],
+                    colors: headerColors,
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
