@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
+import 'app_check_service.dart';
+
 /// Firebase configuration & initialisation helper.
 ///
 /// **Free-tier (Spark plan) compatibility:** this app is designed to run
@@ -174,6 +176,9 @@ class FirebaseService {
       } else {
         await Firebase.initializeApp();
       }
+      // Off unless a store build asks for it (FLASHLEARN_APP_CHECK); before
+      // anything else talks to Firebase.
+      await AppCheckService.activate();
       // Enable offline persistence (mobile platforms enable it by default
       // but setting it explicitly documents intent and survives platform
       // upgrades). Wrapped in try/catch because the call is a no-op on

@@ -101,6 +101,7 @@ dependencies:
   intl: any
   package_info_plus: ^9.0.1
   url_launcher: ^6.3.2
+  firebase_app_check: 0.3.2+10
 dev_dependencies:
   flutter_test:
     sdk: flutter
