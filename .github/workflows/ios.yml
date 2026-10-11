@@ -4,13 +4,13 @@ name: iOS
 # repository) and runs the on-device walkthrough on four simulators: a small
 # and a large iPhone, an iPad mini and a 13-inch iPad. Nothing here signs the
 # app or sends it to Apple - that needs an Apple Developer account (see
-# docs/store/APP_STORE.md). Artifacts, kept 14 days: the unsigned IPA, every
+# docs/store/README.md). Artifacts, kept 14 days: the unsigned IPA, every
 # walkthrough screenshot, and the test logs.
 
 on:
   workflow_dispatch:
   push:
-    branches: [work/ios-and-stores, work/sign-interpreter]
+    branches: [main, work/v1.4.0, work/ios-and-stores, work/sign-interpreter]
     paths-ignore:
       - 'website/**'
       - 'docs/**'

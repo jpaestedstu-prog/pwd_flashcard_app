@@ -1,0 +1,187 @@
+name: Android
+
+# Runs on GitHub's Linux machines (free for a public repository):
+#   * `flutter analyze` and the whole unit/widget test suite;
+#   * release APKs for the website and for Google Play, with the Play copy's
+#     manifest checked (store application id, no USE_EXACT_ALARM);
+#   * the on-device walkthrough on Android emulators: a phone and a tablet.
+# The real signing key never leaves the PC that publishes. Here every APK is
+# signed with Android's throwaway debug key (FLASHLEARN_CI_DEBUG_SIGNING, see
+# android/app/build.gradle.kts), so nothing built here can be published or
+# installed over a real copy. Artifacts are kept 14 days.
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main, work/v1.4.0, work/ios-and-stores, work/sign-interpreter]
+    paths-ignore:
+      - 'website/**'
+      - 'docs/**'
+      - 'CHAPTER*/**'
+      - '**/*.md'
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  FLUTTER_VERSION: '3.44.0'
+  FLASHLEARN_CI_DEBUG_SIGNING: 'true'
+
+jobs:
+  tests:
+    name: Analyze and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: flutter analyze
+        run: flutter analyze
+
+      - name: flutter test
+        run: |
+          mkdir -p logs
+          flutter test -r failures-only 2>&1 | tee logs/tests.log
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-log
+          path: logs/
+          retention-days: 14
+
+  apks:
+    name: Release APKs (debug-signed)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'android/gradle/wrapper/gradle-wrapper.properties', 'pubspec.lock') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - run: flutter pub get
+
+      - name: Website APK (universal)
+        run: |
+          flutter build apk --release
+          mkdir -p out
+          cp build/app/outputs/flutter-apk/app-release.apk out/website-release.apk
+
+      - name: Google Play APK and bundle
+        run: |
+          flutter build apk --release --dart-define=FLASHLEARN_DISTRIBUTION=play
+          cp build/app/outputs/flutter-apk/app-release.apk out/play-release.apk
+          flutter build appbundle --release --dart-define=FLASHLEARN_DISTRIBUTION=play
+          cp build/app/outputs/bundle/release/app-release.aab out/play-release.aab
+
+      - name: Check the manifests
+        run: python3 .github/scripts/check_android_manifests.py out/website-release.apk out/play-release.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apks-debug-signed
+          path: out/
+          retention-days: 14
+
+  walkthrough:
+    name: Walkthrough on ${{ matrix.kind }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - kind: phone
+            profile: pixel_6
+          - kind: tablet
+            profile: pixel_tablet
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'android/gradle/wrapper/gradle-wrapper.properties', 'pubspec.lock') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - run: flutter pub get
+
+      # Compiles the Android side once before the emulator takes the CPU;
+      # `flutter drive` then only rebuilds the Dart entry point.
+      - name: Warm-up debug build
+        run: flutter build apk --debug
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Walkthrough
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: ${{ matrix.profile }}
+          ram-size: 4096M
+          disk-size: 8G
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none -camera-front none
+          disable-animations: true
+          script: bash .github/scripts/android_walkthrough.sh ${{ matrix.kind }}
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: walkthrough-android-${{ matrix.kind }}
+          path: |
+            build/walkthrough/
+            logs/
+          retention-days: 14

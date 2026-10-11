@@ -25,14 +25,23 @@ val signingPropertiesFile = file(
 // No key, no build: an APK signed with any other key could never update the
 // copies already installed — and when `flutter run` meets a signature
 // mismatch it UNINSTALLS the app, wiping every profile on a study tablet.
-if (!signingPropertiesFile.isFile) {
+//
+// The one exception is continuous integration, which has no copy of the key
+// (and must never have one): with CI=true AND FLASHLEARN_CI_DEBUG_SIGNING=true
+// the build is signed with Android's throwaway debug key instead. Fine for an
+// emulator that starts empty; both variables have to be set on purpose, so a
+// build on the PC that installs onto real tablets still stops here.
+val hasSigningKey = signingPropertiesFile.isFile
+val ciDebugSigning = System.getenv("CI") == "true" &&
+    System.getenv("FLASHLEARN_CI_DEBUG_SIGNING") == "true"
+if (!hasSigningKey && !ciDebugSigning) {
     throw GradleException(
         "FlashLearn's signing key was not found at $signingPropertiesFile. " +
             "Restore it from the backup first - see docs/signing.md.",
     )
 }
 val signingProperties = Properties().apply {
-    FileInputStream(signingPropertiesFile).use { load(it) }
+    if (hasSigningKey) FileInputStream(signingPropertiesFile).use { load(it) }
 }
 
 // Which shop this build is for - the same `--dart-define` the Dart side reads
@@ -86,11 +95,13 @@ android {
     }
 
     signingConfigs {
-        create("flashlearn") {
-            storeFile = file(signingProperties.getProperty("storeFile"))
-            storePassword = signingProperties.getProperty("storePassword")
-            keyAlias = signingProperties.getProperty("keyAlias")
-            keyPassword = signingProperties.getProperty("keyPassword")
+        if (hasSigningKey) {
+            create("flashlearn") {
+                storeFile = file(signingProperties.getProperty("storeFile"))
+                storePassword = signingProperties.getProperty("storePassword")
+                keyAlias = signingProperties.getProperty("keyAlias")
+                keyPassword = signingProperties.getProperty("keyPassword")
+            }
         }
     }
 
@@ -98,8 +109,11 @@ android {
         // Every build type — debug, profile and release — carries the
         // published app's signature, so any of them installs over a tablet's
         // real copy (keeping its profiles) instead of failing the check.
+        // (CI without the key: Android's debug key, see above.)
         configureEach {
-            signingConfig = signingConfigs.getByName("flashlearn")
+            signingConfig = signingConfigs.getByName(
+                if (hasSigningKey) "flashlearn" else "debug",
+            )
         }
         release {
 
