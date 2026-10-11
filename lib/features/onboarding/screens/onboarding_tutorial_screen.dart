@@ -335,88 +335,130 @@ class _OnboardingPageWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Icon / Emoji in decorated circle
-          Container(
-            width: 130,
-            height: 130,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  page.color.withValues(alpha: 0.15),
-                  page.color.withValues(alpha: 0.05),
-                ],
-              ),
-              border: Border.all(
-                color: page.color.withValues(alpha: 0.3),
-                width: 3,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: page.color.withValues(alpha: 0.25),
-                  blurRadius: 30,
-                  spreadRadius: 5,
+    return LayoutBuilder(
+      builder: (context, box) {
+        // Held sideways, a phone leaves a page about 200 dp of height:
+        // stacked, the title and description sat below the fold. Side by
+        // side, the picture and the words both show.
+        final sideways = box.maxWidth > box.maxHeight * 1.4;
+        final circle =
+            sideways ? (box.maxHeight * 0.65).clamp(72.0, 130.0) : 130.0;
+        if (sideways) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 8),
+            child: Row(
+              children: [
+                _picture(circle),
+                const SizedBox(width: 32),
+                Expanded(
+                  child: Center(
+                    child: SingleChildScrollView(
+                      child: _words(context, align: TextAlign.start),
+                    ),
+                  ),
                 ),
               ],
             ),
-            child: Center(
-              child: page.emoji != null
-                  ? Text(
-                      page.emoji!,
-                      style: TextStyle(fontSize: page.emojiSize),
-                    )
-                  : Icon(
-                      page.icon,
-                      size: 60,
-                      color: page.color,
-                    ),
-            ),
-          )
-              .animate(key: ValueKey('icon_$index'))
-              .scale(
-                begin: const Offset(0.5, 0.5),
-                end: const Offset(1, 1),
-                duration: 500.ms,
-                curve: Curves.elasticOut,
-              ),
+          );
+        }
+        return SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _picture(circle),
+              const SizedBox(height: 40),
+              _words(context, align: TextAlign.center),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
-          const SizedBox(height: 40),
-
-          // Title
-          Text(
-            page.title,
-            style: AppTypography.headlineSmall.copyWith(
-              fontWeight: FontWeight.w800,
-            ),
-            textAlign: TextAlign.center,
-          )
-              .animate(key: ValueKey('title_$index'))
-              .fadeIn(duration: 400.ms, delay: 150.ms)
-              .slideY(begin: 0.15, end: 0),
-
-          const SizedBox(height: 16),
-
-          // Description
-          Text(
-            page.description,
-            style: AppTypography.bodyLarge.copyWith(
-              color: HCColor.of(context).textSecondary,
-              height: 1.6,
-            ),
-            textAlign: TextAlign.center,
-          )
-              .animate(key: ValueKey('desc_$index'))
-              .fadeIn(duration: 400.ms, delay: 300.ms)
-              .slideY(begin: 0.1, end: 0),
+  /// Icon / emoji in a decorated circle of [size].
+  Widget _picture(double size) {
+    final scale = size / 130;
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            page.color.withValues(alpha: 0.15),
+            page.color.withValues(alpha: 0.05),
+          ],
+        ),
+        border: Border.all(
+          color: page.color.withValues(alpha: 0.3),
+          width: 3,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: page.color.withValues(alpha: 0.25),
+            blurRadius: 30,
+            spreadRadius: 5,
+          ),
         ],
       ),
+      child: Center(
+        child: page.emoji != null
+            ? Text(
+                page.emoji!,
+                style: TextStyle(fontSize: page.emojiSize * scale),
+              )
+            : Icon(
+                page.icon,
+                size: 60 * scale,
+                color: page.color,
+              ),
+      ),
+    )
+        .animate(key: ValueKey('icon_$index'))
+        .scale(
+          begin: const Offset(0.5, 0.5),
+          end: const Offset(1, 1),
+          duration: 500.ms,
+          curve: Curves.elasticOut,
+        );
+  }
+
+  Widget _words(BuildContext context, {required TextAlign align}) {
+    return Column(
+      crossAxisAlignment: align == TextAlign.start
+          ? CrossAxisAlignment.start
+          : CrossAxisAlignment.center,
+      children: [
+        // Title
+        Text(
+          page.title,
+          style: AppTypography.headlineSmall.copyWith(
+            fontWeight: FontWeight.w800,
+          ),
+          textAlign: align,
+        )
+            .animate(key: ValueKey('title_$index'))
+            .fadeIn(duration: 400.ms, delay: 150.ms)
+            .slideY(begin: 0.15, end: 0),
+
+        const SizedBox(height: 16),
+
+        // Description
+        Text(
+          page.description,
+          style: AppTypography.bodyLarge.copyWith(
+            color: HCColor.of(context).textSecondary,
+            height: 1.6,
+          ),
+          textAlign: align,
+        )
+            .animate(key: ValueKey('desc_$index'))
+            .fadeIn(duration: 400.ms, delay: 300.ms)
+            .slideY(begin: 0.1, end: 0),
+      ],
     );
   }
 }

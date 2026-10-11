@@ -50,6 +50,10 @@ const List<DeviceSize> kTabletMatrix = <DeviceSize>[
   // Phone fallbacks (the app also runs on phones).
   DeviceSize('phone portrait', Size(360, 640), devicePixelRatio: 3.0),
   DeviceSize('phone landscape', Size(640, 360), devicePixelRatio: 3.0),
+  // A modern 20:9 phone held sideways (1080 x 2400 px @ 2.625). Wider than
+  // the 900 dp "large" breakpoint yet only 411 dp tall: when size classes
+  // measured the width, it got large-tablet tiles with a phone's height.
+  DeviceSize('phone landscape 20:9', Size(914, 411), devicePixelRatio: 2.625),
 ];
 
 /// The slice where a *theme's* own text metrics actually bite.

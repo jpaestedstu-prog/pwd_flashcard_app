@@ -602,10 +602,10 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
               ),
               body: Padding(
                 padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
+                child: LayoutBuilder(
+                  builder: (context, box) {
                     // Progress bar
-                    Semantics(
+                    final progress = Semantics(
                       label: l10n.resumeRoundProgress(
                         _currentRound + 1,
                         _rounds.length,
@@ -623,342 +623,391 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
+                    );
 
                     // ─── Video Area ──────────────────
-                    Expanded(
-                      flex: 5,
-                      child: Semantics(
-                        label: l10n.fslWatchAndChoose,
-                        child: Container(
-                          width: double.infinity,
-                          decoration: BoxDecoration(
+                    final video = Semantics(
+                      label: l10n.fslWatchAndChoose,
+                      child: Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: const Color(
+                            0xFFB388FF,
+                          ).withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
                             color: const Color(
                               0xFFB388FF,
-                            ).withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(24),
-                            border: Border.all(
-                              color: const Color(
-                                0xFFB388FF,
-                              ).withValues(alpha: 0.3),
-                              width: 2,
-                            ),
+                            ).withValues(alpha: 0.3),
+                            width: 2,
                           ),
-                          child: Column(
-                            children: [
-                              const SizedBox(height: 12),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(
-                                    Icons.sign_language_rounded,
-                                    color: Color(0xFF7C4DFF),
-                                    size: 20,
+                        ),
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 12),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.sign_language_rounded,
+                                  color: Color(0xFF7C4DFF),
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  l10n.fslWhatWordIsThisSign,
+                                  style: AppTypography.titleMedium.copyWith(
+                                    color: HCColor.of(context).readableOver(const Color(0xFF7C4DFF), const Color(0xFF7C4DFF).withValues(alpha: 0.15)),
+                                    fontWeight: FontWeight.w700,
                                   ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    l10n.fslWhatWordIsThisSign,
-                                    style: AppTypography.titleMedium.copyWith(
-                                      color: HCColor.of(context).readableOver(const Color(0xFF7C4DFF), const Color(0xFF7C4DFF).withValues(alpha: 0.15)),
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    16,
-                                    0,
-                                    16,
-                                    12,
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(16),
-                                    child:
-                                        _videoReady && _videoController != null
-                                        ? GestureDetector(
-                                            onTap: () {
-                                              setState(() {
-                                                _videoController!
-                                                        .value
-                                                        .isPlaying
-                                                    ? _videoController!.pause()
-                                                    : _videoController!.play();
-                                              });
-                                            },
-                                            child: Stack(
-                                              alignment: Alignment.center,
-                                              children: [
-                                                AspectRatio(
-                                                  aspectRatio: _videoController!
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  0,
+                                  16,
+                                  12,
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(16),
+                                  child:
+                                      _videoReady && _videoController != null
+                                      ? GestureDetector(
+                                          onTap: () {
+                                            setState(() {
+                                              _videoController!
                                                       .value
-                                                      .aspectRatio,
-                                                  child: VideoPlayer(
-                                                    _videoController!,
+                                                      .isPlaying
+                                                  ? _videoController!.pause()
+                                                  : _videoController!.play();
+                                            });
+                                          },
+                                          child: Stack(
+                                            alignment: Alignment.center,
+                                            children: [
+                                              AspectRatio(
+                                                aspectRatio: _videoController!
+                                                    .value
+                                                    .aspectRatio,
+                                                child: VideoPlayer(
+                                                  _videoController!,
+                                                ),
+                                              ),
+                                              if (!_videoController!
+                                                  .value
+                                                  .isPlaying)
+                                                Container(
+                                                  width: 56,
+                                                  height: 56,
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.black
+                                                        .withValues(
+                                                          alpha: 0.5,
+                                                        ),
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                  child: const Icon(
+                                                    Icons.play_arrow_rounded,
+                                                    color: Colors.white,
+                                                    size: 36,
                                                   ),
                                                 ),
-                                                if (!_videoController!
-                                                    .value
-                                                    .isPlaying)
-                                                  Container(
-                                                    width: 56,
-                                                    height: 56,
+                                              // Fullscreen button
+                                              Positioned(
+                                                right: 6,
+                                                bottom: 6,
+                                                child: GestureDetector(
+                                                  onTap: () =>
+                                                      _openFullscreen(
+                                                        _rounds[_currentRound]
+                                                            .correctCard,
+                                                      ),
+                                                  child: Container(
+                                                    width: 32,
+                                                    height: 32,
                                                     decoration: BoxDecoration(
                                                       color: Colors.black
                                                           .withValues(
                                                             alpha: 0.5,
                                                           ),
-                                                      shape: BoxShape.circle,
-                                                    ),
-                                                    child: const Icon(
-                                                      Icons.play_arrow_rounded,
-                                                      color: Colors.white,
-                                                      size: 36,
-                                                    ),
-                                                  ),
-                                                // Fullscreen button
-                                                Positioned(
-                                                  right: 6,
-                                                  bottom: 6,
-                                                  child: GestureDetector(
-                                                    onTap: () =>
-                                                        _openFullscreen(
-                                                          _rounds[_currentRound]
-                                                              .correctCard,
-                                                        ),
-                                                    child: Container(
-                                                      width: 32,
-                                                      height: 32,
-                                                      decoration: BoxDecoration(
-                                                        color: Colors.black
-                                                            .withValues(
-                                                              alpha: 0.5,
-                                                            ),
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              8,
-                                                            ),
-                                                      ),
-                                                      child: const Icon(
-                                                        Icons
-                                                            .fullscreen_rounded,
-                                                        color: Colors.white,
-                                                        size: 20,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          )
-                                        : Container(
-                                            color: AppColors.surfaceVariant,
-                                            child: ShimmerLoading(
-                                              child: Center(
-                                                child: Column(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  children: [
-                                                    Icon(
-                                                      Icons
-                                                          .play_circle_outline_rounded,
-                                                      size: 48,
-                                                      color: Theme.of(context)
-                                                          .colorScheme
-                                                          .onSurfaceVariant
-                                                          .withValues(
-                                                            alpha: 0.3,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            8,
                                                           ),
                                                     ),
-                                                    const SizedBox(height: 8),
-                                                    const ShimmerBox(
-                                                      width: 100,
-                                                      height: 12,
+                                                    child: const Icon(
+                                                      Icons
+                                                          .fullscreen_rounded,
+                                                      color: Colors.white,
+                                                      size: 20,
                                                     ),
-                                                  ],
+                                                  ),
                                                 ),
+                                              ),
+                                            ],
+                                          ),
+                                        )
+                                      : Container(
+                                          color: AppColors.surfaceVariant,
+                                          child: ShimmerLoading(
+                                            child: Center(
+                                              child: Column(
+                                                mainAxisSize:
+                                                    MainAxisSize.min,
+                                                children: [
+                                                  Icon(
+                                                    Icons
+                                                        .play_circle_outline_rounded,
+                                                    size: 48,
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .onSurfaceVariant
+                                                        .withValues(
+                                                          alpha: 0.3,
+                                                        ),
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  const ShimmerBox(
+                                                    width: 100,
+                                                    height: 12,
+                                                  ),
+                                                ],
                                               ),
                                             ),
                                           ),
-                                  ),
-                                ),
-                              ),
-                              // Replay button
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: TextButton.icon(
-                                  onPressed: _replayVideo,
-                                  icon: const Icon(
-                                    Icons.replay_rounded,
-                                    size: 18,
-                                  ),
-                                  label: Text(l10n.replayVideo),
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: const Color(0xFF7C4DFF),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ).animate(key: ValueKey(_currentRound)).fadeIn(duration: 300.ms).slideX(begin: 0.1, end: 0),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // ─── Answer choices ──────────────
-                    Expanded(
-                      flex: 3,
-                      child: GridView.builder(
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: context.responsiveTier<int>(
-                            phone: 2,
-                            tablet: 2,
-                            large: 3,
-                            xl: 4,
-                          ),
-                          mainAxisSpacing: 12,
-                          crossAxisSpacing: 12,
-                          // Shrink aspect ratio as text scales up so answer cells
-                          // stay tall enough to hold scaled label text.
-                          childAspectRatio:
-                              ((context.isLargeTablet ? 3.0 : 2.5) /
-                                      MediaQuery.textScalerOf(
-                                        context,
-                                      ).scale(1.0))
-                                  .clamp(1.4, 3.0),
-                        ),
-                        itemCount: round.choices.length,
-                        itemBuilder: (context, index) {
-                          final choice = round.choices[index];
-                          final isSelected = _selectedIndex == index;
-                          final isCorrect = index == round.correctIndex;
-                          final showCorrect = _answered && isCorrect;
-                          final showWrong =
-                              _answered && isSelected && !isCorrect;
-
-                          Color bgColor = hc.surface;
-                          Color borderColor = AppColors.primary.withValues(
-                            alpha: 0.2,
-                          );
-                          Color textColor = hc.textPrimary;
-
-                          if (showCorrect) {
-                            bgColor = AppColors.successLight;
-                            borderColor = AppColors.success;
-                            textColor = AppColors.successDark;
-                          } else if (showWrong) {
-                            bgColor = AppColors.errorLight;
-                            borderColor = AppColors.error;
-                            textColor = AppColors.errorDark;
-                          }
-
-                          final highlighted =
-                              showCursor && index == _cursorIndex;
-                          if (highlighted) borderColor = AppColors.accent;
-
-                          Widget card = Semantics(
-                            button: true,
-                            label:
-                                '${l10n.answerChoiceSemantics(choice.wordEnglish)}'
-                                '${showCorrect ? l10n.correctAnswerSuffix : ''}'
-                                '${showWrong ? l10n.wrongAnswerSuffix : ''}',
-                            child: GestureDetector(
-                              onTap: () => _selectAnswer(index),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 300),
-                                decoration: BoxDecoration(
-                                  color: bgColor,
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: borderColor,
-                                    width: highlighted ? 4 : 2,
-                                  ),
-                                  boxShadow: highlighted
-                                      ? [
-                                          BoxShadow(
-                                            color: AppColors.accent.withValues(
-                                              alpha: 0.5,
-                                            ),
-                                            blurRadius: 14,
-                                            spreadRadius: 1,
-                                          ),
-                                        ]
-                                      : AppColors.softShadow,
-                                ),
-                                child: Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        choice.wordEnglish,
-                                        style: AppTypography.titleMedium
-                                            .copyWith(
-                                              color: textColor,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                      Text(
-                                        choice.wordFilipino,
-                                        style: AppTypography.bodySmall.copyWith(
-                                          color: textColor.withValues(
-                                            alpha: 0.7,
-                                          ),
                                         ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ],
-                                  ),
                                 ),
                               ),
                             ),
-                          );
-
-                          if (showWrong) {
-                            card = card.animate().shakeX(
-                              hz: 6,
-                              amount: 4,
-                              duration: 400.ms,
-                            );
-                          }
-                          if (showCorrect) {
-                            card = card
-                                .animate()
-                                .scale(
-                                  begin: const Offset(1, 1),
-                                  end: const Offset(1.05, 1.05),
-                                  duration: 300.ms,
-                                )
-                                .then()
-                                .scale(
-                                  begin: const Offset(1.05, 1.05),
-                                  end: const Offset(1, 1),
-                                  duration: 200.ms,
-                                );
-                          }
-
-                          // +1: the published item list puts "replay" first,
-                          // so choice N is item N+1.
-                          return GamepadFocusable(
-                            index: index + 1,
-                            child: card
-                                .animate(
-                                  key: ValueKey('$_currentRound-$index'),
-                                )
-                                .fadeIn(
-                                  duration: 300.ms,
-                                  delay: (index * 80).ms,
-                                )
-                                .slideY(begin: 0.1, end: 0),
-                          );
-                        },
+                            // Replay button
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: TextButton.icon(
+                                onPressed: _replayVideo,
+                                icon: const Icon(
+                                  Icons.replay_rounded,
+                                  size: 18,
+                                ),
+                                label: Text(l10n.replayVideo),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: const Color(0xFF7C4DFF),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ).animate(key: ValueKey(_currentRound)).fadeIn(duration: 300.ms).slideX(begin: 0.1, end: 0);
+
+                    // ─── Answer choices ──────────────
+                    Widget answers(int columns, double ratio) =>
+                        GridView.builder(
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: columns,
+                            mainAxisSpacing: 12,
+                            crossAxisSpacing: 12,
+                            childAspectRatio: ratio,
+                          ),
+                          itemCount: round.choices.length,
+                          itemBuilder: (context, index) {
+                            final choice = round.choices[index];
+                            final isSelected = _selectedIndex == index;
+                            final isCorrect = index == round.correctIndex;
+                            final showCorrect = _answered && isCorrect;
+                            final showWrong =
+                                _answered && isSelected && !isCorrect;
+
+                            Color bgColor = hc.surface;
+                            Color borderColor = AppColors.primary.withValues(
+                              alpha: 0.2,
+                            );
+                            Color textColor = hc.textPrimary;
+
+                            if (showCorrect) {
+                              bgColor = AppColors.successLight;
+                              borderColor = AppColors.success;
+                              textColor = AppColors.successDark;
+                            } else if (showWrong) {
+                              bgColor = AppColors.errorLight;
+                              borderColor = AppColors.error;
+                              textColor = AppColors.errorDark;
+                            }
+
+                            final highlighted =
+                                showCursor && index == _cursorIndex;
+                            if (highlighted) borderColor = AppColors.accent;
+
+                            Widget card = Semantics(
+                              button: true,
+                              label:
+                                  '${l10n.answerChoiceSemantics(choice.wordEnglish)}'
+                                  '${showCorrect ? l10n.correctAnswerSuffix : ''}'
+                                  '${showWrong ? l10n.wrongAnswerSuffix : ''}',
+                              child: GestureDetector(
+                                onTap: () => _selectAnswer(index),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 300),
+                                  decoration: BoxDecoration(
+                                    color: bgColor,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: borderColor,
+                                      width: highlighted ? 4 : 2,
+                                    ),
+                                    boxShadow: highlighted
+                                        ? [
+                                            BoxShadow(
+                                              color: AppColors.accent.withValues(
+                                                alpha: 0.5,
+                                              ),
+                                              blurRadius: 14,
+                                              spreadRadius: 1,
+                                            ),
+                                          ]
+                                        : AppColors.softShadow,
+                                  ),
+                                  child: Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          choice.wordEnglish,
+                                          style: AppTypography.titleMedium
+                                              .copyWith(
+                                                color: textColor,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                        Text(
+                                          choice.wordFilipino,
+                                          style: AppTypography.bodySmall.copyWith(
+                                            color: textColor.withValues(
+                                              alpha: 0.7,
+                                            ),
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+
+                            if (showWrong) {
+                              card = card.animate().shakeX(
+                                hz: 6,
+                                amount: 4,
+                                duration: 400.ms,
+                              );
+                            }
+                            if (showCorrect) {
+                              card = card
+                                  .animate()
+                                  .scale(
+                                    begin: const Offset(1, 1),
+                                    end: const Offset(1.05, 1.05),
+                                    duration: 300.ms,
+                                  )
+                                  .then()
+                                  .scale(
+                                    begin: const Offset(1.05, 1.05),
+                                    end: const Offset(1, 1),
+                                    duration: 200.ms,
+                                  );
+                            }
+
+                            // +1: the published item list puts "replay" first,
+                            // so choice N is item N+1.
+                            return GamepadFocusable(
+                              index: index + 1,
+                              child: card
+                                  .animate(
+                                    key: ValueKey('$_currentRound-$index'),
+                                  )
+                                  .fadeIn(
+                                    duration: 300.ms,
+                                    delay: (index * 80).ms,
+                                  )
+                                  .slideY(begin: 0.1, end: 0),
+                            );
+                          },
+                        );
+
+                    // A phone held sideways: stacked, the video and the four
+                    // answers each got a sliver of the height and overflowed
+                    // (found by the small-iPhone landscape walkthrough). Side
+                    // by side, both keep the whole height and the answer
+                    // cells are sized to fill their column.
+                    final sideBySide = box.maxWidth > box.maxHeight * 1.3 &&
+                        box.maxHeight < 520;
+                    if (sideBySide) {
+                      return Column(
+                        children: [
+                          progress,
+                          const SizedBox(height: 12),
+                          Expanded(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Expanded(flex: 3, child: video),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  flex: 2,
+                                  child: LayoutBuilder(
+                                    builder: (context, cells) {
+                                      final rows =
+                                          (round.choices.length / 2).ceil();
+                                      final cellWidth =
+                                          (cells.maxWidth - 12) / 2;
+                                      final cellHeight = (cells.maxHeight -
+                                              12 * (rows - 1)) /
+                                          rows;
+                                      return answers(
+                                        2,
+                                        (cellWidth / cellHeight)
+                                            .clamp(0.6, 4.0),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+                    return Column(
+                      children: [
+                        progress,
+                        const SizedBox(height: 16),
+                        Expanded(flex: 5, child: video),
+                        const SizedBox(height: 16),
+                        Expanded(
+                          flex: 3,
+                          child: answers(
+                            context.responsiveTier<int>(
+                              phone: 2,
+                              tablet: 2,
+                              large: 3,
+                              xl: 4,
+                            ),
+                            // Shrink aspect ratio as text scales up so answer
+                            // cells stay tall enough to hold scaled label text.
+                            ((context.isLargeTablet ? 3.0 : 2.5) /
+                                    MediaQuery.textScalerOf(context).scale(1.0))
+                                .clamp(1.4, 3.0),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
             ),

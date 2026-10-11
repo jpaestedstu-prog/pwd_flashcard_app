@@ -10,23 +10,37 @@ import '../theme/app_spacing.dart';
 ///   tablet   ≥ 600
 ///   large    ≥ 900
 ///   xl       ≥ 1200
-///   ultra    ≥ 1600  (Honor Pad X8a in landscape)
+///   ultra    ≥ 1600
+///
+/// **Which side is measured.** The *size class* — how big tiles, icons and
+/// heights are — follows the screen's **shortest side**, as Android's own
+/// sw600dp rule does: a phone stays a phone when it is turned sideways. Until
+/// 1.4.0 the app was portrait-only, where the width *is* the shortest side,
+/// so every layout tuned then is unchanged; but a 20:9 phone held sideways is
+/// 914 dp wide and 411 dp tall, and measuring the width gave it large-tablet
+/// tiles and icons with a phone's height (the onboarding screens overflowed).
+/// What genuinely depends on the width — how many columns fit, how wide the
+/// content may run — still measures the width ([gridColumns],
+/// [gameGridColumns], [maxContentWidth], [gridSpacing]).
 extension ResponsiveExtension on BuildContext {
   double get screenWidth => MediaQuery.sizeOf(this).width;
   double get screenHeight => MediaQuery.sizeOf(this).height;
 
-  bool get isPhone => screenWidth < 600;
-  bool get isTablet => screenWidth >= 600;
-  bool get isLargeTablet => screenWidth >= 900;
-  bool get isXLargeTablet => screenWidth >= 1200;
-  bool get isUltraLargeTablet => screenWidth >= 1600;
+  /// The side that decides the size class (see above).
+  double get _classSide => MediaQuery.sizeOf(this).shortestSide;
+
+  bool get isPhone => _classSide < 600;
+  bool get isTablet => _classSide >= 600;
+  bool get isLargeTablet => _classSide >= 900;
+  bool get isXLargeTablet => _classSide >= 1200;
+  bool get isUltraLargeTablet => _classSide >= 1600;
 
   /// Returns [tablet] value for tablet, [phone] for phone
   T responsive<T>({required T phone, required T tablet}) {
     return isTablet ? tablet : phone;
   }
 
-  /// Returns a value based on screen-width tier.
+  /// Returns a value based on the size-class tier.
   T responsiveTier<T>({
     required T phone,
     required T tablet,
@@ -34,18 +48,20 @@ extension ResponsiveExtension on BuildContext {
     T? xl,
     T? ultra,
   }) {
-    if (screenWidth >= 1600 && ultra != null) return ultra;
-    if (screenWidth >= 1200 && xl != null) return xl;
-    if (screenWidth >= 900 && large != null) return large;
-    if (screenWidth >= 600) return tablet;
+    final side = _classSide;
+    if (side >= 1600 && ultra != null) return ultra;
+    if (side >= 1200 && xl != null) return xl;
+    if (side >= 900 && large != null) return large;
+    if (side >= 600) return tablet;
     return phone;
   }
 
   /// Horizontal page padding
   double get pagePadding {
-    if (screenWidth >= 1600) return 48.0;
-    if (screenWidth >= 1200) return 40.0;
-    if (screenWidth >= 600) return 32.0;
+    final side = _classSide;
+    if (side >= 1600) return 48.0;
+    if (side >= 1200) return 40.0;
+    if (side >= 600) return 32.0;
     return 20.0;
   }
 
@@ -65,9 +81,10 @@ extension ResponsiveExtension on BuildContext {
 
   /// Card height for category cards
   double get categoryCardHeight {
-    if (screenWidth >= 1600) return 280.0;
-    if (screenWidth >= 1200) return 240.0;
-    if (screenWidth >= 600) return 200.0;
+    final side = _classSide;
+    if (side >= 1600) return 280.0;
+    if (side >= 1200) return 240.0;
+    if (side >= 600) return 200.0;
     return 160.0;
   }
 
@@ -81,15 +98,16 @@ extension ResponsiveExtension on BuildContext {
   /// scale. [large] tiles are the primary "Play & Learn" actions; the compact
   /// size is for the secondary "More" grid.
   double hubTileHeight({bool large = true}) {
+    final side = _classSide;
     final double base = large
-        ? (screenWidth >= 1200
+        ? (side >= 1200
             ? 184.0
-            : screenWidth >= 600
+            : side >= 600
                 ? 160.0
                 : 132.0)
-        : (screenWidth >= 1200
+        : (side >= 1200
             ? 128.0
-            : screenWidth >= 600
+            : side >= 600
                 ? 114.0
                 : 100.0);
     // Clamp the scaler so XL fonts enlarge tiles without runaway growth; the
@@ -109,9 +127,10 @@ extension ResponsiveExtension on BuildContext {
   /// width: it can't throw a RenderFlex overflow on any phone, tablet,
   /// orientation, or font scale — the page simply scrolls when space is tight.
   double categoryTileHeight() {
-    final double base = screenWidth >= 1200
+    final side = _classSide;
+    final double base = side >= 1200
         ? 200.0
-        : screenWidth >= 600
+        : side >= 600
             ? 188.0
             : 172.0;
     // Grow with the Font Size setting (clamped) so large fonts get more room
@@ -121,24 +140,26 @@ extension ResponsiveExtension on BuildContext {
     return base * scale;
   }
 
-  /// Adaptive font size multiplier based on screen width
+  /// Adaptive font size multiplier based on the size class
   double get fontScaleFactor {
-    if (screenWidth >= 1600) return 1.25;
-    if (screenWidth >= 1200) return 1.15;
-    if (screenWidth >= 900) return 1.1;
-    if (screenWidth >= 600) return 1.0;
+    final side = _classSide;
+    if (side >= 1600) return 1.25;
+    if (side >= 1200) return 1.15;
+    if (side >= 900) return 1.1;
+    if (side >= 600) return 1.0;
     return 0.9;
   }
 
-  /// Scale any base size by the screen-width tier factor.
+  /// Scale any base size by the size-class tier factor.
   /// Use for icons, badges, avatars, etc.
   double responsiveSize(double baseSize) => baseSize * _sizeFactor;
 
   double get _sizeFactor {
-    if (screenWidth >= 1600) return 1.4;
-    if (screenWidth >= 1200) return 1.25;
-    if (screenWidth >= 900) return 1.15;
-    if (screenWidth >= 600) return 1.0;
+    final side = _classSide;
+    if (side >= 1600) return 1.4;
+    if (side >= 1200) return 1.25;
+    if (side >= 900) return 1.15;
+    if (side >= 600) return 1.0;
     return 0.9;
   }
 

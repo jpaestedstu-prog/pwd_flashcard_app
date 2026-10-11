@@ -185,59 +185,102 @@ class _SlideView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final iconSize = context.responsiveSize(140);
-    return SingleChildScrollView(
-      padding: EdgeInsets.symmetric(horizontal: context.pagePadding),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          AppSpacing.gapXxl,
-          Container(
-            width: iconSize,
-            height: iconSize,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [slide.color, slide.color.withValues(alpha: 0.7)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: slide.color.withValues(alpha: 0.35),
-                  blurRadius: 30,
-                  spreadRadius: 4,
+    return LayoutBuilder(
+      builder: (context, box) {
+        // Held sideways, a phone leaves a slide about 200 dp of height:
+        // stacked, the title and text sat below the fold. Side by side, the
+        // picture and the words both show.
+        final sideways = box.maxWidth > box.maxHeight * 1.4;
+        final full = context.responsiveSize(140);
+        final iconSize =
+            sideways ? (box.maxHeight * 0.7).clamp(72.0, full) : full;
+        if (sideways) {
+          return Padding(
+            padding: EdgeInsets.symmetric(horizontal: context.pagePadding),
+            child: Row(
+              children: [
+                _picture(iconSize),
+                const SizedBox(width: AppSpacing.xl),
+                Expanded(
+                  child: Center(
+                    child: SingleChildScrollView(
+                      child: _words(context, sideways: true),
+                    ),
+                  ),
                 ),
               ],
             ),
-            child: Icon(slide.icon, color: Colors.white, size: iconSize * 0.45),
-          )
-              .animate()
-              .scale(
-                begin: const Offset(0.7, 0.7),
-                end: const Offset(1, 1),
-                duration: 500.ms,
-                curve: Curves.elasticOut,
-              )
-              .fadeIn(duration: 300.ms),
-          AppSpacing.gapXxl,
-          Text(
-            slide.title,
-            textAlign: TextAlign.center,
-            style: AppTypography.displaySmall.copyWith(
-              color: HCColor.of(context).textPrimary,
-            ),
-          ).animate().fadeIn(duration: 400.ms, delay: 150.ms),
-          AppSpacing.gapMd,
-          Text(
-            slide.body,
-            textAlign: TextAlign.center,
-            style: AppTypography.bodyLarge.copyWith(
-              color: HCColor.of(context).textSecondary,
-            ),
-          ).animate().fadeIn(duration: 400.ms, delay: 250.ms),
+          );
+        }
+        return SingleChildScrollView(
+          padding: EdgeInsets.symmetric(horizontal: context.pagePadding),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AppSpacing.gapXxl,
+              _picture(iconSize),
+              AppSpacing.gapXxl,
+              _words(context, sideways: false),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _picture(double iconSize) {
+    return Container(
+      width: iconSize,
+      height: iconSize,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [slide.color, slide.color.withValues(alpha: 0.7)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: slide.color.withValues(alpha: 0.35),
+            blurRadius: 30,
+            spreadRadius: 4,
+          ),
         ],
       ),
+      child: Icon(slide.icon, color: Colors.white, size: iconSize * 0.45),
+    )
+        .animate()
+        .scale(
+          begin: const Offset(0.7, 0.7),
+          end: const Offset(1, 1),
+          duration: 500.ms,
+          curve: Curves.elasticOut,
+        )
+        .fadeIn(duration: 300.ms);
+  }
+
+  Widget _words(BuildContext context, {required bool sideways}) {
+    final align = sideways ? TextAlign.start : TextAlign.center;
+    return Column(
+      crossAxisAlignment:
+          sideways ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+      children: [
+        Text(
+          slide.title,
+          textAlign: align,
+          style: AppTypography.displaySmall.copyWith(
+            color: HCColor.of(context).textPrimary,
+          ),
+        ).animate().fadeIn(duration: 400.ms, delay: 150.ms),
+        AppSpacing.gapMd,
+        Text(
+          slide.body,
+          textAlign: align,
+          style: AppTypography.bodyLarge.copyWith(
+            color: HCColor.of(context).textSecondary,
+          ),
+        ).animate().fadeIn(duration: 400.ms, delay: 250.ms),
+      ],
     );
   }
 }

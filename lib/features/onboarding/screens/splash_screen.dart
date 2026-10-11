@@ -147,164 +147,184 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
               // ─── Main content ───────────────────
               SafeArea(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // ─── Animated Logo/Icon ───────────────
-                    Semantics(
-                      label: _t(context).splashLogo,
-                      child: Container(
-                        width: 160,
-                        height: 160,
-                        decoration: BoxDecoration(
-                          color: HCColor.of(context).surface,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .primary
-                                  .withValues(alpha: 0.3),
-                              blurRadius: 40,
-                              spreadRadius: 5,
+                child: LayoutBuilder(
+                  builder: (context, box) {
+                    // Held sideways a phone has under 400 dp below the status
+                    // bar, and the full-size column (logo, name, tagline,
+                    // progress) is about 406 dp: it overflowed on every
+                    // sideways start. A short screen gets a smaller logo and
+                    // tighter gaps, and the column scrolls rather than
+                    // overflows at the largest text sizes.
+                    final compact = box.maxHeight < 480;
+                    final logo = compact ? 112.0 : 160.0;
+                    return SingleChildScrollView(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: box.maxHeight,
+                          minWidth: box.maxWidth,
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // ─── Animated Logo/Icon ───────────────
+                            Semantics(
+                              label: _t(context).splashLogo,
+                              child: Container(
+                                width: logo,
+                                height: logo,
+                                decoration: BoxDecoration(
+                                  color: HCColor.of(context).surface,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .primary
+                                          .withValues(alpha: 0.3),
+                                      blurRadius: 40,
+                                      spreadRadius: 5,
+                                    ),
+                                    BoxShadow(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .primary
+                                          .withValues(alpha: 0.15),
+                                      blurRadius: 80,
+                                      spreadRadius: 15,
+                                    ),
+                                  ],
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    '📚',
+                                    style: TextStyle(fontSize: logo * 0.45),
+                                  ),
+                                ),
+                              ),
+                            )
+                                .animate()
+                                .scale(
+                                  begin: const Offset(0.0, 0.0),
+                                  end: const Offset(1.0, 1.0),
+                                  duration: 800.ms,
+                                  curve: Curves.elasticOut,
+                                )
+                                .then()
+                                .animate(
+                                  key: motionKey(context),
+                                  onPlay: motionLoop(context, reverse: true),
+                                )
+                                .scale(
+                                  begin: const Offset(1.0, 1.0),
+                                  end: const Offset(1.05, 1.05),
+                                  duration: 2000.ms,
+                                  curve: Curves.easeInOut,
+                                ),
+
+                            SizedBox(height: compact ? 20 : 40),
+
+                            // ─── App Name with letter-by-letter reveal ──
+                            _LetterRevealText(
+                              text: 'FlashLearn',
+                              style: AppTypography.displayLarge.copyWith(
+                                color: isDark
+                                    ? Theme.of(context).colorScheme.primary
+                                    : HCColor.of(context).readable(AppColors.primaryDark),
+                                fontWeight: FontWeight.w900,
+                              ),
                             ),
-                            BoxShadow(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .primary
-                                  .withValues(alpha: 0.15),
-                              blurRadius: 80,
-                              spreadRadius: 15,
+
+                            const SizedBox(height: 12),
+
+                            // ─── Tagline ──────────────────────────
+                            Text(
+                              l10n?.learnWordsThrough ?? 'Learn words through play! ✨',
+                              style: AppTypography.titleMedium.copyWith(
+                                color: HCColor.of(context).textSecondary,
+                              ),
+                            )
+                                .animate()
+                                .fadeIn(duration: 600.ms, delay: 900.ms)
+                                .slideY(begin: 0.2, end: 0),
+
+                            SizedBox(height: compact ? 24 : 60),
+
+                            // ─── Staged progress bar ────────────────
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 60),
+                              child: Column(
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: SizedBox(
+                                      height: 8,
+                                      child: AnimatedBuilder(
+                                        animation: _progressController,
+                                        builder: (context, _) {
+                                          return Stack(
+                                            children: [
+                                              Container(
+                                                decoration: BoxDecoration(
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .primary
+                                                      .withValues(alpha: 0.15),
+                                                ),
+                                              ),
+                                              FractionallySizedBox(
+                                                widthFactor:
+                                                    _progressController.value,
+                                                child: Container(
+                                                  decoration: BoxDecoration(
+                                                    gradient: LinearGradient(
+                                                      colors: [
+                                                        Theme.of(context)
+                                                            .colorScheme
+                                                            .primary,
+                                                        Theme.of(context)
+                                                            .colorScheme
+                                                            .primary
+                                                            .withValues(alpha: 0.7),
+                                                      ],
+                                                    ),
+                                                    borderRadius:
+                                                        BorderRadius.circular(8),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  )
+                                      .animate()
+                                      .fadeIn(duration: 400.ms, delay: 1200.ms),
+
+                                  const SizedBox(height: 14),
+
+                                  // ─── Stage text with crossfade ──────
+                                  AnimatedSwitcher(
+                                    duration: const Duration(milliseconds: 300),
+                                    child: Text(
+                                      stages[_stageIndex],
+                                      key: ValueKey(_stageIndex),
+                                      style: AppTypography.bodyMedium.copyWith(
+                                        color: HCColor.of(context).textSecondary
+                                            .withValues(alpha: 0.7),
+                                      ),
+                                    ),
+                                  )
+                                      .animate()
+                                      .fadeIn(duration: 400.ms, delay: 1400.ms),
+                                ],
+                              ),
                             ),
                           ],
                         ),
-                        child: const Center(
-                          child: Text(
-                            '📚',
-                            style: TextStyle(fontSize: 72),
-                          ),
-                        ),
                       ),
-                    )
-                        .animate()
-                        .scale(
-                          begin: const Offset(0.0, 0.0),
-                          end: const Offset(1.0, 1.0),
-                          duration: 800.ms,
-                          curve: Curves.elasticOut,
-                        )
-                        .then()
-                        .animate(
-                          key: motionKey(context),
-                          onPlay: motionLoop(context, reverse: true),
-                        )
-                        .scale(
-                          begin: const Offset(1.0, 1.0),
-                          end: const Offset(1.05, 1.05),
-                          duration: 2000.ms,
-                          curve: Curves.easeInOut,
-                        ),
-
-                    const SizedBox(height: 40),
-
-                    // ─── App Name with letter-by-letter reveal ──
-                    _LetterRevealText(
-                      text: 'FlashLearn',
-                      style: AppTypography.displayLarge.copyWith(
-                        color: isDark
-                            ? Theme.of(context).colorScheme.primary
-                            : HCColor.of(context).readable(AppColors.primaryDark),
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    // ─── Tagline ──────────────────────────
-                    Text(
-                      l10n?.learnWordsThrough ?? 'Learn words through play! ✨',
-                      style: AppTypography.titleMedium.copyWith(
-                        color: HCColor.of(context).textSecondary,
-                      ),
-                    )
-                        .animate()
-                        .fadeIn(duration: 600.ms, delay: 900.ms)
-                        .slideY(begin: 0.2, end: 0),
-
-                    const SizedBox(height: 60),
-
-                    // ─── Staged progress bar ────────────────
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 60),
-                      child: Column(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: SizedBox(
-                              height: 8,
-                              child: AnimatedBuilder(
-                                animation: _progressController,
-                                builder: (context, _) {
-                                  return Stack(
-                                    children: [
-                                      Container(
-                                        decoration: BoxDecoration(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .primary
-                                              .withValues(alpha: 0.15),
-                                        ),
-                                      ),
-                                      FractionallySizedBox(
-                                        widthFactor:
-                                            _progressController.value,
-                                        child: Container(
-                                          decoration: BoxDecoration(
-                                            gradient: LinearGradient(
-                                              colors: [
-                                                Theme.of(context)
-                                                    .colorScheme
-                                                    .primary,
-                                                Theme.of(context)
-                                                    .colorScheme
-                                                    .primary
-                                                    .withValues(alpha: 0.7),
-                                              ],
-                                            ),
-                                            borderRadius:
-                                                BorderRadius.circular(8),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              ),
-                            ),
-                          )
-                              .animate()
-                              .fadeIn(duration: 400.ms, delay: 1200.ms),
-
-                          const SizedBox(height: 14),
-
-                          // ─── Stage text with crossfade ──────
-                          AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 300),
-                            child: Text(
-                              stages[_stageIndex],
-                              key: ValueKey(_stageIndex),
-                              style: AppTypography.bodyMedium.copyWith(
-                                color: HCColor.of(context).textSecondary
-                                    .withValues(alpha: 0.7),
-                              ),
-                            ),
-                          )
-                              .animate()
-                              .fadeIn(duration: 400.ms, delay: 1400.ms),
-                        ],
-                      ),
-                    ),
-                  ],
+                    );
+                  },
                 ),
               ),
             ],
