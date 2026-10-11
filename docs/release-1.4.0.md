@@ -21,6 +21,14 @@ Each needs the project owner's go-ahead (see "Waiting for approval").
 | The **flashcard viewer** shrank the card to an unreadable thumbnail sideways | sideways phones | the actions become a side panel |
 | **Sign It and Word Hunt** showed "Something went wrong" on a device with no camera (CameraX reports it as a PlatformException) | devices without a camera | treated as "no camera here" |
 | The walkthrough blamed the wrong screen for errors (the error log is newest first) and never checked onboarding | testing | errors matched by time; onboarding checked |
+| **Found on the real tablet:** the status bar's clock and battery were white on the light pages of every screen with a top bar (Flutter reads a transparent bar as black), and other screens kept whatever the last one left | everyone, every device | icons follow what is really behind them; one app-wide default; white on the camera and video pages; checked for all 38 themes |
+| **Found on the real tablet:** Sign It's **Record** and **Replay** sat below the fold whenever the camera worked (upright and sideways on a 10" tablet), so a learner could not record a sign | tablets with a camera | the video and camera take the space the buttons leave |
+| **Found on the real tablet:** Memory Match paid 3 stars for one flip and "Quit to Games"; Jigsaw, Drag & Drop and the Flashcard Quiz also paid full stars on a quit or when Beat the Clock ran out, so stars, XP and 3-star bests could be farmed | every learner | an unfinished round earns stars for the share actually done (90/70/50 %) |
+| Memory Match's time-up result showed a perfect score and marked every word correct | Beat the Clock | the real score and review |
+| The Progress and Showcase headers left a white title (and status bar) on the light page once folded | everyone | they stay coloured |
+| The day streak kept its old length after a missed day until the learner played again, then "dropped" to 1; educators could be told to celebrate a run that had ended; leaderboards, teacher analytics, the TV view, exports and the tutor used the same stale number | learners, educators, exports | every place that shows or sorts by the streak uses the live one (0 after a missed day); the best streak, XP, stickers and showcase milestones are unchanged |
+| The educator's "streak was broken" alert could never fire (it waited for a stored streak of 0) | educators | fires once per broken run of 2+ days |
+| The score animation ran on a closed screen when the result was left within 200 ms | every game | checks the screen is still open |
 
 ## New
 
@@ -63,6 +71,7 @@ Each needs the project owner's go-ahead (see "Waiting for approval").
 | Android on GitHub Actions (run 38141730593) | analyze, all tests and the release APKs with their manifest checks pass; walkthroughs on the phone and the tablet emulator (Android 14), upright and sideways: 58 screens and 0 problems each, no crash in the logs. The upright phone also took a Word Hunt photo, recorded and replayed Sign It, streamed Gaze Control's camera (12 frames), spoke, and found a speech recogniser |
 | Release build | website APKs (arm64 / arm32 / universal) and the Play APK + bundle: application ids, permissions, version 1.4.0 (13), 16 KB alignment all checked; SHA-256s in `build/release-v1.4.0/SHA256SUMS.txt` |
 | Upgrade 1.2.7 → 1.4.0 (universal, emulator) | profile, XP and stars kept; Screen orientation reads "turns with the device" and Landscape turns the app |
+| **Real tablet** (Honor NDL W09, Android 16, 1200 x 1920), release build installed over 1.2.7 with `adb install -r` | all 19 profiles kept; a learner's level, XP, streak, words and stars identical before and after. Upright and sideways: Home, Games, Memory Match (all 16 Hard cards), flashcard viewer, Progress, sheets. Word Hunt took a photo with the back camera and analysed it; Sign It played the sign video, recorded with the front camera and replayed the take; Gaze Control streamed the front camera; spoken progress played through the speech engine (the tablet's media volume was at 0, so it was silent on the device); a speech recogniser is installed. Portrait chosen in Settings held while the tablet was sideways (Android 16 shows the app in a tall window). Settings put back afterwards |
 | Website (local server) | audit 1,378 passed / 0 failed; contrast sweep 0 failures in all six display modes |
 
 ## Waiting for approval
@@ -75,11 +84,12 @@ Each needs the project owner's go-ahead (see "Waiting for approval").
 
 ## Not possible in this round
 
-- **Real-device tests:** the Honor tablet was connected but locked behind
-  its screen lock the whole time, and no iPhone or iPad was available. The
-  camera, microphone and speech checks ran on Android emulators with
-  emulated cameras instead. Gaze Control, controllers and camera features on
-  iOS are checked by code, tests and the simulator only.
+- **Real-device tests:** the Honor tablet was tested once it was unlocked
+  (see Checks); no iPhone or iPad was available, so Gaze Control,
+  controllers and camera features on iOS are checked by code, tests and the
+  simulator only. On the tablet the microphone was not tried: its
+  permission had been given "only this time" and has lapsed, and checking
+  recognition needs someone to speak.
 - **The 33 missing FSL signs** need a person who signs FSL; the guide and
   tools are ready, and offline sign packs were already in the app.
 - **App Check enforcement** needs the paid store accounts, and can never be
@@ -87,3 +97,14 @@ Each needs the project owner's go-ahead (see "Waiting for approval").
 - **iPad landscape walkthrough:** iPadOS ignores an app's orientation request
   while the app supports Split View, so only the iPhones are walked sideways
   on CI; iPad landscape sizes are covered by the widget tests.
+
+## Recommended next
+
+- **A "sound is off" hint for learners who rely on speech.** With the
+  tablet's media volume at 0, every spoken word is silent and nothing tells
+  the learner why. A blind learner cannot read an on-screen hint, and
+  raising the volume automatically is a product decision, so this is left
+  to the project owner.
+- **The thesis text** in `docs/capstone_thesis.md` still describes the app
+  as portrait-only and Android-only (its "locked to portrait" and "Android
+  only" passages); worth updating when the chapters are next revised.
