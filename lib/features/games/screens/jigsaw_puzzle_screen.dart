@@ -31,6 +31,7 @@ import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/fullscreen_host.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../core/utils/seeded_random.dart';
+import '../unfinished_round_stars.dart';
 
 class JigsawPuzzleScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
@@ -293,6 +294,11 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
   }
 
   int get _starsEarned {
+    // Efficiency only means something once every puzzle is done: the
+    // optimum is for all of them, so a quit after one move read as perfect.
+    if (_score < _totalPuzzles) {
+      return unfinishedRoundStars(_score, _totalPuzzles);
+    }
     // Stars based on efficiency (fewer moves = better score)
     final efficiency = _optimalMoves / max(_movesUsed, 1);
     if (efficiency >= 0.9) return 3;

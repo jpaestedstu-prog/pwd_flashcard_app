@@ -26,6 +26,7 @@ import '../../../widgets/flashcard_image.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/fullscreen_host.dart';
 import '../../../core/widgets/fit_text.dart';
+import '../unfinished_round_stars.dart';
 
 class DragDropScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
@@ -161,7 +162,11 @@ class _DragDropScreenState extends ConsumerState<DragDropScreen>
         _targets.any((t) => t.isCorrect && _matches[t.id] == word);
   }
 
-  int get _starsEarned => 3; // completed the puzzle
+  // 3 for a completed puzzle; a quit or the clock running out is scored on
+  // the words actually placed (it used to pay 3 whatever happened).
+  int get _starsEarned => _correctCount >= _totalItems
+      ? 3
+      : unfinishedRoundStars(_correctCount, _totalItems);
 
   /// [completed] is false only on the "Quit to Games" path. The score counts
   /// toward stats exactly as before either way, but a run abandoned after two

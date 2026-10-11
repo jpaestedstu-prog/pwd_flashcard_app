@@ -35,6 +35,7 @@ import '../../gamepad/logic/gamepad_speech.dart';
 import '../../gamepad/providers/gamepad_screen.dart';
 import '../../gamepad/widgets/gamepad_screen_registrar.dart';
 import '../../../core/utils/seeded_random.dart';
+import '../unfinished_round_stars.dart';
 
 /// How many columns, and what card shape (width / height), put all [count]
 /// cards on screen in a [width] x [height] area with [spacing] between them.
@@ -445,22 +446,33 @@ class _MemoryMatchScreenState extends ConsumerState<MemoryMatchScreen>
     }
   }
 
-  List<GameReviewItem> get _reviewItems => _sourceCards
-      .map(
-        (c) => GameReviewItem(
-          wordEnglish: c.wordEnglish,
-          wordFilipino: c.wordFilipino,
-          category: c.category,
-          isCorrect: true,
-        ),
-      )
-      .toList();
+  List<GameReviewItem> get _reviewItems {
+    final matchedIds = _cards
+        .where((c) => c.isMatched)
+        .map((c) => c.pairId)
+        .toSet();
+    return _sourceCards
+        .map(
+          (c) => GameReviewItem(
+            wordEnglish: c.wordEnglish,
+            wordFilipino: c.wordFilipino,
+            category: c.category,
+            isCorrect: matchedIds.contains(c.id),
+          ),
+        )
+        .toList();
+  }
 
   void _restart() {
     setState(() => _setupGame());
   }
 
   int get _starsEarned {
+    // Few moves only mean something on a finished board: one flip and a
+    // quit (or the clock running out) used to pay 3 stars.
+    if (_matchedPairs < _pairs) {
+      return unfinishedRoundStars(_matchedPairs, _pairs);
+    }
     // Scale star thresholds by difficulty
     final threshold3 = switch (widget.difficulty) {
       GameDifficulty.easy => _pairs + 2,
@@ -484,7 +496,8 @@ class _MemoryMatchScreenState extends ConsumerState<MemoryMatchScreen>
             child: Scaffold(
               body: Center(
                 child: GameResultDialog(
-                  score: _pairs,
+                  // Beat the Clock can end with pairs still face down.
+                  score: _matchedPairs,
                   total: _pairs,
                   starsEarned: _starsEarned,
                   onPlayAgain: _restart,

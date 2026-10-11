@@ -33,6 +33,7 @@ import '../../gaze_control/widgets/gaze_scope.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/fullscreen_host.dart';
 import '../../../core/widgets/fit_text.dart';
+import '../unfinished_round_stars.dart';
 
 class FlashcardQuizScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
@@ -144,6 +145,7 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
     _knowCount = 0;
     _learningCount = 0;
     _showResult = false;
+    _roundFinished = false;
     _reviewItems.clear();
     _dragOffset = Offset.zero;
     _dragRotation = 0;
@@ -257,6 +259,7 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
         // only correct once this rebuild has settled.
         WidgetsBinding.instance.addPostFrameCallback((_) => _announceCard());
       } else {
+        _roundFinished = true;
         _saveProgress();
         AccessibleCelebrationOverlay.show(
           context: context,
@@ -268,7 +271,13 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
     });
   }
 
+  /// Set when the last card is answered; a quit or the clock running out
+  /// leaves it false.
+  bool _roundFinished = false;
+
   int get _starsEarned {
+    // The star for finishing is for finishing: a quit used to earn it too.
+    if (!_roundFinished) return unfinishedRoundStars(_knowCount, _totalCards);
     final pct = _knowCount / _totalCards;
     if (pct >= 0.9) return 3;
     if (pct >= 0.6) return 2;

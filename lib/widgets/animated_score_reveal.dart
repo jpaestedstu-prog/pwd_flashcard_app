@@ -92,11 +92,13 @@ class _AnimatedScoreRevealState extends State<AnimatedScoreReveal>
       duration: const Duration(milliseconds: 900),
     );
 
-    // Sequence: gauge → stars → score
+    // Sequence: gauge → stars → score. Leaving the result screen in the
+    // 200 ms gap ran the score on a disposed controller.
     _gaugeController.forward().then((_) {
+      if (!mounted) return;
       _starController.forward();
       Future.delayed(const Duration(milliseconds: 200), () {
-        _scoreController.forward();
+        if (mounted) _scoreController.forward();
       });
     });
   }
