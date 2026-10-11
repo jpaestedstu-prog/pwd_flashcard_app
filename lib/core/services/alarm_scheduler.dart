@@ -1,4 +1,5 @@
 import 'device_timezone.dart';
+import 'notification_budget.dart';
 import 'notification_schedule_mode.dart';
 import 'dart:async';
 import 'dart:ui' show Locale;
@@ -20,9 +21,10 @@ import '../../l10n/app_localizations.dart';
 /// device — even when the app is closed.
 ///
 /// Design notes:
-///   • One scheduled-notification id is allocated per (alarm, weekday).
-///     With weekly repeats and 7 days max per alarm, a child capped to
-///     ~32 alarms stays well under iOS's 64-pending limit.
+///   • One scheduled-notification id per (alarm, weekday) for an alarm on
+///     chosen days, and one daily repeat (slot 0) for an every-day alarm.
+///     The total is capped by [NotificationBudget.childAlarmRequests]: iOS
+///     drops everything past its 64 soonest pending notifications.
 ///   • IDs are offset by 1000 so they don't collide with the daily /
 ///     vocab-review IDs (0 and 1) that `NotificationService` uses.
 ///   • Stable hash from `(alarm.id, weekday)` keeps re-scheduling
@@ -327,6 +329,11 @@ class AlarmScheduler {
     try {
       _lifecycle = AppLifecycleListener(
         onStateChange: (state) {
+          if (state == AppLifecycleState.resumed) {
+            unawaited(_recheckExact().catchError((Object e) {
+              if (kDebugMode) debugPrint('AlarmScheduler exact: $e');
+            }));
+          }
           final foreground = state == AppLifecycleState.resumed ||
               state == AppLifecycleState.inactive;
           if (foreground == _foreground) return;
@@ -341,6 +348,25 @@ class AlarmScheduler {
     } catch (_) {
       // No widgets binding (plain unit tests): always in the foreground.
     }
+  }
+
+  /// "Alarms & reminders" can be granted (or taken away) in Android's
+  /// settings at any time — from the app's own prompt or not. Alarms already
+  /// with the OS keep the mode they were scheduled in, so a change schedules
+  /// them all again.
+  static Future<void> _recheckExact() async {
+    if (!_pluginInitialised || _profileId == null) return;
+    final before = _canScheduleExact;
+    try {
+      _canScheduleExact = await _plugin
+              .resolvePlatformSpecificImplementation<
+                  AndroidFlutterLocalNotificationsPlugin>()
+              ?.canScheduleExactNotifications() ??
+          false;
+    } catch (_) {
+      _canScheduleExact = false;
+    }
+    if (_canScheduleExact != before) await _reconcile();
   }
 
   /// Make the OS's alarms match [_latest] for the learner, or hold them back.
@@ -362,21 +388,14 @@ class AlarmScheduler {
     // memory — then the learner's current alarms are scheduled afresh.
     await _cancelDeviceAlarms(includeShown: false);
 
-    // Cap to 32 enabled alarms — keeps iOS pending notifications well
-    // under its 64-slot ceiling even when an alarm repeats on 7 days
-    // (which is one notification per day under `dayOfWeekAndTime`).
     final alarms = _latest ?? HiveService.getChildAlarmsForChild(owner!);
-    final enabled = alarms
-        .where((a) => a.enabled && a.childProfileId == owner)
-        .take(32)
-        .toList();
-    for (final a in enabled) {
-      // If the alarm has no specific days, schedule one per day so the
-      // OS reliably matches "every day at HH:mm" via dayOfWeekAndTime.
-      final days = a.daysOfWeek.isEmpty ? const {1, 2, 3, 4, 5, 6, 7} : a.daysOfWeek;
-      for (final day in days) {
-        await _scheduleOne(a, day);
-      }
+    final requests = plannedRequests(
+      alarms,
+      owner: owner!,
+      maxRequests: NotificationBudget.childAlarmRequests,
+    );
+    for (final (alarm, day) in requests) {
+      await _scheduleOne(alarm, day);
     }
 
     if (kDebugMode) {
@@ -384,6 +403,33 @@ class AlarmScheduler {
           'AlarmScheduler: scheduled ${_activeNotificationIds.length} '
           'pending notifications for profile $owner');
     }
+  }
+
+  /// The OS requests behind [owner]'s enabled [alarms], as `(alarm, day)`:
+  /// day 0 is a daily repeat (an every-day alarm, one request instead of
+  /// seven), 1–7 a weekly repeat on that ISO weekday.
+  ///
+  /// Stops adding at [maxRequests]. Only whole alarms are taken — an alarm
+  /// that rang on some of its days and silently not on others would be worse
+  /// than one that is plainly not scheduled — and in list order, so the same
+  /// alarms always win.
+  static List<(ChildAlarm, int)> plannedRequests(
+    Iterable<ChildAlarm> alarms, {
+    required String owner,
+    required int maxRequests,
+  }) {
+    final out = <(ChildAlarm, int)>[];
+    for (final a in alarms) {
+      if (!a.enabled || a.childProfileId != owner) continue;
+      final everyDay = a.daysOfWeek.isEmpty ||
+          {1, 2, 3, 4, 5, 6, 7}.every(a.daysOfWeek.contains);
+      final days = everyDay ? const [0] : (a.daysOfWeek.toList()..sort());
+      if (out.length + days.length > maxRequests) continue;
+      for (final day in days) {
+        out.add((a, day));
+      }
+    }
+    return out;
   }
 
   static void _onTap(NotificationResponse response) {
@@ -397,12 +443,14 @@ class AlarmScheduler {
     onAlarmFired?.call(alarm);
   }
 
+  /// Schedules [a] on [isoWeekday] (1–7, weekly), or every day for 0.
   static Future<void> _scheduleOne(ChildAlarm a, int isoWeekday) async {
     final id = _idFor(a.id, isoWeekday);
+    final daily = isoWeekday == 0;
     final scheduled = _nextOccurrence(
       hour: a.hour,
       minute: a.minute,
-      isoWeekday: isoWeekday,
+      isoWeekday: daily ? null : isoWeekday,
     );
 
     const androidDetails = AndroidNotificationDetails(
@@ -435,7 +483,9 @@ class AlarmScheduler {
       androidScheduleMode: exactWhenAllowed(
         canScheduleExact: _canScheduleExact,
       ),
-      matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+      matchDateTimeComponents: daily
+          ? DateTimeComponents.time
+          : DateTimeComponents.dayOfWeekAndTime,
     );
     _activeNotificationIds.add(id);
   }
@@ -465,17 +515,22 @@ class AlarmScheduler {
   }
 
   /// Computes the next [tz.TZDateTime] in the local timezone matching
-  /// the alarm's hour/minute on [isoWeekday] (1=Mon..7=Sun). The
-  /// `dayOfWeekAndTime` repeat handles future occurrences automatically;
+  /// the alarm's hour/minute on [isoWeekday] (1=Mon..7=Sun), or on any day
+  /// when it is null. The repeat handles future occurrences automatically;
   /// we only need a valid future starting point.
   static tz.TZDateTime _nextOccurrence({
     required int hour,
     required int minute,
-    required int isoWeekday,
+    int? isoWeekday,
   }) {
     final now = tz.TZDateTime.now(tz.local);
     var candidate = tz.TZDateTime(
         tz.local, now.year, now.month, now.day, hour, minute);
+    if (isoWeekday == null) {
+      return candidate.isBefore(now)
+          ? candidate.add(const Duration(days: 1))
+          : candidate;
+    }
     // Advance to the matching weekday.
     while (candidate.weekday != isoWeekday) {
       candidate = candidate.add(const Duration(days: 1));
@@ -486,8 +541,8 @@ class AlarmScheduler {
     return candidate;
   }
 
-  /// Stable id for `(alarmId, weekday)` — keeps the schedule idempotent
-  /// across stream emissions. Combines a 16-bit hash of [alarmId] with
+  /// Stable id for `(alarmId, weekday)`, weekday 0 being the daily repeat —
+  /// keeps the schedule idempotent across stream emissions. Combines a 16-bit hash of [alarmId] with
   /// the weekday so duplicates across alarms are extremely unlikely.
   static int _idFor(String alarmId, int isoWeekday) {
     final h = alarmId.hashCode & 0xFFFF;

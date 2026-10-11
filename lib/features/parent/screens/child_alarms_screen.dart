@@ -11,6 +11,7 @@ import '../../../providers/child_alarm_provider.dart';
 import '../services/child_alarm_service.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../widgets/on_time_alarms.dart';
 import '../../classroom/widgets/cloud_sync_error_view.dart';
 
 /// Per-child alarm list — list, add, edit, delete. Reachable from the
@@ -79,9 +80,20 @@ class ChildAlarmsScreen extends ConsumerWidget {
               if (i == 0) {
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 4),
-                  child: Text(
-                    'Last synced ${_relTime(mostRecent)}',
-                    style: Theme.of(context).textTheme.labelSmall,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Last synced ${_relTime(mostRecent)}',
+                        style: Theme.of(context).textTheme.labelSmall,
+                      ),
+                      // Hidden unless this device delivers alarms late.
+                      OnTimeAlarmsRow(
+                        filipino:
+                            Localizations.localeOf(context).languageCode ==
+                                'fil',
+                      ),
+                    ],
                   ),
                 );
               }

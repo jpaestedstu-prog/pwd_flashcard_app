@@ -17,6 +17,7 @@ import '../services/routine_media_store.dart';
 import '../services/routine_reminder_scheduler.dart';
 import '../services/routine_service.dart';
 import '../widgets/routine_media.dart';
+import '../../../widgets/on_time_alarms.dart';
 import '../widgets/routine_over_other_apps.dart';
 import '../widgets/routine_step_card.dart';
 import '../widgets/routine_sync_feedback.dart';
@@ -293,6 +294,9 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
                         onChanged: (v) =>
                             _mutate(_draft.copyWith(remindersEnabled: v)),
                       ),
+                      // Hidden unless this device delivers alarms late.
+                      if (_draft.remindersEnabled || _draft.lockEnabled)
+                        OnTimeAlarmsRow(filipino: l),
                       // ── Hold the app until each step is done ──
                       // The strongest switch on this screen, so it says
                       // plainly what it does and it is offered only where it

@@ -25,6 +25,7 @@ import '../models/routine_timeline.dart';
 import '../services/routine_service.dart';
 import '../services/routine_sign_launcher.dart';
 import '../services/routine_completion_flow.dart';
+import '../../../widgets/on_time_alarms.dart';
 import '../widgets/routine_over_other_apps.dart';
 import '../widgets/routine_step_card.dart';
 import 'routine_step_screen.dart';
@@ -346,11 +347,20 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
         !widget.readOnly &&
         canBeLockedByRoutine(ref.watch(profileProvider)?.role) &&
         routines.any((r) => r.lockingSteps.isNotEmpty);
+    // The same tablet is where reminders and locks must be allowed to arrive
+    // on time (a Google Play build starts without exact alarms on Android
+    // 14+).
+    final asksForOnTime = widget.profileId == null &&
+        !widget.readOnly &&
+        routines.any(
+          (r) => r.remindableSteps.isNotEmpty || r.lockingSteps.isNotEmpty,
+        );
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       children: [
         if (asksForOverlay) RoutineOverOtherAppsBanner(filipino: filipino),
+        if (asksForOnTime) OnTimeAlarmsBanner(filipino: filipino),
         _ProgressHeader(
           done: doneCount,
           total: allSteps.length,

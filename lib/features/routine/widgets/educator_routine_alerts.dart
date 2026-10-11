@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/services/notification_budget.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/local/hive_service.dart';
@@ -127,6 +128,8 @@ class _EducatorRoutineAlertSyncState
       now: now,
       mode: mode,
       filipino: filipino,
+      // iOS shares 64 pending notifications between every scheduler.
+      cap: NotificationBudget.educatorAlerts,
     );
     final early = <EducatorStepAlert>[];
     for (final learner in learners) {

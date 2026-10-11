@@ -80,7 +80,9 @@ class EducatorAlertLearner {
 class EducatorStepAlertPlan {
   EducatorStepAlertPlan._();
 
-  /// Most alerts kept pending at once, earliest first.
+  /// Most alerts kept pending at once, earliest first. The dashboard passes
+  /// the platform's share instead (`NotificationBudget.educatorAlerts`: 20
+  /// on iOS, where every scheduler shares 64 pending notifications).
   static const int maxPending = 40;
 
   /// How far ahead alerts are scheduled. The dashboard re-plans each time it

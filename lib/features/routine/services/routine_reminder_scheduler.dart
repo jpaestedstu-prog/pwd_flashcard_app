@@ -425,6 +425,11 @@ class RoutineReminderScheduler {
     try {
       _lifecycle = AppLifecycleListener(
         onStateChange: (state) {
+          if (state == AppLifecycleState.resumed) {
+            unawaited(_recheckExact().catchError((Object e) {
+              if (kDebugMode) debugPrint('RoutineReminderScheduler: $e');
+            }));
+          }
           final foreground = state == AppLifecycleState.resumed ||
               state == AppLifecycleState.inactive;
           if (foreground == _foreground) return;
@@ -439,6 +444,28 @@ class RoutineReminderScheduler {
     } catch (_) {
       // No widgets binding (plain unit tests): always in the foreground.
     }
+  }
+
+  /// "Alarms & reminders" can be granted in Android's settings at any time.
+  /// Reminders and educator alerts already with the OS keep the mode they
+  /// were scheduled in, so a change schedules them again (the native alarms
+  /// check for themselves each time they are armed).
+  static Future<void> _recheckExact() async {
+    if (!_pluginInitialised) return;
+    final before = _canScheduleExact;
+    try {
+      _canScheduleExact = await _plugin
+              .resolvePlatformSpecificImplementation<
+                  AndroidFlutterLocalNotificationsPlugin>()
+              ?.canScheduleExactNotifications() ??
+          false;
+    } catch (_) {
+      _canScheduleExact = false;
+    }
+    if (_canScheduleExact == before) return;
+    // The dashboard re-plans educator alerts on its next tick.
+    _educatorPlanKey = '';
+    if (!_blocked) await _restore();
   }
 
   /// Whether the reminders should be with the OS right now.
