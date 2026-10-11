@@ -1,5 +1,6 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -163,6 +164,27 @@ void main() {
             throw CameraException('CameraAccessDenied', 'denied in test'),
       );
 
+      expect(find.textContaining('No camera found'), findsOneWidget);
+      expect(find.text('I got it!'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    "CameraX's PlatformException on a device with no camera degrades to "
+    'watch-only, with no error banner',
+    (tester) async {
+      // What Android's CameraX plugin threw on the CI emulator (no camera):
+      // not a CameraException, so it escaped as "Something went wrong".
+      await _pumpSignIt(
+        tester,
+        camerasLoader: () async => throw PlatformException(
+          code: 'ExecutionException',
+          message: 'androidx.camera.core.InitializationException: '
+              'androidx.camera.core.CameraUnavailableException',
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
       expect(find.textContaining('No camera found'), findsOneWidget);
       expect(find.text('I got it!'), findsOneWidget);
     },

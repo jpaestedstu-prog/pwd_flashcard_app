@@ -1,5 +1,6 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:pwdpwdpwd/data/local/seed_data.dart';
@@ -10,6 +11,7 @@ import 'package:pwdpwdpwd/features/object_scan/widgets/discovered_word_sheet.dar
 
 import 'package:pwdpwdpwd/features/object_scan/widgets/photo_results_panel.dart';
 
+import 'support/device_matrix.dart';
 import 'support/screen_matrix.dart';
 
 /// Real cameras and ML Kit need platform channels; the screen takes both as
@@ -45,6 +47,25 @@ void main() {
         camerasLoader: () async => const <CameraDescription>[],
         labelerFactory: _FakeLabeler.new,
       ),
+    );
+  });
+
+  testWidgets(
+      "CameraX's PlatformException (a device with no camera) shows the "
+      'no-camera fallback, not an error', (tester) async {
+    // What Android's CameraX plugin threw on the CI emulator, which has no
+    // camera: not a CameraException, so it escaped as "Something went wrong".
+    await expectScreenNoOverflowAcrossDevices(
+      tester,
+      () => ObjectScanScreen(
+        camerasLoader: () async => throw PlatformException(
+          code: 'ExecutionException',
+          message: 'androidx.camera.core.CameraUnavailableException',
+        ),
+        labelerFactory: _FakeLabeler.new,
+      ),
+      devices: const [DeviceSize('phone', Size(360, 640))],
+      textScales: const [1.0],
     );
   });
 

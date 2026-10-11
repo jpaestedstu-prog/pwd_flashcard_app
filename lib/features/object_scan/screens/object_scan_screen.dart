@@ -240,7 +240,11 @@ class _ObjectScanScreenState extends ConsumerState<ObjectScanScreen>
     List<CameraDescription> cameras;
     try {
       cameras = await widget.camerasLoader();
-    } on CameraException {
+    } catch (_) {
+      // Not only CameraException: on a device without a camera, Android's
+      // CameraX fails to start at all and the plugin reports that as a
+      // PlatformException, which escaped as "Something went wrong" (found on
+      // the CI emulator, which has no camera). Either way: no camera here.
       cameras = const [];
     }
     if (!mounted) return;
