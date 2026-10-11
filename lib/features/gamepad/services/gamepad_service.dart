@@ -49,13 +49,16 @@ class GamepadService {
 
   bool get hasController => _known.isNotEmpty;
 
-  /// Whether this platform has the bridge at all: `GamepadBridge.kt` is
-  /// Android only. Elsewhere the event channel has no listener, and listening
-  /// to it is not a quiet no-op: Flutter reports the MissingPluginException
-  /// through FlutterError, which put "Something went wrong" over every screen
-  /// of the iPhone and iPad app.
+  /// Whether this platform has the bridge at all: `GamepadBridge.kt` on
+  /// Android and `GamepadBridge.swift` (Apple's GameController framework) on
+  /// iPhone and iPad, both speaking the same channels. Anywhere else the
+  /// event channel has no listener, and listening to it is not a quiet no-op:
+  /// Flutter reports the MissingPluginException through FlutterError, which
+  /// put "Something went wrong" over every screen of the first iOS build.
   static bool get isSupported =>
-      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
 
   /// Begins listening. Safe to call repeatedly; does nothing where there is
   /// no bridge ([isSupported]).

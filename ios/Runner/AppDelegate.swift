@@ -4,6 +4,10 @@ import UserNotifications
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
+  /// Bluetooth game controllers (Settings → Game Controller); kept alive for
+  /// the engine's lifetime.
+  private var gamepadBridge: GamepadBridge?
+
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
@@ -19,5 +23,8 @@ import UserNotifications
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "FlashLearnGamepadBridge") {
+      gamepadBridge = GamepadBridge(messenger: registrar.messenger())
+    }
   }
 }
