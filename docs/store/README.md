@@ -101,8 +101,12 @@ Filipino translation of the listing), App, Free.
     it by default; the app already asks for it in the routine builder.
   - Exact alarms: the Play build does **not** declare `USE_EXACT_ALARM` (Play
     allows it only for alarm and calendar apps). It keeps
-    `SCHEDULE_EXACT_ALARM`, which the user grants under "Alarms & reminders";
-    without it, My Day reminders still come, just less precisely timed.
+    `SCHEDULE_EXACT_ALARM`, which Android 14+ starts out denying: without it
+    reminders, alarms and locks arrive up to an hour late. The app asks for
+    it ("Allow on-time alarms") in the routine builder, in a learner's alarm
+    list, and at the top of the learner's own My Day, and schedules
+    everything again as soon as it is granted. No Play declaration is needed
+    for `SCHEDULE_EXACT_ALARM`.
 
 **Testing before production.** A *personal* Play developer account created
 after November 2023 must run a **closed test with at least 12 testers for 14
@@ -137,6 +141,9 @@ English, SKU `flashlearnpwd`.
   classmates and family, with parent approval for a child's friend requests.
 - *Export compliance:* already answered in the app (`ITSAppUsesNonExemptEncryption = NO`
   — only HTTPS and on-device PIN hashing).
+- *App Check:* optional, and only once the developer account exists — see
+  [`../security.md`](../security.md#firebase-app-check) (App Attest needs
+  the App Attest capability on the bundle id).
 - *Account deletion* (guideline 5.1.1(v)): Settings → Data → Delete this profile.
 - *Review notes* (paste into App Review Information):
 
@@ -166,10 +173,22 @@ rules, not bugs:
   **Guided Access** (Settings → Accessibility → Guided Access).
 - **TV Cast** serves the lesson only while FlashLearn is open on screen; iOS
   pauses an app's server in the background.
-- **Bluetooth game controllers** (Gamepad settings) are Android-only for now.
-- **Reminders:** iOS keeps at most 64 scheduled notifications per app. A very
-  large set of routines and alarms can reach that; the app re-plans them every
-  time it opens.
+- **Bluetooth game controllers** work through Apple's GameController
+  framework (Xbox, PlayStation, MFi and most "Xbox mode" pads, paired in iOS
+  Settings → Bluetooth). Built and checked on the simulators; it has not been
+  tried with a real controller on an iPhone or iPad yet.
+- **Reminders:** iOS keeps only the 64 soonest scheduled notifications of an
+  app and silently drops the rest, so the app shares them out: study
+  reminders 2, routine reminders 24, alarms 16, educator alerts 20. An
+  every-day alarm counts once. The app re-plans them every time it opens.
+- **Gaze Control:** iOS hands the camera frames over mirrored. The app
+  corrects for it, so left and right match Android. This is checked in code
+  and tests, not yet on a real iPhone or iPad: if left and right feel
+  swapped, Gaze Control settings → "Mirror left / right" fixes it.
+- **Orientation:** every screen works in portrait and landscape. On iPad
+  this includes Split View, Slide Over and Stage Manager. While Gaze Control's
+  camera is running, the screen keeps its orientation. iPadOS may still turn
+  an app that shares the screen.
 - **Updates** come from the App Store; there is no "Check for updates" row.
 
 ## Screenshots
