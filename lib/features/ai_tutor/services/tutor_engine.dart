@@ -187,8 +187,8 @@ class TutorEngine {
     }
 
     // Check streak
-    if (progress.streakDays >= 7) {
-      return _streakCelebration(progress.streakDays, isFilipino: isFilipino);
+    if (progress.liveStreakDays >= 7) {
+      return _streakCelebration(progress.liveStreakDays, isFilipino: isFilipino);
     }
 
     // Check if there are weak categories
@@ -875,7 +875,7 @@ class TutorEngine {
   }) {
     if (simple) {
       final words = progress.wordsLearned;
-      final days = progress.streakDays;
+      final days = progress.liveStreakDays;
       return TutorMessage(
         id: _uuid.v4(),
         role: TutorMessageRole.tutor,
@@ -897,8 +897,8 @@ class TutorEngine {
       id: _uuid.v4(),
       role: TutorMessageRole.tutor,
       content: isFilipino
-          ? '📊 Ito ang iyong progress:\n\n📖 ${progress.wordsLearned} salita ang natutunan\n⭐ ${progress.totalStars} bituin\n🔥 ${progress.streakDays}-araw na streak\n🎮 ${progress.effectiveGamesPlayed} laro na nilaro\n\nItuloy mo lang ang magandang gawa!'
-          : '📊 Here\'s your progress:\n\n📖 ${progress.wordsLearned} words learned\n⭐ ${progress.totalStars} stars earned\n🔥 ${progress.streakDays}-day streak\n🎮 ${progress.effectiveGamesPlayed} games played\n\nKeep up the great work!',
+          ? '📊 Ito ang iyong progress:\n\n📖 ${progress.wordsLearned} salita ang natutunan\n⭐ ${progress.totalStars} bituin\n🔥 ${progress.liveStreakDays}-araw na streak\n🎮 ${progress.effectiveGamesPlayed} laro na nilaro\n\nItuloy mo lang ang magandang gawa!'
+          : '📊 Here\'s your progress:\n\n📖 ${progress.wordsLearned} words learned\n⭐ ${progress.totalStars} stars earned\n🔥 ${progress.liveStreakDays}-day streak\n🎮 ${progress.effectiveGamesPlayed} games played\n\nKeep up the great work!',
       timestamp: DateTime.now(),
     );
   }

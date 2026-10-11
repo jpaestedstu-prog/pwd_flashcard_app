@@ -161,7 +161,7 @@ class _SummaryRow extends StatelessWidget {
           ),
           _MiniStat(
             icon: Icons.local_fire_department_rounded,
-            value: '${progress.streakDays}',
+            value: '${progress.liveStreakDays}',
             label: _t(context).streak,
             color: AppColors.error,
           ),

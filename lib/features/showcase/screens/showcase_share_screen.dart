@@ -95,7 +95,7 @@ class ShowcaseShareScreen extends ConsumerWidget {
                 portfolio: portfolio,
                 totalStars: progress.totalStars,
                 wordsLearned: progress.wordsLearned,
-                streakDays: progress.streakDays,
+                streakDays: progress.liveStreakDays,
               ),
               canChangeOrientation: false,
               canChangePageFormat: false,

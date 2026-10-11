@@ -25,7 +25,7 @@ class StreakCalendarScreen extends ConsumerWidget {
     final profileId = profile?.id ?? '';
 
     final completedDates = HiveService.getDailyChallengeHistory(profileId);
-    final streak = progress.streakDays;
+    final streak = progress.liveStreakDays;
 
     // Also include dates from session logs as study activity
     final sessionDates = <String>{};

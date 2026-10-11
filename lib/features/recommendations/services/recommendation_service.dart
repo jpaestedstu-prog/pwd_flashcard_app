@@ -1,3 +1,4 @@
+import '../../../core/services/streak_service.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../data/models/learning_path.dart';
@@ -236,11 +237,11 @@ class RecommendationService {
     }
 
     // ── 8. Streak motivation ─────────────────────────────────────
-    if (progress.streakDays > 0) {
-      final daysSinceLast = DateTime.now()
-          .difference(progress.lastActivityDate)
-          .inDays;
-      if (daysSinceLast >= 1) {
+    // A streak still alive that today has not added to yet. Calendar days,
+    // as the streak counts them: a 24-hour gap missed the learner who
+    // practised late yesterday and opens the app this morning.
+    if (progress.liveStreakDays > 0) {
+      if (!StreakService.isActiveToday(progress.lastActivityDate)) {
         recommendations.add(
           Recommendation(
             id: 'streak',

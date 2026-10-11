@@ -1142,7 +1142,7 @@ class _StatsBanner extends StatelessWidget {
       // the spendable balance (the number the Star Shop will honour); screen
       // reader users get that plus the lifetime total it came from.
       label: _t(context).homeStatsSemantics(
-        progress.streakDays,
+        progress.liveStreakDays,
         progress.wordsLearned,
         progress.starBalance,
         progress.totalStars,
@@ -1155,7 +1155,7 @@ class _StatsBanner extends StatelessWidget {
             Expanded(
               child: _StatItem(
                 icon: Icons.local_fire_department_rounded,
-                value: '${progress.streakDays}',
+                value: '${progress.liveStreakDays}',
                 label: AppLocalizations.of(context)?.dayStreak ?? 'Day Streak',
                 iconColor: AppColors.warning,
               ),

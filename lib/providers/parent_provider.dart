@@ -236,7 +236,7 @@ ParentDashboardSnapshot _buildSnapshot(
           supportOptions: profile.supports,
           wordsLearned: progress.wordsLearned,
           totalStars: progress.totalStars,
-          streakDays: progress.streakDays,
+          streakDays: progress.liveStreakDays,
           gamesPlayed: progress.effectiveGamesPlayed,
           averageAccuracy: avgAccuracy,
           studyMinutesThisWeek: studyThisWeek,

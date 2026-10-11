@@ -191,7 +191,7 @@ final filteredStudentsProvider =
       case StudentSortField.wordsLearned:
         result = a.$2.wordsLearned.compareTo(b.$2.wordsLearned);
       case StudentSortField.streakDays:
-        result = a.$2.streakDays.compareTo(b.$2.streakDays);
+        result = a.$2.liveStreakDays.compareTo(b.$2.liveStreakDays);
       case StudentSortField.stars:
         result = a.$2.totalStars.compareTo(b.$2.totalStars);
       case StudentSortField.lastActive:

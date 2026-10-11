@@ -108,7 +108,7 @@ class StudentProfileDetailScreen extends ConsumerWidget {
                 ),
                 ProgressStat(
                   icon: Icons.local_fire_department_rounded,
-                  value: '${progress.streakDays}',
+                  value: '${progress.liveStreakDays}',
                   label: _t(context).streak,
                   color: AppColors.warning,
                 ),

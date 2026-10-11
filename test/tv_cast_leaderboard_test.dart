@@ -139,12 +139,25 @@ void main() {
 
   test('best streak is the highest across the whole roster', () {
     final views = TvCastSessionNotifier.buildProgressViews([
-      learner('A', UserRole.student, streak: 3),
-      learner('B', UserRole.child, streak: 11),
-      learner('C', UserRole.student, streak: 7),
+      learner('A', UserRole.student, streak: 3, lastActive: now),
+      learner('B', UserRole.child, streak: 11, lastActive: now),
+      learner('C', UserRole.student, streak: 7, lastActive: now),
     ], now: now);
 
     expect(views.summary.bestStreak, 11);
+  });
+
+  test('a streak that ended counts for nothing on the TV', () {
+    // The stored streak only catches up on the next activity: D's 20 days
+    // ended when they stopped two days ago.
+    final views = TvCastSessionNotifier.buildProgressViews([
+      learner('C', UserRole.student, streak: 7, lastActive: now),
+      learner('D', UserRole.student,
+          streak: 20, lastActive: now.subtract(const Duration(days: 2))),
+    ], now: now);
+
+    expect(views.summary.bestStreak, 7);
+    expect(views.ranked.firstWhere((r) => r.name == 'D').streakDays, 0);
   });
 
   test('an empty roster is an empty board, not a crash', () {

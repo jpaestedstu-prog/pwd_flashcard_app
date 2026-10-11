@@ -317,11 +317,11 @@ class GamificationDashboardScreen extends ConsumerWidget {
       stats.add(
         _StatItem(
           emoji: '🔥',
-          value: '${progress.streakDays}',
+          value: '${progress.liveStreakDays}',
           label: isFilipino ? 'Araw na Streak' : 'Day Streak',
           // The personal best is what XP is scored off, so a learner whose streak
           // broke can see that the days they earned are still counted.
-          sublabel: best > progress.streakDays
+          sublabel: best > progress.liveStreakDays
               ? (isFilipino ? 'Pinakamahaba: $best' : 'Best: $best')
               : null,
           color: hc.statError,

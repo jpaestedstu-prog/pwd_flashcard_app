@@ -1,3 +1,6 @@
+import 'package:flutter/foundation.dart';
+
+import '../../../core/services/streak_service.dart';
 import '../../../data/local/hive_service.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
@@ -128,22 +131,17 @@ class AlertService {
 
       // ─── Streak Broken Check ───────
       if (config.enabledTypes.contains(AlertType.streakBroken)) {
-        final daysSinceActive =
-            now.difference(progress.lastActivityDate).inDays;
-        // Streak is considered broken if they had a streak and missed a day
-        if (daysSinceActive >= 2 && progress.streakDays == 0) {
-          final alertKey =
-              'streakBroken_${profile.id}_$todayKey';
-          if (!_alertExists(existingAlerts, alertKey)) {
-            newAlerts.add(AlertEntry(
-              id: alertKey,
-              type: AlertType.streakBroken,
-              studentProfileId: profile.id,
-              studentName: profile.name,
-              message: '${profile.name}\'s streak was broken',
-              timestamp: now,
-            ));
-          }
+        final alertKey = streakBrokenAlertKey(profile.id, progress, now: now);
+        if (alertKey != null && !_alertExists(existingAlerts, alertKey)) {
+          newAlerts.add(AlertEntry(
+            id: alertKey,
+            type: AlertType.streakBroken,
+            studentProfileId: profile.id,
+            studentName: profile.name,
+            message:
+                '${profile.name}\'s ${progress.streakDays}-day streak was broken',
+            timestamp: now,
+          ));
         }
       }
     }
@@ -169,6 +167,36 @@ class AlertService {
       (s, score) => s + (score.total > 0 ? score.score / score.total : 0),
     );
     return sum / last5.length;
+  }
+
+  /// The alert id for [progress]'s streak having broken, or null.
+  ///
+  /// A streak breaks when a day is missed: there was a run (the stored
+  /// streak, which only moves on the next activity) and it is no longer
+  /// alive. The old rule asked for a stored streak of 0, which only learners
+  /// who never had one show (streaks switched off), so it never fired for a
+  /// real broken streak. A one-day "streak" is not worth an alert. Keyed by
+  /// the last active day: a run that broke is reported once, not again every
+  /// day the learner stays away. A run that ended over a week ago is old news
+  /// (the inactivity alert covers a long absence), so the first check after
+  /// this fix does not flood an educator with every dormant learner.
+  @visibleForTesting
+  static String? streakBrokenAlertKey(
+    String profileId,
+    LearningProgress progress, {
+    DateTime? now,
+  }) {
+    if (progress.streakDays < 2) return null;
+    final at = now ?? DateTime.now();
+    final live = StreakService.liveStreak(
+      streak: progress.streakDays,
+      lastActivity: progress.lastActivityDate,
+      now: at,
+    );
+    if (live > 0) return null;
+    if (StreakService.dayDelta(progress.lastActivityDate, at) > 7) return null;
+    final d = progress.lastActivityDate;
+    return 'streakBroken_${profileId}_${d.year}-${d.month}-${d.day}';
   }
 
   static bool _alertExists(List<AlertEntry> alerts, String id) {

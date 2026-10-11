@@ -46,7 +46,7 @@ class ReportGenerator {
     final masteryPct = totalWords > 0
         ? (masteredWords / totalWords * 100).round()
         : 0;
-    final streak = progress.streakDays;
+    final streak = progress.liveStreakDays;
     final totalStars = progress.totalStars;
 
     // Achievements — the stored record union the live check, so the report a

@@ -1,3 +1,5 @@
+import '../../core/services/streak_service.dart';
+
 /// A single entry on the leaderboard
 class LeaderboardEntry {
   final String profileId;
@@ -8,6 +10,11 @@ class LeaderboardEntry {
   final int streakDays;
   final int gamesPlayed;
   final DateTime lastActivity;
+
+  /// [streakDays] as it stands today (0 after a missed day): the stored value
+  /// only catches up when the learner is next active.
+  int get liveStreakDays =>
+      StreakService.liveStreak(streak: streakDays, lastActivity: lastActivity);
 
   /// Equipped Star Shop cosmetics, so a learner's purchases are visible in the
   /// one place they are meant to be seen by other people.
@@ -174,7 +181,8 @@ List<LeaderboardEntry> applyLeaderboardFilters(
   list.sort((a, b) => switch (sort) {
         LeaderboardSort.byStars => b.totalStars.compareTo(a.totalStars),
         LeaderboardSort.byWords => b.wordsLearned.compareTo(a.wordsLearned),
-        LeaderboardSort.byStreak => b.streakDays.compareTo(a.streakDays),
+        LeaderboardSort.byStreak =>
+          b.liveStreakDays.compareTo(a.liveStreakDays),
         LeaderboardSort.byOverall => b.rankScore.compareTo(a.rankScore),
       });
   return list;

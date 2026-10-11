@@ -92,7 +92,7 @@ class GoalService {
             ? ((progress.categoryProgress[goal.category!.label] ?? 0.0) * 100)
                   .round()
             : 0,
-      GoalType.streakDays => progress.streakDays,
+      GoalType.streakDays => progress.liveStreakDays,
       GoalType.starsEarned => progress.totalStars,
     };
   }

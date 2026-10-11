@@ -380,7 +380,7 @@ class EducatorHomeScreen extends ConsumerWidget {
                               child: _StudentCard(
                                 name: studentProfile.name,
                                 wordsLearned: studentProgress.wordsLearned,
-                                streak: studentProgress.streakDays,
+                                streak: studentProgress.liveStreakDays,
                                 stars: studentProgress.totalStars,
                                 lastActive: studentProgress.lastActivityDate,
                                 hc: hc,

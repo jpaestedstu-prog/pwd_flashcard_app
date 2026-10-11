@@ -74,7 +74,7 @@ class CsvReportService {
         profileName: profile.name,
         wordsLearned: progress.wordsLearned,
         totalStars: progress.totalStars,
-        streakDays: progress.streakDays,
+        streakDays: progress.liveStreakDays,
         lastActivityDate: progress.lastActivityDate,
         sessionsInRange: inRange.length,
         activeMinutesInRange: (totalSeconds / 60).round(),

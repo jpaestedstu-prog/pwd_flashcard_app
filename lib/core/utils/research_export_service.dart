@@ -247,7 +247,7 @@ class ResearchExportService {
         '${profile.age ?? ""},'
         '${progress.wordsLearned},'
         '${progress.totalStars},'
-        '${progress.streakDays},'
+        '${progress.liveStreakDays},'
         // Lifetime total. `recentScores` is trimmed to the last 20 entries, so
         // reading its length silently censored every participant's game count
         // at 20 in the exported research data.

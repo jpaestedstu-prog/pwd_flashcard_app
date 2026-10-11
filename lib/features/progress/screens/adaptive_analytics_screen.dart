@@ -227,7 +227,7 @@ class AdaptiveAnalyticsScreen extends ConsumerWidget {
           _SessionStatsCard(
             avgMin: avgMin,
             totalSess: totalSess,
-            streakDays: progress.streakDays,
+            streakDays: progress.liveStreakDays,
             hc: hc,
           ).animate().fadeIn(duration: 400.ms, delay: 500.ms),
 

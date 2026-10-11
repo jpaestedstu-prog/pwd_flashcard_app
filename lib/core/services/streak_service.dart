@@ -41,4 +41,21 @@ class StreakService {
     if (delta == 1) return prevStreak + 1; // consecutive day
     return 1; // gap or clock skew → reset
   }
+
+  /// The streak as it stands at [now], for showing to people.
+  ///
+  /// The stored streak only moves on the next activity, so after a missed day
+  /// it went on reading "2 day streak" (and an educator was told to celebrate
+  /// a run that had ended) until the learner played again, when it "dropped"
+  /// to 1 as if playing had cost them a day. A streak is alive while the last
+  /// activity was today or yesterday; clock skew keeps it rather than wiping
+  /// it.
+  static int liveStreak({
+    required int streak,
+    required DateTime lastActivity,
+    DateTime? now,
+  }) {
+    final delta = dayDelta(lastActivity, now ?? DateTime.now());
+    return delta <= 1 ? streak : 0;
+  }
 }

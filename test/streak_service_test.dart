@@ -117,4 +117,45 @@ void main() {
       );
     });
   });
+
+  // The stored streak only moves on the next activity: after a missed day the
+  // homes went on showing "2 day streak" until the learner played, when it
+  // "dropped" to 1 (seen on the tablet), and educators were told to
+  // celebrate runs that had ended.
+  group('StreakService.liveStreak', () {
+    final last = DateTime(2026, 10, 9, 21, 30);
+
+    test('a streak active today or yesterday is alive', () {
+      for (final now in [
+        DateTime(2026, 10, 9, 23, 59),
+        DateTime(2026, 10, 10, 0, 1),
+        DateTime(2026, 10, 10, 23, 59),
+      ]) {
+        expect(StreakService.liveStreak(streak: 4, lastActivity: last, now: now),
+            4, reason: '$now');
+      }
+    });
+
+    test('a missed day ends it', () {
+      expect(
+        StreakService.liveStreak(
+          streak: 4,
+          lastActivity: last,
+          now: DateTime(2026, 10, 11, 0, 1),
+        ),
+        0,
+      );
+    });
+
+    test('a clock that moved backwards keeps it', () {
+      expect(
+        StreakService.liveStreak(
+          streak: 4,
+          lastActivity: last,
+          now: DateTime(2026, 10, 8),
+        ),
+        4,
+      );
+    });
+  });
 }

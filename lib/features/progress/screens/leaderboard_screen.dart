@@ -632,7 +632,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
       switch (sort) {
         LeaderboardSort.byStars => '⭐ ${entry.totalStars}',
         LeaderboardSort.byWords => '📖 ${entry.wordsLearned}',
-        LeaderboardSort.byStreak => '🔥 ${entry.streakDays}d',
+        LeaderboardSort.byStreak => '🔥 ${entry.liveStreakDays}d',
         LeaderboardSort.byOverall => _t(context).lbPts(entry.rankScore),
       };
 }
@@ -900,7 +900,7 @@ class _LeaderboardTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '⭐ ${entry.totalStars}  ·  📖 ${entry.wordsLearned}  ·  🔥 ${entry.streakDays}d',
+                  '⭐ ${entry.totalStars}  ·  📖 ${entry.wordsLearned}  ·  🔥 ${entry.liveStreakDays}d',
                   style: AppTypography.bodySmall.copyWith(
                     color: HCColor.of(context).textSecondary,
                     fontSize: 11,
@@ -942,7 +942,7 @@ class _LeaderboardTile extends StatelessWidget {
   String _sortStat(BuildContext context) => switch (sortMode) {
         LeaderboardSort.byStars => '${entry.totalStars} ⭐',
         LeaderboardSort.byWords => _t(context).lbWords(entry.wordsLearned),
-        LeaderboardSort.byStreak => _t(context).lbDays(entry.streakDays),
+        LeaderboardSort.byStreak => _t(context).lbDays(entry.liveStreakDays),
         LeaderboardSort.byOverall => _t(context).lbPts(entry.rankScore),
       };
 }

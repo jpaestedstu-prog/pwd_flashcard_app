@@ -15,6 +15,7 @@ import '../../../data/local/hive_service.dart';
 import '../../../data/local/seed_data.dart';
 import '../../../data/local/seed_stories.dart';
 import '../../../data/models/enums.dart';
+import '../../../core/services/streak_service.dart';
 import '../../../data/models/models.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../providers/app_providers.dart';
@@ -1266,6 +1267,14 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
         .where((d) => d.$1.role.isEnrollableLearner && !d.$1.isGuestPlayer)
         .toList();
 
+    final at = now ?? DateTime.now();
+    // The streak as it stands on [at]: 0 after a missed day.
+    int streakOf(LearningProgress prog) => StreakService.liveStreak(
+          streak: prog.streakDays,
+          lastActivity: prog.lastActivityDate,
+          now: at,
+        );
+
     // ─ Ranked view: top 10 by stars.
     final byStars = [...students]
       ..sort((a, b) => b.$2.totalStars.compareTo(a.$2.totalStars));
@@ -1277,7 +1286,7 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
           rank: i + 1,
           name: p.name,
           wordsLearned: prog.wordsLearned,
-          streakDays: prog.streakDays,
+          streakDays: streakOf(prog),
           stars: prog.totalStars,
         ),
       );
@@ -1288,7 +1297,7 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
       ..sort((a, b) => a.$1.name.toLowerCase().compareTo(
             b.$1.name.toLowerCase(),
           ));
-    final cutoff = (now ?? DateTime.now()).subtract(const Duration(hours: 24));
+    final cutoff = at.subtract(const Duration(hours: 24));
     var wordsTotal = 0;
     var starsTotal = 0;
     var activeToday = 0;
@@ -1298,7 +1307,7 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
       wordsTotal += prog.wordsLearned;
       starsTotal += prog.totalStars;
       if (prog.lastActivityDate.isAfter(cutoff)) activeToday++;
-      if (prog.streakDays > bestStreak) bestStreak = prog.streakDays;
+      if (streakOf(prog) > bestStreak) bestStreak = streakOf(prog);
       // Capped so a large class still fits on a TV without shrinking the type
       // past what the back row can read.
       if (classRows.length < 12) {
@@ -1307,7 +1316,7 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
             rank: 0,
             name: p.name,
             wordsLearned: prog.wordsLearned,
-            streakDays: prog.streakDays,
+            streakDays: streakOf(prog),
             stars: prog.totalStars,
           ),
         );

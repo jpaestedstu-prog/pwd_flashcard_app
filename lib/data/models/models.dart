@@ -1,4 +1,5 @@
 import '../../core/accessibility/learner_support.dart';
+import '../../core/services/streak_service.dart';
 import '../../l10n/app_localizations.dart';
 import 'enums.dart';
 
@@ -534,6 +535,12 @@ class LearningProgress {
   /// best. Always at least [streakDays].
   int get effectiveBestStreak =>
       bestStreakDays > streakDays ? bestStreakDays : streakDays;
+
+  /// [streakDays] as it stands today: 0 once a day has been missed. Show this;
+  /// the stored value only catches up on the next activity
+  /// ([StreakService.liveStreak]).
+  int get liveStreakDays =>
+      StreakService.liveStreak(streak: streakDays, lastActivity: lastActivityDate);
 
   /// [gamesPlayed] healed for records written before the field existed. Legacy
   /// rows undercount by however many games fell out of the 20-entry

@@ -225,7 +225,7 @@ class ChildHomeScreen extends ConsumerWidget {
             child: Padding(
               padding: EdgeInsets.fromLTRB(pad, 0, pad, AppSpacing.sm),
               child: _KidStatsStrip(
-                streak: progress.streakDays,
+                streak: progress.liveStreakDays,
                 words: progress.wordsLearned,
                 stars: progress.totalStars,
               ),

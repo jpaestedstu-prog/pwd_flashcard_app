@@ -57,7 +57,7 @@ class ProgressScreen extends ConsumerWidget {
 
     final totalWords = allCards.length;
     final masteredWords = progress.wordsLearned;
-    final streak = progress.streakDays;
+    final streak = progress.liveStreakDays;
     final bestStreak = progress.effectiveBestStreak;
     final totalStars = progress.totalStars;
     final starBalance = progress.starBalance;

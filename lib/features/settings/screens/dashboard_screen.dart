@@ -45,7 +45,7 @@ class DashboardScreen extends ConsumerWidget {
     final masteryPct = totalWords > 0
         ? (masteredWords / totalWords).clamp(0.0, 1.0)
         : 0.0;
-    final streak = progress.streakDays;
+    final streak = progress.liveStreakDays;
     final totalStars = progress.totalStars;
     final dailyStreak = profile != null
         ? DailyChallenge.getStreak(profile.id)

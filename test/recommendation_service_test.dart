@@ -260,14 +260,16 @@ void main() {
   // ─── Streak motivation ─────────────────────────────────────
 
   group('streak recommendations', () {
-    test('suggests keep streak when streak > 0 and last activity ≥ 1 day ago',
+    test('suggests keep streak when the streak is alive but not yet today',
         () {
+      // Yesterday at noon, so the test cannot land two calendar days back
+      // when it runs just after midnight.
+      final today = DateTime.now();
       final snapshot = RecommendationService.generate(
         profileId: 'streaker',
         progress: _makeProgress(
           streakDays: 5,
-          lastActivityDate:
-              DateTime.now().subtract(const Duration(days: 1, hours: 1)),
+          lastActivityDate: DateTime(today.year, today.month, today.day - 1, 12),
         ),
         pathProgress: {},
       );

@@ -68,7 +68,7 @@ class CsvExportService {
     buf.writeln('Total Stars,${progress.totalStars}');
     buf.writeln('Stars Spent,${progress.spentStars}');
     buf.writeln('Star Balance,${progress.starBalance}');
-    buf.writeln('Streak Days,${progress.streakDays}');
+    buf.writeln('Streak Days,${progress.liveStreakDays}');
     buf.writeln(
         'Last Activity,${progress.lastActivityDate.toString().split(' ').first}');
 
