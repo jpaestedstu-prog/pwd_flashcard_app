@@ -21,6 +21,7 @@ import '../../../data/local/hive_service.dart';
 import '../../../data/local/local_repository.dart';
 import '../../../navigation/app_router.dart' show rootNavigatorKey;
 import '../../../widgets/adult_gate_dialog.dart' show requireAdult;
+import '../../../core/accessibility/device_sound.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../widgets/sync_status_widget.dart';
@@ -418,6 +419,33 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                 ),
               ),
+
+              // "Your device sound is off": on by itself for learners who
+              // listen to the words; anyone may switch it either way. Only
+              // while speech is on (with it off there is nothing to miss).
+              if (settings.ttsEnabled)
+                _SettingsTile(
+                  icon: Icons.volume_off_rounded,
+                  title: _t(context).soundOffSetting,
+                  subtitle: settings.soundOffHint == SoundOffHintChoice.auto &&
+                          soundOffHintWanted(profile, settings)
+                      ? _t(context).soundOffSettingAuto
+                      : _t(context).soundOffSettingDesc,
+                  onTap: () => settingsNotifier.update(settings.copyWith(
+                    soundOffHint: soundOffHintWanted(profile, settings)
+                        ? SoundOffHintChoice.off
+                        : SoundOffHintChoice.on,
+                  )),
+                  toggled: soundOffHintWanted(profile, settings),
+                  trailing: Switch.adaptive(
+                    value: soundOffHintWanted(profile, settings),
+                    activeTrackColor: AppColors.primary,
+                    onChanged: (v) => settingsNotifier.update(settings.copyWith(
+                      soundOffHint:
+                          v ? SoundOffHintChoice.on : SoundOffHintChoice.off,
+                    )),
+                  ),
+                ),
 
               // The Voice-Guided Mode screen — its own settings plus a spoken
               // tour of the app — had no entry point anywhere, so the people it

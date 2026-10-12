@@ -108,6 +108,21 @@ enum ScreenOrientationChoice {
       );
 }
 
+/// Whether to say so when the device's sound is off while the app speaks
+/// (`SoundOffHintHost`). [auto]: on for learners who listen to the words —
+/// Visual Impairment, or Voice-Guided Navigation switched on.
+enum SoundOffHintChoice {
+  auto,
+  on,
+  off;
+
+  static SoundOffHintChoice fromName(Object? name) =>
+      SoundOffHintChoice.values.firstWhere(
+        (c) => c.name == name,
+        orElse: () => SoundOffHintChoice.auto,
+      );
+}
+
 // ─── Extension helpers ─────────────────────────────────
 
 extension DisabilityTypeX on DisabilityType {

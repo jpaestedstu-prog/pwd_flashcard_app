@@ -29,6 +29,10 @@ class TtsService {
   /// the highlight moves on.
   static final ValueNotifier<bool> speaking = ValueNotifier(false);
 
+  /// Counts every request to speak, app-wide. The "sound is off" hint checks
+  /// the device's volume on each one, the moment it would matter.
+  static final ValueNotifier<int> requests = ValueNotifier(0);
+
   static void Function()? _completionHandler;
 
   static void _setSpeaking(bool value) {
@@ -70,6 +74,7 @@ class TtsService {
 
   /// Speak text using the currently set language (default English).
   Future<void> speak(String text) async {
+    requests.value++;
     if (!_isInitialized) await init();
     await _stopped();
     await _tts.speak(text);
@@ -110,6 +115,7 @@ class TtsService {
 
   /// Speak text in English (en-US).
   Future<void> speakEnglish(String text) async {
+    requests.value++;
     if (!_isInitialized) await init();
     await _stopped();
     await _useLanguage('en-US');
@@ -118,6 +124,7 @@ class TtsService {
 
   /// Speak text in Filipino (fil-PH).
   Future<void> speakFilipino(String text) async {
+    requests.value++;
     if (!_isInitialized) await init();
     await _stopped();
     await _useLanguage('fil-PH');

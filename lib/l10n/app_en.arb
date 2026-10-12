@@ -1877,6 +1877,14 @@
       }
     }
   },
+  "soundOffTitle": "Your device sound is off",
+  "soundOffBody": "Turn the volume up to hear the words.",
+  "soundOffTurnUp": "Turn sound up",
+  "soundOffOk": "OK",
+  "soundOffDontRemind": "Don’t remind me",
+  "soundOffSetting": "Tell me when the sound is off",
+  "soundOffSettingAuto": "On for this learner, who listens to the words",
+  "soundOffSettingDesc": "A reminder when the device is too quiet to hear the words",
   "changeLabel": "Change",
   "changePinTitle": "Change PIN",
   "setProfilePinTitle": "Set Profile PIN",

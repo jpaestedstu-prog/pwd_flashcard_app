@@ -2873,6 +2873,32 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get soundOffTitle => 'Your device sound is off';
+
+  @override
+  String get soundOffBody => 'Turn the volume up to hear the words.';
+
+  @override
+  String get soundOffTurnUp => 'Turn sound up';
+
+  @override
+  String get soundOffOk => 'OK';
+
+  @override
+  String get soundOffDontRemind => 'Don’t remind me';
+
+  @override
+  String get soundOffSetting => 'Tell me when the sound is off';
+
+  @override
+  String get soundOffSettingAuto =>
+      'On for this learner, who listens to the words';
+
+  @override
+  String get soundOffSettingDesc =>
+      'A reminder when the device is too quiet to hear the words';
+
+  @override
   String get changeLabel => 'Change';
 
   @override

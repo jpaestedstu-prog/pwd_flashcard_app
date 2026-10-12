@@ -428,6 +428,9 @@ class HiveService {
       screenOrientation: ScreenOrientationChoice.fromName(
         _settBox.get(_settKey('screenOrientation', profileId)),
       ),
+      soundOffHint: SoundOffHintChoice.fromName(
+        _settBox.get(_settKey('soundOffHint', profileId)),
+      ),
     );
   }
 
@@ -459,6 +462,7 @@ class HiveService {
     await p('aiCompanionEnabled', settings.aiCompanionEnabled);
     await p('routineEnabled', settings.routineEnabled);
     await p('screenOrientation', settings.screenOrientation.name);
+    await p('soundOffHint', settings.soundOffHint.name);
   }
 
   /// Generic setting getter — read any key from the settings box.

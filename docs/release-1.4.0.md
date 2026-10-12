@@ -41,6 +41,13 @@ Each needs the project owner's go-ahead (see "Waiting for approval").
   `PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY`, so that property stays
   (until targetSdk 37); iPadOS decides the orientation for an app that
   shares the screen.
+- **"Your device sound is off"**: a small note at the top of the screen when
+  the app speaks while the media volume is at zero, for learners who listen
+  to the words (Visual Impairment or Voice-Guided Navigation, by default;
+  **Settings → Tell me when the sound is off** for anyone). It never blocks
+  the screen, goes by itself, offers **Turn sound up** on Android (a third of
+  the way, with the system volume panel), **OK**, or **Don't remind me**, and
+  is announced to screen readers, which speak on their own volume.
 - **Bluetooth game controllers on iPhone and iPad** (Apple's GameController
   framework, same wire format as Android).
 - **Firebase App Check**, compiled in and switched off: it needs paid store

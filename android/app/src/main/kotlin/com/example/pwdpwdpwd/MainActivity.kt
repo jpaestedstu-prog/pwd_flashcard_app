@@ -2,6 +2,7 @@ package com.example.pwdpwdpwd
 
 import android.app.KeyguardManager
 import android.content.Intent
+import android.media.AudioManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -37,6 +38,9 @@ class MainActivity : FlutterActivity() {
 
         /** Mirrors `RoutineNativeAlarms._channel` on the Dart side. */
         private const val ROUTINE_CHANNEL = "flashlearn/routine_alarms"
+
+        /** Mirrors `DeviceSound._channel` on the Dart side. */
+        private const val AUDIO_CHANNEL = "flashlearn/audio"
 
         /**
          * True while FlashLearn is the app in front. [RoutineAlarms] reads it
@@ -213,6 +217,40 @@ class MainActivity : FlutterActivity() {
                             // Already gone (process was reclaimed) — nothing to do.
                         }
                         result.success(true)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+
+        // The media sound the app's speech plays on, for the "your device
+        // sound is off" note — see `DeviceSound` on the Dart side.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, AUDIO_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                val audio = getSystemService(AudioManager::class.java)
+                val stream = AudioManager.STREAM_MUSIC
+                when {
+                    audio == null -> result.success(null)
+                    call.method == "mediaVolume" -> result.success(
+                        mapOf(
+                            "level" to audio.getStreamVolume(stream),
+                            "max" to audio.getStreamMaxVolume(stream),
+                            "muted" to audio.isStreamMute(stream),
+                        ),
+                    )
+                    // Only ever on the learner's tap: a third of the way up,
+                    // with the system's own volume panel showing the change.
+                    call.method == "turnUp" -> try {
+                        if (audio.isStreamMute(stream)) {
+                            audio.adjustStreamVolume(stream, AudioManager.ADJUST_UNMUTE, 0)
+                        }
+                        val target = maxOf(1, audio.getStreamMaxVolume(stream) / 3)
+                        if (audio.getStreamVolume(stream) < target) {
+                            audio.setStreamVolume(stream, target, AudioManager.FLAG_SHOW_UI)
+                        }
+                        result.success(audio.getStreamVolume(stream) > 0)
+                    } catch (e: SecurityException) {
+                        // Do Not Disturb may refuse a volume change.
+                        result.success(false)
                     }
                     else -> result.notImplemented()
                 }

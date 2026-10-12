@@ -2915,6 +2915,32 @@ class AppLocalizationsFil extends AppLocalizations {
   }
 
   @override
+  String get soundOffTitle => 'Naka-off ang tunog ng device mo';
+
+  @override
+  String get soundOffBody => 'Lakasan ang volume para marinig ang mga salita.';
+
+  @override
+  String get soundOffTurnUp => 'Lakasan ang tunog';
+
+  @override
+  String get soundOffOk => 'Sige';
+
+  @override
+  String get soundOffDontRemind => 'Huwag nang ipaalala';
+
+  @override
+  String get soundOffSetting => 'Sabihan ako kapag naka-off ang tunog';
+
+  @override
+  String get soundOffSettingAuto =>
+      'Naka-on para sa mag-aaral na ito, na nakikinig sa mga salita';
+
+  @override
+  String get soundOffSettingDesc =>
+      'Paalala kapag masyadong mahina ang device para marinig ang mga salita';
+
+  @override
   String get changeLabel => 'Baguhin';
 
   @override

@@ -842,6 +842,11 @@ class AppSettings {
   /// for this profile (see `OrientationHold`). Default: follows the device.
   final ScreenOrientationChoice screenOrientation;
 
+  /// Whether to say so when the device's sound is off while the app speaks.
+  /// Default [SoundOffHintChoice.auto]: on for learners who listen to the
+  /// words (see `soundOffHintWanted`).
+  final SoundOffHintChoice soundOffHint;
+
   const AppSettings({
     this.fontScale = 1.0,
     this.highContrastMode = false,
@@ -865,6 +870,7 @@ class AppSettings {
     this.aiCompanionEnabled = true,
     this.routineEnabled = true,
     this.screenOrientation = ScreenOrientationChoice.device,
+    this.soundOffHint = SoundOffHintChoice.auto,
   });
 
   AppSettings copyWith({
@@ -890,6 +896,7 @@ class AppSettings {
     bool? aiCompanionEnabled,
     bool? routineEnabled,
     ScreenOrientationChoice? screenOrientation,
+    SoundOffHintChoice? soundOffHint,
   }) {
     return AppSettings(
       fontScale: fontScale ?? this.fontScale,
@@ -915,6 +922,7 @@ class AppSettings {
       aiCompanionEnabled: aiCompanionEnabled ?? this.aiCompanionEnabled,
       routineEnabled: routineEnabled ?? this.routineEnabled,
       screenOrientation: screenOrientation ?? this.screenOrientation,
+      soundOffHint: soundOffHint ?? this.soundOffHint,
     );
   }
 }

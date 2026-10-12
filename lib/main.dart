@@ -58,6 +58,7 @@ import 'data/models/shop_data.dart';
 import 'navigation/app_router.dart';
 import 'providers/app_providers.dart';
 import 'widgets/connectivity_banner.dart';
+import 'widgets/sound_off_hint.dart';
 import 'widgets/error_boundary.dart';
 import 'core/services/sync_queue/sync_queue_service.dart';
 import 'widgets/sync_status_widget.dart';
@@ -647,7 +648,12 @@ class FlashLearnApp extends ConsumerWidget {
                           child: GamepadHost(
                             child: CompanionHost(
                               child: CastStatusHost(
-                                child: child ?? const SizedBox.shrink(),
+                                // "Your device sound is off", for learners
+                                // who listen to the words: over the screens,
+                                // never over a lock.
+                                child: SoundOffHintHost(
+                                  child: child ?? const SizedBox.shrink(),
+                                ),
                               ),
                             ),
                           ),

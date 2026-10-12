@@ -5091,6 +5091,54 @@ abstract class AppLocalizations {
   /// **'Set screen orientation to {choice}'**
   String setOrientationTo(String choice);
 
+  /// No description provided for @soundOffTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your device sound is off'**
+  String get soundOffTitle;
+
+  /// No description provided for @soundOffBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn the volume up to hear the words.'**
+  String get soundOffBody;
+
+  /// No description provided for @soundOffTurnUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn sound up'**
+  String get soundOffTurnUp;
+
+  /// No description provided for @soundOffOk.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get soundOffOk;
+
+  /// No description provided for @soundOffDontRemind.
+  ///
+  /// In en, this message translates to:
+  /// **'Don’t remind me'**
+  String get soundOffDontRemind;
+
+  /// No description provided for @soundOffSetting.
+  ///
+  /// In en, this message translates to:
+  /// **'Tell me when the sound is off'**
+  String get soundOffSetting;
+
+  /// No description provided for @soundOffSettingAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'On for this learner, who listens to the words'**
+  String get soundOffSettingAuto;
+
+  /// No description provided for @soundOffSettingDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'A reminder when the device is too quiet to hear the words'**
+  String get soundOffSettingDesc;
+
   /// No description provided for @changeLabel.
   ///
   /// In en, this message translates to:
