@@ -278,14 +278,17 @@ service cloud.firestore {
     }
 
     // ─── Achievements (subcollection of profileId) ─────
+    // Read only by the learner's own device: the one reader in every release
+    // is its own restore (and its own delete, which lists before it removes).
+    // Open reads let anyone who had seen a learner's id on a roster list them.
     match /achievements/{profileId}/items/{itemId} {
-      allow read: if signedIn();
+      allow read: if ownsProfile(profileId);
       allow write: if ownsProfile(profileId);
     }
 
     // ─── Shop purchases (subcollection of profileId) ───
     match /shop_purchases/{profileId}/items/{itemId} {
-      allow read: if signedIn();
+      allow read: if ownsProfile(profileId);
       allow write: if ownsProfile(profileId);
     }
 
@@ -364,22 +367,27 @@ service cloud.firestore {
     }
 
     // ─── Classroom membership ──────────────────────────
-    // The teacher of the classroom may add/remove anyone; a profile
-    // owner may add/remove themselves (student-initiated join/leave).
+    // Only the learner's own device may join them to a class (the join-code
+    // flow, the one way every release enrols anyone); the teacher or the
+    // learner may remove the membership. Rules elsewhere take a membership
+    // as proof that a teacher really teaches a learner (renaming them, notes
+    // about them), so a teacher must not be able to file a learner who never
+    // joined: `{classroom_id}_{profile_id}`, written by that profile's owner,
+    // and the two ids never change afterwards.
     match /classroom_members/{memberId} {
       allow get: if signedIn();
       // One class's roster (whoever knows the class), or the caller's own
       // memberships.
       allow list: if scopedTo('classroom_id')
         || ownsProfile(resource.data.profile_id);
-      allow create: if signedIn() && (
-        ownsClassroomTeacher(request.resource.data.classroom_id)
-        || ownsProfile(request.resource.data.profile_id)
-      );
+      allow create: if signedIn()
+        && ownsProfile(request.resource.data.profile_id)
+        && memberId == request.resource.data.classroom_id + '_' + request.resource.data.profile_id;
       allow update: if signedIn() && (
         ownsClassroomTeacher(resource.data.classroom_id)
         || ownsProfile(resource.data.profile_id)
-      );
+      ) && request.resource.data.classroom_id == resource.data.classroom_id
+        && request.resource.data.profile_id == resource.data.profile_id;
       allow delete: if signedIn() && (
         ownsClassroomTeacher(resource.data.classroom_id)
         || ownsProfile(resource.data.profile_id)
@@ -420,9 +428,12 @@ service cloud.firestore {
 
     // ─── Parent-Teacher Notes ──────────────────────────
     // Notes about a student, written by either parent or teacher.
-    // Reads: any signed-in user (until parent↔student linkage exists,
-    //   we can't tighten further without locking out educators who
-    //   should see notes about students in their classroom).
+    // Reads: any signed-in user, for now. Every release before 1.4.0 reads
+    //   a learner's notes with nothing that says who the reader is to the
+    //   learner, so a tighter rule would cut those teachers and parents off.
+    //   From 1.4.0 the app files a `note_readers` doc first (below); once
+    //   every educator's device does, the read and create here change to
+    //   the rule in tool/notes_rules_phase2.rules (docs/security.md).
     // Create: must stamp the writer's uid as author_uid (no impersonation).
     // Update: only the original author may edit.
     // Delete: only the original author may delete.
@@ -431,6 +442,37 @@ service cloud.firestore {
       allow create: if signedIn()
         && request.resource.data.author_uid == request.auth.uid;
       allow update, delete: if isOwner(resource.data.author_uid);
+    }
+
+    // ─── Who reads a learner's parent-teacher notes ────
+    // `{auth uid}_{learner profile id}`: the teacher or parent signed in on
+    // this device is one of the learner's educators, through the class or
+    // home group named here. Only the learner's own device can make the
+    // membership that proves it, and the educator's device files this doc
+    // itself (1.4.0 on). Phase 2 of the notes rule re-checks the membership
+    // on every read, so a learner who leaves the class takes the access
+    // with them.
+    match /note_readers/{readerId} {
+      allow get: if signedIn() && readerId.split('_')[0] == request.auth.uid;
+      allow create, update: if signedIn()
+        && request.resource.data.keys().hasOnly(['profile_id', 'classroom_id', 'home_group_id', 'updated_at'])
+        && request.resource.data.profile_id is string
+        && readerId == request.auth.uid + '_' + request.resource.data.profile_id
+        && (teachesThroughClass(request.resource.data)
+          || parentsThroughGroup(request.resource.data));
+      allow delete: if signedIn() && readerId.split('_')[0] == request.auth.uid;
+
+      function teachesThroughClass(d) {
+        return d.get('classroom_id', null) is string
+          && exists(/databases/$(database)/documents/classroom_members/$(d.classroom_id + '_' + d.profile_id))
+          && ownsClassroomTeacher(d.classroom_id);
+      }
+
+      function parentsThroughGroup(d) {
+        return d.get('home_group_id', null) is string
+          && exists(/databases/$(database)/documents/home_group_members/$(d.home_group_id + '_' + d.profile_id))
+          && ownsHomeGroupOwner(d.home_group_id);
+      }
     }
 
     // ─── Assessments: templates, assignments, results ──
@@ -512,20 +554,23 @@ service cloud.firestore {
     }
 
     // ─── Home group membership ────────────────────────
-    // The owning parent may add/remove anyone; a profile owner may
-    // add/remove themselves (child-initiated join/leave).
+    // As classrooms: only the child's own device joins them (the join-code
+    // flow); the parent or the child may remove it. A membership is what
+    // proves a parent is the child's parent when they approve a friend
+    // request, so a stranger must not be able to file someone else's child
+    // under a group of their own.
     match /home_group_members/{memberId} {
       allow get: if signedIn();
       allow list: if scopedTo('home_group_id')
         || ownsProfile(resource.data.profile_id);
-      allow create: if signedIn() && (
-        ownsHomeGroupOwner(request.resource.data.home_group_id)
-        || ownsProfile(request.resource.data.profile_id)
-      );
+      allow create: if signedIn()
+        && ownsProfile(request.resource.data.profile_id)
+        && memberId == request.resource.data.home_group_id + '_' + request.resource.data.profile_id;
       allow update: if signedIn() && (
         ownsHomeGroupOwner(resource.data.home_group_id)
         || ownsProfile(resource.data.profile_id)
-      );
+      ) && request.resource.data.home_group_id == resource.data.home_group_id
+        && request.resource.data.profile_id == resource.data.profile_id;
       allow delete: if signedIn() && (
         ownsHomeGroupOwner(resource.data.home_group_id)
         || ownsProfile(resource.data.profile_id)
@@ -806,10 +851,17 @@ service cloud.firestore {
         || ownsProfile(resource.data.to_profile_id)
         || ownsHomeGroupOwner(resource.data.from_home_group_id)
         || ownsHomeGroupOwner(resource.data.to_home_group_id);
+      // A new request carries no parent's yes and no recipient's group: the
+      // recipient stamps their own group when they answer, and only that
+      // group's owner may approve. A sender who could pre-fill them could
+      // "approve" a child's side themselves.
       allow create: if signedIn()
         && request.resource.data.from_owner_uid == request.auth.uid
         && ownsProfile(request.resource.data.from_profile_id)
         && request.resource.data.status == 'pending'
+        && request.resource.data.get('from_approved', false) == false
+        && request.resource.data.get('to_approved', false) == false
+        && request.resource.data.get('to_home_group_id', null) == null
         && !hasBlocked(request.resource.data.to_profile_id,
                        request.resource.data.from_profile_id);
       allow update: if signedIn() && (

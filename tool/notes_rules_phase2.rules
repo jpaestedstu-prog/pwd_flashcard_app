@@ -1,0 +1,33 @@
+    // ─── Parent-Teacher Notes (phase 2) ────────────────
+    // Replaces the notes block in firestore.rules once every teacher's and
+    // parent's device runs 1.4.0 or later (each files its `note_readers`
+    // doc before it reads). Not deployed yet: see docs/security.md,
+    // "Parent-teacher notes". Tested by tool/trust_rules_emulator_test.py.
+    //
+    // Read: the learner's own device; an educator whose `note_readers` doc
+    //   still stands on a real membership (re-checked every time, so a
+    //   learner who leaves the class takes the access with them); or the
+    //   note's author (the deleted-learner cleanup lists its own notes with
+    //   an author filter).
+    // Create: the same people, stamping their own uid as author_uid.
+    // Update / delete: only the author.
+    match /parent_teacher_notes/{studentId}/notes/{noteId} {
+      allow read: if ownsProfile(studentId)
+        || readsNotesOf(studentId)
+        || isOwner(resource.data.author_uid);
+      allow create: if signedIn()
+        && request.resource.data.author_uid == request.auth.uid
+        && (ownsProfile(studentId) || readsNotesOf(studentId));
+      allow update, delete: if isOwner(resource.data.author_uid);
+
+      function readsNotesOf(studentId) {
+        let reader = /databases/$(database)/documents/note_readers/$(request.auth.uid + '_' + studentId);
+        return signedIn() && exists(reader) && (
+          (get(reader).data.get('classroom_id', null) is string
+            && exists(/databases/$(database)/documents/classroom_members/$(get(reader).data.classroom_id + '_' + studentId))
+            && ownsClassroomTeacher(get(reader).data.classroom_id))
+          || (get(reader).data.get('home_group_id', null) is string
+            && exists(/databases/$(database)/documents/home_group_members/$(get(reader).data.home_group_id + '_' + studentId))
+            && ownsHomeGroupOwner(get(reader).data.home_group_id)));
+      }
+    }
