@@ -43,3 +43,25 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Signing keys and their passwords never belong in the repo, anywhere in it.
+# They live in ~/.flashlearn-signing (see docs/signing.md).
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.mobileprovision
+key.properties
+*signing*.properties
+play-upload*
+.env
+.env.*
+!.env.example
+
+# Learner data copied off a tablet while debugging (Hive boxes)
+*.hive
+*.hivec
+
+# Gradle run from inside android/ writes its reports here
+/android/build/
