@@ -3,7 +3,7 @@
   "latest": {
     "version": "1.4.0",
     "build": 13,
-    "date": "2026-10-12",
+    "date": "2026-10-13",
     "page": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/download.html",
     "notes_en": "The app turns with the device (or stays one way per profile), Word → Sign works again, and any online profile can delete itself with its online data.",
     "notes_fil": "Umiikot na ang app kasabay ng device (o nananatili sa isang direksyon bawat profile), gumagana na muli ang Word → Sign, at maaari nang burahin ng anumang profile online ang sarili nito kasama ang datos nito online.",
@@ -11,17 +11,17 @@
       "arm64": {
         "url": "https://github.com/jpaestedstu-prog/pwd_flashcard_app/releases/download/v1.4.0/FlashLearnPWD-v1.4.0-arm64.apk",
         "bytes": 76806346,
-        "sha256": "4ca9e7c0a156e0885ec9a605659daaf4d911504780805fd0b978861d4a47a23c"
+        "sha256": "dceb8be17f81d2c9888b7d249f803a216327eeb99936da7ab7c8292c637cfbac"
       },
       "arm32": {
         "url": "https://github.com/jpaestedstu-prog/pwd_flashcard_app/releases/download/v1.4.0/FlashLearnPWD-v1.4.0-arm32.apk",
-        "bytes": 69071678,
-        "sha256": "69327f0dd9b7266d1b0e1d2b608e0039402b23f5b5bf52a63f9703f82b279bc4"
+        "bytes": 69088062,
+        "sha256": "1ab1c6d57e01eb821c1c4cfe79634067377b796c8ba2a1fb5876c8b195e6e359"
       },
       "universal": {
         "url": "https://github.com/jpaestedstu-prog/pwd_flashcard_app/releases/download/v1.4.0/FlashLearnPWD-v1.4.0-universal.apk",
-        "bytes": 179240420,
-        "sha256": "3692e106b7ac8c5037ab7742dc8b0851c3154e57f6a5cb29a10ff6e3e5c59a8b"
+        "bytes": 179256804,
+        "sha256": "da298e8313c125dfc6784f190ae717a06014504b4fbf50542750784a3f1775f3"
       }
     }
   }

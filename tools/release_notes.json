@@ -23,6 +23,8 @@
         "Tests and assignments appear only when they come from the learner's own teacher or parent",
         "Stars, words learned and Star Shop spending reach the class’s online copy straight away",
         "Date pickers fit a phone held sideways, even straight after typing a name",
+        "Offline, a word that has a sign says the sign needs the internet the first time, instead of “Sign coming soon”",
+        "“Reach …% mastery” goals count the words actually learned in the category",
         "Settings → Data → Delete this profile: any profile saved online deletes itself and its online data (a learner’s needs a grown-up)",
         "A deletion made offline is queued and finished the next time the tablet connects",
         "Settings → About shows the installed version and opens the privacy page",
