@@ -7,6 +7,14 @@ this part. This guide covers how to record them so they match the existing
 clips and work on every tablet. Publishing them afterwards takes about ten
 minutes with the free tools in [`tools/README.md`](../tools/README.md).
 
+> **On hold (12 October 2026).** The project owner keeps the 33 words as
+> placeholders until they say otherwise: nothing is to be recorded, generated,
+> downloaded or replaced for them meanwhile. The app handles them gracefully:
+> the word, picture and audio all work, the sign shows "Sign coming soon", and
+> the offline sign packs offer only words that have a sign. The test
+> [`fsl_placeholders_test.dart`](../test/fsl_placeholders_test.dart) keeps this
+> list and the app's unsigned words identical, so neither changes silently.
+
 ## Which words
 
 The list is [`fsl_recording_checklist.csv`](fsl_recording_checklist.csv)

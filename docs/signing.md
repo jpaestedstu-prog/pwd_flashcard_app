@@ -45,9 +45,11 @@ password were deleted.
 
 This key cannot be the Play upload key: its certificate still carries the
 debug keystore's name, `CN=Android Debug`, and Play refuses uploads "signed in
-debug mode". Play builds use a separate upload key through
-`FLASHLEARN_SIGNING_PROPERTIES`; the steps are in
-[store/README.md](store/README.md) ("Signing"). The website APKs keep this key.
+debug mode". Since 12 October 2026 a separate **Play upload key** sits beside
+it (`play-upload.p12` and `play-upload.properties`, backed up with this one),
+and every Play build (`--dart-define=FLASHLEARN_DISTRIBUTION=play`) is signed
+with it automatically; details in [store/README.md](store/README.md)
+("Signing"). The website APKs keep this key.
 
 ## Another PC
 
