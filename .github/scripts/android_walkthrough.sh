@@ -28,6 +28,13 @@ adb -s "$serial" shell settings put system screen_off_timeout 2147483647 || true
 { adb -s "$serial" shell wm size; adb -s "$serial" shell wm density; } | tee logs/display.txt
 
 adb -s "$serial" logcat -c || true
+
+# The device checks turn the media sound up with the "sound is off" note's
+# own button, so it starts all the way down (volume-down keys: the media
+# stream when nothing plays).
+if [ "$device" = "true" ]; then
+  for _ in $(seq 1 16); do adb -s "$serial" shell input keyevent 25 || true; done
+fi
 adb -s "$serial" logcat -v time > logs/logcat.txt 2>&1 &
 logcat_pid=$!
 

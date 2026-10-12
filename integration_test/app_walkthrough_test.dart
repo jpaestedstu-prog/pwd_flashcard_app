@@ -40,6 +40,7 @@ import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart'
     show InputImage;
 import 'package:integration_test/integration_test.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:pwdpwdpwd/core/accessibility/device_sound.dart';
 import 'package:pwdpwdpwd/core/accessibility/stt_service.dart';
 import 'package:pwdpwdpwd/core/accessibility/tts_service.dart';
 import 'package:pwdpwdpwd/core/utils/error_handler.dart';
@@ -501,6 +502,21 @@ class _Walk {
   /// callback, so nobody has to listen. The app's own engine instance is
   /// used: a second one would take over its callbacks.
   Future<void> _checkVoice(ProviderContainer container) async {
+    // The "sound is off" note reads the media volume natively (MainActivity,
+    // AppDelegate). The Android runner mutes it first, so the note's own
+    // "Turn sound up" is checked too; iOS can only read it.
+    final soundOff = await DeviceSound.isOff();
+    // ignore: avoid_print
+    print('WALK sound: media ${soundOff == null ? 'volume unreadable' : soundOff ? 'off' : 'on'}');
+    if (soundOff == null) failures.add('Sound: the media volume could not be read');
+    if (Platform.isAndroid && soundOff == true) {
+      final up = await DeviceSound.turnUp();
+      final fixed = up && await DeviceSound.isOff() == false;
+      // ignore: avoid_print
+      print('WALK sound: turn up ${fixed ? 'worked' : 'FAILED'}');
+      if (!fixed) failures.add('Sound: "Turn sound up" did not turn it up');
+    }
+
     var spoke = TtsService.speaking.value;
     void heardStart() {
       if (TtsService.speaking.value) spoke = true;
