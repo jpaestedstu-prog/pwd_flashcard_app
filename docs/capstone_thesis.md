@@ -25,6 +25,11 @@
 > counts, execution times, static-analysis results, feature inventories, and the
 > on-device behavioural verifications in Chapter 5 — is **measured and
 > reproducible** from the repository as of 31 August 2026.
+>
+> **Updated 12 October 2026 for version 1.4.0:** the platform and orientation
+> statements (Sections 1.3, 1.4.2, 3.4.4 and the portability discussion) now
+> describe the app turning with the device and the iPhone/iPad build, which is
+> tested on simulators only. The measured figures above are unchanged.
 
 ---
 
@@ -678,10 +683,13 @@ Specifically, the study aimed to:
 #### 1.4.1 Scope
 
 **Platform and delivery.** The system is a native Android application built with
-the Flutter framework, distributed as a single installable APK package. It
-targets Android 10 (API level 29) as its minimum supported version and Android 16
-(API level 36) as its target version. It is locked to portrait orientation on all
-device classes, a deliberate decision documented in Section 3.4.4.
+the Flutter framework, distributed as installable APK packages from the project
+website. It targets Android 10 (API level 29) as its minimum supported version and
+Android 16 (API level 36) as its target version. Since version 1.4.0 it works
+upright and sideways, in split screen and in resizable windows, and each profile
+may keep the screen in one orientation (Section 3.4.4). The same codebase also
+builds for iPhone and iPad and for the Google Play Store; those versions pass
+automated tests on simulators and emulators but have not been published.
 
 **Vocabulary content.** The application ships with 177 bilingual English–Filipino
 flashcards distributed across 13 thematic categories, as shown in Table 1. Each
@@ -753,10 +761,13 @@ vocabulary measure.
 
 The following limitations bound the claims this study is entitled to make.
 
-1. **Android only.** Although the Flutter framework is cross-platform and the
-   codebase contains iOS, web, Windows, macOS, and Linux target directories, the
-   system was developed, tested, and evaluated exclusively on Android. No claim
-   is made regarding its behaviour on other platforms.
+1. **Android first.** The system was developed, tested, and evaluated on Android
+   devices. An iPhone and iPad version is built from the same code and is checked
+   by automated walkthroughs on iOS simulators, but it has not been run on a
+   physical Apple device or with learners, and it is not published. No claim is
+   made regarding its behaviour on real Apple hardware (camera-based head-pose
+   control, game controllers, speech) or on the web, Windows, macOS, and Linux
+   targets the codebase also contains.
 
 2. **Vocabulary domain, not general literacy.** The system teaches
    single-word vocabulary and short example sentences. It is not a reading
@@ -1968,8 +1979,8 @@ classroom — mid-range, not flagship.
 
 A secondary test device, a Xiaomi smartphone (model 2410CRP4CG) running Android
 16 at 2136 × 3200 physical pixels, was used to verify behaviour on a
-high-density phone form factor and to confirm that the portrait-locked layout
-holds on a substantially narrower aspect ratio.
+high-density phone form factor and to confirm that the layout holds on a
+substantially narrower aspect ratio.
 
 Small-screen behaviour was additionally verified by driving the tablet's display
 subsystem to a reduced logical resolution of 630 × 1120 pixels — approximately
@@ -1992,8 +2003,9 @@ The system imposes no hardware requirement on the deploying institution beyond a
 Android device meeting the minimum specification in Table 5. No server, no network
 appliance, no interactive whiteboard, and no dedicated assistive peripheral is
 required. Two optional peripherals are supported where available: a Bluetooth
-gamepad conforming to the standard Android game-controller profile, and any
-device on the local network with a web browser for the TV-cast display function.
+gamepad conforming to the standard Android game-controller profile (on iPhone and
+iPad, any controller Apple's game-controller framework supports), and any device
+on the local network with a web browser for the TV-cast display function.
 
 ---
 
@@ -2108,13 +2120,16 @@ uncategorised list.
 
 #### 3.4.4 Notable Implementation Decisions
 
-**Portrait-only orientation.** The application is locked to portrait on every
-device class, enforced at three layers: the Android manifest, the Flutter
-application root, and an explicit large-screen opt-out property required by
-Android 16. Landscape would double the layout surface requiring accessibility
-verification for no pedagogical benefit, and a one-handed portrait grip is the
-posture most compatible with a learner using a device propped on a stand or held
-by a caregiver.
+**Orientation.** Until version 1.3 the application was locked to portrait on
+every device class. Version 1.4.0 follows the device instead, upright and
+sideways, in split screen and in resizable windows, and each profile may choose
+in Settings to keep the screen upright or sideways. Three things changed the
+decision: a tablet propped on a stand in landscape is a common classroom posture;
+Android 16 no longer honours an app's orientation lock on large screens for apps
+that target it; and every screen could then be verified in both orientations by
+the automated walkthroughs. While head-pose control has the camera on, the
+screen is held in its current orientation so that the learner's frame of
+reference does not turn mid-use.
 
 **Answer-safe imagery.** Flashcard illustrations are suppressed on quiz surfaces
 where the picture would reveal the answer. This is implemented as an explicit
@@ -4524,6 +4539,12 @@ difference is produced by parameterised tests that iterate a body across a matri
 of inputs — most notably the device-size × font-scale layout matrices, in which one
 declared test executes once per cell.
 
+These figures describe the evaluation build. The suite kept growing with each
+later version: version 1.4.0 (October 2026) runs more than 5,200 automated tests,
+all passing, and every change is also checked by automated walkthroughs on Android
+phone and tablet emulators and on iPhone and iPad simulators, upright and
+sideways.
+
 #### 5.3.2 Test Coverage by Functional Area
 
 **Table 28. Automated Test Coverage by Functional Area**
@@ -4841,9 +4862,9 @@ maintainability and reliability indicators that do not depend on evaluator
 opinion.
 
 *Portability* ranks lowest. This is the expected and correct result: the system
-was developed, tested, and evaluated on Android only, and although the Flutter
-codebase carries target directories for five further platforms, no claim is made
-regarding them. A low relative portability rating is an accurate reflection of the
+was developed, tested, and evaluated on Android; an iPhone and iPad build exists
+and passes automated simulator walkthroughs, but no claim is made about real Apple
+devices or the codebase's other platform targets. A low relative portability rating is an accurate reflection of the
 delivered artefact, not a defect in it.
 
 *Security* ranks second-lowest, which is also interpretable. The system implements
