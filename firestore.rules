@@ -146,6 +146,48 @@ service cloud.firestore {
         || ownsHomeGroupOwner(sessionKey);
     }
 
+    // The teacher of the class the learner's own profile names, while they
+    // are still a member: proof without a link. Only the learner's device
+    // writes its `classroom_id`, so it cannot be pointed at a stranger's
+    // class. Lets a teacher on an app from before 1.4.0 (which files no
+    // links) keep guiding a student who joins after the 13 October backfill.
+    function teachesThroughProfile(learnerId) {
+      let profile = /databases/$(database)/documents/profiles/$(learnerId);
+      return exists(profile)
+        && get(profile).data.get('classroom_id', null) is string
+        && exists(/databases/$(database)/documents/classroom_members/$(get(profile).data.classroom_id + '_' + learnerId))
+        && ownsClassroomTeacher(get(profile).data.classroom_id);
+    }
+
+    // This device is one of [learnerId]'s educators. It holds the link
+    // `note_readers/{uid}_{learner}`, naming a class or family group it owns,
+    // and the learner is still a member of that group. The app files the
+    // link for every learner on a teacher's or parent's roster; a one-off
+    // backfill filed it for every relationship that existed on 13 October
+    // 2026. The membership is re-checked every time, so a learner who leaves
+    // takes the access with them, and only the learner's own device can make
+    // a membership, so the link cannot be forged.
+    function educatesLearner(learnerId) {
+      let link = /databases/$(database)/documents/note_readers/$(request.auth.uid + '_' + learnerId);
+      return signedIn() && ((exists(link) && (
+        (get(link).data.get('classroom_id', null) is string
+          && exists(/databases/$(database)/documents/classroom_members/$(get(link).data.classroom_id + '_' + learnerId))
+          && ownsClassroomTeacher(get(link).data.classroom_id))
+        || (get(link).data.get('home_group_id', null) is string
+          && exists(/databases/$(database)/documents/home_group_members/$(get(link).data.home_group_id + '_' + learnerId))
+          && ownsHomeGroupOwner(get(link).data.home_group_id))))
+        || teachesThroughProfile(learnerId));
+    }
+
+    // Who may steer a learner: their own device (a shared tablet, a Player's
+    // own routine) or one of their educators. It guards the notes about a
+    // learner and everything an adult sets for them: time limits, alarms,
+    // routines, routine actions and unlocks. Before 2026-10-13 any device
+    // that owned *some* profile could set those for any child.
+    function mayGuide(learnerId) {
+      return ownsProfile(learnerId) || educatesLearner(learnerId);
+    }
+
     // ─── Profiles ──────────────────────────────────────
     // A profile is read by id (a teacher's roster, a parent's dashboard, a
     // friend's name, the recovery flow). A list is limited to the caller's
@@ -427,31 +469,31 @@ service cloud.firestore {
     }
 
     // ─── Parent-Teacher Notes ──────────────────────────
-    // Notes about a student, written by either parent or teacher.
-    // Reads: any signed-in user, for now. Every release before 1.4.0 reads
-    //   a learner's notes with nothing that says who the reader is to the
-    //   learner, so a tighter rule would cut those teachers and parents off.
-    //   From 1.4.0 the app files a `note_readers` doc first (below); once
-    //   every educator's device does, the read and create here change to
-    //   the rule in tool/notes_rules_phase2.rules (docs/security.md).
-    // Create: must stamp the writer's uid as author_uid (no impersonation).
-    // Update: only the original author may edit.
-    // Delete: only the original author may delete.
+    // Notes about a learner, written by their teacher or parent.
+    // Read: the learner's own device or one of their educators
+    //   ([mayGuide]); the author also lists their own notes with an author
+    //   filter (the deleted-learner cleanup). Until 2026-10-13 any signed-in
+    //   user could read, and write, the notes about any learner whose id
+    //   they knew.
+    // Create: the same people, stamping their own uid as author_uid.
+    // Update / delete: only the original author.
     match /parent_teacher_notes/{studentId}/notes/{noteId} {
-      allow read: if signedIn();
+      allow read: if mayGuide(studentId)
+        || isOwner(resource.data.author_uid);
       allow create: if signedIn()
-        && request.resource.data.author_uid == request.auth.uid;
+        && request.resource.data.author_uid == request.auth.uid
+        && mayGuide(studentId);
       allow update, delete: if isOwner(resource.data.author_uid);
     }
 
-    // ─── Who reads a learner's parent-teacher notes ────
+    // ─── Educator links ───────────────────────────────
     // `{auth uid}_{learner profile id}`: the teacher or parent signed in on
     // this device is one of the learner's educators, through the class or
-    // home group named here. Only the learner's own device can make the
-    // membership that proves it, and the educator's device files this doc
-    // itself (1.4.0 on). Phase 2 of the notes rule re-checks the membership
-    // on every read, so a learner who leaves the class takes the access
-    // with them.
+    // home group named here ([educatesLearner]). The collection is named for
+    // its first use, the notes; it now also guards time limits, alarms,
+    // routines and unlocks. Only the learner's own device can make the
+    // membership that proves it; the educator's device files this doc
+    // itself, and the rules re-check the membership on every use.
     match /note_readers/{readerId} {
       allow get: if signedIn() && readerId.split('_')[0] == request.auth.uid;
       allow create, update: if signedIn()
@@ -632,9 +674,13 @@ service cloud.firestore {
     match /child_time_limits/{childProfileId} {
       allow get: if signedIn();
       allow list: if scopedTo('setter_profile_id');
+      // Only the child's own device or one of their educators: anyone who
+      // owned *some* profile used to be able to set (or overwrite) any
+      // child's limit and lock them out.
       allow create, update: if signedIn()
         && request.resource.data.owner_uid == request.auth.uid
-        && ownsProfile(request.resource.data.setter_profile_id);
+        && ownsProfile(request.resource.data.setter_profile_id)
+        && mayGuide(childProfileId);
       allow delete: if signedIn()
         && ownsProfile(resource.data.setter_profile_id);
     }
@@ -645,9 +691,19 @@ service cloud.firestore {
       allow get: if signedIn();
       allow list: if scopedTo('child_profile_id')
         || scopedTo('setter_profile_id');
-      allow create, update: if signedIn()
+      // Only for a child the writer may guide (their own device or one of
+      // their educators), and an existing one stays about the same child:
+      // anyone who owned *some* profile used to be able to send any child
+      // an alarm or routine with their own words, or lock them out.
+      allow create: if signedIn()
         && request.resource.data.owner_uid == request.auth.uid
-        && ownsProfile(request.resource.data.setter_profile_id);
+        && ownsProfile(request.resource.data.setter_profile_id)
+        && mayGuide(request.resource.data.child_profile_id);
+      allow update: if signedIn()
+        && request.resource.data.owner_uid == request.auth.uid
+        && ownsProfile(request.resource.data.setter_profile_id)
+        && request.resource.data.child_profile_id == resource.data.child_profile_id
+        && mayGuide(request.resource.data.child_profile_id);
       allow delete: if signedIn()
         && ownsProfile(resource.data.setter_profile_id);
     }
@@ -662,9 +718,19 @@ service cloud.firestore {
       allow get: if signedIn();
       allow list: if scopedTo('child_profile_id')
         || scopedTo('setter_profile_id');
-      allow create, update: if signedIn()
+      // Only for a child the writer may guide (their own device or one of
+      // their educators), and an existing one stays about the same child:
+      // anyone who owned *some* profile used to be able to send any child
+      // an alarm or routine with their own words, or lock them out.
+      allow create: if signedIn()
         && request.resource.data.owner_uid == request.auth.uid
-        && ownsProfile(request.resource.data.setter_profile_id);
+        && ownsProfile(request.resource.data.setter_profile_id)
+        && mayGuide(request.resource.data.child_profile_id);
+      allow update: if signedIn()
+        && request.resource.data.owner_uid == request.auth.uid
+        && ownsProfile(request.resource.data.setter_profile_id)
+        && request.resource.data.child_profile_id == resource.data.child_profile_id
+        && mayGuide(request.resource.data.child_profile_id);
       allow delete: if signedIn()
         && ownsProfile(resource.data.setter_profile_id);
     }
@@ -699,9 +765,19 @@ service cloud.firestore {
       allow get: if signedIn();
       allow list: if scopedTo('child_profile_id')
         || scopedTo('setter_profile_id');
-      allow create, update: if signedIn()
+      // Only for a child the writer may guide (their own device or one of
+      // their educators), and an existing one stays about the same child:
+      // anyone who owned *some* profile used to be able to send any child
+      // an alarm or routine with their own words, or lock them out.
+      allow create: if signedIn()
         && request.resource.data.owner_uid == request.auth.uid
-        && ownsProfile(request.resource.data.setter_profile_id);
+        && ownsProfile(request.resource.data.setter_profile_id)
+        && mayGuide(request.resource.data.child_profile_id);
+      allow update: if signedIn()
+        && request.resource.data.owner_uid == request.auth.uid
+        && ownsProfile(request.resource.data.setter_profile_id)
+        && request.resource.data.child_profile_id == resource.data.child_profile_id
+        && mayGuide(request.resource.data.child_profile_id);
       allow delete: if signedIn()
         && ownsProfile(resource.data.setter_profile_id);
     }
@@ -714,9 +790,13 @@ service cloud.firestore {
     match /child_unlock_overrides/{childProfileId} {
       allow get: if signedIn();
       allow list: if scopedTo('setter_profile_id');
+      // Only the child's own device or one of their educators: anyone who
+      // owned *some* profile used to be able to set (or overwrite) any
+      // child's limit and lock them out.
       allow create, update: if signedIn()
         && request.resource.data.owner_uid == request.auth.uid
-        && ownsProfile(request.resource.data.setter_profile_id);
+        && ownsProfile(request.resource.data.setter_profile_id)
+        && mayGuide(childProfileId);
       allow delete: if signedIn()
         && ownsProfile(resource.data.setter_profile_id);
     }

@@ -166,6 +166,8 @@ def seed():
     put("shared_media/sm1", {"owner_profile_id": "pS1", "owner_uid": "uS1", "size": 10, "chunk_count": 1})
     put("shared_media/sm1/chunks/0", {"n": 0})
     put("parent_teacher_notes/pS1/notes/n1", {"author_uid": "uT", "text": "Doing well"})
+    # The teacher's educator link (the app, or the 2026-10-13 backfill, files it).
+    put("note_readers/uT_pS1", {"profile_id": "pS1", "classroom_id": "c1"})
 
 
 def main():
@@ -251,6 +253,7 @@ def main():
     allowed("teacher reads its pieces", get("uT", "shared_media/sm1/chunks/0"))
     allowed("my files (sweep / cascade)", query("uS1", "shared_media", ("owner_profile_id", "EQUAL", "pS1")))
     allowed("notes about a student", subquery("uT", "parent_teacher_notes/pS1", "notes"))
+    denied("notes about someone else's student", subquery("uX", "parent_teacher_notes/pS1", "notes"))
 
     # ── what a copy of the app must no longer do ──
     for coll in ["profiles", "progress", "custom_cards", "session_logs", "shop_equipped", "app_state",

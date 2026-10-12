@@ -7,22 +7,26 @@ Never touches the real project (a `demo-` project on 127.0.0.1:8080, seeded
 with the emulator's admin token; each user is an unsigned emulator token,
 like an anonymous sign-in).
 
-What it pins (2026-10-12). The rules take a class or home-group membership
-as proof that someone is a learner's teacher or parent: to rename the
-learner, to approve a child's friend request, and (phase 2) to read the
-notes about them. Before, a group's owner could file ANY learner in their
-own group, so a stranger could:
+What it pins (2026-10-12/13). The rules take a class or home-group
+membership as proof that someone is a learner's teacher or parent: to rename
+the learner, to approve a child's friend request, and (through an educator
+link, `note_readers`) to read the notes about them and to set their time
+limits, alarms, routines and unlocks. Before, a group's owner could file ANY
+learner in their own group, and anyone who owned some profile could set any
+child's limits, so a stranger could:
   * make themselves "the parent" of someone else's child and approve a
     friend request with that child, or simply send one already approved;
-  * rename someone else's learner through a class of their own.
+  * rename someone else's learner through a class of their own;
+  * overwrite a child's time limit and lock them out, or send them alarms
+    and routines with words of their own;
+  * read, and write, the notes about any learner.
 Also: a learner's achievements and shop purchases were readable by anyone
-who knew the learner's id. And the notes about a learner are prepared for
-phase 2 (tool/notes_rules_phase2.rules), tested here before anyone deploys it.
+who knew the learner's id.
 
 Every check is something a released app does (must stay allowed) or an
 attack (must be refused).
 """
-import base64, json, os, re, sys, time, urllib.error, urllib.request
+import base64, json, os, sys, time, urllib.error, urllib.request
 from pathlib import Path
 
 PROJECT = "demo-flashlearn"
@@ -30,7 +34,6 @@ ROOT = f"projects/{PROJECT}/databases/(default)/documents"
 BASE = f"http://127.0.0.1:8080/v1/{ROOT}"
 TOOL = Path(__file__).resolve().parent
 RULES = Path(os.environ.get("FLASHLEARN_RULES_FILE") or TOOL.parent / "firestore.rules")
-PHASE2 = TOOL / "notes_rules_phase2.rules"
 sys.stdout.reconfigure(encoding="utf-8")
 
 
@@ -108,16 +111,8 @@ def wipe():
     assert st == 200, st
 
 
-def rules_text(phase2=False):
-    text = RULES.read_text(encoding="utf-8").replace("\r\n", "\n")
-    if not phase2:
-        return text
-    block = re.compile(r"    match /parent_teacher_notes/\{studentId\}/notes/\{noteId\} \{\n.*?\n    \}\n",
-                       re.S)
-    assert len(block.findall(text)) == 1, "notes block not found exactly once"
-    snippet = PHASE2.read_text(encoding="utf-8").replace("\r\n", "\n")
-    snippet = "\n".join(l for l in snippet.split("\n") if not l.lstrip().startswith("//")).strip("\n") + "\n"
-    return block.sub(lambda _: snippet, text)
+def rules_text():
+    return RULES.read_text(encoding="utf-8").replace("\r\n", "\n")
 
 
 def load_rules(text):
@@ -174,6 +169,27 @@ def seed():
     put("shop_purchases/pS/items/hat", {"owner_uid": "uS", "profile_id": "pS", "item_id": "hat"})
     put("parent_teacher_notes/pS/notes/n1", {"author_uid": "uT", "content": "Doing well", "student_profile_id": "pS"})
     put("parent_teacher_notes/pC/notes/n2", {"author_uid": "uP", "content": "Tired today", "student_profile_id": "pC"})
+    # Educator links, as the app (or the one-off backfill) files them.
+    put("note_readers/uT_pS", {"profile_id": "pS", "classroom_id": "c1", "updated_at": "x"})
+    put("note_readers/uP_pC", {"profile_id": "pC", "home_group_id": "g1", "updated_at": "x"})
+    # What the educators have already set.
+    put("child_time_limits/pC", {"child_profile_id": "pC", "setter_profile_id": "pP", "owner_uid": "uP",
+                                 "daily_minutes": 60})
+    put("child_alarms/a1", {"child_profile_id": "pS", "setter_profile_id": "pT", "owner_uid": "uT",
+                            "label": "Reading"})
+    # A shared classroom tablet: the teacher and a student on one device,
+    # with no link filed. And a Player who builds their own routine.
+    put("profiles/pT2", {"owner_uid": "uT2", "name": "Tablet teacher", "role": 1})
+    put("profiles/pS3", {"owner_uid": "uT2", "name": "Tablet student", "role": 0})
+    put("profiles/pPl", {"owner_uid": "uPl", "name": "Player", "role": 4})
+    # Joined the teacher's class after the backfill: no link, but their own
+    # profile names the class and the membership is real. pS5's profile still
+    # names the class after they left it; pS6's names the stranger's class,
+    # which they never joined.
+    put("profiles/pS4", {"owner_uid": "uS4", "name": "New student", "role": 0, "classroom_id": "c1"})
+    put("classroom_members/c1_pS4", {"classroom_id": "c1", "profile_id": "pS4"})
+    put("profiles/pS5", {"owner_uid": "uS5", "name": "Left student", "role": 0, "classroom_id": "c1"})
+    put("profiles/pS6", {"owner_uid": "uS6", "name": "Other student", "role": 0, "classroom_id": "cX"})
 
 
 def request_doc(frm, to, owner, **extra):
@@ -286,62 +302,131 @@ def own_records():
 
 
 def note_readers():
-    allowed("the teacher files themselves as a reader of their student's notes",
-            create("uT", "note_readers/uT_pS", {"profile_id": "pS", "classroom_id": "c1", "updated_at": "x"}))
-    allowed("... and again later (the same doc, written over)",
+    allowed("the teacher files a link to their student (the app does it for every roster learner)",
             update("uT", "note_readers/uT_pS", {"profile_id": "pS", "classroom_id": "c1", "updated_at": "y"}))
-    allowed("the parent files themselves for their child",
-            create("uP", "note_readers/uP_pC", {"profile_id": "pC", "home_group_id": "g1", "updated_at": "x"}))
-    allowed("the teacher checks their own reader doc", get("uT", "note_readers/uT_pS"))
+    allowed("the parent files one to their child",
+            update("uP", "note_readers/uP_pC", {"profile_id": "pC", "home_group_id": "g1", "updated_at": "y"}))
+    allowed("the teacher checks their own link", get("uT", "note_readers/uT_pS"))
     allowed("... even before it exists", get("uP", "note_readers/uP_pS"))
-    denied("a stranger reads someone else's reader doc", get("uX", "note_readers/uT_pS"))
-    denied("a stranger files themselves through a class they own but the learner never joined",
+    denied("a stranger reads someone else's link", get("uX", "note_readers/uT_pS"))
+    denied("a stranger links themselves through a class they own but the learner never joined",
            create("uX", "note_readers/uX_pS", {"profile_id": "pS", "classroom_id": "cX"}))
     denied("... through someone else's class",
            create("uX", "note_readers/uX_pS", {"profile_id": "pS", "classroom_id": "c1"}))
     denied("... through someone else's family group",
            create("uX", "note_readers/uX_pC", {"profile_id": "pC", "home_group_id": "g1"}))
-    denied("nobody files a reader doc for another device",
+    denied("nobody files a link for another device",
            create("uT", "note_readers/uP_pS", {"profile_id": "pS", "classroom_id": "c1"}))
-    denied("the doc carries nothing else",
+    denied("the link carries nothing else",
            create("uT", "note_readers/uT_pS2", {"profile_id": "pS2", "classroom_id": "c1", "admin": True}))
-    # Today's notes rule (phase 1) is unchanged: every released app keeps
-    # reading and writing notes.
-    allowed("phase 1: a teacher on an older app still reads the notes",
-            subquery("uT", "parent_teacher_notes/pS", "notes"))
-    allowed("phase 1: ... and writes one",
-            create("uT", "parent_teacher_notes/pS/notes/n3", {"author_uid": "uT", "content": "x"}))
 
 
-def notes_phase2():
-    load_rules(rules_text(phase2=True))
-    allowed("phase 2: the registered teacher reads their student's notes",
+def notes():
+    allowed("the teacher reads their student's notes",
             subquery("uT", "parent_teacher_notes/pS", "notes"))
-    allowed("phase 2: the registered parent reads their child's notes",
+    allowed("the parent reads their child's notes",
             subquery("uP", "parent_teacher_notes/pC", "notes"))
-    allowed("phase 2: the learner's own device reads its notes",
+    allowed("the learner's own device reads its notes",
             subquery("uS", "parent_teacher_notes/pS", "notes"))
-    allowed("phase 2: the teacher writes a note",
+    allowed("the teacher writes a note",
             create("uT", "parent_teacher_notes/pS/notes/n4", {"author_uid": "uT", "content": "x"}))
-    allowed("phase 2: the parent writes a note",
+    allowed("the parent writes a note",
             create("uP", "parent_teacher_notes/pC/notes/n5", {"author_uid": "uP", "content": "x"}))
-    allowed("phase 2: the deleted-learner cleanup lists its own notes (author filter)",
+    allowed("the deleted-learner cleanup lists its own notes (author filter)",
             subquery("uT", "parent_teacher_notes/pS", "notes", author="uT"))
-    denied("phase 2: a stranger lists a learner's notes",
+    denied("a stranger lists a learner's notes",
            subquery("uX", "parent_teacher_notes/pS", "notes"))
-    denied("phase 2: ... or reads one by id", get("uX", "parent_teacher_notes/pS/notes/n1"))
-    denied("phase 2: a stranger writes a note about a learner",
+    denied("... or reads one by id", get("uX", "parent_teacher_notes/pS/notes/n1"))
+    denied("a stranger writes a note about a learner",
            create("uX", "parent_teacher_notes/pS/notes/spam", {"author_uid": "uX", "content": "x"}))
-    denied("phase 2: an educator with no reader doc (an older app, or no link at all) is refused",
+    denied("an educator with no link to that learner is refused",
            subquery("uP", "parent_teacher_notes/pS", "notes"))
-    # The learner leaves the class: the teacher's reader doc stays, but the
+    denied("a stranger edits someone's note",
+           update("uX", "parent_teacher_notes/pS/notes/n1", {"author_uid": "uX", "content": "changed"}))
+
+
+def child_controls():
+    allowed("the teacher sets a time limit for their student",
+            create("uT", "child_time_limits/pS", {"child_profile_id": "pS", "setter_profile_id": "pT",
+                                                  "owner_uid": "uT", "daily_minutes": 30}))
+    allowed("the parent changes their child's time limit",
+            update("uP", "child_time_limits/pC", {"child_profile_id": "pC", "setter_profile_id": "pP",
+                                                  "owner_uid": "uP", "daily_minutes": 45}))
+    denied("a stranger overwrites a child's time limit (to lock them out)",
+           update("uX", "child_time_limits/pC", {"child_profile_id": "pC", "setter_profile_id": "pXP",
+                                                 "owner_uid": "uX", "daily_minutes": 1}))
+    denied("a stranger sets a limit for a child who has none",
+           create("uX", "child_time_limits/pS2", {"child_profile_id": "pS2", "setter_profile_id": "pXT",
+                                                  "owner_uid": "uX", "daily_minutes": 1}))
+    denied("an educator sets a limit for a learner who is not theirs",
+           create("uT", "child_time_limits/pC2", {"child_profile_id": "pC2", "setter_profile_id": "pT",
+                                                  "owner_uid": "uT", "daily_minutes": 10}))
+    allowed("a shared tablet: the teacher sets a limit for a student on the same device, no link",
+            create("uT2", "child_time_limits/pS3", {"child_profile_id": "pS3", "setter_profile_id": "pT2",
+                                                    "owner_uid": "uT2", "daily_minutes": 20}))
+    allowed("the parent sets an alarm for their child",
+            create("uP", "child_alarms/p1", {"child_profile_id": "pC", "setter_profile_id": "pP",
+                                             "owner_uid": "uP", "label": "Bath time"}))
+    denied("a stranger sends a child an alarm with words of their own",
+           create("uX", "child_alarms/x1", {"child_profile_id": "pC", "setter_profile_id": "pXP",
+                                            "owner_uid": "uX", "label": "come outside"}))
+    allowed("the teacher edits their alarm",
+            update("uT", "child_alarms/a1", {"child_profile_id": "pS", "setter_profile_id": "pT",
+                                             "owner_uid": "uT", "label": "Reading time"}))
+    denied("... but cannot move it onto another child",
+           update("uT", "child_alarms/a1", {"child_profile_id": "pC", "setter_profile_id": "pT",
+                                            "owner_uid": "uT", "label": "Reading time"}))
+    denied("a stranger takes over the teacher's alarm",
+           update("uX", "child_alarms/a1", {"child_profile_id": "pS", "setter_profile_id": "pXT",
+                                            "owner_uid": "uX", "label": "x"}))
+    denied("a stranger deletes the teacher's alarm", req("DELETE", f"{BASE}/child_alarms/a1", None, "uX")[0])
+    denied("a stranger sends a child a routine",
+           create("uX", "routines/r1", {"child_profile_id": "pC", "setter_profile_id": "pXP", "owner_uid": "uX"}))
+    allowed("the parent sets their child's routine",
+            create("uP", "routines/r3", {"child_profile_id": "pC", "setter_profile_id": "pP", "owner_uid": "uP"}))
+    allowed("a Player builds their own routine",
+            create("uPl", "routines/r2", {"child_profile_id": "pPl", "setter_profile_id": "pPl",
+                                          "owner_uid": "uPl"}))
+    allowed("the teacher marks a step done on their student's day",
+            create("uT", "routine_actions/pS_2026-10-13", {"child_profile_id": "pS", "setter_profile_id": "pT",
+                                                           "owner_uid": "uT"}))
+    denied("a stranger acts on a child's routine day",
+           create("uX", "routine_actions/pS_2026-10-14", {"child_profile_id": "pS", "setter_profile_id": "pXT",
+                                                          "owner_uid": "uX"}))
+    allowed("the parent unlocks their child for a while",
+            create("uP", "child_unlock_overrides/pC", {"child_profile_id": "pC", "setter_profile_id": "pP",
+                                                       "owner_uid": "uP"}))
+    denied("a stranger unlocks (or re-locks) someone else's child",
+           update("uX", "child_unlock_overrides/pC", {"child_profile_id": "pC", "setter_profile_id": "pXP",
+                                                      "owner_uid": "uX"}))
+    allowed("the setter still deletes their own alarm", req("DELETE", f"{BASE}/child_alarms/p1", None, "uP")[0])
+    allowed("a teacher on an older app guides a student who joined later (their profile names the class)",
+            create("uT", "child_time_limits/pS4", {"child_profile_id": "pS4", "setter_profile_id": "pT",
+                                                   "owner_uid": "uT", "daily_minutes": 30}))
+    allowed("... and reads the notes about them",
+            subquery("uT", "parent_teacher_notes/pS4", "notes"))
+    denied("... but not a student whose profile still names the class after they left it",
+           create("uT", "child_time_limits/pS5", {"child_profile_id": "pS5", "setter_profile_id": "pT",
+                                                  "owner_uid": "uT", "daily_minutes": 30}))
+    denied("a stranger whose class a profile names, without a membership",
+           create("uX", "child_time_limits/pS6", {"child_profile_id": "pS6", "setter_profile_id": "pXT",
+                                                  "owner_uid": "uX", "daily_minutes": 1}))
+    denied("... nor the notes", subquery("uX", "parent_teacher_notes/pS6", "notes"))
+
+
+def after_leaving():
+    # The student leaves the class: the teacher's link stays, but the
     # membership under it is gone, so the access goes with it.
     allowed("(the student leaves the class)",
             req("DELETE", f"{BASE}/classroom_members/c1_pS", None, "uS")[0])
-    denied("phase 2: the former teacher no longer reads the notes",
+    denied("the former teacher no longer reads the notes",
            subquery("uT", "parent_teacher_notes/pS", "notes"))
-    allowed("phase 2: the author still sees their own notes (author filter)",
+    allowed("... but still lists the notes they wrote (author filter)",
             subquery("uT", "parent_teacher_notes/pS", "notes", author="uT"))
+    denied("... and no longer sets the student's time limit",
+           update("uT", "child_time_limits/pS", {"child_profile_id": "pS", "setter_profile_id": "pT",
+                                                 "owner_uid": "uT", "daily_minutes": 5}))
+    allowed("... and can still remove what they set", req("DELETE", f"{BASE}/child_alarms/a1", None, "uT")[0])
 
 
 def main():
@@ -353,7 +438,9 @@ def main():
     renames()
     own_records()
     note_readers()
-    notes_phase2()
+    notes()
+    child_controls()
+    after_leaving()
     print(f"{passed} passed, {len(failed)} failed")
     for f in failed:
         print("  FAIL", f)
