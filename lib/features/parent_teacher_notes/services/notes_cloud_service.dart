@@ -131,6 +131,55 @@ class ParentTeacherNotesCloudService {
     }
   }
 
+  /// Links being written this session, so a roster that refreshes while
+  /// offline (when a write only finishes once the tablet reconnects) does
+  /// not queue the same write again and again.
+  static final Set<String> _pendingLinks = {};
+
+  /// Files an educator link for each of [learnerIds], members of this
+  /// device's class [classroomId] or family group [homeGroupId] (exactly one
+  /// is given). The educator roster calls this with every group's members, so
+  /// the link exists before a teacher or parent sets a time limit, an alarm,
+  /// a routine or an unlock, or opens the notes: since 13 October 2026 the
+  /// rules ask for it (a teacher is also recognised through the class on the
+  /// learner's own profile; a parent only through the link). Once per
+  /// learner and device; never throws and never waits for the cloud.
+  void fileLinksForGroup({
+    required Iterable<String> learnerIds,
+    String? classroomId,
+    String? homeGroupId,
+  }) {
+    if (!FirebaseService.isConfigured) return;
+    if ((classroomId == null) == (homeGroupId == null)) return;
+    final uid = FirebaseService.currentUid;
+    if (uid == null || uid.isEmpty) return;
+    for (final learnerId in learnerIds.toSet()) {
+      final key = 'note_reader::${uid}_$learnerId';
+      try {
+        if (HiveService.getSetting(key) == true) continue;
+      } catch (_) {
+        return; // No settings box (a test harness): nothing to remember with.
+      }
+      if (!_pendingLinks.add(key)) continue;
+      _db
+          .collection('note_readers')
+          .doc('${uid}_$learnerId')
+          .set({
+            'profile_id': learnerId,
+            'classroom_id': ?classroomId,
+            'home_group_id': ?homeGroupId,
+            'updated_at': FieldValue.serverTimestamp(),
+          })
+          .then((_) => HiveService.saveSetting(key, true))
+          .catchError((Object e) {
+            if (kDebugMode) {
+              debugPrint('ParentTeacherNotesCloudService: link $learnerId: $e');
+            }
+          })
+          .whenComplete(() => _pendingLinks.remove(key));
+    }
+  }
+
   Future<void> _registerAsReader(
     String uid,
     String studentId,

@@ -34,6 +34,7 @@ import '../features/goals/models/goal_model.dart';
 import '../features/goals/services/goal_service.dart';
 import '../features/experiment/models/experiment_models.dart';
 import '../features/experiment/services/experiment_service.dart';
+import '../features/parent_teacher_notes/services/notes_cloud_service.dart';
 
 // ─── Bottom Navigation Visibility ──────────────────────
 /// Controls whether the bottom navigation bar is visible.
@@ -963,6 +964,11 @@ final educatorRosterProvider =
       // Classroom-side roster (teachers)
       for (final c in classrooms) {
         final pairs = await remote.getStudentsWithProgressByClassroom(c.id);
+        // The rules' proof that this device teaches them (educator links).
+        const ParentTeacherNotesCloudService().fileLinksForGroup(
+          learnerIds: pairs.map((p) => p.$1.id),
+          classroomId: c.id,
+        );
         for (final pair in pairs) {
           // De-dup in case a child is listed under two classrooms.
           if (seen.add(pair.$1.id)) {
@@ -975,6 +981,10 @@ final educatorRosterProvider =
       // appears in BOTH a classroom and a home group is counted once.
       for (final g in homeGroups) {
         final pairs = await remote.getChildrenWithProgressByHomeGroup(g.id);
+        const ParentTeacherNotesCloudService().fileLinksForGroup(
+          learnerIds: pairs.map((p) => p.$1.id),
+          homeGroupId: g.id,
+        );
         for (final pair in pairs) {
           if (seen.add(pair.$1.id)) {
             aggregated.add(pair);

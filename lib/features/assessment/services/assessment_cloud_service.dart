@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/services/cloud_sync_outcome.dart';
 import '../../../core/services/firebase_service.dart';
+import '../../../data/local/hive_service.dart';
 import '../models/assessment_models.dart';
 import 'assessment_service.dart';
 
@@ -117,6 +118,80 @@ class AssessmentCloudService {
       if (a.studentIds.contains(learnerId)) byId[a.id] = a;
     }
     return byId.values.toList();
+  }
+
+  /// Only the work set by one of the learner's own educators.
+  ///
+  /// The cloud lets any device file an assignment naming a learner (their
+  /// device id and profile id are enough), so a stranger could put a "test"
+  /// of their own words and pictures in front of a child. [educatorIds] are
+  /// the teachers of the classes and the owners of the family groups the
+  /// learner belongs to; an assignment made on this same tablet
+  /// ([isLocalProfile], a shared classroom tablet) is theirs too. Null when
+  /// they could not be told (offline, a failed lookup): then nothing is
+  /// dropped, because hiding a real test is worse than one stray one.
+  @visibleForTesting
+  static List<AssessmentAssignment> fromOwnEducators(
+    List<AssessmentAssignment> assignments, {
+    required Set<String>? educatorIds,
+    required bool Function(String profileId) isLocalProfile,
+  }) {
+    if (educatorIds == null) return assignments;
+    return [
+      for (final a in assignments)
+        if (educatorIds.contains(a.assignedBy) || isLocalProfile(a.assignedBy))
+          a,
+    ];
+  }
+
+  /// The teachers of [learnerId]'s classes and the owners of their family
+  /// groups, as the server knows them. Null unless the server answered every
+  /// lookup (see [fromOwnEducators]).
+  Future<Set<String>?> _learnerEducators(String learnerId) async {
+    try {
+      Future<Set<String>> owners(
+        String members,
+        String groups,
+        String groupField,
+        String ownerField,
+      ) async {
+        final snap = await _db
+            .collection(members)
+            .where('profile_id', isEqualTo: learnerId)
+            .get(const GetOptions(source: Source.server))
+            .timeout(remoteTimeout);
+        final out = <String>{};
+        for (final m in snap.docs) {
+          final groupId = m.data()[groupField] as String?;
+          if (groupId == null || groupId.isEmpty) continue;
+          final g = await _db
+              .collection(groups)
+              .doc(groupId)
+              .get(const GetOptions(source: Source.server))
+              .timeout(remoteTimeout);
+          final owner = g.data()?[ownerField] as String?;
+          if (owner != null && owner.isNotEmpty) out.add(owner);
+        }
+        return out;
+      }
+
+      final teachers = await owners(
+        'classroom_members',
+        'classrooms',
+        'classroom_id',
+        'teacher_id',
+      );
+      final parents = await owners(
+        'home_group_members',
+        'home_groups',
+        'home_group_id',
+        'owner_profile_id',
+      );
+      return {...teachers, ...parents};
+    } catch (e, s) {
+      _log('learnerEducators', e, s);
+      return null;
+    }
   }
 
   /// How long any single Firestore call may take before it is treated as
@@ -560,12 +635,24 @@ class AssessmentCloudService {
           .get()
           .timeout(remoteTimeout);
     }
-    final assignments = assignmentsForLearner(
+    final mine = assignmentsForLearner(
       learnerId,
       byUid: byUid == null
           ? const []
           : _decode(byUid.docs, AssessmentAssignment.fromJson),
       byLegacy: null,
+    );
+    final educators = mine.isEmpty ? null : await _learnerEducators(learnerId);
+    final assignments = fromOwnEducators(
+      mine,
+      educatorIds: educators,
+      isLocalProfile: (id) {
+        try {
+          return HiveService.getProfileById(id) != null;
+        } on Object {
+          return false;
+        }
+      },
     );
     return (
       assignments: assignments,

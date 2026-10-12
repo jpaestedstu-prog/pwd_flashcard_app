@@ -8,11 +8,15 @@ import 'package:pwdpwdpwd/features/assessment/services/assessment_cloud_service.
 /// learner's tablet also looks its work up by its own uid (`student_uids`),
 /// the query the rules *can* restrict, and merges the two until the old one
 /// is closed.
-AssessmentAssignment _a(String id, List<String> learners) =>
+AssessmentAssignment _a(
+  String id,
+  List<String> learners, {
+  String by = 'teacher-1',
+}) =>
     AssessmentAssignment.fromJson({
       'id': id,
       'assessmentId': 'tpl-$id',
-      'assignedBy': 'teacher-1',
+      'assignedBy': by,
       'studentIds': learners,
       'assignedAt': DateTime(2026, 10, 4).toIso8601String(),
     });
@@ -53,5 +57,45 @@ void main() {
       byLegacy: [_a('old', ['ana'])],
     );
     expect(got.map((a) => a.id), ['old']);
+  });
+
+  group("only work from the learner's own educators", () {
+    // Any device can file an assignment naming a learner, so a stranger could
+    // put a "test" of their own words in front of a child.
+    final work = [
+      _a('class-test', ['ana']), // by teacher-1
+      _a('family-test', ['ana'], by: 'parent-1'),
+      _a('tablet-test', ['ana'], by: 'teacher-on-this-tablet'),
+      _a('stranger-test', ['ana'], by: 'stranger'),
+    ];
+    bool onThisTablet(String id) => id == 'teacher-on-this-tablet';
+
+    test("keeps the class's and the family group's work, drops a stranger's", () {
+      final got = AssessmentCloudService.fromOwnEducators(
+        work,
+        educatorIds: {'teacher-1', 'parent-1'},
+        isLocalProfile: onThisTablet,
+      );
+      expect(got.map((a) => a.id),
+          ['class-test', 'family-test', 'tablet-test']);
+    });
+
+    test('drops nothing when the educators could not be looked up', () {
+      final got = AssessmentCloudService.fromOwnEducators(
+        work,
+        educatorIds: null,
+        isLocalProfile: onThisTablet,
+      );
+      expect(got, hasLength(4));
+    });
+
+    test('a learner in no class or group keeps only work from this tablet', () {
+      final got = AssessmentCloudService.fromOwnEducators(
+        work,
+        educatorIds: const {},
+        isLocalProfile: onThisTablet,
+      );
+      expect(got.map((a) => a.id), ['tablet-test']);
+    });
   });
 }
