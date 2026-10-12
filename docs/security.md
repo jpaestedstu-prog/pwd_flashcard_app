@@ -16,114 +16,100 @@ The rules do the real work:
 | Data | Read | Write |
 |---|---|---|
 | Profiles, progress, custom cards, app state | by exact id; lists only for the owner or named ids | owner device only; recovery code moves ownership |
-| Messages, friend requests, friendships, game rooms | only the profiles involved (and a child's parent for approvals) | sender must own the sending profile; blocks are enforced |
+| Messages, friend requests, friendships, game rooms | only the profiles involved (and a child's parent for approvals) | sender must own the sending profile; blocks are enforced; a child's friendship needs their real parent's yes |
 | Classes, home groups, rosters | by id or exact join code | the teacher / parent who owns them; a learner joins only themselves |
-| Parent-teacher notes | any signed-in user (phase 2 below narrows it) | the author |
+| Parent-teacher notes | the learner's own device and the learner's educators | the same people, as themselves |
+| Time limits, alarms, routines, routine actions, unlocks | the learner and the adults who set them | only the learner's own device or one of their educators |
 | Achievements, shop purchases | the learner's own device | the learner's own device |
-| Alarms, routines, routine logs | the learner and the adults who set them | the adult who set them (logs: the learner) |
+| Assignments | the educator who set them and the learners' devices | the educator; a learner's app takes work only from their own educators |
 | Shared files (Firestore chunks) | as the item they belong to | owner only, size-capped |
 | Recovery codes | by the exact code; the issuing device lists its own | create: profile owner; redeem: once |
 | Safeguarding reports | nobody in the app (reviewed in the console) | the reporting learner |
 
-### Fixed in 1.4.0, waiting to be deployed
+"One of their educators" means the device that owns the class or family group
+the learner joined: it holds an *educator link*, `note_readers/{device}_{learner}`,
+naming that group, and the rules check on every use that the learner is still a
+member (or that the learner's own profile names the class and the membership is
+real). Only the learner's own device can make a membership, so no one can make
+themselves somebody else's teacher or parent.
+
+### Deployed on 12 October 2026: who may start a learner's records
 
 Before 1.4.0, the device that wrote a learner-keyed document first owned it.
 Anyone who had seen a learner's id (on a class roster, for example) could
 create that learner's cloud progress, streak, tutorial flag or equipped item
-first. The learner's own device could then never sync them again. They could
-also file made-up study time under the learner's name.
+first, so the learner's own device could never sync them again, and could
+file made-up study time under the learner's name. Now only the device that
+owns the learner may start those documents (with exceptions for a learner not
+yet in the cloud, a valid recovery code, and a profile from before
+`owner_uid`). Deployed with the owner's approval (02fd573) and checked live
+with [`tool/write_claim_rules_live_probe.py`](../tool/write_claim_rules_live_probe.py).
 
-Now only the device that owns the learner may *start* those documents. Three
-exceptions keep the app's existing flows working: a learner not yet in the
-cloud (offline first), a valid recovery code, and a learner whose profile is
-still unclaimed (from before `owner_uid`; refusing those would have stopped an
-older tablet's study logs). A learner id is read from the whole key, since an
-imported profile may keep an id with "_".
-[`tool/write_claim_rules_emulator_test.py`](../tool/write_claim_rules_emulator_test.py)
-pins this with 32 checks, 12 of them on the data that exists today.
+### Deployed on 12 and 13 October 2026: who is whose
 
-**Deployed on 12 October 2026** (`firebase deploy --only firestore:rules`,
-approved by the project owner). Checked live straight after with
-[`tool/write_claim_rules_live_probe.py`](../tool/write_claim_rules_live_probe.py):
-on a throwaway learner of its own, a second device was refused the learner's
-progress, study log and daily challenge (403) while the owning device was
-allowed (200); the probe then deleted everything it wrote and both of its
-anonymous accounts. The read probe passed too. To roll back, deploy the
-previous rules: `git show 1af2345:firestore.rules`.
+The 12-13 October review found that the rules' idea of "a learner's teacher or
+parent" could be faked, and that what an adult sets for a child was open:
 
-Installed copies keep working: the app writes these documents only from the
-owning device.
+| Gap (live until 12/13 October) | Impact |
+|---|---|
+| A group's owner could file **any** learner in their own class or family group, and a friend request could arrive already marked "approved by the child's parent" | a stranger with only a child's handle could become the child's friend without the parent (their device could even write the friendship), and could rename someone else's learner |
+| Time limits, alarms, routines, routine actions and unlocks only checked that the writer owned *some* profile | a stranger could overwrite a child's time limit and lock them out, or send the child alarms and routines with words of their own |
+| The notes about a learner were readable and writable by any signed-in user | anyone who knew a learner's id could read what their teacher and parent wrote about them |
+| A learner's achievements and shop purchases were listable by anyone | minor |
 
-### Found in the 12 October review, fixed, waiting for approval to deploy
+The fix, in [`firestore.rules`](../firestore.rules): memberships only from the
+learner's own device, with fixed ids; new friend requests without approvals or
+the recipient's group; educator links (`educatesLearner`, `mayGuide`) for the
+notes and everything an adult sets for a child; achievements and purchases
+owner-only. Every release since 1.0.0 was checked against it.
 
-The rules treat a class or family-group membership as proof that someone is
-a learner's teacher or parent. But a group's owner could file **any** learner
-in their own group, and a friend request could be sent already marked
-"approved by the child's parent". Together that let a stranger, with nothing
-but a child's id (their handle is enough), become the child's friend
-**without the parent**: their own device could write the friendship, and the
-child then sees them as a friend. Checked in the emulator against the rules
-live today: the stranger's device wrote the friendship. The same gap let a stranger rename someone else's learner through
-a class of their own. Separately, a learner's achievements and shop purchases
-could be listed by anyone who knew the learner's id.
+**Deployment.** The first part (memberships, friend requests, achievements,
+the educator-link collection; commit b4d1cbd) was live at 21:35 on
+12 October; that deploy was not made from this work session. The second part
+(notes and child settings; commit adbaf21) was deployed at 00:02 on
+13 October, after [`tool/educator_links_backfill.py`](../tool/educator_links_backfill.py)
+had filed an educator link for each of the 143 relationships that existed (125
+class and 19 family memberships; one skipped, its group owner having no
+device), so teachers and parents on older apps keep working. A teacher is
+also recognised through the class on the learner's own profile, which covers
+students who join later. The live ruleset was read back and compared with the
+file: identical. To roll back: `git show b4d1cbd:firestore.rules` (before the
+second part) or `git show 02fd573:firestore.rules` (before the review).
 
-The fix, in [`firestore.rules`](../firestore.rules):
+**Checked live after the deployment** (13 October; each probe uses throwaway
+anonymous accounts, writes as the app would, and deletes everything it wrote
+and its accounts afterwards):
 
-- A class or family-group membership is created only by the **learner's own
-  device** (the join-code flow), under `{group}_{learner}`, and its two ids
-  never change. Teachers and parents still remove members.
-- A new friend request carries **no approvals and no recipient group**; the
-  recipient stamps their own group when they answer, and only that group's
-  real owner approves.
-- Achievements and shop purchases are read only by the learner's own device.
-- New, additive: `note_readers` (see the notes section below).
+| Probe | Checks |
+|---|---|
+| [`trust_rules_live_probe.py`](../tool/trust_rules_live_probe.py) | 27/27: a stranger cannot pose as a child's parent or a student's teacher, pre-approve or write a friendship with a child, rename a learner, read achievements or notes, write a note, or set a child's time limit, alarm, routine, routine day or unlock; the real teacher, parent and learner still can |
+| [`write_claim_rules_live_probe.py`](../tool/write_claim_rules_live_probe.py) | 6/6 |
+| [`firestore_read_rules_live_probe.py`](../tool/firestore_read_rules_live_probe.py) | 32/32 |
+| [`messaging_rules_probe.py`](../tool/messaging_rules_probe.py) | 63/63 (blocking, parent approval) |
+| [`assessment_rules_probe.py`](../tool/assessment_rules_probe.py) | 17/17 |
+| [`shared_media_rules_probe.py`](../tool/shared_media_rules_probe.py) | 26/26 |
 
-Every installed copy keeps working. Each release since 1.0.0 was checked: all
-of them join a class only from the learner's device, never pre-fill a
-request's approvals, and read achievements only in the owner's own restore.
-[`tool/trust_rules_emulator_test.py`](../tool/trust_rules_emulator_test.py)
-pins it with 66 checks. Run against today's live rules
-(`FLASHLEARN_RULES_FILE=<copy of the deployed rules>`), 34 of them fail:
-the attacks above succeed. That run is the proof the test can see them.
+Read-only looks at the live database found no sign that any of these gaps
+had been used: no child has a friendship, no child is in two family groups,
+every membership's id matches its fields, and every existing time limit,
+alarm, routine, routine action and unlock was set by the child's own educator.
 
-A read-only look at the live database the same day found no sign the gap was
-used: of 19 child profiles, none has a friendship, no friend request carries
-a parent's approval, no child is in two family groups, and every membership
-document's id matches its own fields.
+### In the app (1.4.0)
 
-**Deploying is a production change and waits for the project owner's
-approval** (`firebase deploy --only firestore:rules`; roll back by deploying
-the previous file, `git show 02fd573:firestore.rules`).
+- **Messages from strangers.** The database delivers a message from anyone
+  who knows a profile's id (see "Known trade-offs"). A learner's inbox and
+  Messages badge now show only their contacts (friends, their class's
+  teacher, their family group's parent) and people they have written to.
+  Teachers' and parents' inboxes are unchanged.
+- **Assignments.** Any device can file an assignment naming a learner. A
+  learner's app now takes one only from the teachers of their classes or the
+  owners of their family groups (or a profile on the same tablet); when it
+  cannot tell, it drops nothing. All 6 live assignments pass.
+- **Educator links.** A teacher's or parent's app files an educator link for
+  every learner on their roster, once per learner and device.
 
-### Parent-teacher notes: two phases
-
-Today any signed-in user who knows a learner's id can read, and write, the
-notes about them. Every release before 1.4.0 reads a learner's notes without
-saying who the reader is to the learner, so a tighter rule now would cut
-those teachers and parents off. So:
-
-1. **Phase 1 (1.4.0).** When it opens the notes, a teacher's or parent's
-   app files `note_readers/{device}_{learner}` (once per learner and device)
-   naming the class or family group of theirs that the learner joined. The rules accept it only if that
-   membership exists and the caller owns the group.
-2. **Phase 2 (later).** Once every teacher's and parent's device runs 1.4.0
-   or later, the notes block in `firestore.rules` is replaced by
-   [`tool/notes_rules_phase2.rules`](../tool/notes_rules_phase2.rules): notes
-   are read and written only by the learner's own device and by educators
-   whose reader document still stands on a real membership (checked on every
-   read, so a learner who leaves the class takes the access with them). The
-   emulator test above runs phase 2 too. Deploying it early would stop older
-   apps from seeing the other side's notes, so it waits.
-
-### Messages from strangers (1.4.0, in the app)
-
-The database delivers a message from anyone who knows a profile's id (see
-"Known trade-offs"). A learner's inbox used to show such a message as a
-read-only thread, and the Messages badge counted it. From 1.4.0 a learner's
-inbox and badge show only their contacts (friends, their class's teacher,
-their family group's parent) and people they have written to themselves.
-Teachers' and parents' inboxes are unchanged. Older copies of the app still
-show such messages until they update.
+Older copies of the app keep their old behaviour for messages and
+assignments until they update.
 
 ### Testing the rules
 
@@ -135,7 +121,10 @@ firebase emulators:exec --only firestore --project demo-flashlearn ^
   "python tool/write_claim_rules_emulator_test.py && python tool/firestore_read_rules_emulator_test.py && python tool/recovery_code_rules_emulator_test.py && python tool/trust_rules_emulator_test.py"
 ```
 
-(32 + 118 + 14 + 66 checks, all passing for 1.4.0.)
+(32 + 119 + 14 + 91 checks, all passing.) Set `FLASHLEARN_RULES_FILE` to
+another rules file to run the trust test against it: against the rules live
+before the second part, 17 of its checks fail, because those attacks worked.
+The live probes above are the second half: run them after every deploy.
 
 ## Firebase App Check
 
@@ -169,9 +158,26 @@ ownership, and keeping everything else local.
 
 ## Known trade-offs
 
-- **Reading by id.** A profile, a class or a friend request can be read by
-  anyone who knows its random id; a teacher's roster, a parent's dashboard and
-  profile recovery depend on it. Lists that used to hand out ids are closed.
+- **Reading by id.** Anyone signed in who knows a learner's random id (from
+  their username handle, or a class roster they can see) can still read, one
+  document at a time: the learner's profile (name, role, avatar, disability
+  type and support options, class), their progress (stars, words, accuracy),
+  their test results, and the time limits, alarms and routines set for them.
+  A teacher's roster, a parent's dashboard, friends' names and profile
+  recovery read these by id, from apps already installed, so narrowing them
+  is a two-phase change (the app first, the rules once older apps have gone;
+  the educator links above are the building block). Lists that used to hand
+  out ids are closed, and nothing here can be changed by a stranger.
+- **Assignments.** The rules cannot tie an assignment to its learners' real
+  teacher (it names many learners at once), so a stranger could still file
+  one; since 1.4.0 the learner's app ignores it. Older apps would show it.
+- **Public client keys.** The Firebase API keys in the app (and in the three
+  GitHub secret-scanning alerts) are public by design: every copy of any
+  Firebase app ships them, and access is controlled by the rules above. They
+  can optionally be restricted in Google Cloud (APIs & Services ->
+  Credentials) to the Firebase APIs the app uses; with no billing account a
+  misused key cannot cost money, and a wrong restriction would stop every
+  installed app, so this was left to the owner.
 - **Messages.** Any copy of the app that knows a profile's id can message it.
   Blocks are enforced in the rules, a child's friend requests need a parent,
   reports reach the console, and from 1.4.0 a learner's inbox hides anyone
