@@ -47,9 +47,16 @@ Flutter **3.44.0** (Dart 3.12). The SDK on the project PC is at `C:\src\flutter`
 ```
 flutter pub get
 flutter run                          # debug build on a connected device
-flutter build apk --release --split-per-abi
-flutter build appbundle --release --dart-define=FLASHLEARN_DISTRIBUTION=play
+bash tool/build_release.sh           # every Android release file, checked
 ```
+
+`tool/build_release.sh` builds the website APKs (arm64, arm32, universal) into
+`build/release-v<version>/` and the Google Play APK and bundle into
+`build/store-v<version>/`, then checks their manifests, their signers and their
+contents (`tool/release_artifact_scan.py`). Use it rather than a bare
+`flutter build`: a debug-mode `pub get` (an editor, a test run) puts the
+test-only integration plugin into a generated file, and a release build then
+fails; the script cleans that file and keeps it read-only while it builds.
 
 Android builds are signed with the project key kept outside the folder
 ([docs/signing.md](docs/signing.md)); without it the build stops on purpose.
