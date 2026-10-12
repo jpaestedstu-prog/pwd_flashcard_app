@@ -13,37 +13,6 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-// The signing key. It lives OUTSIDE the project folder (zipping or sharing the
-// project never shares it), in ~/.flashlearn-signing — see docs/signing.md.
-// It is the key every published FlashLearn APK was signed with, so installed
-// copies keep accepting updates; FLASHLEARN_SIGNING_PROPERTIES may point
-// elsewhere (a restored backup on another PC).
-val signingPropertiesFile = file(
-    System.getenv("FLASHLEARN_SIGNING_PROPERTIES")
-        ?: "${System.getProperty("user.home")}/.flashlearn-signing/key.properties",
-)
-// No key, no build: an APK signed with any other key could never update the
-// copies already installed — and when `flutter run` meets a signature
-// mismatch it UNINSTALLS the app, wiping every profile on a study tablet.
-//
-// The one exception is continuous integration, which has no copy of the key
-// (and must never have one): with CI=true AND FLASHLEARN_CI_DEBUG_SIGNING=true
-// the build is signed with Android's throwaway debug key instead. Fine for an
-// emulator that starts empty; both variables have to be set on purpose, so a
-// build on the PC that installs onto real tablets still stops here.
-val hasSigningKey = signingPropertiesFile.isFile
-val ciDebugSigning = System.getenv("CI") == "true" &&
-    System.getenv("FLASHLEARN_CI_DEBUG_SIGNING") == "true"
-if (!hasSigningKey && !ciDebugSigning) {
-    throw GradleException(
-        "FlashLearn's signing key was not found at $signingPropertiesFile. " +
-            "Restore it from the backup first - see docs/signing.md.",
-    )
-}
-val signingProperties = Properties().apply {
-    if (hasSigningKey) FileInputStream(signingPropertiesFile).use { load(it) }
-}
-
 // Which shop this build is for - the same `--dart-define` the Dart side reads
 // (lib/core/constants/distribution.dart), so one flag sets both:
 //   flutter build appbundle --dart-define=FLASHLEARN_DISTRIBUTION=play
@@ -60,6 +29,53 @@ val dartDefines: Map<String, String> =
         ?.toMap()
         ?: emptyMap()
 val isPlayBuild = dartDefines["FLASHLEARN_DISTRIBUTION"] == "play"
+
+// The signing key. It lives OUTSIDE the project folder (zipping or sharing the
+// project never shares it), in ~/.flashlearn-signing — see docs/signing.md.
+// Website builds use the key every published FlashLearn APK was signed with,
+// so installed copies keep accepting updates; FLASHLEARN_SIGNING_PROPERTIES
+// may point elsewhere (a restored backup on another PC). Google Play builds
+// use the separate Play upload key (play-upload.properties, or
+// FLASHLEARN_PLAY_SIGNING_PROPERTIES): the website key's certificate still
+// carries the debug keystore's name, CN=Android Debug, and Play refuses an
+// upload "signed in debug mode".
+val signingDir = "${System.getProperty("user.home")}/.flashlearn-signing"
+val signingPropertiesFile = file(
+    if (isPlayBuild) {
+        System.getenv("FLASHLEARN_PLAY_SIGNING_PROPERTIES")
+            ?: "$signingDir/play-upload.properties"
+    } else {
+        System.getenv("FLASHLEARN_SIGNING_PROPERTIES")
+            ?: "$signingDir/key.properties"
+    },
+)
+// No key, no build: an APK signed with any other key could never update the
+// copies already installed — and when `flutter run` meets a signature
+// mismatch it UNINSTALLS the app, wiping every profile on a study tablet.
+//
+// The one exception is continuous integration, which has no copy of the key
+// (and must never have one): with CI=true AND FLASHLEARN_CI_DEBUG_SIGNING=true
+// the build is signed with Android's throwaway debug key instead. Fine for an
+// emulator that starts empty; both variables have to be set on purpose, so a
+// build on the PC that installs onto real tablets still stops here.
+val hasSigningKey = signingPropertiesFile.isFile
+val ciDebugSigning = System.getenv("CI") == "true" &&
+    System.getenv("FLASHLEARN_CI_DEBUG_SIGNING") == "true"
+if (!hasSigningKey && !ciDebugSigning) {
+    throw GradleException(
+        if (isPlayBuild) {
+            "The Google Play upload key was not found at $signingPropertiesFile. " +
+                "Make it (or restore it from the backup) first - see " +
+                "docs/store/README.md, \"Signing\"."
+        } else {
+            "FlashLearn's signing key was not found at $signingPropertiesFile. " +
+                "Restore it from the backup first - see docs/signing.md."
+        },
+    )
+}
+val signingProperties = Properties().apply {
+    if (hasSigningKey) FileInputStream(signingPropertiesFile).use { load(it) }
+}
 
 // The website APKs keep the original id, so every tablet that installed one
 // keeps accepting updates (and its profiles). Google Play refuses any

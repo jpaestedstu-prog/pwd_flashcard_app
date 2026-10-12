@@ -62,8 +62,16 @@ Each needs the project owner's go-ahead (see "Waiting for approval").
   `WALK_DEVICE=true` (Word Hunt photo, Sign It recording, Gaze camera,
   speech), `WALK_SCREENSHOTS=false`; Android screenshots are scaled to keep
   the app's memory in check.
+- **Google Play upload key** (free `keytool`): Play builds are signed with
+  it automatically; the website key is untouched (see "Signing" in
+  [store/README.md](store/README.md)).
+- **The 33 unsigned words stay placeholders** by the project owner's decision
+  ("Sign coming soon"); a test keeps the recording checklist and the app's
+  unsigned words identical.
 - **Docs:** [README](../README.md), [security.md](security.md),
-  [fsl_recording_guide.md](fsl_recording_guide.md), store notes.
+  [fsl_recording_guide.md](fsl_recording_guide.md),
+  [ios_testing.md](ios_testing.md) (free iPhone/iPad testing and its limits),
+  store notes, and the platform facts in `capstone_thesis.md`.
 
 ## Checks
 
@@ -71,7 +79,8 @@ Each needs the project owner's go-ahead (see "Waiting for approval").
 |---|---|
 | Unit and widget tests (`flutter test`) | **5,220 passed**, 0 failed on the final code, on this PC and on GitHub's Linux runner (1.3.0: 5,094) |
 | `flutter analyze` | no issues |
-| Firestore rules, local emulator | 20 + 118 + 14 checks passed |
+| Firestore rules, local emulator | 32 + 118 + 14 checks passed (12 new on the data that exists today: legacy and imported learners, existing learners' updates) |
+| Firestore rules, **live after the deploy** (2026-10-12) | write probe on its own throwaway learner: a second device refused the learner's progress, study log and daily challenge (403), the owner allowed (200), everything it wrote deleted; read probe passed |
 | Phone emulator (Android 16, 1080 x 2400), sideways, with camera and speech checks | 58 screens, 0 problems; Word Hunt photo, Sign It record + replay, Gaze camera streaming, speech spoke, recogniser present |
 | Tablet emulator (Android 16, 2560 x 1600), asked for portrait | the request was honoured (1200 x 1600 window); 58 screens; Word Hunt, Gaze and speech fine (Sign It's sign video did not load in time over the emulator's network) |
 | iOS on GitHub Actions (final code: run 38156484024; also 38136152361) | unsigned IPA; walkthroughs passed on iPhone SE and iPhone 16 Pro Max upright **and sideways**, iPad mini and 13" iPad; Firebase smoke test passed |
@@ -88,10 +97,9 @@ Each needs the project owner's go-ahead (see "Waiting for approval").
 2. Publishing 1.4.0: GitHub Release with the three APKs, then the website.
 3. Merging `work/v1.4.0` into `work/sign-interpreter` / `main`.
 4. Store uploads, after the Google Play Console and Apple Developer
-   accounts exist ([store/README.md](store/README.md)). The Play bundle must
-   first be built with a separate upload key: the website key's certificate
-   is named `CN=Android Debug`, which Play refuses ("Signing" in the store
-   notes).
+   accounts exist ([store/README.md](store/README.md)). The Play bundle is
+   now signed with the new upload key; its password is only in
+   `play-upload.properties` on this PC: copy it to a password manager.
 
 ## Not possible in this round
 
@@ -101,21 +109,38 @@ Each needs the project owner's go-ahead (see "Waiting for approval").
   simulator only. On the tablet the microphone was not tried: its
   permission had been given "only this time" and has lapsed, and checking
   recognition needs someone to speak.
-- **The 33 missing FSL signs** need a person who signs FSL; the guide and
-  tools are ready, and offline sign packs were already in the app.
+- **The 33 missing FSL signs** stay "Sign coming soon" placeholders until the
+  project owner says otherwise; nothing was recorded, generated or
+  downloaded for them. The guide and tools are kept for later.
 - **App Check enforcement** needs the paid store accounts, and can never be
   enforced while website APKs are in use.
 - **iPad landscape walkthrough:** iPadOS ignores an app's orientation request
   while the app supports Split View, so only the iPhones are walked sideways
   on CI; iPad landscape sizes are covered by the widget tests.
 
+## Build warnings looked into
+
+Every Android build prints that the app and eight plugins (audioplayers_android,
+camera_android_camerax, firebase_analytics, flutter_tts, package_info_plus,
+share_plus, speech_to_text, video_player_android) "apply the Kotlin Gradle
+Plugin", which "future versions of Flutter" will refuse. Nothing is broken
+today, and no removal date has been set. The fix is Flutter's "built-in Kotlin",
+which needs **Android Gradle Plugin 9 and Flutter 3.47 or later**; this project
+is on Flutter 3.44 (AGP 8.11), where it cannot be switched on, and updating
+plugins alone would not remove the warning. Changing the build toolchain in a
+release candidate is not safe, so 1.4.0 keeps it. The plan for the next
+toolchain update: move to Flutter 3.47+ and AGP 9, remove `kotlin-android`
+and `kotlinOptions` from `android/app/build.gradle.kts` (use
+`kotlin { compilerOptions { jvmTarget = JvmTarget.JVM_17 } }`), update the eight
+plugins to versions that support built-in Kotlin, set
+`android.builtInKotlin=true`, and run the full checks
+([Flutter's guide](https://docs.flutter.dev/release/breaking-changes/migrate-to-built-in-kotlin/for-app-developers)).
+
 ## Recommended next
 
-- **A "sound is off" hint for learners who rely on speech.** With the
-  tablet's media volume at 0, every spoken word is silent and nothing tells
-  the learner why. A blind learner cannot read an on-screen hint, and
-  raising the volume automatically is a product decision, so this is left
-  to the project owner.
-- **The thesis text** in `docs/capstone_thesis.md` still describes the app
-  as portrait-only and Android-only (its "locked to portrait" and "Android
-  only" passages); worth updating when the chapters are next revised.
+- **On the Honor, once unlocked:** open a synced learner, earn something
+  (a game round), and confirm Settings shows it synced: the real-device
+  half of the rules check (the live probe already showed owners can write).
+- **Copy both signing passwords** (`key.properties`, `play-upload.properties`)
+  into a password manager, and the backup folder to a USB drive.
+- **Built-in Kotlin** with the next toolchain update (above).
