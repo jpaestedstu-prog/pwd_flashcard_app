@@ -1,4 +1,44 @@
-# Testing on iPhone and iPad without owning one
+# iPhone and iPad: status and testing
+
+## Status for 1.4.0: not released
+
+**FlashLearn PWD 1.4.0 is an Android release.** There is no iPhone or iPad
+version for users, and none is planned until the project has an Apple device
+and an Apple Developer Program membership. The iOS code stays in the project
+and is built and checked on every change, so it does not fall behind, but no
+iOS feature has been verified on a real iPhone or iPad.
+
+Why it cannot simply be put on the website like the Android app:
+
+- **iOS installs apps only from Apple's channels.** An IPA file downloaded
+  from a website does not install on an ordinary iPhone or iPad.
+- **Every channel needs the paid Apple Developer Program** (a yearly fee):
+  the App Store; TestFlight (beta testing, up to 10,000 testers); ad hoc
+  builds (up to 100 devices a year, each registered by its device id); and,
+  in the EU only, Apple's alternative distribution, which also needs Apple's
+  notarization. Enterprise distribution is for a company's own staff and is
+  not open to this project.
+- **Free signing** (Xcode's "Personal Team" with a free Apple ID) installs the
+  app only on the developer's own device, from a Mac, and it stops opening
+  after 7 days.
+- App Check on iOS (App Attest) also needs the membership.
+
+What is and is not verified on iOS:
+
+| | On a real iPhone or iPad | On iOS simulators (GitHub Actions) |
+|---|---|---|
+| The app builds for iOS (unsigned IPA) | not applicable | yes, on every change |
+| All 58 screens, iPhone and iPad sizes, upright and sideways | **not verified** | yes, 0 problems |
+| Sign-in and the online database | **not verified** | yes (smoke test) |
+| Gaze Control's face detector | **not verified** with a live camera | yes, on a still photo |
+| Camera: Word Hunt, Sign It recording, Gaze Control following a face | **not verified** | no camera in a simulator; the "no camera" messages are checked |
+| Microphone and speech recognition | **not verified** | not run (permission dialog) |
+| Bluetooth game controllers | **not verified** | not possible |
+| Speech output | **not verified** | the engine is asked to speak |
+| Notifications arriving on time, with sound, on a locked device | **not verified** | the 64-notification limit is respected |
+| The "sound is off" note, haptics, speed, battery | **not verified** | the sound level is read |
+
+## Testing on iPhone and iPad without owning one
 
 The project has no iPhone, iPad or Mac, and no paid Apple developer account.
 This page records what is tested for free, what that proves, and what only a
@@ -52,7 +92,7 @@ Only a real iPhone or iPad can confirm these. None has been tested on one.
 The paid routes (Apple Developer Program, TestFlight, paid device clouds) are
 not used.
 
-## Results (12 October 2026, run 38200672991)
+## Results (final 1.4.0 code, 13 October 2026, run 38227394474; the same as run 38200672991 on 12 October)
 
 All eight walkthroughs passed: 58 screens and 0 problems each, upright and
 sideways, on iPhone SE, iPhone 16 Pro Max, iPad mini and iPad 13" (the iPads
