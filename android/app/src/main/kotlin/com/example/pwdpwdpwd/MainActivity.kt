@@ -230,24 +230,41 @@ class MainActivity : FlutterActivity() {
                 val stream = AudioManager.STREAM_MUSIC
                 when {
                     audio == null -> result.success(null)
-                    call.method == "mediaVolume" -> result.success(
-                        mapOf(
-                            "level" to audio.getStreamVolume(stream),
-                            "max" to audio.getStreamMaxVolume(stream),
-                            "muted" to audio.isStreamMute(stream),
-                        ),
-                    )
+                    call.method == "mediaVolume" -> {
+                        val level = audio.getStreamVolume(stream)
+                        val muted = audio.isStreamMute(stream)
+                        Log.i("DeviceSound", "media volume $level, muted $muted")
+                        result.success(
+                            mapOf(
+                                "level" to level,
+                                "max" to audio.getStreamMaxVolume(stream),
+                                "muted" to muted,
+                            ),
+                        )
+                    }
                     // Only ever on the learner's tap: a third of the way up,
-                    // with the system's own volume panel showing the change.
+                    // a step at a time as the volume keys do (on the Honor
+                    // tablet a direct setStreamVolume reported success and
+                    // left the speaker silent), then the system's own volume
+                    // panel, so the change is seen and can be set by hand.
                     call.method == "turnUp" -> try {
+                        val max = audio.getStreamMaxVolume(stream)
+                        val target = maxOf(1, max / 3)
+                        val before = audio.getStreamVolume(stream)
                         if (audio.isStreamMute(stream)) {
                             audio.adjustStreamVolume(stream, AudioManager.ADJUST_UNMUTE, 0)
                         }
-                        val target = maxOf(1, audio.getStreamMaxVolume(stream) / 3)
-                        if (audio.getStreamVolume(stream) < target) {
-                            audio.setStreamVolume(stream, target, AudioManager.FLAG_SHOW_UI)
+                        repeat((target - before).coerceIn(0, max)) {
+                            audio.adjustStreamVolume(stream, AudioManager.ADJUST_RAISE, 0)
                         }
-                        result.success(audio.getStreamVolume(stream) > 0)
+                        audio.adjustStreamVolume(
+                            stream,
+                            AudioManager.ADJUST_SAME,
+                            AudioManager.FLAG_SHOW_UI,
+                        )
+                        val after = audio.getStreamVolume(stream)
+                        Log.i("DeviceSound", "turn up: $before -> $after (target $target of $max)")
+                        result.success(after > 0)
                     } catch (e: SecurityException) {
                         // Do Not Disturb may refuse a volume change.
                         result.success(false)
