@@ -693,10 +693,10 @@ class _Walk {
     await _settle(const Duration(seconds: 1));
     await _shot('profile_form');
     await tester.enterText(find.byType(TextFormField).first, _profileName);
-    await _settle(const Duration(seconds: 1));
+    await _keyboard(shown: true);
     await _shot('profile_form_keyboard');
     FocusManager.instance.primaryFocus?.unfocus();
-    await _settle(const Duration(seconds: 1));
+    await _keyboard(shown: false);
 
     // Birth date: the picker opens on a date 7 years back; its OK keeps it.
     // (Only the picker's OK: an error banner has an OK button too.)
@@ -897,6 +897,23 @@ class _Walk {
       await tester.pump(const Duration(milliseconds: 50));
       await Future<void>.delayed(const Duration(milliseconds: 50));
     }
+  }
+
+  /// Waits for the on-screen keyboard to be up ([shown]) or gone, at most a
+  /// few seconds. A slow CI emulator showed the keyboard 2.5 s after it was
+  /// asked to, by then already dismissed, right over the date picker the walk
+  /// had opened: on a phone held sideways that left the picker too short and
+  /// failed the walk. Where no software keyboard appears (a simulator with a
+  /// hardware keyboard), waiting for it ends at the timeout.
+  Future<void> _keyboard({required bool shown}) async {
+    final end = DateTime.now().add(Duration(seconds: shown ? 4 : 6));
+    while (DateTime.now().isBefore(end)) {
+      await tester.pump(const Duration(milliseconds: 50));
+      final up = tester.view.viewInsets.bottom > 0;
+      if (up == shown) break;
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+    await _settle(const Duration(milliseconds: 500));
   }
 
   Future<bool> _waitFor(Finder finder, Duration timeout) async {

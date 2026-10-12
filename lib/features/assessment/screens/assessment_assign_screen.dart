@@ -25,6 +25,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../core/utils/localized_date.dart';
 import '../models/question_prompt.dart';
+import '../../../core/utils/keyboard.dart';
 
 /// Something an educator can hand out.
 ///
@@ -325,6 +326,8 @@ class _AssessmentAssignScreenState
   }
 
   Future<void> _pickDeadline() async {
+    await closeKeyboardFirst(context);
+    if (!mounted) return;
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,

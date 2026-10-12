@@ -19,6 +19,7 @@ import '../../gamepad/providers/gamepad_settings_provider.dart';
 import '../../gaze_control/providers/gaze_settings_provider.dart';
 import '../../onboarding/widgets/learner_support_picker.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/utils/keyboard.dart';
 
 /// Screen for editing an existing user profile (name, avatar, disability type).
 ///
@@ -741,6 +742,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           const SizedBox(height: 8),
           GestureDetector(
             onTap: () async {
+              await closeKeyboardFirst(context);
+              if (!context.mounted) return;
               final picked = await showDatePicker(
                 context: context,
                 initialDate: _selectedBirthDate ?? DateTime(2015),

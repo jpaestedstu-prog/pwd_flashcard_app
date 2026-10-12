@@ -26,6 +26,7 @@ import '../../../widgets/app_button.dart';
 import '../../gamepad/providers/gamepad_settings_provider.dart';
 import '../../gaze_control/providers/gaze_settings_provider.dart';
 import '../widgets/profile_setup_form.dart';
+import '../../../core/utils/keyboard.dart';
 
 /// Identifies which join flow led the user to the post-join setup screen.
 ///
@@ -132,6 +133,8 @@ class _PostJoinSetupScreenState extends ConsumerState<PostJoinSetupScreen> {
   }
 
   Future<void> _pickBirthDate() async {
+    await closeKeyboardFirst(context);
+    if (!mounted) return;
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,

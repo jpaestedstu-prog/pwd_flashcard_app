@@ -19,6 +19,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/app_button.dart';
 import '../widgets/profile_setup_form.dart';
+import '../../../core/utils/keyboard.dart';
 
 /// Profile-setup screen for the three non-join roles: Player, Teacher,
 /// Parent. Mirrors the structure of [PostJoinSetupScreen] (used by Student
@@ -112,6 +113,8 @@ class _RoleSetupScreenState extends ConsumerState<RoleSetupScreen> {
       };
 
   Future<void> _pickBirthDate() async {
+    await closeKeyboardFirst(context);
+    if (!mounted) return;
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
