@@ -10,7 +10,7 @@ Each needs the project owner's go-ahead (see "Waiting for approval").
 | Problem | Who it hit | Fix |
 |---|---|---|
 | **Word → Sign** answers broke ("infinite height") as soon as their sign videos loaded | every learner, since 2026-09-10 | the controller focus ring no longer stretches a list row (`GamepadFocusable`) |
-| A stranger who knew a learner's id could create that learner's cloud **progress, streak, tutorial flag, equipped item or study logs** first, locking the learner's own device out of them | every synced learner (live rules) | `mayStartFor()` in `firestore.rules`; **not deployed yet** |
+| A stranger who knew a learner's id could create that learner's cloud **progress, streak, tutorial flag, equipped item or study logs** first, locking the learner's own device out of them | every synced learner (live rules) | `mayStartFor()` in `firestore.rules`; **deployed 2026-10-12**, checked live (stranger refused, owner allowed) |
 | iOS keeps only 64 pending notifications; child alarms alone could ask for 224 | iPhone and iPad | one shared budget (62); an every-day alarm is one daily repeat |
 | The Google Play build gets no exact alarms on Android 14+, so reminders, alarms and locks could arrive up to an hour late, silently | Play build | "Allow on-time alarms" in the routine builder, the alarm list and the learner's My Day; schedulers re-check on resume |
 | **Gaze Control on iPhone/iPad** moved the highlight the wrong way (the iOS camera mirrors front-camera frames) | iOS | readings turned back into Android's frame |
@@ -76,7 +76,8 @@ Each needs the project owner's go-ahead (see "Waiting for approval").
 
 ## Waiting for approval
 
-1. `firebase deploy --only firestore:rules` (the security fix above).
+1. ~~`firebase deploy --only firestore:rules`~~: approved and deployed on
+   2026-10-12, then checked live (see [security.md](security.md)).
 2. Publishing 1.4.0: GitHub Release with the three APKs, then the website.
 3. Merging `work/v1.4.0` into `work/sign-interpreter` / `main`.
 4. Store uploads, after the Google Play Console and Apple Developer

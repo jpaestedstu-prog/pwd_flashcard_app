@@ -31,20 +31,26 @@ create that learner's cloud progress, streak, tutorial flag or equipped item
 first. The learner's own device could then never sync them again. They could
 also file made-up study time under the learner's name.
 
-Now only the device that owns the learner may *start* those documents. Two
+Now only the device that owns the learner may *start* those documents. Three
 exceptions keep the app's existing flows working: a learner not yet in the
-cloud (offline first) and a valid recovery code.
+cloud (offline first), a valid recovery code, and a learner whose profile is
+still unclaimed (from before `owner_uid`; refusing those would have stopped an
+older tablet's study logs). A learner id is read from the whole key, since an
+imported profile may keep an id with "_".
 [`tool/write_claim_rules_emulator_test.py`](../tool/write_claim_rules_emulator_test.py)
-pins this with 20 checks; 12 of them fail on the old rules.
+pins this with 32 checks, 12 of them on the data that exists today.
 
-**These rules are not deployed yet.** Deploying needs the project owner's go-ahead:
+**Deployed on 12 October 2026** (`firebase deploy --only firestore:rules`,
+approved by the project owner). Checked live straight after with
+[`tool/write_claim_rules_live_probe.py`](../tool/write_claim_rules_live_probe.py):
+on a throwaway learner of its own, a second device was refused the learner's
+progress, study log and daily challenge (403) while the owning device was
+allowed (200); the probe then deleted everything it wrote and both of its
+anonymous accounts. The read probe passed too. To roll back, deploy the
+previous rules: `git show 1af2345:firestore.rules`.
 
-```
-firebase deploy --only firestore:rules
-```
-
-Installed copies keep working: the app already writes these documents only
-from the owning device.
+Installed copies keep working: the app writes these documents only from the
+owning device.
 
 ### Testing the rules
 
