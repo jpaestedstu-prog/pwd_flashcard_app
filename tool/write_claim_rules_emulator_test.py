@@ -72,6 +72,12 @@ def create(uid, path, data):
     return st
 
 
+def update(uid, path, data):
+    """A write to a document that already exists."""
+    st, _ = req("PATCH", f"{BASE}/{path}?currentDocument.exists=true", fields(data), uid)
+    return st
+
+
 def wipe():
     st, _ = req("DELETE", f"http://127.0.0.1:8080/emulator/v1/{ROOT}")
     assert st == 200, st
@@ -110,6 +116,17 @@ def seed():
     put("profiles/pS1", {"owner_uid": "uS1", "name": "Student One", "role": 0})
     put("profiles/pS2", {"owner_uid": "uS2", "name": "Student Two", "role": 0})
     put("profiles/pX", {"owner_uid": "uX", "name": "Stranger", "role": 0})
+    # Existing learners in the cloud today: a profile from before owner_uid
+    # (not yet claimed by OwnerUidMigration), one with owner_uid null, and an
+    # imported profile whose id contains underscores.
+    put("profiles/pLegacy", {"name": "Old Tablet Learner", "role": 0})
+    put("profiles/pNull", {"owner_uid": None, "name": "Unclaimed", "role": 0})
+    put("profiles/p_imported_1", {"owner_uid": "uS1", "name": "Imported", "role": 0})
+    # A learner already syncing: profile, progress and a study log on file.
+    put("profiles/pS3", {"owner_uid": "uS3", "name": "Student Three", "role": 0})
+    put("progress/pS3", {"owner_uid": "uS3", "stars": 40})
+    put("session_logs/old3", {"owner_uid": "uS3", "profile_id": "pS3"})
+    put("app_state/daily_streak_pS3", {"owner_uid": "uS3", "value": "4"})
     # A code the old tablet (uS2) issued for pS2, not yet redeemed.
     put("recovery_codes/MNGO-BERY-7K", {
         "profile_id": "pS2", "profile_owner_uid": "uS2", "used_at": None})
@@ -173,6 +190,32 @@ def main():
             create("uX", "app_state/active_profile_uX", {"owner_uid": "uX", "value": "pX"}))
     allowed("any other key is as before",
             create("uX", "app_state/something_else", {"owner_uid": "uX", "value": "1"}))
+
+    # ── existing learners keep working (2026-10-12, before deploying) ──
+    allowed("a learner already syncing updates its progress",
+            update("uS3", "progress/pS3", {"owner_uid": "uS3", "stars": 41}))
+    allowed("... files a new study log",
+            create("uS3", "session_logs/new3", {"owner_uid": "uS3", "profile_id": "pS3"}))
+    allowed("... updates its streak",
+            update("uS3", "app_state/daily_streak_pS3", {"owner_uid": "uS3", "value": "5"}))
+    denied("a stranger still cannot overwrite that progress",
+           update("uX", "progress/pS3", {"owner_uid": "uX", "stars": 999}))
+    allowed("a legacy profile (no owner_uid yet) still files study logs",
+            create("uL", "session_logs/legacy1", {"owner_uid": "uL", "profile_id": "pLegacy"}))
+    allowed("... and starts its progress",
+            create("uL", "progress/pLegacy", {"owner_uid": "uL", "stars": 1}))
+    allowed("... and its tutorial flag",
+            create("uL", "app_state/tutorial_seen_pLegacy", {"owner_uid": "uL", "value": "true"}))
+    allowed("a profile with owner_uid null is treated the same",
+            create("uL", "session_logs/null1", {"owner_uid": "uL", "profile_id": "pNull"}))
+    allowed("an imported id with underscores: its own device",
+            create("uS1", "app_state/tutorial_seen_p_imported_1", {"owner_uid": "uS1", "value": "true"}))
+    allowed("... its streak",
+            create("uS1", "app_state/daily_streak_p_imported_1", {"owner_uid": "uS1", "value": "1"}))
+    denied("... but not a stranger",
+           create("uX", "app_state/daily_challenge_p_imported_1", {"owner_uid": "uX", "value": "x"}))
+    denied("... nor a stranger's study log",
+           create("uX", "session_logs/imp1", {"owner_uid": "uX", "profile_id": "p_imported_1"}))
 
     print(f"{passed} passed, {len(failed)} failed")
     for f in failed:

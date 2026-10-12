@@ -93,8 +93,17 @@ service cloud.firestore {
     // could never sync it again (and could be handed made-up study logs).
     function mayStartFor(profileId) {
       return profileId is string
-        && (ownsProfile(profileId)
-          || !exists(/databases/$(database)/documents/profiles/$(profileId)));
+        && (!exists(/databases/$(database)/documents/profiles/$(profileId))
+          || profileOwnerIsCallerOrUnset(profileId));
+    }
+
+    // The learner's owner is the caller, or there is none yet: a profile from
+    // before owner_uid that OwnerUidMigration has not claimed. Refusing those
+    // would stop an older tablet's study logs from syncing; they stay as open
+    // as they always were until their own device claims them.
+    function profileOwnerIsCallerOrUnset(profileId) {
+      let owner = get(/databases/$(database)/documents/profiles/$(profileId)).data.get('owner_uid', null);
+      return owner == null || owner == request.auth.uid;
     }
 
     function ownsClassroomTeacher(classroomId) {
@@ -321,8 +330,10 @@ service cloud.firestore {
       function appStateKeyMayStart(key) {
         return (key.matches('active_profile_.+')
             && key == 'active_profile_' + request.auth.uid)
-          || (key.matches('(tutorial_seen|daily_challenge|daily_streak)_[^_]+')
-            && mayStartFor(key.split('_')[2]))
+          // The id is everything after the prefix: an imported profile keeps
+          // its old id, which may itself contain "_".
+          || (key.matches('(tutorial_seen|daily_challenge|daily_streak)_.+')
+            && mayStartFor(key.replace('^(tutorial_seen|daily_challenge|daily_streak)_', '')))
           || !key.matches('(active_profile|tutorial_seen|daily_challenge|daily_streak)_.+');
       }
       allow update: if isOwner(resource.data.owner_uid)
