@@ -59,7 +59,7 @@ iOS builds: see [docs/store/README.md](docs/store/README.md).
 
 ```
 flutter analyze
-flutter test                         # ~5,100 unit and widget tests
+flutter test                         # ~5,250 unit and widget tests
 ```
 
 - **On-device walkthrough** (emulators and simulators only, because `flutter drive`
@@ -76,8 +76,12 @@ flutter test                         # ~5,100 unit and widget tests
     APKs with their manifests checked, and walkthroughs on a phone and a tablet
     emulator in both orientations.
   - [iOS](.github/workflows/ios.yml): the unsigned IPA and walkthroughs on four
-    simulators (small and large iPhone, iPad mini, 13-inch iPad), two of them also
-    in landscape.
+    simulators (small and large iPhone, iPad mini, 13-inch iPad), each upright and
+    sideways.
+- **Before publishing**: `python tool/release_artifact_scan.py <apks, aab, ipa>`
+  (no keys, passwords, test-only code or learner data inside, nothing
+  debuggable) and `python tool/osv_check.py` (the Dart packages against the
+  free OSV vulnerability database).
 
 ## Project layout
 
@@ -105,6 +109,7 @@ docs/          documentation (below)
 | [docs/signing.md](docs/signing.md) | The signing key and its backup |
 | [docs/multi_device_sync.md](docs/multi_device_sync.md) | How data moves between devices |
 | [docs/fsl_recording_guide.md](docs/fsl_recording_guide.md) | Recording the remaining FSL signs |
+| [docs/fsl_signs_plan.md](docs/fsl_signs_plan.md) | The 33 words still without a sign, and the plan for adding them |
 | [tools/README.md](tools/README.md) | Publishing FSL videos (free GitHub Releases hosting) |
 | [FREE_TIER_FEATURES.md](FREE_TIER_FEATURES.md) | Every feature and the free service behind it |
 

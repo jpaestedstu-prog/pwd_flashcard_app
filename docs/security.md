@@ -102,9 +102,9 @@ notes about them. Every release before 1.4.0 reads a learner's notes without
 saying who the reader is to the learner, so a tighter rule now would cut
 those teachers and parents off. So:
 
-1. **Phase 1 (1.4.0).** Before it reads, a teacher's or parent's app files
-   `note_readers/{device}_{learner}` naming the class or family group of
-   theirs that the learner joined. The rules accept it only if that
+1. **Phase 1 (1.4.0).** When it opens the notes, a teacher's or parent's
+   app files `note_readers/{device}_{learner}` (once per learner and device)
+   naming the class or family group of theirs that the learner joined. The rules accept it only if that
    membership exists and the caller owns the group.
 2. **Phase 2 (later).** Once every teacher's and parent's device runs 1.4.0
    or later, the notes block in `firestore.rules` is replaced by

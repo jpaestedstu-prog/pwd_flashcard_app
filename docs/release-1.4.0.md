@@ -29,6 +29,11 @@ Each needs the project owner's go-ahead (see "Waiting for approval").
 | The day streak kept its old length after a missed day until the learner played again, then "dropped" to 1; educators could be told to celebrate a run that had ended; leaderboards, teacher analytics, the TV view, exports and the tutor used the same stale number | learners, educators, exports | every place that shows or sorts by the streak uses the live one (0 after a missed day); the best streak, XP, stickers and showcase milestones are unchanged |
 | The educator's "streak was broken" alert could never fire (it waited for a stored streak of 0) | educators | fires once per broken run of 2+ days |
 | The score animation ran on a closed screen when the result was left within 200 ms | every game | checks the screen is still open |
+| **Found in the tablet's sync test:** stars, words learned, category progress and Star Shop spending were saved on the tablet only; a class learner's online copy lagged until their next game (35 stars on the tablet, 25 online) | learners in a class, and their teachers' views | every change goes through the same save-and-sync path as a game result |
+| **Found on the real tablet:** "Turn sound up" said it worked, but the Honor's speaker stayed silent (the tablet ignores a direct volume setting) | some Android tablets | steps the volume like the volume keys and shows the system panel; on the Honor: 0 → 5 of 15 |
+| **Security review:** a stranger with only a child's handle could make themselves the child's "parent" and approve a friendship (or write it themselves), and rename someone else's learner; anyone with a learner's id could list their achievements and purchases | learners, children above all (live rules) | fixed in `firestore.rules` and tested; **deploying waits for approval** (see [security.md](security.md)) |
+| A learner's inbox showed messages from people who were not their friends, teachers or family as a read-only thread, and the Messages badge counted them (the database delivers a message to any known profile) | learners | a learner sees only their contacts and people they have written to |
+| On a phone held sideways, the date pickers overflowed while the keyboard was still on screen (the landscape walk caught it on the birth date) | sideways phones | the keyboard is closed, and has left, before a date picker opens |
 
 ## New
 
@@ -67,7 +72,17 @@ Each needs the project owner's go-ahead (see "Waiting for approval").
   [store/README.md](store/README.md)).
 - **The 33 unsigned words stay placeholders** by the project owner's decision
   ("Sign coming soon"); a test keeps the recording checklist and the app's
-  unsigned words identical.
+  unsigned words identical. [fsl_signs_plan.md](fsl_signs_plan.md) is the
+  plan for adding them later (app and website, free tools).
+- **Parent-teacher notes, phase 1:** when it opens the notes, a teacher's or
+  parent's app records which of their classes or family groups links them to
+  a learner, so a later rules version can let only them read
+  ([security.md](security.md)).
+- **Release safety tools:** `tool/release_artifact_scan.py` fails if an
+  APK, bundle or IPA carries keys, passwords, test-only code, learner data or
+  paths from the build PC, or is debuggable; `tool/osv_check.py` checks the
+  app's Dart packages against the free OSV vulnerability database. The
+  repository now ignores key, password, provisioning and Hive files anywhere.
 - **Docs:** [README](../README.md), [security.md](security.md),
   [fsl_recording_guide.md](fsl_recording_guide.md),
   [ios_testing.md](ios_testing.md) (free iPhone/iPad testing and its limits),
@@ -96,14 +111,25 @@ Each needs the project owner's go-ahead (see "Waiting for approval").
 
 ## Waiting for approval
 
-1. ~~`firebase deploy --only firestore:rules`~~: approved and deployed on
-   2026-10-12, then checked live (see [security.md](security.md)).
-2. Publishing 1.4.0: GitHub Release with the three APKs, then the website.
-3. Merging `work/v1.4.0` into `work/sign-interpreter` / `main`.
-4. Store uploads, after the Google Play Console and Apple Developer
+1. ~~`firebase deploy --only firestore:rules`~~ (the write-claim fix):
+   approved and deployed on 2026-10-12, then checked live.
+2. **Deploying the security review's rules** (`firebase deploy --only
+   firestore:rules` from this branch): closes the stranger-approves-a-child
+   route and the open achievements and purchases. It changes nothing any
+   installed app does, so it can go before the app release, and is the most
+   urgent item here. Roll back with `git show 02fd573:firestore.rules`.
+3. Publishing 1.4.0: GitHub Release with the three APKs, then the website.
+4. Merging `work/v1.4.0` into `work/sign-interpreter` / `main`.
+5. Store uploads, after the Google Play Console and Apple Developer
    accounts exist ([store/README.md](store/README.md)). The Play bundle is
    now signed with the new upload key; its password is only in
    `play-upload.properties` on this PC: copy it to a password manager.
+6. Optional, free, in GitHub and Google Cloud settings: turn on Dependabot
+   alerts; restrict the Firebase API keys to the app's package and bundle ids
+   and the Firebase APIs, then dismiss the three secret-scanning alerts
+   (they are the public client keys every Firebase app ships).
+7. Later, not for 1.4.0: phase 2 of the notes rules, once every teacher's
+   and parent's device runs 1.4.0 or later.
 
 ## Not possible in this round
 
@@ -141,11 +167,28 @@ plugins to versions that support built-in Kotlin, set
 `android.builtInKotlin=true`, and run the full checks
 ([Flutter's guide](https://docs.flutter.dev/release/breaking-changes/migrate-to-built-in-kotlin/for-app-developers)).
 
+**Flutter 3.47.7 tried on a side branch** (12 October; the newest stable,
+Dart 3.13.5, installed separately so the project's 3.44 was untouched; local
+branch `work/toolchain-3.47`, not pushed or merged): `flutter pub get` moved
+five SDK-pinned packages, `flutter analyze` found no issues, and all 5,237
+tests passed (on the code before the security review). TOOLCHAIN_BUILD_RESULT
+So moving to 3.47 is possible, but it does not by itself remove the warning
+(that needs AGP 9 and the plugins' updates), and it changes the compiler
+under every screen. **Recommendation: ship 1.4.0 on 3.44 and make the move,
+with AGP 9, the first change of the next version**, with the full checks and
+a tablet run.
+
 ## Recommended next
 
-- **On the Honor, once unlocked:** open a synced learner, earn something
-  (a game round), and confirm Settings shows it synced: the real-device
-  half of the rules check (the live probe already showed owners can write).
 - **Copy both signing passwords** (`key.properties`, `play-upload.properties`)
-  into a password manager, and the backup folder to a USB drive.
+  into a password manager or onto paper, and the backup folder to a USB
+  drive. Both keys are backed up in `Documents\FlashLearn PWD - signing key
+  backup` (checked identical to the originals on 12 October), but the
+  passwords are, by design, not in that folder: today they exist only on
+  this PC, and without them the backups cannot sign anything. The folder is
+  also on the same PC.
 - **Built-in Kotlin** with the next toolchain update (above).
+- **Two-phase security changes for a later version** (both need the app to
+  send something first, then a rules change once older apps have updated):
+  joining a class or family group should prove the join code, and messages
+  should need a link (friends, class or family) in the rules themselves.

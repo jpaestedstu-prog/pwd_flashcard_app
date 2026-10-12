@@ -123,16 +123,17 @@ class _ParentTeacherNotesScreenState
     localMerged.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     if (mounted) setState(() => _notes = localMerged);
 
-    // An educator files themselves as a reader first: the tighter notes rule
-    // (docs/security.md) lets only filed readers in. Once per learner and
-    // device; never blocks the notes for more than a few seconds.
+    // An educator files themselves as a reader of these learners' notes, for
+    // the tighter notes rule to come (docs/security.md). Not awaited: today's
+    // rule does not need it, and offline a cloud write only finishes once the
+    // tablet reconnects, which would have held the notes back.
     final me = ref.read(profileProvider);
     if (me != null && me.role.isEducator) {
-      await _cloud.registerAsReaders(
+      // ignore: discarded_futures
+      _cloud.registerAsReaders(
         educatorProfileId: me.id,
         studentIds: learnerIds,
       );
-      if (!mounted) return;
     }
 
     // Then refresh from cloud — overwrites Hive and our state.

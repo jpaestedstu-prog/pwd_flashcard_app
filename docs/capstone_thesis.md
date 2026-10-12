@@ -2855,7 +2855,7 @@ correctly, by the people it is built for, within their existing practices.
 | **Resistance to change** | **Low risk** | The system reduces rather than increases teacher workload by automating progress reporting, worksheet generation, and certificate printing. |
 | **Language accessibility** | **Highly feasible** | The full interface is available in Filipino as well as English; all content is bilingual. |
 | **Ongoing support burden** | **Feasible** | No server, no accounts to administer, no subscription to renew. Updates are distributed as a new APK. |
-| **Safeguarding** | **Feasible** | Educator surfaces are PIN-gatable; messaging is scoped to established class and home-group relationships; telemetry is off by default. |
+| **Safeguarding** | **Feasible** | Educator surfaces are PIN-gatable; a learner's inbox shows only established relationships (friends, their class's teacher, their family group's parent), a child's friendships need a parent's approval, and blocks are enforced by the security rules; telemetry is off by default. |
 
 **Conclusion.** The system is **operationally feasible**. Its principal
 operational risk is device scarcity in the poorest schools, which the system
