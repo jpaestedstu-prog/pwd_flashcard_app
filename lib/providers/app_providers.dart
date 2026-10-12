@@ -35,6 +35,7 @@ import '../features/goals/services/goal_service.dart';
 import '../features/experiment/models/experiment_models.dart';
 import '../features/experiment/services/experiment_service.dart';
 import '../features/parent_teacher_notes/services/notes_cloud_service.dart';
+import '../features/progress/models/category_mastery.dart';
 
 // ─── Bottom Navigation Visibility ──────────────────────
 /// Controls whether the bottom navigation bar is visible.
@@ -1204,8 +1205,13 @@ class GoalsNotifier extends Notifier<List<LearningGoal>> {
     final profile = ref.watch(profileProvider);
     profileId = profile?.id ?? 'default';
     final progress = ref.watch(progressProvider);
+    final mastery = ref.watch(categoryMasteryProvider);
     // Update goal progress whenever learning progress changes
-    final goals = GoalService.updateGoalProgress(profileId, progress);
+    final goals = GoalService.updateGoalProgress(
+      profileId,
+      progress,
+      coverage: {for (final e in mastery.entries) e.key: e.value.coverage},
+    );
     HiveService.saveGoals(profileId, goals);
     return goals;
   }

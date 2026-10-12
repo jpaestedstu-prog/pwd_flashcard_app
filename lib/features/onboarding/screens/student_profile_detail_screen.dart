@@ -20,6 +20,8 @@ import '../../../l10n/app_localizations.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../widgets/learner_support_picker.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../progress/models/category_mastery.dart';
+import '../../../data/local/seed_data.dart';
 
 /// Shows full profile information and learning progress for a student.
 ///
@@ -36,6 +38,16 @@ class StudentProfileDetailScreen extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final avatar = AvatarData.getAvatar(profile.avatarIndex);
     final progress = HiveService.getProgress(profile.id);
+    // Share of each started category's words actually learned. The section
+    // used to draw `categoryProgress`, a rolling accuracy average, as if it
+    // were progress through the category.
+    final coverage = {
+      for (final m in CategoryMastery.forProgress(progress, [
+        ...SeedData.allFlashcards,
+        ...HiveService.getCustomCards(),
+      ]).values)
+        if (m.isStarted) m.category.label: m.coverage,
+    };
     final achievements = HiveService.getUnlockedAchievements(profile.id);
 
     // ─── This profile's skin + layout (yield to accessibility modes) ───
@@ -132,11 +144,11 @@ class StudentProfileDetailScreen extends ConsumerWidget {
             SizedBox(height: layout.sectionGap),
 
             // ── Category Progress ──
-            if (progress.categoryProgress.isNotEmpty) ...[
+            if (coverage.isNotEmpty) ...[
               _SectionTitle(title: _t(context).spdCategoryProgress),
               const SizedBox(height: 8),
               _CategoryProgressSection(
-                categoryProgress: progress.categoryProgress,
+                categoryProgress: coverage,
                 isDark: isDark,
                 accent: accent,
                 surface: cardSurface,

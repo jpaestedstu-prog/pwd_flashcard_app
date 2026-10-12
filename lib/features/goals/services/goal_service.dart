@@ -3,6 +3,7 @@ import '../../../data/local/hive_service.dart';
 import '../../../data/models/models.dart';
 import '../../../data/models/enums.dart';
 import '../models/goal_model.dart';
+import 'package:flutter/foundation.dart';
 
 class GoalService {
   GoalService._();
@@ -46,10 +47,13 @@ class GoalService {
     await HiveService.saveGoals(profileId, goals);
   }
 
+  /// [coverage] is each category's share of words the learner has actually
+  /// learned (CategoryMastery.coverage), what a category-mastery goal counts.
   static List<LearningGoal> updateGoalProgress(
     String profileId,
-    LearningProgress progress,
-  ) {
+    LearningProgress progress, {
+    Map<FlashcardCategory, double> coverage = const {},
+  }) {
     final goals = getGoals(profileId);
     final updated = <LearningGoal>[];
 
@@ -65,7 +69,7 @@ class GoalService {
         continue;
       }
 
-      final currentValue = _computeCurrentValue(goal, progress);
+      final currentValue = computeCurrentValue(goal, progress, coverage);
       final newGoal = goal.copyWith(currentValue: currentValue);
 
       if (newGoal.isCompleted) {
@@ -78,19 +82,23 @@ class GoalService {
     return updated;
   }
 
-  static int _computeCurrentValue(
+  @visibleForTesting
+  static int computeCurrentValue(
     LearningGoal goal,
     LearningProgress progress,
+    Map<FlashcardCategory, double> coverage,
   ) {
     return switch (goal.type) {
       GoalType.wordsLearned => progress.wordsLearned,
       // Lifetime count. `recentScores` is trimmed to the last 20, so any goal
       // with a target above 20 could never be completed.
       GoalType.gamesCompleted => progress.effectiveGamesPlayed,
+      // The share of the category's words actually learned. This used to be
+      // `categoryProgress`, a rolling accuracy average: five perfect
+      // three-question games "mastered" a category of twenty words.
       GoalType.categoryMastery =>
         goal.category != null
-            ? ((progress.categoryProgress[goal.category!.label] ?? 0.0) * 100)
-                  .round()
+            ? ((coverage[goal.category!] ?? 0.0) * 100).round()
             : 0,
       GoalType.streakDays => progress.liveStreakDays,
       GoalType.starsEarned => progress.totalStars,
