@@ -27,7 +27,7 @@
 > reproducible** from the repository as of 31 August 2026.
 >
 > **Updated 12 October 2026 for version 1.4.0:** the platform and orientation
-> statements (Sections 1.3, 1.4.2, 3.4.4 and the portability discussion) now
+> statements (Sections 1.4.1, 1.4.2, 3.3, 3.4.4 and 5.4, and a note in 5.3.1) now
 > describe the app turning with the device and the iPhone/iPad build, which is
 > tested on simulators only. The measured figures above are unchanged.
 
