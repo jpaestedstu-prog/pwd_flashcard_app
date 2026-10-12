@@ -5,6 +5,31 @@ import '../../../core/services/firebase_service.dart';
 import '../../../data/local/hive_service.dart';
 import '../models/parent_teacher_note_models.dart';
 
+/// Which of an educator's own classes or home groups [studentId] joined —
+/// the proof a `note_readers` doc names. Classes are tried first; null when
+/// the learner joined none of them. [exists] answers whether a membership
+/// document (`classroom_members/{class}_{learner}` or
+/// `home_group_members/{group}_{learner}`) is there.
+@visibleForTesting
+Future<({String? classroomId, String? homeGroupId})?> findNoteReaderVia({
+  required String studentId,
+  required Iterable<String> classroomIds,
+  required Iterable<String> homeGroupIds,
+  required Future<bool> Function(String path) exists,
+}) async {
+  for (final c in classroomIds) {
+    if (await exists('classroom_members/${c}_$studentId')) {
+      return (classroomId: c, homeGroupId: null);
+    }
+  }
+  for (final g in homeGroupIds) {
+    if (await exists('home_group_members/${g}_$studentId')) {
+      return (classroomId: null, homeGroupId: g);
+    }
+  }
+  return null;
+}
+
 /// Mirrors parent-teacher notes between Hive and Firestore.
 ///
 /// Cloud path: `parent_teacher_notes/{studentProfileId}/notes/{noteId}`.
@@ -65,6 +90,73 @@ class ParentTeacherNotesCloudService {
       if (kDebugMode) {
         debugPrint('ParentTeacherNotesCloudService.deleteNote failed: $e');
         debugPrint(stack.toString());
+      }
+    }
+  }
+
+  /// Files this device as a reader of each learner's notes before it reads
+  /// them: `note_readers/{uid}_{studentId}`, naming the class or home group
+  /// of [educatorProfileId] that the learner joined.
+  ///
+  /// The notes are readable by any signed-in user today because no older
+  /// release says who it is to the learner. Once every teacher's and
+  /// parent's device files these, the rules can let only them (and the
+  /// learner) read and write the notes (docs/security.md). Best effort: a
+  /// learner with no class or group of this educator's, an offline device,
+  /// or rules that do not know the collection yet simply file nothing, and
+  /// a filed reader is remembered so it is written once per device.
+  Future<void> registerAsReaders({
+    required String educatorProfileId,
+    required Iterable<String> studentIds,
+  }) async {
+    if (!FirebaseService.isConfigured) return;
+    final uid = FirebaseService.currentUid;
+    if (uid == null || uid.isEmpty) return;
+    try {
+      final classes = HiveService.getClassroomsByTeacher(educatorProfileId)
+          .map((c) => c.id)
+          .toList();
+      final groups = HiveService.getHomeGroupsByOwner(educatorProfileId)
+          .map((g) => g.id)
+          .toList();
+      if (classes.isEmpty && groups.isEmpty) return;
+      await Future.wait([
+        for (final id in studentIds.toSet())
+          _registerAsReader(uid, id, classes, groups),
+      ]).timeout(const Duration(seconds: 8));
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('ParentTeacherNotesCloudService.registerAsReaders: $e');
+      }
+    }
+  }
+
+  Future<void> _registerAsReader(
+    String uid,
+    String studentId,
+    List<String> classes,
+    List<String> groups,
+  ) async {
+    final key = 'note_reader::${uid}_$studentId';
+    if (HiveService.getSetting(key) == true) return;
+    try {
+      final via = await findNoteReaderVia(
+        studentId: studentId,
+        classroomIds: classes,
+        homeGroupIds: groups,
+        exists: (path) async => (await _db.doc(path).get()).exists,
+      );
+      if (via == null) return;
+      await _db.collection('note_readers').doc('${uid}_$studentId').set({
+        'profile_id': studentId,
+        'classroom_id': ?via.classroomId,
+        'home_group_id': ?via.homeGroupId,
+        'updated_at': FieldValue.serverTimestamp(),
+      });
+      await HiveService.saveSetting(key, true);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('ParentTeacherNotesCloudService: reader $studentId: $e');
       }
     }
   }

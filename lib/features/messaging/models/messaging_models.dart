@@ -317,12 +317,18 @@ bool isEducatorRole(String role) {
 ///     longer in the directory (unfriended, left the class) still shows —
 ///     including in the short window before a just-accepted friendship
 ///     reaches this device — but as [Conversation.isConnected] false.
+///   * **A stranger never reaches a learner** ([hideStrangers], on for
+///     learners). The database delivers a message from anyone who knows a
+///     learner's id, so the history fallback used to put a thread from
+///     someone the child had never met in their inbox. Now a thread outside
+///     the directory shows only if the learner has written in it themselves.
 ///   * Newest conversation first; empty threads alphabetically after.
 List<Conversation> assembleInbox({
   required String myProfileId,
   required List<Conversation> peers,
   required List<LocalMessage> messages,
   Set<String> blockedIds = const {},
+  bool hideStrangers = false,
 }) {
   final grouped = <String, List<LocalMessage>>{};
   for (final msg in messages) {
@@ -352,6 +358,9 @@ List<Conversation> assembleInbox({
     if (known.contains(entry.key)) continue;
     final inbound = entry.value.where((m) => m.senderId == entry.key);
     if (inbound.isEmpty) continue;
+    if (hideStrangers && !entry.value.any((m) => m.senderId == myProfileId)) {
+      continue;
+    }
     final name = inbound.first.senderName.isEmpty
         ? 'User'
         : inbound.first.senderName;
@@ -377,6 +386,38 @@ List<Conversation> assembleInbox({
     );
   });
   return convos;
+}
+
+/// How many received messages [myProfileId] has not opened — counting only
+/// what the inbox would show, so the badge always has something to open.
+///
+/// A blocked sender never counts. With [contactIds] (a learner's friends,
+/// class teacher and family-group parent — null for educators), the sender
+/// must also be one of them or someone the learner has written to: the
+/// inbox hides everyone else ([assembleInbox]'s `hideStrangers`).
+int unreadInboxCount({
+  required String myProfileId,
+  required List<LocalMessage> messages,
+  Set<String> blockedIds = const {},
+  Set<String>? contactIds,
+}) {
+  final writtenTo = contactIds == null
+      ? const <String>{}
+      : {
+          for (final m in messages)
+            if (m.senderId == myProfileId) m.recipientId,
+        };
+  return messages
+      .where(
+        (m) =>
+            m.recipientId == myProfileId &&
+            !m.isRead &&
+            !blockedIds.contains(m.senderId) &&
+            (contactIds == null ||
+                contactIds.contains(m.senderId) ||
+                writtenTo.contains(m.senderId)),
+      )
+      .length;
 }
 
 /// How a message reads outside its bubble: the inbox preview line, the words

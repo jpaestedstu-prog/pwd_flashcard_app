@@ -9,6 +9,7 @@ import '../../parent/services/parental_controls_service.dart';
 import '../models/friend_models.dart';
 import '../models/messaging_models.dart';
 import '../services/cloud_message_repository.dart';
+import '../services/conversation_directory_service.dart';
 import '../services/friend_service.dart';
 
 /// Shared messaging state.
@@ -91,20 +92,39 @@ final unreadMessageCountProvider = Provider<int>((ref) {
   if (_messagingBlocked()) return 0;
   final blocked =
       ref.watch(blockedProfileIdsProvider).valueOrNull ?? const <String>{};
+  // A learner's inbox hides strangers, so their badge must not count them.
+  final contacts = profileUsesFriends(profile)
+      ? ref.watch(learnerContactIdsProvider).valueOrNull ?? const <String>{}
+      : null;
 
   return ref
       .watch(activeProfileMessagesProvider)
       .maybeWhen(
-        data: (messages) => messages
-            .where(
-              (m) =>
-                  m.recipientId == profile.id &&
-                  !m.isRead &&
-                  !blocked.contains(m.senderId),
-            )
-            .length,
+        data: (messages) => unreadInboxCount(
+          myProfileId: profile.id,
+          messages: messages,
+          blockedIds: blocked,
+          contactIds: contacts,
+        ),
         orElse: () => 0,
       );
+});
+
+/// A learner's contacts — friends, their class's teacher, their family
+/// group's parent — by id: the senders their inbox shows (see
+/// [ConversationDirectoryService.watchContactIds]). Empty for educators and
+/// guests, whose badge is not filtered by it.
+final learnerContactIdsProvider = StreamProvider<Set<String>>((ref) {
+  final profile = ref.watch(profileProvider);
+  if (profile == null || !profileUsesFriends(profile)) {
+    return Stream.value(const <String>{});
+  }
+  try {
+    return ConversationDirectoryService.instance.watchContactIds(profile);
+  } catch (_) {
+    // A closed cache box (tests, early startup) must not take a Home hub down.
+    return Stream.value(const <String>{});
+  }
 });
 
 /// The number on the Home hubs' Messages tile: unread messages plus friend

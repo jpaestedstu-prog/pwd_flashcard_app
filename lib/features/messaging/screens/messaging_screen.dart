@@ -225,6 +225,7 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
       messages: _allMessages,
       blockedIds:
           ref.read(blockedProfileIdsProvider).valueOrNull ?? const <String>{},
+      hideStrangers: profileUsesFriends(profile),
     );
     // Keep the open thread bound to the same peer across rebuilds.
     if (_activeConversation != null) {

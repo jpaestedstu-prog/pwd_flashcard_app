@@ -120,6 +120,63 @@ void main() {
       expect(inbox.first.otherProfileId, 'ex-friend');
     });
 
+    test("a stranger's message never reaches a learner's inbox", () {
+      // Anyone who knows a child's id can write to them at the database; the
+      // child's inbox must not turn that into a thread.
+      final inbox = assembleInbox(
+        myProfileId: _me,
+        peers: [_peer('friend')],
+        messages: [
+          _msg('1', from: 'friend', to: _me),
+          _msg('2', from: 'stranger', to: _me, content: 'hi, where do you live?'),
+        ],
+        hideStrangers: true,
+      );
+      expect(inbox.map((c) => c.otherProfileId), ['friend']);
+    });
+
+    test('a learner keeps the history of someone they wrote to', () {
+      final inbox = assembleInbox(
+        myProfileId: _me,
+        peers: const [],
+        messages: [
+          _msg('1', from: _me, to: 'ex-friend', minute: 1),
+          _msg('2', from: 'ex-friend', to: _me, minute: 2),
+        ],
+        hideStrangers: true,
+      );
+      expect(inbox.single.otherProfileId, 'ex-friend');
+      expect(inbox.single.isConnected, isFalse);
+    });
+
+    test('unreadInboxCount matches what the inbox shows', () {
+      final messages = [
+        _msg('1', from: 'friend', to: _me),
+        _msg('2', from: 'stranger', to: _me),
+        _msg('3', from: 'bully', to: _me),
+        _msg('4', from: 'ex-friend', to: _me),
+        _msg('5', from: _me, to: 'ex-friend'),
+        _msg('6', from: 'friend', to: _me, isRead: true),
+      ];
+      expect(
+        unreadInboxCount(
+          myProfileId: _me,
+          messages: messages,
+          blockedIds: const {'bully'},
+          contactIds: const {'friend', 'bully'},
+        ),
+        2, // the friend, and the ex-friend the learner wrote to
+      );
+      expect(
+        unreadInboxCount(
+          myProfileId: _me,
+          messages: messages,
+          blockedIds: const {'bully'},
+        ),
+        3, // an educator: everyone but the blocked
+      );
+    });
+
     test('my own messages alone never resurrect a thread', () {
       final inbox = assembleInbox(
         myProfileId: _me,
@@ -153,18 +210,24 @@ void main() {
     ProviderContainer container({
       Set<String> blocked = const {},
       List<FriendRequest> requests = const [],
+      Set<String> contacts = const {'friend', 'bully'},
+      UserRole role = UserRole.student,
+      List<LocalMessage>? messages,
     }) {
       final c = ProviderContainer(
         overrides: [
           profileProvider.overrideWith(
-            () => _StubProfileNotifier(_profile(UserRole.student)),
+            () => _StubProfileNotifier(_profile(role)),
           ),
           activeProfileMessagesProvider.overrideWith(
-            (ref) => Stream.value([
-              _msg('a', from: 'friend', to: _me),
-              _msg('b', from: 'bully', to: _me),
-              _msg('c', from: 'bully', to: _me),
-            ]),
+            (ref) => Stream.value(
+              messages ??
+                  [
+                    _msg('a', from: 'friend', to: _me),
+                    _msg('b', from: 'bully', to: _me),
+                    _msg('c', from: 'bully', to: _me),
+                  ],
+            ),
           ),
           blockedProfileIdsProvider.overrideWith(
             (ref) => Stream.value(blocked),
@@ -172,17 +235,60 @@ void main() {
           incomingFriendRequestsProvider.overrideWith(
             (ref) => Stream.value(requests),
           ),
+          learnerContactIdsProvider.overrideWith(
+            (ref) => Stream.value(contacts),
+          ),
         ],
       );
       addTearDown(c.dispose);
       return c;
     }
 
-    test('a blocked sender never badges the Messages tile', () async {
-      final c = container(blocked: const {'bully'});
+    Future<int> unread(ProviderContainer c) async {
       await c.read(activeProfileMessagesProvider.future);
       await c.read(blockedProfileIdsProvider.future);
-      expect(c.read(unreadMessageCountProvider), 1);
+      await c.read(learnerContactIdsProvider.future);
+      return c.read(unreadMessageCountProvider);
+    }
+
+    test("a stranger's message never badges a learner's tile", () async {
+      // The database delivers a message from anyone who knows a learner's
+      // id; the inbox hides a stranger's thread, so a badge for it could
+      // never be cleared.
+      final c = container(
+        contacts: const {'friend'},
+        messages: [
+          _msg('a', from: 'friend', to: _me),
+          _msg('b', from: 'stranger', to: _me),
+        ],
+      );
+      expect(await unread(c), 1);
+    });
+
+    test('someone the learner wrote to still badges after the link ends',
+        () async {
+      final c = container(
+        contacts: const {},
+        messages: [
+          _msg('a', from: _me, to: 'ex-friend'),
+          _msg('b', from: 'ex-friend', to: _me),
+        ],
+      );
+      expect(await unread(c), 1);
+    });
+
+    test("an educator's badge is not filtered by contacts", () async {
+      final c = container(
+        role: UserRole.teacher,
+        contacts: const {},
+        messages: [_msg('a', from: 'student', to: _me)],
+      );
+      expect(await unread(c), 1);
+    });
+
+    test('a blocked sender never badges the Messages tile', () async {
+      final c = container(blocked: const {'bully'});
+      expect(await unread(c), 1);
     });
 
     test('the tile counts waiting friend requests too', () async {
@@ -199,10 +305,8 @@ void main() {
           ),
         ],
       );
-      await c.read(activeProfileMessagesProvider.future);
-      await c.read(blockedProfileIdsProvider.future);
       await c.read(incomingFriendRequestsProvider.future);
-      expect(c.read(unreadMessageCountProvider), 3);
+      expect(await unread(c), 3);
       expect(c.read(messagesTileBadgeProvider), 4);
     });
   });
@@ -520,8 +624,10 @@ void main() {
       await pumpScreen(
         tester,
         profile: _profile(UserRole.student),
+        // Real history: they were friends and the learner wrote too.
         messages: [
-          _msg('1', from: 'ExFriend', to: _me, content: 'hi there'),
+          _msg('0', from: _me, to: 'ExFriend', content: 'want to play?'),
+          _msg('1', from: 'ExFriend', to: _me, content: 'hi there', minute: 1),
         ],
       );
       await tester.tap(find.text('ExFriend'));
@@ -532,6 +638,18 @@ void main() {
       expect(find.byTooltip('Send a sticker'), findsNothing);
       // The history itself is still there.
       expect(find.text('hi there'), findsOneWidget);
+      await settle(tester);
+    });
+
+    testWidgets("a stranger's message is not in a learner's inbox at all",
+        (tester) async {
+      await pumpScreen(
+        tester,
+        profile: _profile(UserRole.student),
+        messages: [_msg('1', from: 'Stranger', to: _me, content: 'hi')],
+      );
+      expect(find.text('Stranger'), findsNothing);
+      expect(find.textContaining('No friends yet'), findsOneWidget);
       await settle(tester);
     });
 

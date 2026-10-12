@@ -49,6 +49,82 @@ class ConversationDirectoryService {
     return usesFriends ? _watchForLearner(me) : _watchForEducator(me);
   }
 
+  /// The ids of a learner's contacts — friends, the teacher of their class,
+  /// the parent of their family group — the same people [watch] lists, but
+  /// without the directory lookups the inbox needs for names. What the Home
+  /// badge counts unread messages from, so it badges exactly the senders the
+  /// inbox shows. Emits the Hive cache first, then live changes.
+  Stream<Set<String>> watchContactIds(UserProfile me) {
+    var friends = <String>{};
+    String? teacher = _cached(
+      () => HiveService.getCachedClassroom(me.classroomId!)?.teacherId,
+      when: me.classroomId != null,
+    );
+    String? owner = _cached(
+      () => HiveService.getCachedHomeGroup(me.homeGroupId!)?.ownerProfileId,
+      when: me.homeGroupId != null,
+    );
+    final subs = <StreamSubscription>[];
+    late final StreamController<Set<String>> out;
+    void emit() {
+      if (out.isClosed) return;
+      out.add({
+        ...friends,
+        if (teacher != null && teacher!.isNotEmpty) teacher!,
+        if (owner != null && owner!.isNotEmpty) owner!,
+      });
+    }
+
+    out = StreamController<Set<String>>(
+      onListen: () {
+        emit();
+        try {
+          subs.add(
+            FriendService.instance.watchFriends(me.id).listen((list) {
+              friends = {for (final f in list) f.otherProfileFor(me.id)};
+              emit();
+            }, onError: (_) {}),
+          );
+        } catch (_) {
+          // No friends cache (a test harness, very early startup): the
+          // teacher and parent below still count.
+        }
+        if (!FirebaseService.isConfigured) return;
+        if (me.classroomId != null) {
+          subs.add(
+            FirebaseService.db
+                .collection('classrooms')
+                .doc(me.classroomId)
+                .snapshots()
+                .listen((snap) {
+                  teacher = snap.data()?['teacher_id'] as String?;
+                  emit();
+                }, onError: (_) {}),
+          );
+        }
+        if (me.homeGroupId != null) {
+          subs.add(
+            FirebaseService.db
+                .collection('home_groups')
+                .doc(me.homeGroupId)
+                .snapshots()
+                .listen((snap) {
+                  owner = snap.data()?['owner_profile_id'] as String?;
+                  emit();
+                }, onError: (_) {}),
+          );
+        }
+      },
+      onCancel: () async {
+        for (final s in subs) {
+          await s.cancel();
+        }
+        await out.close();
+      },
+    );
+    return out.stream;
+  }
+
   // ─── Learner (Student / Child / Player-with-Progress) ─
 
   Stream<List<Conversation>> _watchForLearner(UserProfile me) {
