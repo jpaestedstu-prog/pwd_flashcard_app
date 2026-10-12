@@ -153,10 +153,13 @@ def main():
           fs_delete(f"assessments/{assess}", tok_b), 403)
 
     # ── assignments ────────────────────────────────────────
+    # Since 2026-10-04 a learner finds their work by their device's uid
+    # (`student_uids`), as the app has written it since 1.2.2.
     check("teacher can create their own assignment",
           fs_write(f"assessment_assignments/{assign}",
                    {"id": s(assign), "assignedBy": s(prof_a), "owner_uid": s(uid_a),
-                    "studentIds": {"arrayValue": {"values": [s(prof_b)]}}},
+                    "studentIds": {"arrayValue": {"values": [s(prof_b)]}},
+                    "student_uids": {"arrayValue": {"values": [s(uid_b)]}}},
                    tok_a), 200)
     check("learner CANNOT assign work to themselves as the teacher",
           fs_write(f"assessment_assignments/rulesprobe-selfassign-{uid_b[:8]}",
