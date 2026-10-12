@@ -61,7 +61,7 @@ names, so the clips can be recorded and published a few at a time.
 
 ## After recording
 
-Follow **"Adding newly recorded signs"** in [`tools/README.md`](../tools/README.md):
+Follow **"Recording the remaining clips"** in [`tools/README.md`](../tools/README.md):
 
 1. Convert into `build/fsl_mp4/` with the ffmpeg command there.
 2. Run `node tools/fsl_check_clips.mjs`. It refuses HDR and other files a

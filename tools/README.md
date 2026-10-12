@@ -183,10 +183,10 @@ and re-run `site_chrome_build.py` (the stylesheet's fingerprint changes).
 
 ## Recording the remaining clips
 
-34 seed words still have no sign. `node tools/fsl_coverage_report.mjs` lists
+33 seed words still have no sign. `node tools/fsl_coverage_report.mjs` lists
 them; `docs/fsl_recording_checklist.csv` is the same list as a shooting sheet.
 
-**All 34 rows are already staged** in `tools/fsl_video_manifest.json`
+**All 33 rows are already staged** in `tools/fsl_video_manifest.json`
 (`node tools/fsl_coverage_report.mjs --apply` did it, and is idempotent if you
 add seed words later). A staged row whose `.mp4` is not on disk is skipped, so
 you can record a few at a time and publish after each session.
