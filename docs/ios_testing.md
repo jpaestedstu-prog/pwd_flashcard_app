@@ -52,6 +52,22 @@ Only a real iPhone or iPad can confirm these. None has been tested on one.
 The paid routes (Apple Developer Program, TestFlight, paid device clouds) are
 not used.
 
-## Results
+## Results (12 October 2026, run 38200672991)
 
-See [release-1.4.0.md](release-1.4.0.md), "Checks", for the latest run.
+All eight walkthroughs passed: 58 screens and 0 problems each, upright and
+sideways, on iPhone SE, iPhone 16 Pro Max, iPad mini and iPad 13" (the iPads
+turned: 2266 x 1488 and 2752 x 2064). Device checks on the iPhone 16 Pro Max:
+
+| Check | Result |
+|---|---|
+| Cameras | none (a simulator) |
+| Word Hunt | says there is no camera |
+| Sign It | watch-only, says there is no camera |
+| Gaze Control | stops at "no camera", no error |
+| Face detector on a still photo | face found (head turn -0.2) |
+| Device sound | read through the iOS channel ("on") |
+| Speech | the engine spoke |
+| Speech recognition | not started on purpose (permission dialog) |
+| Notifications | 0 pending, within iOS's 64 |
+
+The release history is in [release-1.4.0.md](release-1.4.0.md), "Checks".

@@ -83,7 +83,9 @@ Each needs the project owner's go-ahead (see "Waiting for approval").
 | Firestore rules, **live after the deploy** (2026-10-12) | write probe on its own throwaway learner: a second device refused the learner's progress, study log and daily challenge (403), the owner allowed (200), everything it wrote deleted; read probe passed |
 | Phone emulator (Android 16, 1080 x 2400), sideways, with camera and speech checks | 58 screens, 0 problems; Word Hunt photo, Sign It record + replay, Gaze camera streaming, speech spoke, recogniser present |
 | Tablet emulator (Android 16, 2560 x 1600), asked for portrait | the request was honoured (1200 x 1600 window); 58 screens; Word Hunt, Gaze and speech fine (Sign It's sign video did not load in time over the emulator's network) |
-| iOS on GitHub Actions (final code: run 38156484024; also 38136152361) | unsigned IPA; walkthroughs passed on iPhone SE and iPhone 16 Pro Max upright **and sideways**, iPad mini and 13" iPad; Firebase smoke test passed |
+| **iOS on GitHub Actions, final** (run 38200672991) | unsigned IPA and simulator build; walkthroughs on iPhone SE, iPhone 16 Pro Max, iPad mini and iPad 13", **each upright and sideways** (both iPads turned: 2266 x 1488 and 2752 x 2064): 58 screens / 0 problems on all eight. Device checks on the iPhone 16 Pro Max (no camera): Word Hunt and Sign It say so, Gaze stops at "no camera", **Gaze Control's face detector found the face on iOS** (head turn -0.2), the sound level was read through the new iOS channel, speech spoke, 0 of 64 notifications pending |
+| iOS on GitHub Actions (earlier: 38156484024, 38136152361) | unsigned IPA; walkthroughs passed on iPhone SE and iPhone 16 Pro Max upright **and sideways**, iPad mini and 13" iPad; Firebase smoke test passed |
+| **Android on GitHub Actions, final** (run 38200672988) | all six jobs pass; four walkthroughs 58 / 0; on the phone (cameras) and the tablet (none), the muted media volume read "off" and the note's "Turn sound up" turned it on |
 | Android on GitHub Actions, device checks (run 38198512241) | all six jobs pass. Phone with cameras: Word Hunt photo, Sign It record + replay, Gaze streaming, the face detector finds the face in the still photo (head turn 0.4), speech, recogniser; 58 screens / 0 problems. Tablet **without** a camera: Word Hunt and Sign It say so, Gaze stops at "no camera", face detector, speech, recogniser; 58 / 0 |
 | Android emulators on this PC, same checks | phone with cameras and tablet without: 58 screens / 0 problems each, the same results |
 | Android on GitHub Actions (earlier runs 38156484030, 38141730593) | analyze, all tests and the release APKs with their manifest checks pass; walkthroughs on the phone and the tablet emulator (Android 14), upright and sideways: 58 screens and 0 problems each, no crash in the logs. The upright phone also took a Word Hunt photo, recorded and replayed Sign It, streamed Gaze Control's camera (12 frames), spoke, and found a speech recogniser |
@@ -116,9 +118,10 @@ Each needs the project owner's go-ahead (see "Waiting for approval").
   downloaded for them. The guide and tools are kept for later.
 - **App Check enforcement** needs the paid store accounts, and can never be
   enforced while website APKs are in use.
-- **iPad landscape walkthrough:** iPadOS ignores an app's orientation request
-  while the app supports Split View, so only the iPhones are walked sideways
-  on CI; iPad landscape sizes are covered by the widget tests.
+- **Real iPhones and iPads:** none is available. Everything iOS is checked on
+  simulators (see [ios_testing.md](ios_testing.md) for what that does and
+  does not prove). iPads are now walked sideways too, in a test-only build
+  without Split View.
 
 ## Build warnings looked into
 
