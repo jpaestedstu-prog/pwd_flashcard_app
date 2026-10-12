@@ -405,7 +405,7 @@ class ProgressNotifier extends Notifier<LearningProgress> {
 
   void addWordsLearned(int count) {
     state = state.copyWith(wordsLearned: state.wordsLearned + count);
-    HiveService.saveProgress(state);
+    _persistProgress();
   }
 
   /// Records flashcards answered correctly *outside* a game — currently the AI
@@ -427,16 +427,23 @@ class ProgressNotifier extends Notifier<LearningProgress> {
     _persistProgress();
   }
 
+  // These used to save on the tablet only. The cloud copy (what a teacher's
+  // or parent's dashboard reads, and what a profile restored onto a new
+  // tablet starts from) then waited for the next finished game: a learner
+  // who earned stars from daily rewards and challenges alone stayed three
+  // weeks behind on the tablet (35 stars there, 25 in the cloud), and a
+  // recovery in between would have lost them. Every change to a synced
+  // field now goes through [_persistProgress].
   void addStars(int stars) {
     state = state.copyWith(totalStars: state.totalStars + stars);
-    HiveService.saveProgress(state);
+    _persistProgress();
   }
 
   void updateCategoryProgress(String category, double progress) {
     final updated = Map<String, double>.from(state.categoryProgress);
     updated[category] = progress.clamp(0.0, 1.0);
     state = state.copyWith(categoryProgress: updated);
-    HiveService.saveProgress(state);
+    _persistProgress();
   }
 
   /// Records that the learner did *some* learning activity today (finished a
@@ -700,7 +707,7 @@ class ProgressNotifier extends Notifier<LearningProgress> {
   bool spendStars(int amount) {
     if (state.starBalance < amount) return false;
     state = state.copyWith(spentStars: state.spentStars + amount);
-    HiveService.saveProgress(state);
+    _persistProgress();
     return true;
   }
 
@@ -822,7 +829,7 @@ class ProgressNotifier extends Notifier<LearningProgress> {
     state = state.copyWith(
       spentStars: (state.spentStars - refunded).clamp(0, state.spentStars),
     );
-    HiveService.saveProgress(state);
+    _persistProgress();
     return refunded;
   }
 }
