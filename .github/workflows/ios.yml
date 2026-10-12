@@ -179,18 +179,20 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Every size upright, and both iPhones sideways: the app turns with
-        # the device since 1.4.0. (iPads cannot be walked sideways here: an
-        # app that supports Split View may not choose its orientation, so
-        # iPadOS ignores the walkthrough's request; their landscape layouts
-        # are covered by the widget tests' tablet-landscape sizes.)
+        # Every size upright and sideways: the app turns with the device
+        # since 1.4.0. The large iPhone also runs the device checks (no
+        # camera on a simulator: the camera features must say so; Gaze
+        # Control's face detector on a still photo; speech; the 64
+        # pending-notification limit).
         include:
-          - { kind: iphone-small, orientation: portrait }
-          - { kind: iphone-large, orientation: portrait }
-          - { kind: ipad-mini, orientation: portrait }
-          - { kind: ipad-large, orientation: portrait }
-          - { kind: iphone-small, orientation: landscape }
-          - { kind: iphone-large, orientation: landscape }
+          - { kind: iphone-small, orientation: portrait, device: false }
+          - { kind: iphone-large, orientation: portrait, device: true }
+          - { kind: ipad-mini, orientation: portrait, device: false }
+          - { kind: ipad-large, orientation: portrait, device: false }
+          - { kind: iphone-small, orientation: landscape, device: false }
+          - { kind: iphone-large, orientation: landscape, device: false }
+          - { kind: ipad-mini, orientation: landscape, device: false }
+          - { kind: ipad-large, orientation: landscape, device: false }
     steps:
       - uses: actions/checkout@v4
 
@@ -230,6 +232,15 @@ jobs:
           done
           exit 1
 
+      # iPadOS lets an app that supports Split View not choose its own
+      # orientation, so the walkthrough could never turn an iPad. For the
+      # sideways iPad runs only, this test build opts out of Split View
+      # (UIRequiresFullScreen): every layout is the same, but iPadOS then
+      # honours the walkthrough's request. Never in a release build.
+      - name: Test build without Split View (sideways iPads)
+        if: startsWith(matrix.kind, 'ipad') && matrix.orientation == 'landscape'
+        run: /usr/libexec/PlistBuddy -c "Add :UIRequiresFullScreen bool true" ios/Runner/Info.plist
+
       # The simulator app is x86_64 (ML Kit), so it runs under Rosetta.
       - name: Rosetta
         run: sudo /usr/sbin/softwareupdate --install-rosetta --agree-to-license || true
@@ -259,6 +270,7 @@ jobs:
             --target=integration_test/app_walkthrough_test.dart \
             --dart-define=FLASHLEARN_OFFLINE=true \
             --dart-define=WALK_ORIENTATION=${{ matrix.orientation }} \
+            --dart-define=WALK_DEVICE=${{ matrix.device }} \
             -d "$UDID" 2>&1 | tee logs/walkthrough.log
 
       - name: Simulator log excerpt

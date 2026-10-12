@@ -125,10 +125,13 @@ jobs:
         # Phones get emulated cameras (a virtual room), and the portrait phone
         # also takes a Word Hunt photo, records Sign It, streams Gaze Control
         # and checks speech; tablets have no camera at all, which is how the
-        # unhandled no-camera error in Sign It and Word Hunt was found.
+        # unhandled no-camera error in Sign It and Word Hunt was found. The
+        # portrait tablet runs the device checks without a camera: each
+        # camera feature must say so, and the face detector, speech and the
+        # recogniser are checked as on the phone.
         include:
           - { kind: phone, profile: pixel_6, orientation: portrait, cameras: emulated, device: true }
-          - { kind: tablet, profile: pixel_tablet, orientation: portrait, cameras: none, device: false }
+          - { kind: tablet, profile: pixel_tablet, orientation: portrait, cameras: none, device: true }
           - { kind: phone, profile: pixel_6, orientation: landscape, cameras: emulated, device: false }
           - { kind: tablet, profile: pixel_tablet, orientation: landscape, cameras: none, device: false }
     steps:

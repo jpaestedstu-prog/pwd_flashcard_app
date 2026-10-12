@@ -22,16 +22,22 @@
 // finishes it stops AND UNINSTALLS the app (drive_service.dart), which wipes
 // every profile on the device. Emulators and simulators only.
 
-import 'dart:io' show Platform;
+import 'dart:convert' show base64Decode;
+import 'dart:io' show Directory, File, Platform;
 import 'dart:math' as math;
 import 'dart:ui' as ui show ImageByteFormat, ImageDescriptor, ImmutableBuffer;
 import 'dart:ui' show PlatformDispatcher;
 
+import 'package:camera/camera.dart' show availableCameras;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart'
+    show FlutterLocalNotificationsPlugin;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart'
+    show InputImage;
 import 'package:integration_test/integration_test.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:pwdpwdpwd/core/accessibility/stt_service.dart';
@@ -39,8 +45,12 @@ import 'package:pwdpwdpwd/core/accessibility/tts_service.dart';
 import 'package:pwdpwdpwd/core/utils/error_handler.dart';
 import 'package:pwdpwdpwd/features/gaze_control/controllers/gaze_controller.dart';
 import 'package:pwdpwdpwd/features/gaze_control/providers/gaze_settings_provider.dart';
+import 'package:pwdpwdpwd/features/gaze_control/services/gaze_detector.dart'
+    show MlKitGazeDetector;
 import 'package:pwdpwdpwd/main.dart' as app;
 import 'package:pwdpwdpwd/navigation/app_router.dart' show rootNavigatorKey;
+
+import 'fixtures/face_photo.dart';
 
 const _profileName = 'Store Tester';
 
@@ -295,15 +305,43 @@ class _Walk {
     await _settle(const Duration(seconds: 3));
   }
 
-  /// The camera and voice features end to end: Word Hunt takes a photo and
-  /// labels it, Sign It records the learner and plays it back, Gaze Control
-  /// streams frames through face detection, the speech engine speaks, and a
-  /// speech recogniser is there for voice commands. Errors raised meanwhile
-  /// are reported like any screen's.
+  /// The camera and voice features end to end. With a camera: Word Hunt
+  /// takes a photo and labels it, Sign It records the learner and plays it
+  /// back, Gaze Control streams frames through face detection. Without one
+  /// (the iOS simulator): each says so plainly instead of failing. Then Gaze
+  /// Control's face detector on a still photo, the speech engine, a speech
+  /// recogniser, and on iOS the 64-notification limit. Errors raised
+  /// meanwhile are reported like any screen's.
   Future<void> _checkDevice() async {
     final errorsBefore = _frameworkErrors.length;
     final since = DateTime.now();
+    final container =
+        ProviderScope.containerOf(rootNavigatorKey.currentContext!);
 
+    final cameras = await _cameraCount();
+    // ignore: avoid_print
+    print('WALK device: $cameras camera(s)');
+    if (cameras == 0) {
+      await _checkWithoutCamera(container);
+    } else {
+      await _checkCameras(container);
+    }
+    await _checkFaceDetection();
+    await _checkVoice(container);
+    if (Platform.isIOS) await _checkNotificationBudget();
+
+    _reportSince(since, 'device checks', framework: errorsBefore);
+  }
+
+  Future<int> _cameraCount() async {
+    try {
+      return (await availableCameras()).length;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  Future<void> _checkCameras(ProviderContainer container) async {
     // Word Hunt: shutter → a reviewed photo ("New photo", and any words).
     await _open('/object-scan');
     final shutter = find.byIcon(Icons.camera_alt_rounded);
@@ -368,8 +406,6 @@ class _Walk {
 
     // Gaze Control: switched on for this profile, its camera must reach
     // "ready" and process frames (an emulator's room has no face to follow).
-    final container =
-        ProviderScope.containerOf(rootNavigatorKey.currentContext!);
     container.read(gazeSettingsProvider.notifier).setEnabled(true);
     _router.go('/home');
     final end = DateTime.now().add(const Duration(seconds: 30));
@@ -393,9 +429,78 @@ class _Walk {
     container.read(gazeSettingsProvider.notifier).setEnabled(false);
     await _settle(const Duration(seconds: 2));
 
-    // Voice. Speech is checked by the engine's own "started speaking"
-    // callback, so nobody has to listen. The app's own engine instance is
-    // used: a second one would take over its callbacks.
+  }
+
+  /// No camera at all: Word Hunt and Sign It must say so, and Gaze Control
+  /// must stop at "no camera", all without an error.
+  Future<void> _checkWithoutCamera(ProviderContainer container) async {
+    await _open('/object-scan');
+    final wordHunt = await _waitFor(
+      find.textContaining('has no camera'),
+      const Duration(seconds: 20),
+    );
+    // ignore: avoid_print
+    print('WALK camera Word Hunt: ${wordHunt ? 'says there is no camera' : 'NO NOTICE'}');
+    if (!wordHunt) failures.add('Word Hunt: no "no camera" notice without a camera');
+    await _shot('camera_word_hunt_none');
+
+    // Sign It shows its practice screen once the round's sign video loads.
+    await _open('/games/fsl-practice/sign-it');
+    final signIt = await _waitFor(
+      find.textContaining('No camera found'),
+      const Duration(seconds: 60),
+    );
+    // ignore: avoid_print
+    print('WALK camera Sign It: ${signIt ? 'watch-only, says there is no camera' : 'notice not reached (sign video still loading?)'}');
+    await _shot('camera_sign_it_none');
+
+    container.read(gazeSettingsProvider.notifier).setEnabled(true);
+    _router.go('/home');
+    String? status;
+    final end = DateTime.now().add(const Duration(seconds: 20));
+    while (DateTime.now().isBefore(end)) {
+      await _settle(const Duration(milliseconds: 500));
+      final described = GazeController.debugLive.map((c) => c.debugDescribe());
+      if (described.isNotEmpty &&
+          described.first['status'] != 'initializing') {
+        status = described.first['status'] as String?;
+        break;
+      }
+    }
+    // ignore: avoid_print
+    print('WALK camera Gaze: ${status ?? 'no controller'}');
+    if (status == 'ready') failures.add('Gaze Control: "ready" with no camera');
+    container.read(gazeSettingsProvider.notifier).setEnabled(false);
+    await _settle(const Duration(seconds: 2));
+  }
+
+  /// Gaze Control's own face detector on a still photo of the signer (from
+  /// the project's sign clips): it must find the face. This runs where no
+  /// camera can feed the detector, so the iOS simulator proves the detector
+  /// itself works on iOS.
+  Future<void> _checkFaceDetection() async {
+    final file = File('${Directory.systemTemp.path}/walk_face.jpg');
+    await file.writeAsBytes(base64Decode(faceJpegBase64));
+    final detector = MlKitGazeDetector();
+    try {
+      final signal = await detector.detect(InputImage.fromFilePath(file.path));
+      // ignore: avoid_print
+      print('WALK gaze face detection: ${signal.hasFace ? 'face found, '
+          'head turn ${signal.headTurn.toStringAsFixed(1)}' : 'NO FACE'}');
+      if (!signal.hasFace) {
+        failures.add('Gaze: the face detector found no face in the test photo');
+      }
+    } catch (e) {
+      failures.add('Gaze: the face detector failed: $e');
+    } finally {
+      await detector.close();
+    }
+  }
+
+  /// Voice. Speech is checked by the engine's own "started speaking"
+  /// callback, so nobody has to listen. The app's own engine instance is
+  /// used: a second one would take over its callbacks.
+  Future<void> _checkVoice(ProviderContainer container) async {
     var spoke = TtsService.speaking.value;
     void heardStart() {
       if (TtsService.speaking.value) spoke = true;
@@ -412,8 +517,20 @@ class _Walk {
     TtsService.speaking.removeListener(heardStart);
     // ignore: avoid_print
     print('WALK voice: text to speech ${spoke ? 'spoke' : 'never started'}');
-    if (!spoke) failures.add('Voice: text to speech never started speaking');
+    // A CI simulator may have no sound device at all: reported there, failed
+    // everywhere else.
+    if (!spoke && !Platform.isIOS) {
+      failures.add('Voice: text to speech never started speaking');
+    }
 
+    // On iOS, starting the recogniser asks for the microphone and speech
+    // recognition in a system dialog the walk cannot answer, and nothing
+    // grants speech recognition ahead on a simulator: only reported there.
+    if (Platform.isIOS) {
+      // ignore: avoid_print
+      print('WALK voice: speech recognition not started (its permission dialog would wait for a tap)');
+      return;
+    }
     // A recogniser depends on the device (Google's speech service on
     // Android): reported, not failed, so a bare emulator image does not
     // fail the walk.
@@ -422,8 +539,18 @@ class _Walk {
     // ignore: avoid_print
     print('WALK voice: speech recognition '
         '${recogniser ? 'available' : 'NOT available on this device'}');
+  }
 
-    _reportSince(since, 'device checks', framework: errorsBefore);
+  /// iOS keeps only the 64 soonest pending notifications; the app shares a
+  /// budget of 62 across reminders, routines and alarms.
+  Future<void> _checkNotificationBudget() async {
+    final pending =
+        await FlutterLocalNotificationsPlugin().pendingNotificationRequests();
+    // ignore: avoid_print
+    print('WALK notifications: ${pending.length} pending (iOS keeps 64)');
+    if (pending.length > 64) {
+      failures.add('Notifications: ${pending.length} pending; iOS keeps only 64');
+    }
   }
 
   /// Fails the walk for every error raised since [since] (app log) or since
