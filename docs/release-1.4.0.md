@@ -2,8 +2,10 @@
 
 Branch `work/v1.4.0`, built on the unpublished 1.3.0 (`work/ios-and-stores`).
 Version **1.4.0 (13)**. Nothing in this round has been published: no store
-upload, no GitHub Release, no website deploy and no Firestore rules deploy.
-Each needs the project owner's go-ahead (see "Waiting for approval").
+upload, no GitHub Release and no website deploy. One Firestore rules change
+went live on 12 October with the project owner's approval (the write-claim
+fix); the security review's rules are ready but not deployed. Each step
+needs the owner's go-ahead (see "Waiting for approval").
 
 ## Bugs fixed
 
@@ -92,22 +94,31 @@ Each needs the project owner's go-ahead (see "Waiting for approval").
 
 | Check | Result |
 |---|---|
-| Unit and widget tests (`flutter test`) | **5,234 passed**, 0 failed on the final code, on this PC and on GitHub's Linux runner (1.3.0: 5,094) |
+| Unit and widget tests (`flutter test`) | **5,252 passed**, 0 failed on the final code (`fc7262a`, GitHub's Linux runner); 5,249 on this PC before the last three tests were added (1.3.0: 5,094) |
 | `flutter analyze` | no issues |
-| Firestore rules, local emulator | 32 + 118 + 14 checks passed (12 new on the data that exists today: legacy and imported learners, existing learners' updates) |
+| Firestore rules, local emulator | 32 + 118 + 14 + 66 checks passed. The 66 new ones (memberships, friend requests, achievements, note readers, notes phase 2) fail 34 times against the rules live today, because the attacks they describe still work there: proof that the test sees them |
+| Live database, read-only look (12 October) | no sign the membership gap was used: 19 child profiles, no friendship with a child, no friend request carrying a parent's yes, no child in two family groups, every membership's id matches its fields |
+| Dart packages against the OSV vulnerability database (`tool/osv_check.py`) | 88 packages, no known vulnerabilities (native Android and iOS libraries are not covered by this check) |
 | Firestore rules, **live after the deploy** (2026-10-12) | write probe on its own throwaway learner: a second device refused the learner's progress, study log and daily challenge (403), the owner allowed (200), everything it wrote deleted; read probe passed |
 | Phone emulator (Android 16, 1080 x 2400), sideways, with camera and speech checks | 58 screens, 0 problems; Word Hunt photo, Sign It record + replay, Gaze camera streaming, speech spoke, recogniser present |
 | Tablet emulator (Android 16, 2560 x 1600), asked for portrait | the request was honoured (1200 x 1600 window); 58 screens; Word Hunt, Gaze and speech fine (Sign It's sign video did not load in time over the emulator's network) |
-| **iOS on GitHub Actions, final** (run 38200672991) | unsigned IPA and simulator build; walkthroughs on iPhone SE, iPhone 16 Pro Max, iPad mini and iPad 13", **each upright and sideways** (both iPads turned: 2266 x 1488 and 2752 x 2064): 58 screens / 0 problems on all eight. Device checks on the iPhone 16 Pro Max (no camera): Word Hunt and Sign It say so, Gaze stops at "no camera", **Gaze Control's face detector found the face on iOS** (head turn -0.2), the sound level was read through the new iOS channel, speech spoke, 0 of 64 notifications pending |
+| **iOS on GitHub Actions, final code** (run 38227394474, `fc7262a`) | unsigned IPA and simulator build; walkthroughs on iPhone SE, iPhone 16 Pro Max, iPad mini and iPad 13", **each upright and sideways**: 58 screens / 0 problems on all eight. Device checks on the iPhone 16 Pro Max (no camera): Word Hunt and Sign It say so, Gaze stops at "no camera", Gaze Control's face detector found the face (head turn -0.2), the sound level read through the iOS channel, 0 of 64 notifications pending |
+| iOS on GitHub Actions (run 38200672991, before the review) | the same eight walkthroughs, 58 / 0 each |
 | iOS on GitHub Actions (earlier: 38156484024, 38136152361) | unsigned IPA; walkthroughs passed on iPhone SE and iPhone 16 Pro Max upright **and sideways**, iPad mini and 13" iPad; Firebase smoke test passed |
-| **Android on GitHub Actions, final** (run 38200672988) | all six jobs pass; four walkthroughs 58 / 0; on the phone (cameras) and the tablet (none), the muted media volume read "off" and the note's "Turn sound up" turned it on |
+| **Android on GitHub Actions, final code** (run 38227394416, `fc7262a`) | all six jobs pass: analyze, 5,252 tests, release APKs with their manifests checked, four walkthroughs (phone and tablet, upright and sideways) 58 screens / 0 problems each |
+| Android on GitHub Actions (run 38219951241, `ba43164`) | the sideways phone walk failed once: the date picker overflowed under a keyboard the slow emulator showed 2.5 s late (fixed in `2f99a6a`, then green in every run) |
 | Android on GitHub Actions, device checks (run 38198512241) | all six jobs pass. Phone with cameras: Word Hunt photo, Sign It record + replay, Gaze streaming, the face detector finds the face in the still photo (head turn 0.4), speech, recogniser; 58 screens / 0 problems. Tablet **without** a camera: Word Hunt and Sign It say so, Gaze stops at "no camera", face detector, speech, recogniser; 58 / 0 |
 | Android emulators on this PC, same checks | phone with cameras and tablet without: 58 screens / 0 problems each, the same results |
 | Android on GitHub Actions (earlier runs 38156484030, 38141730593) | analyze, all tests and the release APKs with their manifest checks pass; walkthroughs on the phone and the tablet emulator (Android 14), upright and sideways: 58 screens and 0 problems each, no crash in the logs. The upright phone also took a Word Hunt photo, recorded and replayed Sign It, streamed Gaze Control's camera (12 frames), spoke, and found a speech recogniser |
-| Release build (2026-10-12 11:31) | website APKs (arm64 / arm32 / universal) and the Play APK + bundle: application ids, permissions, version 1.4.0 (13), 16 KB alignment all checked; **signers checked**: website APKs on the original key (`AF:D7…2B:A8`, so installed copies update), Play APK and bundle on the upload key (`CN=FlashLearn PWD`, `78:8C…C3:16`); no test-only plugin in any APK; SHA-256s in `build/release-v1.4.0/SHA256SUMS.txt` |
+| **Release build, final** (2026-10-12 20:38, `fc7262a`) | website APKs (arm64 / arm32 / universal) and the Play APK + bundle: application ids, permissions, version 1.4.0 (13), 16 KB alignment all checked; **signers checked**: website APKs on the original key (`AF:D7…2B:A8`, so installed copies update), Play APK and bundle on the upload key (`CN=FlashLearn PWD`, `78:8C…C3:16`). SHA-256: arm64 `4ca9e7c0…`, arm32 `69327f0d…`, universal `3692e106…` (all in `build/release-v1.4.0/SHA256SUMS.txt`) |
+| Release files scanned (`tool/release_artifact_scan.py`) | all five clean: no keys, passwords, private keys, test-only code or fixtures, Hive data, build-PC paths, nothing debuggable; a deliberately bad control file is caught |
+| Build safety | a debug-mode package fetch (an editor, a test run) can put the test-only plugin back into the generated registrant mid-build, which failed one release build; the build script now regenerates it in release mode before every build and builds with `--no-pub` |
 | Upgrade 1.2.7 → 1.4.0 (universal, emulator) | profile, XP and stars kept; Screen orientation reads "turns with the device" and Landscape turns the app |
 | **Real tablet** (Honor NDL W09, Android 16, 1200 x 1920), release build installed over 1.2.7 with `adb install -r` | all 19 profiles kept; a learner's level, XP, streak, words and stars identical before and after. Upright and sideways: Home, Games, Memory Match (all 16 Hard cards), flashcard viewer, Progress, sheets. Word Hunt took a photo with the back camera and analysed it; Sign It played the sign video, recorded with the front camera and replayed the take; Gaze Control streamed the front camera; spoken progress played through the speech engine (the tablet's media volume was at 0, so it was silent on the device); a speech recogniser is installed. Portrait chosen in Settings held while the tablet was sideways (Android 16 shows the app in a tall window). Settings put back afterwards |
-| Website (local server, final build) | audit 1,378 passed / 0 failed; contrast sweep 0 failures in all six display modes; every external link answers (the v1.4.0 download links work once the GitHub Release exists) |
+| **Real tablet, sync test** (12 October, after the write-claim rules went live) | a class learner's game round reached the cloud straight away (progress, study time in `active_time_logs`); stars, words and Star Shop spending did not until the fix above, then did (cloud 150 → 165 stars at once). The daily-challenge record and session logs stay on the tablet by design |
+| **Real tablet, "Turn sound up"** | before the fix it said it worked and the speaker stayed at 0; after it: 0 → 5 of 15 with the system volume panel. The owner's volume was put back to 0 |
+| **Real tablet, final build** (`fc7262a`, installed with `adb install -r` at 20:41) | every profile kept; the "sound is off" note showed (media volume 0) and closed; a class learner's home (13 words, 150 of 165 stars, as in the cloud), Messages tile without a stray count, and the inbox listing their teacher with the old history; the teacher's home (7 students) and Parent Notes opened normally while the reader records were refused by today's rules, silently, as expected until the new rules are deployed; no app error in the log. Tablet settings and volume put back |
+| Website (local server, final build, 12 October evening) | download page and `version.json` regenerated from the final APKs (SHA-256s and sizes match; service worker cache v32); audit 1,378 passed / 0 failed (a first run lost one image to a socket-buffer error on this PC while a build was running; the rerun was clean); contrast sweep 0 failures in all six display modes; every external link answers (the v1.4.0 download links are skipped: they work once the GitHub Release exists) |
 
 ## Waiting for approval
 
@@ -133,12 +144,14 @@ Each needs the project owner's go-ahead (see "Waiting for approval").
 
 ## Not possible in this round
 
-- **Real-device tests:** the Honor tablet was tested once it was unlocked
-  (see Checks); no iPhone or iPad was available, so Gaze Control,
-  controllers and camera features on iOS are checked by code, tests and the
-  simulator only. On the tablet the microphone was not tried: its
-  permission had been given "only this time" and has lapsed, and checking
-  recognition needs someone to speak.
+- **Real-device tests that need a person:** on the Honor, the microphone
+  (its permission was given "only this time" and has lapsed, and checking
+  recognition needs someone to speak) and a Bluetooth game controller (the
+  X3 has to be switched on and paired) were not tried this round. The
+  cameras, speech output, sync, the sound note and the final build's main
+  screens were (see Checks). No iPhone or iPad was available, so Gaze
+  Control, controllers and camera features on iOS are checked by code,
+  tests and the simulator only.
 - **The 33 missing FSL signs** stay "Sign coming soon" placeholders until the
   project owner says otherwise; nothing was recorded, generated or
   downloaded for them. The guide and tools are kept for later.
@@ -171,10 +184,13 @@ plugins to versions that support built-in Kotlin, set
 Dart 3.13.5, installed separately so the project's 3.44 was untouched; local
 branch `work/toolchain-3.47`, not pushed or merged): `flutter pub get` moved
 five SDK-pinned packages, `flutter analyze` found no issues, and all 5,237
-tests passed (on the code before the security review). TOOLCHAIN_BUILD_RESULT
-So moving to 3.47 is possible, but it does not by itself remove the warning
-(that needs AGP 9 and the plugins' updates), and it changes the compiler
-under every screen. **Recommendation: ship 1.4.0 on 3.44 and make the move,
+tests passed (on the code before the security review). The Android app
+builds with it (a debug APK), and the "applies the Kotlin Gradle Plugin"
+warning is gone, but 3.47.7 warns instead that its support for this
+project's Gradle 8.14, Android Gradle Plugin 8.11.1 and Kotlin 2.2.20
+"will soon be dropped": it wants Gradle 9.1, AGP 9.0.1 and Kotlin 2.3.20.
+So moving to 3.47 is possible, but it brings a whole Android build-tool
+upgrade with it, and it changes the compiler under every screen. **Recommendation: ship 1.4.0 on 3.44 and make the move,
 with AGP 9, the first change of the next version**, with the full checks and
 a tablet run.
 
