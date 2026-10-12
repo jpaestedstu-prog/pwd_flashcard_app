@@ -36,7 +36,12 @@ Future<void> showRaceSign(
   if (!context.mounted) return;
 
   if (source == null) {
-    await showFslUnavailableSheet(context, wordEnglish: card.wordEnglish);
+    // Registered but unresolved: offline, not a missing sign.
+    await showFslUnavailableSheet(
+      context,
+      wordEnglish: card.wordEnglish,
+      unreachable: FslAssetsService.hasAnyVideoSource(card),
+    );
     return;
   }
 

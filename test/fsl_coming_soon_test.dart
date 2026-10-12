@@ -216,4 +216,30 @@ void main() {
     semantics.dispose();
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  testWidgets('offline, the viewer says a signed word needs the internet', (
+    tester,
+  ) async {
+    // Found on a phone with no connection: tapping FSL on "Dog", which has a
+    // recorded sign, said "Sign coming soon".
+    tester.view.physicalSize = const Size(1200, 1920);
+    tester.view.devicePixelRatio = 1.75;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    FslAssetsService.debugVideoSourceFor = (_) async => null; // offline
+
+    // Animals opens on "Dog".
+    await tester.pumpWidget(
+      app(const FlashcardViewerScreen(category: FlashcardCategory.animals)),
+    );
+    await pumpFrames(tester);
+    await tester.runAsync(() async {
+      await tester.tap(find.text('FSL'));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    });
+    await pumpFrames(tester);
+    expect(find.textContaining('needs the internet'), findsOneWidget);
+    expect(find.text('Sign coming soon'), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 }

@@ -97,7 +97,12 @@ class _StoryFslButtonState extends State<StoryFslButton> {
       // Mirror Flashcards → Cards → FSL: a friendly bottom sheet rather than a
       // SnackBar, which is easy to miss for the Deaf / hard-of-hearing learners
       // who rely on the signing path.
-      showFslUnavailableSheet(context, wordEnglish: widget.label);
+      // The page names a clip, so it exists: the learner is offline.
+      showFslUnavailableSheet(
+        context,
+        wordEnglish: widget.label,
+        unreachable: widget.pageUrl.isNotEmpty,
+      );
       return;
     }
 

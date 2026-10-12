@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/services.dart' show AssetManifest, rootBundle;
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:video_player/video_player.dart';
@@ -132,6 +133,7 @@ class FslAssetsService {
   /// Used by tests; useful in production after a hot-reload.
   static void reset() {
     _cache = null;
+    debugVideoSourceFor = null;
     _assetPathByKey.clear();
     _downloadUrlByKey.clear();
     _streamUrlByKey.clear();
@@ -316,12 +318,20 @@ class FslAssetsService {
   /// May perform a download (via [_videoCache]) on first play. Subsequent
   /// calls for the same card hit the disk cache and return immediately.
   static Future<VideoSource?> videoSourceFor(Flashcard card) async {
+    final override = debugVideoSourceFor;
+    if (override != null) return override(card);
     final localPath = assetPathFor(card);
     if (localPath != null) return _AssetVideoSource(localPath);
 
     final file = await cachedVideoFile(card);
     return file != null ? _FileVideoSource(file) : null;
   }
+
+  /// Test seam: stands in for [videoSourceFor] (a widget test has neither the
+  /// network nor the download cache), e.g. to play a learner who is offline.
+  /// Cleared by [reset].
+  @visibleForTesting
+  static Future<VideoSource?> Function(Flashcard card)? debugVideoSourceFor;
 
   /// Resolves an arbitrary FSL clip URL (e.g. a Story clip) to a playable
   /// [VideoSource], downloading and caching it on first play.

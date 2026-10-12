@@ -818,8 +818,14 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
     setState(() => _isLoadingFsl = false);
 
     if (videoSource == null) {
-      // No video available for this word — show a friendly message.
-      showFslUnavailableSheet(context, wordEnglish: card.wordEnglish);
+      // A clip registered for the word that did not resolve means the
+      // learner is offline, not that the sign is missing: saying "coming
+      // soon" for a sign that exists was wrong (found offline on a phone).
+      showFslUnavailableSheet(
+        context,
+        wordEnglish: card.wordEnglish,
+        unreachable: FslAssetsService.hasAnyVideoSource(card),
+      );
       return;
     }
 
