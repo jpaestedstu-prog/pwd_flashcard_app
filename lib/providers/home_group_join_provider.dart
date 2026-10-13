@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/services/firebase_service.dart';
@@ -8,6 +9,7 @@ import '../data/local/hive_service.dart';
 import '../data/models/home_group.dart';
 import '../data/models/home_group_member.dart';
 import '../data/models/models.dart';
+import '../data/remote/profile_cloud_fields.dart';
 import 'app_providers.dart';
 
 /// State machine for the child-side "join a home group" flow. Mirrors
@@ -114,23 +116,10 @@ class HomeGroupJoinNotifier extends Notifier<HomeGroupJoinState> {
       await FirebaseService.db
           .collection('profiles')
           .doc(stampedProfile.id)
-          .set({
-        'id': stampedProfile.id,
-        'name': stampedProfile.name,
-        'role': stampedProfile.role.index,
-        'avatar_index': stampedProfile.avatarIndex,
-        'created_at': stampedProfile.createdAt.toIso8601String(),
-        'disability_type': stampedProfile.disabilityType.index,
-        'home_group_id': stampedProfile.homeGroupId,
-        'birth_date': stampedProfile.birthDate?.toIso8601String(),
-        'grade_level': stampedProfile.gradeLevel?.index,
-        'learning_level': stampedProfile.learningLevel?.index,
-        'pin_hash': stampedProfile.pinHash,
-        'pin_salt': stampedProfile.pinSalt,
-        'pin_hash_algorithm': stampedProfile.pinHashAlgorithm,
-        'is_guest_player': stampedProfile.isGuestPlayer,
-        'owner_uid': stampedProfile.ownerUid,
-      });
+          .set(
+            ProfileCloudFields.forJoin(stampedProfile, family: true),
+            SetOptions(merge: true),
+          );
 
       final member = HomeGroupMember(
         homeGroupId: group.id,

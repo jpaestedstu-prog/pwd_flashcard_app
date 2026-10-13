@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/services/firebase_service.dart';
@@ -7,6 +8,7 @@ import '../data/local/hive_service.dart';
 import '../data/models/classroom.dart';
 import '../data/models/classroom_member.dart';
 import '../data/models/models.dart';
+import '../data/remote/profile_cloud_fields.dart';
 import 'app_providers.dart';
 
 /// State machine for the student-side "join a class" flow.
@@ -131,23 +133,10 @@ class JoinCodeNotifier extends Notifier<JoinCodeState> {
       await FirebaseService.db
           .collection('profiles')
           .doc(stampedProfile.id)
-          .set({
-        'id': stampedProfile.id,
-        'name': stampedProfile.name,
-        'role': stampedProfile.role.index,
-        'avatar_index': stampedProfile.avatarIndex,
-        'created_at': stampedProfile.createdAt.toIso8601String(),
-        'disability_type': stampedProfile.disabilityType.index,
-        'classroom_id': stampedProfile.classroomId,
-        'birth_date': stampedProfile.birthDate?.toIso8601String(),
-        'grade_level': stampedProfile.gradeLevel?.index,
-        'learning_level': stampedProfile.learningLevel?.index,
-        'pin_hash': stampedProfile.pinHash,
-        'pin_salt': stampedProfile.pinSalt,
-        'pin_hash_algorithm': stampedProfile.pinHashAlgorithm,
-        'is_guest_player': stampedProfile.isGuestPlayer,
-        'owner_uid': stampedProfile.ownerUid,
-      });
+          .set(
+            ProfileCloudFields.forJoin(stampedProfile, family: false),
+            SetOptions(merge: true),
+          );
 
       // Write classroom membership to Firestore. The rule allows this
       // because `ownsProfile(profile_id)` resolves true (the profile

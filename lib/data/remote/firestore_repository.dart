@@ -14,6 +14,7 @@ import '../models/home_group_member.dart';
 import '../models/models.dart';
 import '../repository.dart';
 import '../../core/accessibility/learner_support.dart';
+import 'profile_cloud_fields.dart';
 
 /// Remote (Cloud Firestore) implementation of [DataRepository].
 ///
@@ -94,6 +95,9 @@ class FirestoreRepository implements DataRepository {
       'equipped_title_id':
           profile.equippedTitleId ??
           HiveService.getEquippedItem(profile.id, ShopItemType.title.name),
+      // The PIN, birth date and grade level stay on the device; this clears
+      // the copies an older version's join left in the readable document.
+      ...ProfileCloudFields.removals(),
     }, SetOptions(merge: true));
   }
 
