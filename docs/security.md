@@ -76,18 +76,33 @@ students who join later. The live ruleset was read back and compared with the
 file: identical. To roll back: `git show b4d1cbd:firestore.rules` (before the
 second part) or `git show 02fd573:firestore.rules` (before the review).
 
+**Parents on older apps** (deployed 13 October, 10:18; commit 832e7e6). A
+parent's app from before 1.4.0 files no educator link, so after the second
+part it could no longer read the notes about, or set the time limit, alarms,
+routines and unlocks of, a child who joins their family group later from
+another device. Parents now have the teacher's fallback: the owner of the
+family group the child's own profile names (`parentsThroughProfile`; every
+release's family join writes `home_group_id` from the child's device), while
+the child is still a member. It only adds a way to be allowed, checked after
+every existing one, so nothing that worked before can be refused. Live data
+(read-only): all 19 family members' and all 125 class members' profiles name
+their group. Rollback: `git show 1dccc86:firestore.rules`.
+
 **Checked live after the deployment** (13 October; each probe uses throwaway
 anonymous accounts, writes as the app would, and deletes everything it wrote
 and its accounts afterwards):
 
 | Probe | Checks |
 |---|---|
-| [`trust_rules_live_probe.py`](../tool/trust_rules_live_probe.py) | 27/27: a stranger cannot pose as a child's parent or a student's teacher, pre-approve or write a friendship with a child, rename a learner, read achievements or notes, write a note, or set a child's time limit, alarm, routine, routine day or unlock; the real teacher, parent and learner still can |
+| [`trust_rules_live_probe.py`](../tool/trust_rules_live_probe.py) | 31/31: a stranger cannot pose as a child's parent or a student's teacher, pre-approve or write a friendship with a child, rename a learner, read achievements or notes, write a note, or set a child's time limit, alarm, routine, routine day or unlock; the real teacher, parent and learner still can, and so can a teacher or parent on an older app through the learner's own profile (the two parent checks failed live before the 10:18 deploy) |
 | [`write_claim_rules_live_probe.py`](../tool/write_claim_rules_live_probe.py) | 6/6 |
 | [`firestore_read_rules_live_probe.py`](../tool/firestore_read_rules_live_probe.py) | 32/32 |
 | [`messaging_rules_probe.py`](../tool/messaging_rules_probe.py) | 63/63 (blocking, parent approval) |
 | [`assessment_rules_probe.py`](../tool/assessment_rules_probe.py) | 17/17 |
 | [`shared_media_rules_probe.py`](../tool/shared_media_rules_probe.py) | 26/26 |
+| [`recovery_code_live_probe.py`](../tool/recovery_code_live_probe.py) | 3/3 |
+
+All 178 pass after the last deploy (13 October, 10:18).
 
 Read-only looks at the live database found no sign that any of these gaps
 had been used: no child has a friendship, no child is in two family groups,
@@ -111,6 +126,25 @@ alarm, routine, routine action and unlock was set by the child's own educator.
 Older copies of the app keep their old behaviour for messages and
 assignments until they update.
 
+### Private fields kept off the cloud (1.4.1)
+
+A learner's `profiles/{id}` document can be read by any signed-in user who
+knows the id (see "Reading by id"). Until 1.4.1, joining a class or family
+group also copied the learner's **PIN hash, PIN salt and algorithm, birth
+date and grade level** there. No version ever read them back from the cloud;
+a 4-digit PIN falls to a brute force of its salted hash in moments.
+
+- 1.4.1 joins send none of them ([`profile_cloud_fields.dart`](../lib/data/remote/profile_cloud_fields.dart)),
+  and every profile sync removes them from the device's own profiles. A guard
+  test fails if any other code writes those keys.
+- [`tool/profile_private_fields_cleanup.py`](../tool/profile_private_fields_cleanup.py)
+  removed them from the live profiles on 13 October: 159 profiles (159 birth
+  dates, 1 PIN hash), nothing else touched; a re-check found none left. The
+  birth dates went to a local backup file first (in the owner's Documents
+  folder); each tablet keeps its own copy anyway.
+- An older app that joins a class again writes them again for that profile,
+  until that device updates (its first 1.4.1 sync removes them).
+
 ### Testing the rules
 
 The rules are tested against the **local Firestore emulator**, never the live
@@ -121,9 +155,10 @@ firebase emulators:exec --only firestore --project demo-flashlearn ^
   "python tool/write_claim_rules_emulator_test.py && python tool/firestore_read_rules_emulator_test.py && python tool/recovery_code_rules_emulator_test.py && python tool/trust_rules_emulator_test.py"
 ```
 
-(32 + 119 + 14 + 91 checks, all passing.) Set `FLASHLEARN_RULES_FILE` to
+(32 + 119 + 14 + 107 checks, all passing.) Set `FLASHLEARN_RULES_FILE` to
 another rules file to run the trust test against it: against the rules live
-before the second part, 17 of its checks fail, because those attacks worked.
+before the second part, 17 of its checks fail, because those attacks worked;
+against those live before the parent fallback, the 6 parent checks fail.
 The live probes above are the second half: run them after every deploy.
 
 ## Firebase App Check
@@ -193,6 +228,14 @@ ownership, and keeping everything else local.
   script could use them up and stall syncing for everyone until the next day
   (the app keeps working offline). App Check is the defence once it can be
   enforced; there is no free rate limiting without server code.
+- **Repository history.** Until 13 October three tracked settings files
+  (`.vscode/settings.json`, `.claude/settings.json`,
+  `.claude/settings.local.json`) named this PC's user folder. They are no
+  longer tracked, but older commits of this public repository still contain
+  them (no passwords, tokens, keys or e-mail addresses). Removing them from
+  history would mean rewriting and force-pushing every branch, so it is left
+  to the owner. Sample data in tests and one website screenshot use a
+  teacher's first name, "Sir Kevin".
 - **Scores are self-reported.** Progress and test results are written by the
   learner's device. The rules stop one device writing another's, but cannot
   check a score itself without server code.
@@ -202,7 +245,8 @@ ownership, and keeping everything else local.
 - Local data lives in the app's private storage. Android backup is off
   (`allowBackup="false"`), so a profile cannot be copied off by `adb backup`
   or cloud backup. Moving to a new device goes through a recovery code.
-- Teacher and parent profiles can have a PIN (hashed on the device).
+- Teacher and parent profiles can have a PIN, hashed on the device. Since
+  1.4.1 the hash never leaves it (see "Private fields kept off the cloud").
 - Release APKs are signed with one key kept off the project folder
   ([`docs/signing.md`](signing.md)). CI builds use Android's throwaway debug
   key and can never be published or installed over a real copy.
