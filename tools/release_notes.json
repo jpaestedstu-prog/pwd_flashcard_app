@@ -2,6 +2,25 @@
   "_comment": "Newest first. tools/release_page_build.py renders the website's download section, changelog, website/version.json and the GitHub release notes from this file plus pubspec.yaml and the built APKs. The first entry must match the pubspec version.",
   "releases": [
     {
+      "version": "1.4.1",
+      "build": 14,
+      "date": "2026-10-13",
+      "summary_en": "A fix-up release for 1.4.0. A learner’s PIN and birthday now stay on their own device, parents on an older version of the app can still guide a child who joins their family group later, and the screens for teachers and parents count the words a learner has actually learned. Turning on a daily time limit starts from the length recommended for the learner, and a few small buttons are now easy to reach by screen reader, switch, gaze and keyboard. This release is for Android phones and tablets, installed from this website: there is no iPhone or iPad version.",
+      "summary_fil": "Isang pag-aayos para sa 1.4.0. Sa sariling device na lamang ng mag-aaral nananatili ang kanyang PIN at kaarawan, magagabayan pa rin ng magulang na nasa lumang bersyon ng app ang anak na sasali sa kanilang family group sa ibang pagkakataon, at binibilang na ng mga screen para sa guro at magulang ang mga salitang talagang natutunan ng mag-aaral. Kapag binuksan ang pang-araw-araw na limitasyon sa oras, nagsisimula ito sa habang inirerekomenda para sa mag-aaral, at madali nang maabot ng screen reader, switch, gaze at keyboard ang ilang maliliit na button. Para sa mga Android phone at tablet ang release na ito, na ini-install mula sa website na ito: walang bersyon para sa iPhone o iPad.",
+      "notes_en": "A learner’s PIN and birthday stay on the device, teachers and parents see the words actually learned, and a daily time limit is never saved as zero.",
+      "notes_fil": "Nananatili sa device ang PIN at kaarawan ng mag-aaral, nakikita ng guro at magulang ang mga salitang talagang natutunan, at hindi na nase-save bilang zero ang pang-araw-araw na limitasyon sa oras.",
+      "bullets_en": [
+        "Privacy: a learner’s PIN and birthday are no longer copied to the cloud when they join a class or family group, and the copies already there were removed (each tablet keeps its own).",
+        "Parents on an older version of the app can again read the notes about, and set the time limit, alarms and routines of, a child who joins their family group later.",
+        "Joining a class no longer wipes the family group (or anything else) a learner’s profile names.",
+        "Teacher and parent screens count the words a learner has actually learned: the learner Dashboard, the child details, the weekly PDF report, Teacher Analytics and the Progress Timeline used a game-accuracy average instead.",
+        "The All Students list shows today’s streak; it kept a streak that had ended until the learner played again.",
+        "Turning on a daily time limit starts from the recommended length for the learner; it started at 0 minutes, which was never enforced.",
+        "A note’s delete button, the Daily Challenge speakers and the seasonal banner’s close button are real buttons: named for screen readers, reachable by switch, gaze and keyboard, and big enough to tap.",
+        "Android phones and tablets only: iOS support has stopped."
+      ]
+    },
+    {
       "version": "1.4.0",
       "build": 13,
       "date": "2026-10-13",
