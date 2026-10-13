@@ -14,12 +14,29 @@ NAME_BAD = re.compile(
     r'(\.(jks|keystore|p12|pfx|pem|hive|hivec|lock)$)|key\.properties|play-upload|'
     r'flashlearn-release|google-services\.json$|/test/|integration_test|face_photo|'
     r'\.env$', re.I)
+
+
+def build_pc_paths():
+    """The build PC's home folder and user name, in the forms a leaked path
+    takes. Read at run time, so the scanner names nobody in the public repo."""
+    home = Path.home()
+    names = {home.name}
+    if sys.platform == 'win32':  # the 8.3 form of the folder (C:\Users\ABCDEF~1)
+        import ctypes
+        buf = ctypes.create_unicode_buffer(260)
+        if ctypes.windll.kernel32.GetShortPathNameW(str(home), buf, 260):
+            names.add(Path(buf.value).name)
+    alts = [re.escape(str(home).encode()), re.escape(home.as_posix().encode())]
+    alts += [re.escape(n.encode()) for n in names if len(n) >= 4]  # a short name would match anything
+    return re.compile(b'|'.join(alts), re.I)
+
+
 CONTENT_BAD = [
     (re.compile(rb'-----BEGIN [A-Z ]*PRIVATE KEY-----'), 'a private key'),
     (re.compile(rb'storePassword|keyPassword'), 'a signing password field'),
     (re.compile(rb'IntegrationTestPlugin|integration_test/'), 'test-only code'),
     (re.compile(rb'faceJpegBase64|walk_face\.jpg'), 'the walkthrough face fixture'),
-    (re.compile(rb'[A-Za-z]:\\\\?Users\\\\?Maria|/c/Users/Maria|Maria Jusle', re.I), 'a path from the build PC'),
+    (build_pc_paths(), 'a path from the build PC'),
     (re.compile(rb'\.flashlearn-signing'), 'the signing folder name'),
 ]
 # Big media are not worth scanning byte by byte.
