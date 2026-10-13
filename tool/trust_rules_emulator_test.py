@@ -23,6 +23,9 @@ child's limits, so a stranger could:
 Also: a learner's achievements and shop purchases were readable by anyone
 who knew the learner's id.
 
+Teachers and parents on apps from before 1.4.0 file no links: the class or
+family group on the learner's own profile proves the same (2026-10-13).
+
 Every check is something a released app does (must stay allowed) or an
 attack (must be refused).
 """
@@ -190,6 +193,14 @@ def seed():
     put("classroom_members/c1_pS4", {"classroom_id": "c1", "profile_id": "pS4"})
     put("profiles/pS5", {"owner_uid": "uS5", "name": "Left student", "role": 0, "classroom_id": "c1"})
     put("profiles/pS6", {"owner_uid": "uS6", "name": "Other student", "role": 0, "classroom_id": "cX"})
+    # The same for the parent: pC3 joined the family group after the
+    # backfill on a device of their own (no link); pC4's profile still names
+    # the group after they left it; pC5's names the stranger's group, which
+    # they never joined.
+    put("profiles/pC3", {"owner_uid": "uC3", "name": "New child", "role": 3, "home_group_id": "g1"})
+    put("home_group_members/g1_pC3", {"home_group_id": "g1", "profile_id": "pC3"})
+    put("profiles/pC4", {"owner_uid": "uC4", "name": "Left child", "role": 3, "home_group_id": "g1"})
+    put("profiles/pC5", {"owner_uid": "uC5", "name": "Other child", "role": 3, "home_group_id": "gX"})
 
 
 def request_doc(frm, to, owner, **extra):
@@ -414,6 +425,46 @@ def child_controls():
     denied("... nor the notes", subquery("uX", "parent_teacher_notes/pS6", "notes"))
 
 
+def parents_on_older_apps():
+    # A parent's app from before 1.4.0 files no links. The child's own
+    # profile names the family group (every release's join writes it).
+    allowed("a parent on an older app sets a time limit for a child who joined later",
+            create("uP", "child_time_limits/pC3", {"child_profile_id": "pC3", "setter_profile_id": "pP",
+                                                   "owner_uid": "uP", "daily_minutes": 30}))
+    allowed("... reads the notes about them", subquery("uP", "parent_teacher_notes/pC3", "notes"))
+    allowed("... writes a note", create("uP", "parent_teacher_notes/pC3/notes/n6",
+                                        {"author_uid": "uP", "content": "x"}))
+    allowed("... sets an alarm", create("uP", "child_alarms/p3", {"child_profile_id": "pC3", "setter_profile_id": "pP",
+                                                                  "owner_uid": "uP", "label": "Bath time"}))
+    allowed("... sets a routine", create("uP", "routines/r4", {"child_profile_id": "pC3", "setter_profile_id": "pP",
+                                                               "owner_uid": "uP"}))
+    allowed("... and unlocks them for a while",
+            create("uP", "child_unlock_overrides/pC3", {"child_profile_id": "pC3", "setter_profile_id": "pP",
+                                                        "owner_uid": "uP"}))
+    denied("but not a child whose profile still names the group after they left it",
+           create("uP", "child_time_limits/pC4", {"child_profile_id": "pC4", "setter_profile_id": "pP",
+                                                  "owner_uid": "uP", "daily_minutes": 30}))
+    denied("... nor their notes", subquery("uP", "parent_teacher_notes/pC4", "notes"))
+    denied("a stranger whose family group a profile names, without a membership",
+           create("uX", "child_time_limits/pC5", {"child_profile_id": "pC5", "setter_profile_id": "pXP",
+                                                  "owner_uid": "uX", "daily_minutes": 1}))
+    denied("... nor the notes", subquery("uX", "parent_teacher_notes/pC5", "notes"))
+    denied("a stranger cannot use the real parent's path to the child",
+           create("uX", "child_alarms/x3", {"child_profile_id": "pC3", "setter_profile_id": "pXP",
+                                            "owner_uid": "uX", "label": "come outside"}))
+    denied("... nor read the child's notes", subquery("uX", "parent_teacher_notes/pC3", "notes"))
+    denied("a teacher is not the child's parent",
+           create("uT", "child_time_limits/pC3", {"child_profile_id": "pC3", "setter_profile_id": "pT",
+                                                  "owner_uid": "uT", "daily_minutes": 30}))
+    # The child leaves: the access goes with the membership.
+    allowed("(the child leaves the family group)",
+            req("DELETE", f"{BASE}/home_group_members/g1_pC3", None, "uC3")[0])
+    denied("the parent no longer changes the time limit",
+           update("uP", "child_time_limits/pC3", {"child_profile_id": "pC3", "setter_profile_id": "pP",
+                                                  "owner_uid": "uP", "daily_minutes": 5}))
+    denied("... nor reads the notes", subquery("uP", "parent_teacher_notes/pC3", "notes"))
+
+
 def after_leaving():
     # The student leaves the class: the teacher's link stays, but the
     # membership under it is gone, so the access goes with it.
@@ -440,6 +491,7 @@ def main():
     note_readers()
     notes()
     child_controls()
+    parents_on_older_apps()
     after_leaving()
     print(f"{passed} passed, {len(failed)} failed")
     for f in failed:

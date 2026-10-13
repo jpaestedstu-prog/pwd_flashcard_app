@@ -159,6 +159,19 @@ service cloud.firestore {
         && ownsClassroomTeacher(get(profile).data.classroom_id);
     }
 
+    // The same proof for parents: the owner of the family group the child's
+    // own profile names, while the child is still a member. Every release's
+    // family-group join writes `home_group_id` from the child's own device.
+    // Lets a parent on an app from before 1.4.0 (which files no links) keep
+    // guiding a child who joins after the 13 October backfill.
+    function parentsThroughProfile(learnerId) {
+      let profile = /databases/$(database)/documents/profiles/$(learnerId);
+      return exists(profile)
+        && get(profile).data.get('home_group_id', null) is string
+        && exists(/databases/$(database)/documents/home_group_members/$(get(profile).data.home_group_id + '_' + learnerId))
+        && ownsHomeGroupOwner(get(profile).data.home_group_id);
+    }
+
     // This device is one of [learnerId]'s educators. It holds the link
     // `note_readers/{uid}_{learner}`, naming a class or family group it owns,
     // and the learner is still a member of that group. The app files the
@@ -166,7 +179,8 @@ service cloud.firestore {
     // backfill filed it for every relationship that existed on 13 October
     // 2026. The membership is re-checked every time, so a learner who leaves
     // takes the access with them, and only the learner's own device can make
-    // a membership, so the link cannot be forged.
+    // a membership, so the link cannot be forged. Without a link, the class
+    // or family group on the learner's own profile proves the same.
     function educatesLearner(learnerId) {
       let link = /databases/$(database)/documents/note_readers/$(request.auth.uid + '_' + learnerId);
       return signedIn() && ((exists(link) && (
@@ -176,7 +190,8 @@ service cloud.firestore {
         || (get(link).data.get('home_group_id', null) is string
           && exists(/databases/$(database)/documents/home_group_members/$(get(link).data.home_group_id + '_' + learnerId))
           && ownsHomeGroupOwner(get(link).data.home_group_id))))
-        || teachesThroughProfile(learnerId));
+        || teachesThroughProfile(learnerId)
+        || parentsThroughProfile(learnerId));
     }
 
     // Who may steer a learner: their own device (a shared tablet, a Player's
