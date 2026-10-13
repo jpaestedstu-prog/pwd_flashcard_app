@@ -236,7 +236,7 @@ class _StudentCard extends StatelessWidget {
         profile.name,
         progress.wordsLearned,
         progress.totalStars,
-        progress.streakDays,
+        progress.liveStreakDays,
       ),
       child: Card(
         elevation: 2,
@@ -331,7 +331,7 @@ class _StudentCard extends StatelessWidget {
                         ),
                         _MiniStat(
                           icon: Icons.local_fire_department_rounded,
-                          label: '${progress.streakDays}d',
+                          label: '${progress.liveStreakDays}d',
                           color: AppColors.error,
                         ),
                         _MiniStat(
