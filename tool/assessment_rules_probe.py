@@ -239,6 +239,11 @@ def main():
           fs_delete(f"assessment_results/{result_b}", tok_b), 200)
 
     # ── cleanup ────────────────────────────────────────────
+    # The stranger's writes are refused under the rules this checks; run
+    # against older rules they land, so they are removed too.
+    for doc in (f"rulesprobe-stranger-{uid_x[:8]}", f"rulesprobe-stranger2-{uid_x[:8]}"):
+        fs_delete(f"assessment_assignments/{doc}", tok_x)
+    fs_delete(f"educator_rosters/{uid_x}", tok_x)
     fs_delete(f"assessment_assignments/{assign}", tok_a)
     fs_delete(f"assessments/{assess}", tok_a)
     fs_delete(f"educator_rosters/{uid_a}", tok_a)

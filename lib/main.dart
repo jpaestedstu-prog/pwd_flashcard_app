@@ -234,17 +234,20 @@ void main() {
         // have one yet. Idempotent (flag + per-profile null check).
         await UsernameMigration.runIfNeeded();
 
-        // The group link and roster place for every class and family group
-        // this device's profiles are in (joined before 1.4.1, or restored
-        // here): since 1.4.1 the rules ask for them. Once each, never throws.
-        await const GroupLinksService().ensureForDevice();
-
         // With auth in place, open the sync pipes: connectivity listener,
         // pending-write drain, and the remote progress/profile mirrors.
         sync?.startListening();
         queue?.processQueue();
         progressSync?.start();
         profileSync?.start();
+
+        // The group link and roster place for every class and family group
+        // this device's profiles are in (joined before 1.4.1, or restored
+        // here), and a fresh copy of each group: since 1.4.1 the rules ask
+        // for them. Last, so a tablet with many groups does not hold up the
+        // sync above (it reads only this device's own documents). Each is
+        // written once; never throws.
+        await const GroupLinksService().ensureForDevice();
       } catch (e, s) {
         // Background startup must never pop the global error snackbar —
         // every step retries on the next boot or on demand (ensureSignedIn).
