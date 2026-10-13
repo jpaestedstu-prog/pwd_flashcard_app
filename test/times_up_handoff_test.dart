@@ -1143,6 +1143,43 @@ void main() {
       expect(find.text('Save'), findsOneWidget);
     });
 
+    testWidgets('turning the daily limit on starts from the recommended length',
+        (tester) async {
+      // A new limit holds 0 minutes. The switch used to read "0 min per
+      // day", and saved like that the lock enforced nothing (it ignores 0).
+      await _pumpEditor(tester, child: _child(DisabilityType.motor));
+      await tester.pump();
+
+      await tester.tap(find.text('Enforce a daily limit'));
+      await tester.pump();
+
+      final minutes = LockPolicyDefaults.dailyMinutesFor(DisabilityType.motor);
+      expect(find.text('$minutes min per day'), findsOneWidget);
+      expect(find.text('$minutes minutes per day'), findsOneWidget);
+      expect(find.text('0 min per day'), findsNothing);
+    });
+
+    testWidgets('a limit that has a length keeps it when switched back on',
+        (tester) async {
+      await _pumpEditor(
+        tester,
+        child: _child(DisabilityType.motor),
+        limit: ChildTimeLimit(
+          childProfileId: 'child',
+          setterProfileId: 'educator',
+          setterRole: UserRole.parent,
+          dailyLimitMinutes: 90,
+          updatedAt: DateTime(2026, 10),
+        ),
+      );
+      await tester.pump();
+
+      await tester.tap(find.text('Enforce a daily limit'));
+      await tester.pump();
+
+      expect(find.text('90 min per day'), findsOneWidget);
+    });
+
     testWidgets('the preview shows the exact sentence the child will hear',
         (tester) async {
       await _pumpEditor(

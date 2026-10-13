@@ -175,7 +175,20 @@ class _ChildTimeLimitsScreenState extends ConsumerState<ChildTimeLimitsScreen> {
                     : _t(context).tlNoLimit,
               ),
               value: draft.dailyLimitEnabled,
-              onChanged: (v) => _update(draft.copyWith(dailyLimitEnabled: v)),
+              // Turning the limit on starts from the length recommended for
+              // this learner. A new limit holds 0 minutes, below the
+              // slider's floor, and the lock ignores a 0-minute limit: saved
+              // straight away it read "0 min per day" and enforced nothing.
+              onChanged: (v) => _update(
+                draft.copyWith(
+                  dailyLimitEnabled: v,
+                  dailyLimitMinutes: v && draft.dailyLimitMinutes < 5
+                      ? LockPolicyDefaults.dailyMinutesFor(
+                          childType ?? DisabilityType.none,
+                        )
+                      : null,
+                ),
+              ),
             ),
             if (draft.dailyLimitEnabled)
               ListTile(
