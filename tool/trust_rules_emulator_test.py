@@ -211,10 +211,20 @@ def request_doc(frm, to, owner, **extra):
 
 
 def memberships():
+    # Since 1.4.1 a join carries the group's code: knowing the id is not enough.
+    denied("a learner joins a class by its id alone (no code)",
+           create("uS2", "classroom_members/c1_pS2", {"classroom_id": "c1", "profile_id": "pS2", "display_name": "S2"}))
+    denied("... or with a wrong code",
+           create("uS2", "classroom_members/c1_pS2", {"classroom_id": "c1", "profile_id": "pS2", "display_name": "S2",
+                                                     "join_code": "WRONG1"}))
+    denied("a child joins a family group by its id alone (no code)",
+           create("uC2", "home_group_members/g1_pC2", {"home_group_id": "g1", "profile_id": "pC2", "display_name": "C2"}))
     allowed("a student's own device joins a class (the join-code flow)",
-            create("uS2", "classroom_members/c1_pS2", {"classroom_id": "c1", "profile_id": "pS2", "display_name": "S2"}))
+            create("uS2", "classroom_members/c1_pS2", {"classroom_id": "c1", "profile_id": "pS2", "display_name": "S2",
+                                                      "join_code": "ABC123"}))
     allowed("a child's own device joins a family group",
-            create("uC2", "home_group_members/g1_pC2", {"home_group_id": "g1", "profile_id": "pC2", "display_name": "C2"}))
+            create("uC2", "home_group_members/g1_pC2", {"home_group_id": "g1", "profile_id": "pC2", "display_name": "C2",
+                                                       "join_code": "FAM123"}))
     allowed("a learner re-joining writes over its membership (same ids)",
             update("uS", "classroom_members/c1_pS", {"classroom_id": "c1", "profile_id": "pS", "display_name": "Student"}))
     allowed("the teacher renames a member on the roster",
@@ -222,9 +232,9 @@ def memberships():
     allowed("the parent renames a member of the family group",
             update("uP", "home_group_members/g1_pC", {"home_group_id": "g1", "profile_id": "pC", "display_name": "Kit"}))
     denied("a stranger files someone else's child in a family group of their own",
-           create("uX", "home_group_members/gX_pC", {"home_group_id": "gX", "profile_id": "pC"}))
+           create("uX", "home_group_members/gX_pC", {"home_group_id": "gX", "profile_id": "pC", "join_code": "XXX111"}))
     denied("a stranger files someone else's student in a class of their own",
-           create("uX", "classroom_members/cX_pS", {"classroom_id": "cX", "profile_id": "pS"}))
+           create("uX", "classroom_members/cX_pS", {"classroom_id": "cX", "profile_id": "pS", "join_code": "XXX222"}))
     denied("even the real teacher cannot enrol a learner who never joined",
            create("uT", "classroom_members/c1_pX", {"classroom_id": "c1", "profile_id": "pX"}))
     denied("a learner cannot file a membership under another learner's name",

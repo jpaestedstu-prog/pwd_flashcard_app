@@ -126,10 +126,13 @@ def denied(label, status):
 
 def seed():
     put("profiles/pT", {"owner_uid": "uT", "name": "Teacher", "role": 1})
-    put("profiles/pS1", {"owner_uid": "uS1", "name": "Student One", "role": 0, "disability_type": 1})
+    put("profiles/pS1", {"owner_uid": "uS1", "name": "Student One", "role": 0, "disability_type": 1,
+                          "classroom_id": "c1"})
     put("profiles/pS2", {"owner_uid": "uS2", "name": "Student Two", "role": 0})
     put("profiles/pP", {"owner_uid": "uP", "name": "Parent", "role": 2})
-    put("profiles/pC", {"owner_uid": "uC", "name": "Child", "role": 3})
+    put("profiles/pC", {"owner_uid": "uC", "name": "Child", "role": 3, "home_group_id": "g1"})
+    # A second student in the teacher's class, joined the way the app joins.
+    put("profiles/pS3", {"owner_uid": "uS3", "name": "Student Three", "role": 0, "classroom_id": "c1"})
     put("profiles/pX", {"owner_uid": "uX", "name": "Stranger", "role": 0})
     put("progress/pS1", {"owner_uid": "uS1", "stars": 5})
     put("app_state/tutorial_seen_pS1", {"owner_uid": "uS1", "value": True})
@@ -138,6 +141,7 @@ def seed():
     put("shop_equipped/pS1_avatar", {"owner_uid": "uS1", "profile_id": "pS1", "item_id": "hat"})
     put("classrooms/c1", {"teacher_id": "pT", "code": "ABC123", "name": "Class"})
     put("classroom_members/c1_pS1", {"classroom_id": "c1", "profile_id": "pS1"})
+    put("classroom_members/c1_pS3", {"classroom_id": "c1", "profile_id": "pS3"})
     put("home_groups/g1", {"owner_profile_id": "pP", "code": "HG1234"})
     put("home_group_members/g1_pC", {"home_group_id": "g1", "profile_id": "pC"})
     put("messages/m1", {"sender_profile_id": "pS1", "recipient_profile_id": "pT", "content": "hi"})
@@ -177,13 +181,15 @@ def main():
 
     # ── what the app does: must keep working ──
     allowed("my profiles (sign-in)", query("uT", "profiles", ("owner_uid", "EQUAL", "uT")))
-    allowed("profiles by id (deleted-learner check)", query("uT", "profiles", ("__name__", "IN", ["pS1", "pS2"])))
+    allowed("profiles by id (deleted-learner check)", query("uT", "profiles", ("__name__", "IN", ["pS1", "pS3"])))
     # The check exists to find profiles that are GONE: a missing id among the
     # names must not refuse the whole query (production evaluates each name).
     allowed("deleted-learner check with a deleted learner",
             query("uT", "profiles", ("__name__", "IN", ["pS1", "pGone"])))
     allowed("roster reads a student's profile", get("uT", "profiles/pS1"))
-    allowed("recovery reads the profile it claims", get("uNew", "profiles/pS1"))
+    # Since 1.4.1 the recovery flow claims first (the code proves it) and reads
+    # as the owner; a device that only holds the id reads nothing.
+    denied("a new device reads a profile before claiming it", get("uNew", "profiles/pS1"))
     allowed("teacher reads a student's progress", get("uT", "progress/pS1"))
     allowed("my app state", get("uS1", "app_state/tutorial_seen_pS1"))
     allowed("my custom cards (restore)", query("uT", "custom_cards", ("owner_uid", "EQUAL", "uT")))
@@ -194,7 +200,11 @@ def main():
             query("uNew", "shop_equipped", ("profile_id", "EQUAL", "pS1")))
     allowed("join a class by code", query("uS2", "classrooms", ("code", "EQUAL", "ABC123"), limit=1))
     allowed("teacher's own classes", query("uT", "classrooms", ("teacher_id", "EQUAL", "pT")))
-    allowed("member reads the class", get("uS1", "classrooms/c1"))
+    denied("a member whose device filed no group link reads the class (1.4.1: the code is in it)",
+           get("uS1", "classrooms/c1"))
+    put("group_readers/c1_uS1", {"group_id": "c1", "profile_id": "pS1", "kind": "class"})
+    allowed("member reads the class (its group link)", get("uS1", "classrooms/c1"))
+    allowed("teacher reads their class", get("uT", "classrooms/c1"))
     allowed("teacher's roster", query("uT", "classroom_members", ("classroom_id", "EQUAL", "c1")))
     allowed("student sees classmates", query("uS1", "classroom_members", ("classroom_id", "EQUAL", "c1")))
     allowed("my memberships", query("uS1", "classroom_members", ("profile_id", "EQUAL", "pS1")))
@@ -210,7 +220,7 @@ def main():
             query("uS1", "assessment_assignments", ("student_uids", "ARRAY_CONTAINS", "uS1")))
     allowed("learner reads their assignment", get("uS1", "assessment_assignments/as1"))
     allowed("educator's assignments", query("uT", "assessment_assignments", ("assignedBy", "EQUAL", "pT")))
-    allowed("educator reads assignees' results", query("uT", "assessment_results", ("profileId", "IN", ["pS1", "pS2"])))
+    allowed("educator reads assignees' results", query("uT", "assessment_results", ("profileId", "IN", ["pS1", "pS3"])))
     allowed("learner's results (cascade)", query("uS1", "assessment_results", ("profileId", "EQUAL", "pS1")))
     allowed("learner joins the live session", get("uS1", "live_sessions/c1"))
     allowed("child's alarms on the child's tablet", query("uC", "child_alarms", ("child_profile_id", "EQUAL", "pC")))
