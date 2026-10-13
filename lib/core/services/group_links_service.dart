@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../data/local/hive_service.dart';
+import '../../data/models/classroom.dart';
+import '../../data/models/home_group.dart';
 import 'firebase_service.dart';
 
 /// What a learner's device files for each class or family group it is in.
@@ -16,8 +18,11 @@ import 'firebase_service.dart';
 ///
 /// Filed on joining, and at every start for each group this device's
 /// profiles are in (one that joined before 1.4.1, or was restored here).
-/// What was filed is remembered, so each is written once per device. Never
-/// throws: a refused or offline write is tried again at the next start.
+/// What was filed is remembered, so each is written once per device. The
+/// start also refreshes this device's copy of the group document: what the
+/// learner's screens read from it (whether a test may be retaken) was
+/// otherwise frozen at the moment they joined. Never throws: a refused or
+/// offline write is tried again at the next start.
 class GroupLinksService {
   const GroupLinksService();
 
@@ -26,17 +31,18 @@ class GroupLinksService {
   FirebaseFirestore get _db => FirebaseService.db;
 
   /// Files the group link and the roster place for [profileId] in
-  /// [groupId] (a home group when [family]). [educatorUid] is the device
-  /// whose roster to join ([Classroom.teacherUid] / [HomeGroup.ownerUid]);
-  /// when it is not known it is read from the group document, which the
-  /// link has just made readable. A group from before 1.4.1 may not name
-  /// one yet: then only the link is filed, and the roster place waits for
-  /// a start after the teacher's app or the backfill has named it.
+  /// [groupId] (a home group when [family]), and refreshes the cached group.
+  /// [educatorUid] is the device whose roster to join when the group
+  /// document cannot say ([Classroom.teacherUid] / [HomeGroup.ownerUid]); a
+  /// group from before 1.4.1 may name none yet, and then the roster place
+  /// waits for a start after the teacher's app or the backfill has named it.
+  /// [groups] shares group documents already read in this run.
   Future<void> fileFor({
     required String profileId,
     required String groupId,
     required bool family,
     String? educatorUid,
+    Map<String, Map<String, dynamic>?>? groups,
   }) async {
     if (!FirebaseService.isConfigured) return;
     final uid = FirebaseService.currentUid;
@@ -58,18 +64,23 @@ class GroupLinksService {
         await HiveService.saveSetting(linkKey, profileId);
       }
 
-      final placeKey = 'roster_place::${groupId}_$profileId';
-      var educator = educatorUid;
-      if (educator == null || educator.isEmpty) {
-        final group = await _db
+      // The group document, readable now through the link.
+      final cache = groups ?? <String, Map<String, dynamic>?>{};
+      final key = '${family ? 'family' : 'class'}/$groupId';
+      if (!cache.containsKey(key)) {
+        final snap = await _db
             .collection(family ? 'home_groups' : 'classrooms')
             .doc(groupId)
             .get()
             .timeout(_timeout);
-        educator = group.data()?[family ? 'owner_uid' : 'teacher_uid']
-            as String?;
+        cache[key] = snap.data();
+        await refreshGroupCopy(snap.data(), family: family);
       }
+      final named = cache[key]?[family ? 'owner_uid' : 'teacher_uid'];
+      final educator = named is String && named.isNotEmpty ? named : educatorUid;
       if (educator == null || educator.isEmpty) return;
+
+      final placeKey = 'roster_place::${groupId}_$profileId';
       if (HiveService.getSetting(placeKey) == educator) return;
       await _db.collection('educator_rosters').doc(educator).set({
         'learners': {profileId: uid},
@@ -85,6 +96,25 @@ class GroupLinksService {
     }
   }
 
+  /// Replaces this device's copy of a group with [data], the document as
+  /// the server has it. A malformed one leaves the old copy.
+  @visibleForTesting
+  static Future<void> refreshGroupCopy(
+    Map<String, dynamic>? data, {
+    required bool family,
+  }) async {
+    if (data == null) return;
+    try {
+      if (family) {
+        await HiveService.cacheHomeGroup(HomeGroup.fromJson(data));
+      } else {
+        await HiveService.cacheClassroom(Classroom.fromJson(data));
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('GroupLinksService: group copy: $e');
+    }
+  }
+
   /// Whether this device's profile [profileId] is still in [groupId].
   static bool _stillIn(String profileId, String groupId, bool family) {
     final profile = HiveService.getProfileById(profileId);
@@ -93,11 +123,13 @@ class GroupLinksService {
   }
 
   /// Files them for every class and family group this device's own
-  /// profiles are in. Run at start, after sign-in.
+  /// profiles are in, and refreshes its copy of each. Run at start, after
+  /// sign-in.
   Future<void> ensureForDevice() async {
     if (!FirebaseService.isConfigured) return;
     final uid = FirebaseService.currentUid;
     if (uid == null || uid.isEmpty) return;
+    final groups = <String, Map<String, dynamic>?>{};
     try {
       for (final raw in HiveService.getProfiles()) {
         final id = raw['id'] as String?;
@@ -107,11 +139,21 @@ class GroupLinksService {
         if (profile.ownerUid != uid) continue;
         final classroomId = profile.classroomId;
         if (classroomId != null && classroomId.isNotEmpty) {
-          await fileFor(profileId: id, groupId: classroomId, family: false);
+          await fileFor(
+            profileId: id,
+            groupId: classroomId,
+            family: false,
+            groups: groups,
+          );
         }
         final homeGroupId = profile.homeGroupId;
         if (homeGroupId != null && homeGroupId.isNotEmpty) {
-          await fileFor(profileId: id, groupId: homeGroupId, family: true);
+          await fileFor(
+            profileId: id,
+            groupId: homeGroupId,
+            family: true,
+            groups: groups,
+          );
         }
       }
     } catch (e) {

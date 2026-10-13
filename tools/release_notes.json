@@ -17,6 +17,7 @@
         "Privacy: a learner’s PIN and birthday are no longer copied to the cloud when they join a class or family group, and the copies already there were removed (each tablet keeps its own).",
         "Teachers and parents with more than 20 learners: downloading assigned tests, and clearing up after a learner deletes their profile, work again (the cloud refused lists of more than 20).",
         "The time-limit editor asks before you leave with unsaved changes: save, leave without saving, or keep editing. It used to drop them without a word.",
+        "Retakes: when a teacher or parent reopens (or locks) a test for retaking, a learner on their own tablet now sees it at the next start; it used to keep what it saw when they joined.",
         "A learner’s safety report reaches each of their grown-ups even when one of them can no longer be messaged.",
         "Parents on an older version of the app can again read the notes about, and set the time limit, alarms and routines of, a child who joins their family group later.",
         "Joining a class no longer wipes the family group (or anything else) a learner’s profile names.",

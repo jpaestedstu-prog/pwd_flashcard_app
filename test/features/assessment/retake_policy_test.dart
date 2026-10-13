@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:pwdpwdpwd/core/services/group_links_service.dart';
 import 'package:pwdpwdpwd/data/local/hive_service.dart';
 import 'package:pwdpwdpwd/data/models/classroom.dart';
 import 'package:pwdpwdpwd/data/models/enums.dart';
@@ -14,9 +15,9 @@ import 'package:pwdpwdpwd/features/assessment/services/assessment_service.dart';
 ///
 /// The policy is a decision about how the *instrument* is being used, so it
 /// lives on the class or home group rather than on the profile: an educator
-/// makes it once for everyone they teach. It rides on the document the
-/// learner's device already caches at join time, which is why it needs no new
-/// collection and no rules deploy.
+/// makes it once for everyone they teach. It rides on the class or family
+/// document the learner's device caches when they join, and since 1.4.1
+/// refreshes at every start, so it needs no collection of its own.
 ///
 /// Plain `test()` against real Hive — no `testWidgets` in this file, so an
 /// awaited `box.put` cannot poison the write queue.
@@ -181,6 +182,48 @@ void main() {
 
     test('no profile at all is locked', () {
       expect(AssessmentService.retakesAllowed(null), isFalse);
+    });
+
+    // Until 1.4.1 a learner's own device cached the class once, when they
+    // joined: a teacher who reopened retakes later never reached it (on a
+    // shared tablet the teacher's own copy hid that). Every start now
+    // refreshes the copy from the server.
+    test('a teacher reopening retakes reaches the learner at the next start',
+        () async {
+      await HiveService.cacheClassroom(classroom(allowed: false));
+      final student = learner(classroomId: 'class-1');
+      expect(AssessmentService.retakesAllowed(student), isFalse);
+
+      await GroupLinksService.refreshGroupCopy(
+        classroom(allowed: true).toJson(),
+        family: false,
+      );
+      expect(AssessmentService.retakesAllowed(student), isTrue);
+    });
+
+    test('... and a parent locking them again reaches the child', () async {
+      await HiveService.cacheHomeGroup(homeGroup(allowed: true));
+      await GroupLinksService.refreshGroupCopy(
+        homeGroup(allowed: false).toJson(),
+        family: true,
+      );
+      expect(
+        AssessmentService.retakesAllowed(learner(homeGroupId: 'group-1')),
+        isFalse,
+      );
+    });
+
+    test('a document it cannot read leaves the copy as it was', () async {
+      await HiveService.cacheClassroom(classroom(allowed: true));
+      await GroupLinksService.refreshGroupCopy(
+        const {'name': 'no id or code'},
+        family: false,
+      );
+      await GroupLinksService.refreshGroupCopy(null, family: false);
+      expect(
+        AssessmentService.retakesAllowed(learner(classroomId: 'class-1')),
+        isTrue,
+      );
     });
   });
 
