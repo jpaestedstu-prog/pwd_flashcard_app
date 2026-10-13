@@ -11522,6 +11522,30 @@ abstract class AppLocalizations {
   /// **'Save'**
   String get tlSave;
 
+  /// No description provided for @tlUnsavedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Save your changes?'**
+  String get tlUnsavedTitle;
+
+  /// No description provided for @tlUnsavedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You changed this time limit but have not saved it. If you leave now, the changes will be lost.'**
+  String get tlUnsavedBody;
+
+  /// No description provided for @tlLeaveWithoutSaving.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave without saving'**
+  String get tlLeaveWithoutSaving;
+
+  /// No description provided for @tlKeepEditing.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep editing'**
+  String get tlKeepEditing;
+
   /// No description provided for @tlLoadError.
   ///
   /// In en, this message translates to:

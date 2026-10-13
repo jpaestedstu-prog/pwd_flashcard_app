@@ -5051,6 +5051,10 @@
     }
   },
   "tlSave": "Save",
+  "tlUnsavedTitle": "Save your changes?",
+  "tlUnsavedBody": "You changed this time limit but have not saved it. If you leave now, the changes will be lost.",
+  "tlLeaveWithoutSaving": "Leave without saving",
+  "tlKeepEditing": "Keep editing",
   "tlLoadError": "Could not load: {error}",
   "@tlLoadError": {
     "placeholders": {

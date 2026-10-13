@@ -11,10 +11,12 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/models/child_time_limit.dart';
 import '../../../data/models/enums.dart';
+import '../../../navigation/nav_extensions.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/child_time_limit_provider.dart';
 import '../../../providers/lock_announcement_provider.dart';
 import '../../../providers/managed_child_profile_provider.dart';
+import '../../../widgets/app_back_button.dart';
 import '../services/child_time_limit_service.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
@@ -115,8 +117,18 @@ class _ChildTimeLimitsScreenState extends ConsumerState<ChildTimeLimitsScreen> {
       ref.watch(settingsProvider),
     );
 
-    return Scaffold(
+    return PopScope(
+      canPop: !_dirty,
+      // The Android Back gesture; the in-app Back button asks through
+      // AppBackButton.onBeforePop.
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        if (!await _confirmLeave() || !context.mounted) return;
+        context.popOrGo('/home');
+      },
+      child: Scaffold(
       appBar: AppBar(
+        leading: AppBackButton(onBeforePop: _confirmLeave),
         title: Text(
           widget.childDisplayName == null
               ? _t(context).tlTitle
@@ -328,7 +340,49 @@ class _ChildTimeLimitsScreenState extends ConsumerState<ChildTimeLimitsScreen> {
           ],
         ),
       ),
+      ),
     );
+  }
+
+  /// Asks before the editor is left with unsaved changes; until 1.4.1 Back
+  /// dropped them without a word. True when it may close: nothing to lose,
+  /// the changes were saved, or the educator chose to leave them.
+  Future<bool> _confirmLeave() async {
+    if (!_dirty) return true;
+    final t = _t(context);
+    final choice = await showDialog<_LeaveChoice>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(t.tlUnsavedTitle),
+        content: Text(t.tlUnsavedBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(_LeaveChoice.keepEditing),
+            child: Text(t.tlKeepEditing),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(_LeaveChoice.discard),
+            child: Text(t.tlLeaveWithoutSaving),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(_LeaveChoice.save),
+            child: Text(t.tlSave),
+          ),
+        ],
+      ),
+    );
+    switch (choice) {
+      case _LeaveChoice.save:
+        await _save();
+        // Leaves only once the save went through; a failed one says so
+        // and keeps the changes on screen.
+        return mounted && !_dirty;
+      case _LeaveChoice.discard:
+        return true;
+      case _LeaveChoice.keepEditing:
+      case null:
+        return false;
+    }
   }
 
   ChildTimeLimit _emptyDraft() {
@@ -812,3 +866,6 @@ class _DaysOfWeekChips extends StatelessWidget {
 /// without the delegate would otherwise throw.
 AppLocalizations _t(BuildContext context) =>
     AppLocalizations.of(context) ?? AppLocalizationsEn();
+
+/// The answers to "Save your changes?" when leaving with unsaved changes.
+enum _LeaveChoice { save, discard, keepEditing }

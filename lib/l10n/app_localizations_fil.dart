@@ -6942,6 +6942,19 @@ class AppLocalizationsFil extends AppLocalizations {
   String get tlSave => 'I-save';
 
   @override
+  String get tlUnsavedTitle => 'I-save ang mga pagbabago?';
+
+  @override
+  String get tlUnsavedBody =>
+      'May binago ka sa limitasyon ng oras na hindi pa naka-save. Kapag umalis ka ngayon, mawawala ang mga pagbabago.';
+
+  @override
+  String get tlLeaveWithoutSaving => 'Umalis nang hindi nagse-save';
+
+  @override
+  String get tlKeepEditing => 'Ituloy ang pag-edit';
+
+  @override
   String tlLoadError(String error) {
     return 'Hindi ma-load: $error';
   }

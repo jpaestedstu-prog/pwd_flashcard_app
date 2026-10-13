@@ -7032,6 +7032,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tlSave => 'Save';
 
   @override
+  String get tlUnsavedTitle => 'Save your changes?';
+
+  @override
+  String get tlUnsavedBody =>
+      'You changed this time limit but have not saved it. If you leave now, the changes will be lost.';
+
+  @override
+  String get tlLeaveWithoutSaving => 'Leave without saving';
+
+  @override
+  String get tlKeepEditing => 'Keep editing';
+
+  @override
   String tlLoadError(String error) {
     return 'Could not load: $error';
   }
