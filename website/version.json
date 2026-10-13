@@ -5,23 +5,23 @@
     "build": 14,
     "date": "2026-10-13",
     "page": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/download.html",
-    "notes_en": "A learner’s PIN and birthday stay on the device, teachers and parents see the words actually learned, and a daily time limit is never saved as zero.",
-    "notes_fil": "Nananatili sa device ang PIN at kaarawan ng mag-aaral, nakikita ng guro at magulang ang mga salitang talagang natutunan, at hindi na nase-save bilang zero ang pang-araw-araw na limitasyon sa oras.",
+    "notes_en": "Only a learner’s own device, teachers, parents and classmates see their records, joining a class needs its code, and the time-limit editor asks before dropping unsaved changes.",
+    "notes_fil": "Ang sariling device, mga guro, magulang at kaklase lamang ng mag-aaral ang nakakakita ng kanyang datos, kailangan ang code ng klase para sumali, at nagtatanong na ang editor ng limitasyon sa oras bago itapon ang mga pagbabagong hindi pa naka-save.",
     "apks": {
       "arm64": {
         "url": "https://github.com/jpaestedstu-prog/pwd_flashcard_app/releases/download/v1.4.1/FlashLearnPWD-v1.4.1-arm64.apk",
         "bytes": 76806346,
-        "sha256": "8bbc275bf26b1d2c5d324dbad8ed389e741e74483c34c4341ede3a5030e67f44"
+        "sha256": "824127b93a430f27351a6a6e5da766c72218f2c96eb3754551da9b18ec921700"
       },
       "arm32": {
         "url": "https://github.com/jpaestedstu-prog/pwd_flashcard_app/releases/download/v1.4.1/FlashLearnPWD-v1.4.1-arm32.apk",
-        "bytes": 69088062,
-        "sha256": "98c7b9798c5831afecb6efe8dc075341a69728cbc6c9a11738fbe76486f8b76f"
+        "bytes": 69120830,
+        "sha256": "bd9a25d00454ae67b31d8e6a39a52a370d1a102c28e57ca77eb0aa25c3c579bd"
       },
       "universal": {
         "url": "https://github.com/jpaestedstu-prog/pwd_flashcard_app/releases/download/v1.4.1/FlashLearnPWD-v1.4.1-universal.apk",
-        "bytes": 179256800,
-        "sha256": "9d20d6cb1a6af9ceca31e3741abd5e76d2ca942d84e0ccafb311f7c937d561ae"
+        "bytes": 179355104,
+        "sha256": "e07f26f57c73d05dc968550dc325699d96c82bc24a0c3d89b594f046a51235ca"
       }
     }
   }

@@ -12,7 +12,7 @@ What was not tested says so. The change list is in
 
 | Step | When (Philippine time) | Result |
 |---|---|---|
-| Firestore rules, part 1 (memberships, friend requests, achievements; b4d1cbd) | 12 Oct, 21:35 | live; deployed outside this work session, identical to the reviewed file |
+| Firestore rules, part 1 (memberships, friend requests, achievements; b4d1cbd) | 12 Oct, 21:35 | live; deployed by the owner (confirmed on 13 October), identical to the reviewed file |
 | Educator-link backfill (143 links) | 13 Oct, just before 00:02 | created 143, failed 0; a second run found nothing left to do |
 | Firestore rules, part 2 (notes, a child's settings; adbaf21) | 13 Oct, 00:02 | live; read back and compared with the file: identical; 171 live checks pass |
 | GitHub Release [v1.4.0](https://github.com/jpaestedstu-prog/pwd_flashcard_app/releases/tag/v1.4.0), the three website APKs | 13 Oct, 01:59 | latest; tag on e53cca6 (the commit the APKs were built from); each file byte-identical to the scanned build; the arm64 downloaded back through the public link, same SHA-256 |
@@ -90,8 +90,9 @@ matching its fields; every existing time limit, alarm, routine, routine action
 and unlock set by the child's own educator; all 6 assignments from the
 learner's own educator. No sign of misuse.
 
-**Deploys**: b4d1cbd (live at 21:35, 12 October; not deployed from this work
-session) and adbaf21 (00:02, 13 October, after the educator-link backfill).
+**Deploys**: b4d1cbd (live at 21:35, 12 October; deployed by the owner, who
+confirmed it on 13 October) and adbaf21 (00:02, 13 October, after the
+educator-link backfill).
 Each time the live ruleset was read back and compared with the committed file:
 identical.
 
@@ -123,15 +124,18 @@ are anonymised.
 | CI emulators (GitHub Actions) | final code e53cca6 | phone and tablet, each upright and sideways: 58 screens each, 0 problems (run 38283913034) | passed |
 | iOS simulators (GitHub Actions) | fc7262a, then the released app code | fc7262a: 58 screens, 0 problems on all eight (run 38227394474). On the released app code (three runs): IPA and simulator builds passed; one iPad mini run passed all 58 screens and then lost its test connection at teardown, another failed on an Apple audio-player error (DarwinAudioError); both are iOS-only | **iOS support stopped on 13 October** (owner); never released |
 
-**Not tested on real hardware in this round, and why:**
+**Tested on real hardware by the owner (13 October).** Three checks need a
+person, and the owner did them personally and reported that everything works
+well. They are recorded as completed on the owner's confirmation; the owner
+gave no further details (device model, app version or steps), so none are
+recorded here:
 
 - **Speech recognition of spoken words** (voice commands, speaking games):
-  needs a person to speak to the tablet; the microphone permission on the
-  Honor had lapsed. The voice features are covered by tests only.
-- **A Bluetooth game controller** (the X3): needs it switched on and paired by
-  a person.
-- **A physical Android phone**: only the phone emulator and CI phones were
-  used; the real device was the Honor tablet.
+  in this work session the Honor's microphone permission had lapsed and only
+  the automated tests covered it.
+- **A Bluetooth game controller** (the X3).
+- **A physical Android phone**: this work session used only the phone
+  emulator and CI phones; its real device was the Honor tablet.
 
 B10, found by the phone-emulator run: offline, tapping FSL on a word that has
 a recorded sign (e.g. "Dog") said "Sign coming soon", the promise meant only
@@ -173,13 +177,15 @@ Together and story pages; a widget test fails without the fix.
 ## 7. Limitations and known risks
 
 - **iOS**: support stopped on 13 October (owner); there is no iOS version ([ios_testing.md](ios_testing.md)).
-- **Not tested on real hardware this round**: speech recognition of spoken
-  words (needs a person to speak), a Bluetooth game controller (needs the X3
-  switched on and paired). See section 4.
-- **Older app versions** keep showing stranger messages and assignments
-  until they update. Their teachers and parents keep guiding learners who
-  join later, through the class or family group on the learner's own
-  profile (parents since 13 October, 10:18).
+- **Real hardware that needs a person** (speech recognition, the X3
+  controller, a physical phone): tested by the owner on 13 October and
+  recorded on their confirmation. See section 4.
+- **Older app versions**: since the 1.4.1 rules the database refuses
+  messages and assignments from strangers for every version. Their teachers
+  and parents keep guiding learners who join later, through the class or
+  family group on the learner's own profile (parents since 13 October,
+  10:18); joining a group and restoring a profile need 1.4.1
+  ([release-1.4.1.md](release-1.4.1.md)).
 - **Reading by id** and **joining by id** (S8, S9) remain; both are planned
   as two-phase changes.
 - **Free quotas**: a script could use up a day's reads and pause syncing
@@ -202,24 +208,25 @@ service instead of charging. Measured use over the last 30 days: usually under
 1. The toolchain move (Flutter 3.47+, Gradle 9.1, AGP 9, Kotlin 2.3.20,
    built-in Kotlin) and the package updates, as the first change of the next
    version, with the full checks and a tablet run.
-2. Two-phase privacy work: narrow reads by id to the learner and their
-   educators (the educator links are the building block), prove the join code
-   when joining, and require a link for messages and assignments in the rules.
+2. ~~Two-phase privacy work: narrow reads by id to the learner and their
+   educators, prove the join code when joining, and require a relationship
+   for messages and assignments in the rules~~: done in 1.4.1
+   ([release-1.4.1.md](release-1.4.1.md)).
 3. When a Deaf signer is available: the 33 signs ([fsl_signs_plan.md](fsl_signs_plan.md)).
 
 ## 10. What the owner needs to do personally
 
 1. ~~Store both signing passwords~~ and ~~copy the backup folder to a USB
    drive~~: done by the owner on 13 October.
-2. **Confirm the rules deploy at 21:35 on 12 October was yours.** It matches
-   the reviewed rules exactly, but it was not made from this work session.
+2. ~~Confirm the rules deploy at 21:35 on 12 October was yours~~: confirmed
+   by the owner on 13 October.
 3. ~~Unlock the Honor tablet~~: done; every on-screen check passed (section 4).
-4. Optional, needs a person: speak to the tablet once for speech
-   recognition, and switch on the X3 controller for the controller check.
+4. ~~Speak to the tablet for speech recognition, switch on the X3 controller,
+   try a physical phone~~: done by the owner on 13 October (section 4).
 5. Optional: restrict the Firebase API keys in Google Cloud (security.md,
    "Public client keys").
-6. **Decide on 1.4.1** (section 11): publishing it is what brings the app
-   fixes to the tablets.
+6. ~~Decide on 1.4.1~~ (section 11): approved by the owner on 13 October, on
+   condition that every open issue is fixed and verified first.
 7. Later, by choice: Google Play (one-time fee). Apple is no longer needed.
 
 ## 11. After publishing (13 October)
@@ -230,6 +237,7 @@ security and screens, found more problems. What was done:
 | | What | Where it stands |
 |---|---|---|
 | Rules | Parents on older apps (S15) | **live** since 10:18; 178 live checks pass |
-| Cloud data | PIN hashes and birth dates removed from 159 profiles (S16) | **done**; the birth dates are kept in a local backup file in the owner's Documents folder |
+| Cloud data | PIN hashes and birth dates removed from 159 profiles (S16) | **done**; the birth dates are kept in a local backup file in the owner's Documents folder (kept, as the owner asked) |
 | Repository | Settings files untracked, scanner without a name (S14); iOS CI removed; docs and website text say Android only | **on `main`** (e9226c4); the website text goes live with the next website deploy |
-| App | S16, B11-B15 | **1.4.1 prepared, not published**: [release-1.4.1.md](release-1.4.1.md) |
+| Rules | 1.4.1 privacy rules: reads by id, joining with the code, contacts-only messages, roster-checked tests; backfill of group links and rosters | **live** since 16:41 (eb5c446); 228 live checks pass |
+| App | S16, B11-B15, the privacy rules' app side, the time-limit warning, the 20-name limit and the other fixes in [release-1.4.1.md](release-1.4.1.md) | **1.4.1**: [release-1.4.1.md](release-1.4.1.md) |
