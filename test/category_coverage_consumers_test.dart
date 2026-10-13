@@ -78,16 +78,20 @@ void main() {
           reason: 'the least learned of the categories begun');
     });
 
-    test('a category is unexplored until a word of it is learned', () {
-      expect(child.unexploredCategories, contains('Colors & Shapes'));
-      expect(child.unexploredCategories, isNot(contains('Animals')));
+    test('a category is explored once played or once a word of it is learned', () {
+      expect(child.unexploredCategories, isNot(contains('Colors & Shapes')),
+          reason: 'played, though no word of it learned');
+      expect(child.unexploredCategories, isNot(contains('Food & Drinks')),
+          reason: 'not played, but words of it learned');
+      expect(child.unexploredCategories, contains('Numbers'));
     });
 
     test('nothing learned yet: no strongest, no weakest', () {
       final none = _child(const {});
       expect(none.strongestCategory, isNull);
       expect(none.weakestCategory, isNull);
-      expect(none.unexploredCategories, hasLength(FlashcardCategory.values.length));
+      expect(none.unexploredCategories, hasLength(FlashcardCategory.values.length - 2),
+          reason: 'Animals and Colors & Shapes were played');
     });
   });
 }

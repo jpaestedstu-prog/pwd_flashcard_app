@@ -113,9 +113,9 @@ class ChildSummary {
         .clamp(-100.0, 500.0);
   }
 
-  // Strongest, weakest and unexplored are read from [categoryCoverage]: the
-  // sheet and the weekly report print them as "% mastery", and the accuracy
-  // average called a category "strongest" at 36% with 1 word of 13 learned.
+  // Strongest and weakest are read from [categoryCoverage]: the sheet and the
+  // weekly report print them as "% mastery", and the accuracy average called
+  // a category "strongest" at 36% with 1 word of 13 learned.
 
   /// Strongest category (the most of its words learned).
   String? get strongestCategory {
@@ -131,13 +131,15 @@ class ChildSummary {
     return learned.reduce((a, b) => a.value <= b.value ? a : b).key;
   }
 
-  /// Categories with no word learned yet.
+  /// Categories not yet explored: never played (a game leaves an accuracy
+  /// average behind, even at 0%) and no word of them learned.
   List<String> get unexploredCategories {
     final allCats = FlashcardCategory.values.map((c) => c.label).toSet();
-    final begun = categoryCoverage.keys
-        .where((k) => (categoryCoverage[k] ?? 0) > 0)
-        .toSet();
-    return allCats.difference(begun).toList();
+    final explored = {
+      ...categoryProgress.keys,
+      ...categoryCoverage.keys.where((k) => (categoryCoverage[k] ?? 0) > 0),
+    };
+    return allCats.difference(explored).toList();
   }
 
   /// Whether the child has been active today (same calendar day), matching

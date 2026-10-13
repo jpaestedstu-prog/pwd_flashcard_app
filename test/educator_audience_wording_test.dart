@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pwdpwdpwd/core/accessibility/voice_navigation_service.dart';
+import 'package:pwdpwdpwd/data/local/seed_data.dart';
 import 'package:pwdpwdpwd/data/models/enums.dart';
 import 'package:pwdpwdpwd/data/models/models.dart';
 import 'package:pwdpwdpwd/features/parent/screens/educator_dashboard_screen.dart';
@@ -52,6 +53,9 @@ Widget _analytics(UserRole role, {String locale = 'en'}) => ProviderScope(
     ),
     // Empty roster: the empty state is where the wrong route lived.
     educatorRosterProvider.overrideWith((ref, id) async => const []),
+    // The screen counts categories against the word list (words learned per
+    // category); off Hive here.
+    allFlashcardsProvider.overrideWithValue(SeedData.allFlashcards),
   ],
   child: const MaterialApp(home: TeacherAnalyticsScreen()),
 );
