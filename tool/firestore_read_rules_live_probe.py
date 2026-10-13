@@ -87,8 +87,10 @@ def main():
         # The app's own shapes keep working (they return nothing for this new user).
         expect("my profiles (sign-in) allowed", query(token, "profiles", eq("owner_uid", uid)), allowed=True)
         expect("join-by-code lookup allowed", query(token, "classrooms", eq("code", "ZZZZZZ")), allowed=True)
-        expect("one class's roster allowed",
-               query(token, "classroom_members", eq("classroom_id", "no-such-class")), allowed=True)
+        # Since 1.4.1 a class's roster is for its teacher and its members'
+        # devices only (it carries the code each learner joined with).
+        expect("a class's roster for a stranger refused",
+               query(token, "classroom_members", eq("classroom_id", "no-such-class")), allowed=False)
         expect("my assignments (by my uid) allowed",
                query(token, "assessment_assignments", contains("student_uids", uid)), allowed=True)
         # Named-id lookups must survive a deleted document among the names.

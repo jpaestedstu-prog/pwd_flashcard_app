@@ -117,22 +117,46 @@ def signin_anon():
     return r["localId"], r["idToken"]
 
 
+def strings(d):
+    return {"mapValue": {"fields": {k: s(v) for k, v in d.items()}}}
+
+
 def main():
     uid_a, tok_a = signin_anon()
     uid_b, tok_b = signin_anon()
+    uid_x, tok_x = signin_anon()
     print(f"teacher uid = {uid_a}\nlearner uid = {uid_b}\n")
 
     prof_a = f"rulesprobe-teacher-{uid_a[:8]}"
     prof_b = f"rulesprobe-learner-{uid_b[:8]}"
+    prof_x = f"rulesprobe-stranger-{uid_x[:8]}"
+    cls = f"rulesprobe-class-{uid_a[:8]}"
+    code = f"P{uid_a[:5]}"
     assess = f"rulesprobe-assessment-{uid_a[:8]}"
     assign = f"rulesprobe-assignment-{uid_a[:8]}"
     result_b = f"rulesprobe-result-{uid_b[:8]}"
 
     # Each user owns their own profile — that is what ownsProfile() checks.
     check("teacher can create own profile",
-          fs_write(f"profiles/{prof_a}", {"id": s(prof_a), "owner_uid": s(uid_a)}, tok_a), 200)
+          fs_write(f"profiles/{prof_a}", {"id": s(prof_a), "owner_uid": s(uid_a), "role": {"integerValue": "1"}},
+                   tok_a), 200)
     check("learner can create own profile",
-          fs_write(f"profiles/{prof_b}", {"id": s(prof_b), "owner_uid": s(uid_b)}, tok_b), 200)
+          fs_write(f"profiles/{prof_b}", {"id": s(prof_b), "owner_uid": s(uid_b), "role": {"integerValue": "0"},
+                                          "classroom_id": s(cls)}, tok_b), 200)
+    check("a stranger's device has a teacher profile of its own",
+          fs_write(f"profiles/{prof_x}", {"id": s(prof_x), "owner_uid": s(uid_x), "role": {"integerValue": "1"}},
+                   tok_x), 200)
+    # Since 1.4.1 an assignment may name only learners on the setter's roster:
+    # the teacher's class, the learner joining it with its code, the roster.
+    check("teacher creates a class",
+          fs_write(f"classrooms/{cls}", {"teacher_id": s(prof_a), "name": s("probe"), "code": s(code),
+                                         "teacher_uid": s(uid_a)}, tok_a), 200)
+    check("learner joins it with the code",
+          fs_write(f"classroom_members/{cls}_{prof_b}", {"classroom_id": s(cls), "profile_id": s(prof_b),
+                                                         "join_code": s(code)}, tok_b), 200)
+    check("the teacher's device puts the learner on its roster",
+          fs_write(f"educator_rosters/{uid_a}", {"learners": strings({prof_b: uid_b}),
+                                                 "via": strings({prof_b: cls}), "learner": s(prof_b)}, tok_a), 200)
 
     # ── assessments ────────────────────────────────────────
     check("teacher can create their own assessment",
@@ -173,6 +197,21 @@ def main():
                    tok_b), 403)
     check("learner CAN read the assignment naming them",
           fs_read(f"assessment_assignments/{assign}", tok_b), 200)
+    check("a stranger CANNOT set the learner a test (not on their roster)",
+          fs_write(f"assessment_assignments/rulesprobe-stranger-{uid_x[:8]}",
+                   {"id": s("stranger"), "assignedBy": s(prof_x), "owner_uid": s(uid_x),
+                    "studentIds": {"arrayValue": {"values": [s(prof_b)]}},
+                    "student_uids": {"arrayValue": {"values": [s(uid_b)]}}},
+                   tok_x), 403)
+    check("... nor address one to the learner's device alone",
+          fs_write(f"assessment_assignments/rulesprobe-stranger2-{uid_x[:8]}",
+                   {"id": s("stranger2"), "assignedBy": s(prof_x), "owner_uid": s(uid_x),
+                    "studentIds": {"arrayValue": {"values": []}},
+                    "student_uids": {"arrayValue": {"values": [s(uid_b)]}}},
+                   tok_x), 403)
+    check("a stranger CANNOT put the learner on their own roster",
+          fs_write(f"educator_rosters/{uid_x}", {"learners": strings({prof_b: uid_b}),
+                                                 "via": strings({prof_b: cls}), "learner": s(prof_b)}, tok_x), 403)
 
     # ── results: the asymmetry that makes tracking trustworthy ──
     check("learner can submit their own result",
@@ -182,6 +221,8 @@ def main():
                    tok_b), 200)
     check("teacher CAN read the learner's result",
           fs_read(f"assessment_results/{result_b}", tok_a), 200)
+    check("a stranger CANNOT read the learner's result",
+          fs_read(f"assessment_results/{result_b}", tok_x), 403)
     check("teacher CANNOT forge a result for the learner",
           fs_write(f"assessment_results/rulesprobe-forged-result-{uid_a[:8]}",
                    {"id": s("forged"), "profileId": s(prof_b), "assessmentId": s(assess),
@@ -200,8 +241,12 @@ def main():
     # ── cleanup ────────────────────────────────────────────
     fs_delete(f"assessment_assignments/{assign}", tok_a)
     fs_delete(f"assessments/{assess}", tok_a)
+    fs_delete(f"educator_rosters/{uid_a}", tok_a)
+    fs_delete(f"classroom_members/{cls}_{prof_b}", tok_b)
+    fs_delete(f"classrooms/{cls}", tok_a)
     fs_delete(f"profiles/{prof_a}", tok_a)
     fs_delete(f"profiles/{prof_b}", tok_b)
+    fs_delete(f"profiles/{prof_x}", tok_x)
 
     failed = [r for r in results if not r[0]]
     print(f"\n{len(results) - len(failed)}/{len(results)} checks passed")

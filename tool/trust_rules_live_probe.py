@@ -153,19 +153,24 @@ def main():
                                                       "code": f"F{tag[:5]}"}, tP))
     setup("student profile", write(f"profiles/{pS}", {"owner_uid": uS, "name": "Probe student", "role": 0,
                                                       "classroom_id": cT}, tS))
-    setup("student joins the class", write(f"classroom_members/{cT}_{pS}", {"classroom_id": cT, "profile_id": pS},
+    # Since 1.4.1 a join carries the class's (or family group's) join code.
+    setup("student joins the class", write(f"classroom_members/{cT}_{pS}", {"classroom_id": cT, "profile_id": pS,
+                                                                           "join_code": f"T{tag[:5]}"},
                                            tS, exists=False))
     setup("second student", write(f"profiles/{pS2}", {"owner_uid": uS2, "name": "Probe student 2", "role": 0,
                                                        "classroom_id": cT}, tS2))
-    setup("second student joins", write(f"classroom_members/{cT}_{pS2}", {"classroom_id": cT, "profile_id": pS2},
+    setup("second student joins", write(f"classroom_members/{cT}_{pS2}", {"classroom_id": cT, "profile_id": pS2,
+                                                                          "join_code": f"T{tag[:5]}"},
                                         tS2, exists=False))
     setup("child profile", write(f"profiles/{pC}", {"owner_uid": uC, "name": "Probe child", "role": 3}, tC))
-    setup("child joins the family", write(f"home_group_members/{gP}_{pC}", {"home_group_id": gP, "profile_id": pC},
+    setup("child joins the family", write(f"home_group_members/{gP}_{pC}", {"home_group_id": gP, "profile_id": pC,
+                                                                            "join_code": f"F{tag[:5]}"},
                                           tC, exists=False))
     setup("second child (no link: their parent's app is older)",
           write(f"profiles/{pC2}", {"owner_uid": uC2, "name": "Probe child 2", "role": 3, "home_group_id": gP}, tC2))
     setup("second child joins the family", write(f"home_group_members/{gP}_{pC2}",
-                                                 {"home_group_id": gP, "profile_id": pC2}, tC2, exists=False))
+                                                 {"home_group_id": gP, "profile_id": pC2,
+                                                  "join_code": f"F{tag[:5]}"}, tC2, exists=False))
     setup("teacher's link", write(f"note_readers/{uT}_{pS}", {"profile_id": pS, "classroom_id": cT}, tT, exists=False))
     setup("parent's link", write(f"note_readers/{uP}_{pC}", {"profile_id": pC, "home_group_id": gP}, tP, exists=False))
     setup("student's achievement", write(f"achievements/{pS}/items/first", {"owner_uid": uS, "profile_id": pS,
