@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/services/firebase_service.dart';
+import '../core/services/group_links_service.dart';
 import '../core/services/join_code_service.dart';
 import '../core/utils/error_handler.dart';
 import '../data/local/hive_service.dart';
@@ -140,7 +141,9 @@ class JoinCodeNotifier extends Notifier<JoinCodeState> {
 
       // Write classroom membership to Firestore. The rule allows this
       // because `ownsProfile(profile_id)` resolves true (the profile
-      // doc above has owner_uid matching this device's uid).
+      // doc above has owner_uid matching this device's uid), and since
+      // 1.4.1 because it carries the class's join code: knowing a class's
+      // id is not enough to join it.
       final member = ClassroomMember(
         classroomId: classroom.id,
         profileId: stampedProfile.id,
@@ -150,11 +153,20 @@ class JoinCodeNotifier extends Notifier<JoinCodeState> {
       await FirebaseService.db
           .collection('classroom_members')
           .doc('${classroom.id}_${stampedProfile.id}')
-          .set(member.toJson());
+          .set({...member.toJson(), 'join_code': classroom.code});
 
       // Mirror to local Hive so the student can use the app offline.
       await HiveService.saveProfile(stampedProfile);
       await HiveService.addMemberLocal(member);
+
+      // The group link (classmates, the class document) and the learner's
+      // place on the teacher's roster. Never throws; retried at start.
+      await const GroupLinksService().fileFor(
+        profileId: stampedProfile.id,
+        groupId: classroom.id,
+        family: false,
+        educatorUid: classroom.teacherUid,
+      );
     } catch (e) {
       state = JoinCodeFailure(
         error: JoinCodeError.unknown,

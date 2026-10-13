@@ -31,6 +31,10 @@ class HomeGroup {
   /// assignment — and a parent can still reopen the group from its menu.
   final bool allowAssessmentRetakes;
 
+  /// The parent's device (its sign-in uid), written since 1.4.1, as
+  /// [Classroom.teacherUid]: whose roster a joining child's device joins.
+  final String? ownerUid;
+
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -41,6 +45,7 @@ class HomeGroup {
     required this.ownerProfileId,
     this.accessibility = DisabilityType.none,
     this.allowAssessmentRetakes = false,
+    this.ownerUid,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -52,6 +57,7 @@ class HomeGroup {
     String? ownerProfileId,
     DisabilityType? accessibility,
     bool? allowAssessmentRetakes,
+    String? ownerUid,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -63,6 +69,7 @@ class HomeGroup {
       accessibility: accessibility ?? this.accessibility,
       allowAssessmentRetakes:
           allowAssessmentRetakes ?? this.allowAssessmentRetakes,
+      ownerUid: ownerUid ?? this.ownerUid,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -76,6 +83,7 @@ class HomeGroup {
         'owner_profile_id': ownerProfileId,
         'accessibility': accessibility.index,
         'allow_assessment_retakes': allowAssessmentRetakes,
+        'owner_uid': ?ownerUid,
         'created_at': createdAt.toIso8601String(),
         'updated_at': updatedAt.toIso8601String(),
       };
@@ -93,6 +101,7 @@ class HomeGroup {
       // every new group — see [allowAssessmentRetakes].
       allowAssessmentRetakes:
           json['allow_assessment_retakes'] as bool? ?? false,
+      ownerUid: json['owner_uid'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
     );

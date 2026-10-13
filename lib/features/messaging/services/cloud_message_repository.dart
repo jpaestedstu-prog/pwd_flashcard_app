@@ -92,12 +92,30 @@ class CloudMessageRepository {
     // Small batches: the rules look up one `blocks` doc per message, and a
     // batched write may make at most 20 such lookups in total.
     for (var i = 0; i < messages.length; i += _batchSize) {
+      final chunk = messages.skip(i).take(_batchSize).toList();
       final batch = FirebaseService.db.batch();
-      for (final message in messages.skip(i).take(_batchSize)) {
+      for (final message in chunk) {
         batch.set(_col.doc(message.id), _toDoc(message, uid));
       }
       // ignore: discarded_futures
       batch.commit().catchError((Object e, StackTrace stack) {
+        // A batch is all or nothing. Since 1.4.1 the rules take a message
+        // only between contacts, so one recipient who is no longer one (a
+        // teacher from a deleted class, say) refused all eight: a safety
+        // report then reached none of the learner's grown-ups. Each goes
+        // on its own instead, and only that one is refused.
+        if (e is FirebaseException && e.code == 'permission-denied') {
+          for (final message in chunk) {
+            // ignore: discarded_futures
+            _col.doc(message.id).set(_toDoc(message, uid)).catchError((
+              Object e,
+              StackTrace stack,
+            ) {
+              ErrorHandler.report(e, stack, 'CloudMessageRepository.sendMessages');
+            });
+          }
+          return;
+        }
         ErrorHandler.report(e, stack, 'CloudMessageRepository.sendMessages');
       });
     }

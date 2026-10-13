@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../core/services/cloud_sync_outcome.dart';
+import '../../../core/services/educator_roster_service.dart';
 import '../../../core/services/firebase_service.dart';
 import '../../../data/local/hive_service.dart';
 import '../models/assessment_models.dart';
@@ -73,6 +74,12 @@ class AssessmentCloudService {
   /// Firestore's cap on the values of a `whereIn` / `arrayContainsAny` filter.
   static const int _whereInLimit = 30;
 
+  /// Names per query for documents asked for by id. The rules count each
+  /// name as a document read, and a request may make 20 in all, lookups
+  /// included: 21 names are refused whatever the rules say, and 30 (this
+  /// service's chunk before 1.4.1) refused every pull of more than 20.
+  static const int _byIdLimit = 10;
+
   /// The assigned learners' device uids, beside `studentIds`.
   static const String studentUidsField = 'student_uids';
 
@@ -101,6 +108,49 @@ class AssessmentCloudService {
         if (_ownerUidCache[id] != null) _ownerUidCache[id]!,
     }.toList()
       ..sort();
+  }
+
+  /// Puts [learnerIds] on this device's roster before an assignment names
+  /// them: since 1.4.1 the rules take an assignment only when every learner
+  /// and device it names is on the setter's roster. Each is filed under
+  /// the class or family group of [educatorId] they are in ('device' for a
+  /// learner on this tablet). Best effort; their uids come from
+  /// [_ownerUidsOf], which must have run. Returns those now on the roster
+  /// with their uids, or null when the roster could not be read.
+  Future<Map<String, String>?> _ensureRostered(
+    String educatorId,
+    Iterable<String> learnerIds,
+  ) async {
+    final uids = <String, String>{
+      for (final id in learnerIds) id: ?_ownerUidCache[id],
+    };
+    if (uids.isEmpty) return const {};
+    return const EducatorRosterService().ensure(
+      uids,
+      viaOf: (id) => _groupOf(educatorId, id),
+    );
+  }
+
+  /// The class or family group of [educatorId] that [learnerId] is in, as
+  /// this device has it cached; 'device' for a learner on this tablet.
+  static String _groupOf(String educatorId, String learnerId) {
+    try {
+      for (final c in HiveService.getClassroomsByTeacher(educatorId)) {
+        if (HiveService.getMembers(c.id).any((m) => m.profileId == learnerId)) {
+          return c.id;
+        }
+      }
+      for (final g in HiveService.getHomeGroupsByOwner(educatorId)) {
+        if (HiveService.getHomeGroupMembers(g.id)
+            .any((m) => m.profileId == learnerId)) {
+          return g.id;
+        }
+      }
+      if (HiveService.getProfileById(learnerId) != null) return 'device';
+    } catch (_) {
+      // Boxes not open (tests): the note is only this device's own.
+    }
+    return 'assigned';
   }
 
   /// [learnerId]'s assignments out of the two lookups — by this device's uid,
@@ -291,6 +341,7 @@ class AssessmentCloudService {
     if (!_enabled) return CloudSyncOutcome.localOnly;
     try {
       final learnerUids = await _ownerUidsOf(assignment.studentIds);
+      await _ensureRostered(educatorId, assignment.studentIds);
       await _db
           .collection(assignmentsCollection)
           .doc(assignment.id)
@@ -410,7 +461,7 @@ class AssessmentCloudService {
       final cloudAssignments =
           _decode(assignmentDocs.docs, AssessmentAssignment.fromJson);
       await AssessmentService.mergeAssignments(educatorId, cloudAssignments);
-      await _backfillLearnerUids(assignmentDocs.docs);
+      await _backfillLearnerUids(educatorId, assignmentDocs.docs);
 
       // Everyone this educator has ever set work for. Their results are what
       // turns a tracking row from Pending into a score.
@@ -589,8 +640,11 @@ class AssessmentCloudService {
   /// work set before 1.2.2, or a learner whose profile moved to another
   /// tablet — a learner finds their work only by uid since the rules closed
   /// the old `studentIds` lookup. Best-effort, on its own: a refused or
-  /// offline update must not stop the rest of the hydrate.
+  /// offline update must not stop the rest of the hydrate. Since 1.4.1 the
+  /// rules take only the devices of learners on [educatorId]'s device's
+  /// roster, so those go on it first and nobody else's device is added.
   Future<void> _backfillLearnerUids(
+    String educatorId,
     List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
   ) async {
     try {
@@ -601,7 +655,12 @@ class AssessmentCloudService {
         final data = d.data();
         final learners =
             (data['studentIds'] as List?)?.whereType<String>() ?? const [];
-        final want = await _ownerUidsOf(learners);
+        var want = await _ownerUidsOf(learners);
+        final onRoster = await _ensureRostered(educatorId, learners);
+        if (onRoster != null) {
+          final rostered = onRoster.values.toSet();
+          want = [for (final uid in want) if (rostered.contains(uid)) uid];
+        }
         final have = [
           ...?(data[studentUidsField] as List?)?.whereType<String>(),
         ]..sort();
@@ -661,13 +720,15 @@ class AssessmentCloudService {
   }
 
   List<T> _decode<T>(
-    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+    Iterable<DocumentSnapshot<Map<String, dynamic>>> docs,
     T Function(Map<String, dynamic>) fromJson,
   ) {
     final out = <T>[];
     for (final doc in docs) {
+      final data = doc.data();
+      if (data == null) continue;
       try {
-        out.add(fromJson(Map<String, dynamic>.from(doc.data())));
+        out.add(fromJson(Map<String, dynamic>.from(data)));
       } catch (e, s) {
         // One malformed doc must not cost the learner the rest of their work.
         _log('decode(${doc.id})', e, s);
@@ -686,14 +747,29 @@ class AssessmentCloudService {
       for (final entry in byEducator.entries)
         for (final a in entry.value) a.assessmentId: entry.key,
     };
-    for (final chunk in _chunks(assessmentIds.toList())) {
-      final snap = await _db
-          .collection(assessmentsCollection)
-          .where(FieldPath.documentId, whereIn: chunk)
-          .get()
-          .timeout(remoteTimeout);
+    for (final chunk in _chunks(assessmentIds.toList(), _byIdLimit)) {
+      List<DocumentSnapshot<Map<String, dynamic>>> docs;
+      try {
+        docs = (await _db
+                .collection(assessmentsCollection)
+                .where(FieldPath.documentId, whereIn: chunk)
+                .get()
+                .timeout(remoteTimeout))
+            .docs;
+      } on FirebaseException catch (e) {
+        if (e.code != 'permission-denied') rethrow;
+        // A list the rules cannot prove in one request: one by one.
+        docs = [
+          for (final id in chunk)
+            await _db
+                .collection(assessmentsCollection)
+                .doc(id)
+                .get()
+                .timeout(remoteTimeout),
+        ].where((d) => d.exists).toList();
+      }
       final byOwner = <String, List<Assessment>>{};
-      for (final assessment in _decode(snap.docs, Assessment.fromJson)) {
+      for (final assessment in _decode(docs, Assessment.fromJson)) {
         final owner = ownerOf[assessment.id];
         if (owner == null) continue;
         byOwner.putIfAbsent(owner, () => []).add(assessment);
@@ -706,17 +782,39 @@ class AssessmentCloudService {
 
   /// Pulls results for [learnerIds] into Hive and returns the ids the cloud
   /// already held, so a caller can work out what still needs uploading.
+  ///
+  /// Since 1.4.1 the rules check every learner a query names: one who is no
+  /// longer this educator's (they left the class) refuses the whole query,
+  /// so a refused one is asked again learner by learner, and only theirs is
+  /// left out.
   Future<Set<String>> _pullResultsFor(Set<String> learnerIds) async {
     final seen = <String>{};
     if (learnerIds.isEmpty) return seen;
+    Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>> query(
+      List<String> ids,
+    ) async => (await _db
+            .collection(resultsCollection)
+            .where('profileId', whereIn: ids)
+            .get()
+            .timeout(remoteTimeout))
+        .docs;
     for (final chunk in _chunks(learnerIds.toList())) {
-      final snap = await _db
-          .collection(resultsCollection)
-          .where('profileId', whereIn: chunk)
-          .get()
-          .timeout(remoteTimeout);
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> docs;
+      try {
+        docs = await query(chunk);
+      } on FirebaseException catch (e) {
+        if (e.code != 'permission-denied' || chunk.length == 1) rethrow;
+        docs = [];
+        for (final id in chunk) {
+          try {
+            docs.addAll(await query([id]));
+          } on FirebaseException catch (e) {
+            if (e.code != 'permission-denied') rethrow;
+          }
+        }
+      }
       final byLearner = <String, List<AssessmentResult>>{};
-      for (final result in _decode(snap.docs, AssessmentResult.fromJson)) {
+      for (final result in _decode(docs, AssessmentResult.fromJson)) {
         seen.add(result.id);
         byLearner.putIfAbsent(result.profileId, () => []).add(result);
       }
@@ -881,11 +979,13 @@ class AssessmentCloudService {
     }
     for (final a in assignments) {
       if (!assignmentPlan.toPush.contains(a.id)) continue;
+      final learnerUids = await _ownerUidsOf(a.studentIds);
+      await _ensureRostered(educatorId, a.studentIds);
       writes.add((
         _db.collection(assignmentsCollection).doc(a.id),
         {
           ...a.toJson(),
-          studentUidsField: await _ownerUidsOf(a.studentIds),
+          studentUidsField: learnerUids,
           'owner_uid': uid,
         },
       ));
@@ -919,12 +1019,17 @@ class AssessmentCloudService {
   @visibleForTesting
   static Iterable<List<String>> chunkIds(List<String> ids) => _chunks(ids);
 
-  static Iterable<List<String>> _chunks(List<String> ids) sync* {
-    for (var i = 0; i < ids.length; i += _whereInLimit) {
-      yield ids.sublist(
-        i,
-        i + _whereInLimit > ids.length ? ids.length : i + _whereInLimit,
-      );
+  /// [chunkIds] for documents asked for by id: [_byIdLimit] names a query.
+  @visibleForTesting
+  static Iterable<List<String>> chunkDocIds(List<String> ids) =>
+      _chunks(ids, _byIdLimit);
+
+  static Iterable<List<String>> _chunks(
+    List<String> ids, [
+    int size = _whereInLimit,
+  ]) sync* {
+    for (var i = 0; i < ids.length; i += size) {
+      yield ids.sublist(i, i + size > ids.length ? ids.length : i + size);
     }
   }
 }

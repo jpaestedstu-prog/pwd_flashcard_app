@@ -100,6 +100,7 @@ class ClassroomManagementNotifier
       name: name.trim().isEmpty ? 'Untitled class' : name.trim(),
       teacherId: teacherId,
       accessibility: accessibility,
+      teacherUid: FirebaseService.currentUid,
       createdAt: now,
       updatedAt: now,
     );

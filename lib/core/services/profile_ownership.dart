@@ -1,3 +1,5 @@
+import 'package:firebase_core/firebase_core.dart';
+
 import 'firebase_service.dart';
 
 /// Whether *this* device may write cloud data scoped to a profile.
@@ -31,9 +33,11 @@ enum ProfileCloudOwnership {
 
 /// Reads `profiles/{profileId}.owner_uid` and compares it to this device.
 ///
-/// Reads are open to any signed-in user (`allow read: if signedIn()`), so this
-/// works even from the device that lost ownership — which is the whole point,
-/// since that is the only device that needs to be told.
+/// The device that lost ownership is the only one that needs to be told.
+/// Until 1.4.1 any signed-in device could read the profile and compare;
+/// since then the rules let a device read only its own profiles (and its
+/// learners' and classmates'), so a refused read of a profile that is in
+/// the cloud is itself the answer: it belongs to another device.
 class ProfileOwnershipService {
   const ProfileOwnershipService({
     Future<String?> Function(String profileId)? remoteOwnerUid,
@@ -74,6 +78,12 @@ class ProfileOwnershipService {
       return owner == me
           ? ProfileCloudOwnership.owned
           : ProfileCloudOwnership.elsewhere;
+    } on FirebaseException catch (e) {
+      // A missing profile reads as missing; a refused one exists and is not
+      // this device's (see the class comment). Anything else says nothing.
+      return e.code == 'permission-denied'
+          ? ProfileCloudOwnership.elsewhere
+          : ProfileCloudOwnership.unknown;
     } on Object {
       // A failed read says nothing about ownership. Never guess "elsewhere"
       // from a network blip — that would accuse a device of a problem it does

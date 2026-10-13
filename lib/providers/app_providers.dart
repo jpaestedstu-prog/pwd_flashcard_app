@@ -16,6 +16,7 @@ import '../data/local/local_repository.dart';
 import '../data/local/hive_service.dart';
 import '../data/local/seed_data.dart';
 import '../data/remote/firestore_repository.dart';
+import '../core/services/educator_roster_service.dart';
 import '../core/services/firebase_service.dart';
 import '../core/services/fsl_assets_service.dart';
 import '../core/services/recovery_code_service.dart';
@@ -959,17 +960,43 @@ final educatorRosterProvider =
       }
 
       const remote = FirestoreRepository();
+      const links = ParentTeacherNotesCloudService();
+      const roster = EducatorRosterService();
       final aggregated = <(UserProfile, LearningProgress)>[];
       final seen = <String>{};
 
+      // What the rules need from this device for one group: the educator
+      // links (filed for every member before their profiles are read: a
+      // learner whose profile names another class is readable only through
+      // one), this device named on the group, and its roster.
+      void proveGroup(
+        String groupId,
+        Set<String> memberIds,
+        List<(UserProfile, LearningProgress)> pairs,
+      ) {
+        unawaited(
+          roster.syncGroup(
+            groupId: groupId,
+            memberIds: memberIds,
+            learnerUids: {for (final p in pairs) p.$1.id: ?p.$1.ownerUid},
+          ),
+        );
+      }
+
       // Classroom-side roster (teachers)
       for (final c in classrooms) {
-        final pairs = await remote.getStudentsWithProgressByClassroom(c.id);
-        // The rules' proof that this device teaches them (educator links).
-        const ParentTeacherNotesCloudService().fileLinksForGroup(
-          learnerIds: pairs.map((p) => p.$1.id),
-          classroomId: c.id,
+        final memberIds = {
+          for (final m in await remote.listMembers(c.id)) m.profileId,
+        };
+        links.fileLinksForGroup(learnerIds: memberIds, classroomId: c.id);
+        roster.nameThisDevice(
+          collection: 'classrooms',
+          groupId: c.id,
+          field: 'teacher_uid',
+          current: c.teacherUid,
         );
+        final pairs = await remote.withProgressFor(memberIds);
+        proveGroup(c.id, memberIds, pairs);
         for (final pair in pairs) {
           // De-dup in case a child is listed under two classrooms.
           if (seen.add(pair.$1.id)) {
@@ -981,11 +1008,18 @@ final educatorRosterProvider =
       // Home-group-side roster (parents) — same de-dup set so a child who
       // appears in BOTH a classroom and a home group is counted once.
       for (final g in homeGroups) {
-        final pairs = await remote.getChildrenWithProgressByHomeGroup(g.id);
-        const ParentTeacherNotesCloudService().fileLinksForGroup(
-          learnerIds: pairs.map((p) => p.$1.id),
-          homeGroupId: g.id,
+        final memberIds = {
+          for (final m in await remote.listHomeGroupMembers(g.id)) m.profileId,
+        };
+        links.fileLinksForGroup(learnerIds: memberIds, homeGroupId: g.id);
+        roster.nameThisDevice(
+          collection: 'home_groups',
+          groupId: g.id,
+          field: 'owner_uid',
+          current: g.ownerUid,
         );
+        final pairs = await remote.withProgressFor(memberIds);
+        proveGroup(g.id, memberIds, pairs);
         for (final pair in pairs) {
           if (seen.add(pair.$1.id)) {
             aggregated.add(pair);

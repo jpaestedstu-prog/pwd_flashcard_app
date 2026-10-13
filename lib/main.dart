@@ -25,6 +25,7 @@ import 'core/services/flashcard_photo_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/analytics_service.dart';
 import 'core/services/firebase_service.dart';
+import 'core/services/group_links_service.dart';
 import 'core/services/profile_sync_listener.dart';
 import 'core/services/progress_sync_listener.dart';
 import 'core/services/sync_service.dart';
@@ -232,6 +233,11 @@ void main() {
         // Mint a messaging handle for every legacy profile that doesn't
         // have one yet. Idempotent (flag + per-profile null check).
         await UsernameMigration.runIfNeeded();
+
+        // The group link and roster place for every class and family group
+        // this device's profiles are in (joined before 1.4.1, or restored
+        // here): since 1.4.1 the rules ask for them. Once each, never throws.
+        await const GroupLinksService().ensureForDevice();
 
         // With auth in place, open the sync pipes: connectivity listener,
         // pending-write drain, and the remote progress/profile mirrors.

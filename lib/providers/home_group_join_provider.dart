@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/services/firebase_service.dart';
+import '../core/services/group_links_service.dart';
 import '../core/services/home_group_code_service.dart';
 import '../core/services/join_code_service.dart';
 import '../core/utils/error_handler.dart';
@@ -127,13 +128,24 @@ class HomeGroupJoinNotifier extends Notifier<HomeGroupJoinState> {
         displayName: stampedProfile.name,
         joinedAt: DateTime.now(),
       );
+      // Since 1.4.1 the membership carries the group's join code: knowing a
+      // family group's id is not enough to join it.
       await FirebaseService.db
           .collection('home_group_members')
           .doc('${group.id}_${stampedProfile.id}')
-          .set(member.toJson());
+          .set({...member.toJson(), 'join_code': group.code});
 
       await HiveService.saveProfile(stampedProfile);
       await HiveService.addHomeGroupMemberLocal(member);
+
+      // The group link and the child's place on the parent's roster. Never
+      // throws; retried at start.
+      await const GroupLinksService().fileFor(
+        profileId: stampedProfile.id,
+        groupId: group.id,
+        family: true,
+        educatorUid: group.ownerUid,
+      );
     } catch (e) {
       state = HomeGroupJoinFailure(
         error: JoinCodeError.unknown,

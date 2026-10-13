@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/services/firebase_service.dart';
+import '../../../core/services/group_links_service.dart';
 import '../../../core/services/recovery_code_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -106,6 +107,11 @@ class _RecoverProfileScreenState extends ConsumerState<RecoverProfileScreen> {
       await HiveService.saveProfile(recoveredProfile);
       await HiveService.saveProgress(progress);
       await HiveService.setActiveProfileId(recoveredProfile.id);
+
+      // This device is the profile's now: its group links (classmates, the
+      // class document) and its place on the teacher's or parent's roster
+      // move here too. Never throws; retried at every start.
+      await const GroupLinksService().ensureForDevice();
 
       // Surface to the rest of the app via the profile notifier. This
       // also enqueues a re-save, but with the same data we just wrote

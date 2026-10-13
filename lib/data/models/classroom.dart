@@ -29,6 +29,12 @@ class Classroom {
   /// still reopen a group from its menu.
   final bool allowAssessmentRetakes;
 
+  /// The teacher's device (its sign-in uid), written since 1.4.1. A learner's
+  /// device that joins adds the learner to that device's roster
+  /// (`educator_rosters/{uid}`); null on classes from before 1.4.1 until the
+  /// teacher's app or the backfill fills it in.
+  final String? teacherUid;
+
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -39,6 +45,7 @@ class Classroom {
     required this.teacherId,
     this.accessibility = DisabilityType.none,
     this.allowAssessmentRetakes = false,
+    this.teacherUid,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -50,6 +57,7 @@ class Classroom {
     String? teacherId,
     DisabilityType? accessibility,
     bool? allowAssessmentRetakes,
+    String? teacherUid,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -61,6 +69,7 @@ class Classroom {
       accessibility: accessibility ?? this.accessibility,
       allowAssessmentRetakes:
           allowAssessmentRetakes ?? this.allowAssessmentRetakes,
+      teacherUid: teacherUid ?? this.teacherUid,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -74,6 +83,7 @@ class Classroom {
         'teacher_id': teacherId,
         'accessibility': accessibility.index,
         'allow_assessment_retakes': allowAssessmentRetakes,
+        'teacher_uid': ?teacherUid,
         'created_at': createdAt.toIso8601String(),
         'updated_at': updatedAt.toIso8601String(),
       };
@@ -91,6 +101,7 @@ class Classroom {
       // every new group — see [allowAssessmentRetakes].
       allowAssessmentRetakes:
           json['allow_assessment_retakes'] as bool? ?? false,
+      teacherUid: json['teacher_uid'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
     );

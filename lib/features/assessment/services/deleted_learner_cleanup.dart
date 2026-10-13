@@ -74,20 +74,41 @@ class DeletedLearnerCleanup {
   static List<Routine> routinesFor(Iterable<Routine> routines, Set<String> gone) =>
       [for (final r in routines) if (gone.contains(r.childProfileId)) r];
 
+  /// Names per query. The rules count each name as a document read, and a
+  /// request may make 20 in all, lookups included: before 1.4.1 this asked
+  /// for 30, and every educator with more than 20 learners to check was
+  /// refused, so nothing was ever cleared for them.
+  static const int byIdChunk = 10;
+
   /// Which of [ids] have no profile document, asked of the server itself.
-  /// Throws when it cannot be reached.
+  /// Throws when it cannot be reached. A profile the rules will not let this
+  /// device read (a learner who left the class) is there, so it is not
+  /// missing: a refused query is asked again one profile at a time.
   static Future<Set<String>> missingProfiles(Set<String> ids) async {
     final seam = debugMissingProfiles;
     if (seam != null) return seam(ids);
+    final profiles = FirebaseService.db.collection('profiles');
+    const server = GetOptions(source: Source.server);
     final found = <String>{};
     final list = ids.toList();
-    for (var i = 0; i < list.length; i += 30) {
-      final chunk = list.sublist(i, (i + 30).clamp(0, list.length));
-      final snap = await FirebaseService.db
-          .collection('profiles')
-          .where(FieldPath.documentId, whereIn: chunk)
-          .get(const GetOptions(source: Source.server));
-      found.addAll(snap.docs.map((d) => d.id));
+    for (var i = 0; i < list.length; i += byIdChunk) {
+      final chunk = list.sublist(i, (i + byIdChunk).clamp(0, list.length));
+      try {
+        final snap = await profiles
+            .where(FieldPath.documentId, whereIn: chunk)
+            .get(server);
+        found.addAll(snap.docs.map((d) => d.id));
+      } on FirebaseException catch (e) {
+        if (e.code != 'permission-denied') rethrow;
+        for (final id in chunk) {
+          try {
+            if ((await profiles.doc(id).get(server)).exists) found.add(id);
+          } on FirebaseException catch (e) {
+            if (e.code != 'permission-denied') rethrow;
+            found.add(id);
+          }
+        }
+      }
     }
     return ids.difference(found);
   }

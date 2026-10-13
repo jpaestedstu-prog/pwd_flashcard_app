@@ -344,15 +344,31 @@ class FirestoreRepository implements DataRepository {
   Future<List<(UserProfile, LearningProgress)>>
   getStudentsWithProgressByClassroom(String classroomId) async {
     final members = await listMembers(classroomId);
+    return withProgressFor(members.map((m) => m.profileId));
+  }
+
+  /// [profileIds]' profiles with their progress, in order. Missing and
+  /// Player-mode profiles are left out, and so is one this device may not
+  /// read: since 1.4.1 a classmate reads only members whose own profile
+  /// names the class, and a teacher reads one whose profile names another
+  /// class only through an educator link. Before, one such member failed
+  /// the whole roster or leaderboard.
+  Future<List<(UserProfile, LearningProgress)>> withProgressFor(
+    Iterable<String> profileIds,
+  ) async {
     final results = <(UserProfile, LearningProgress)>[];
-    for (final m in members) {
-      final profile = await getProfileById(m.profileId);
-      if (profile == null) continue;
-      // Skip player-mode profiles defensively — they shouldn't be enrolled
-      // anyway, but ignore them if a stale row sneaks through.
-      if (profile.isGuestPlayer) continue;
-      final progress = await getProgress(m.profileId);
-      results.add((profile, progress));
+    for (final id in profileIds) {
+      try {
+        final profile = await getProfileById(id);
+        if (profile == null) continue;
+        // Skip player-mode profiles defensively — they shouldn't be enrolled
+        // anyway, but ignore them if a stale row sneaks through.
+        if (profile.isGuestPlayer) continue;
+        final progress = await getProgress(id);
+        results.add((profile, progress));
+      } on FirebaseException catch (e) {
+        if (e.code != 'permission-denied') rethrow;
+      }
     }
     return results;
   }
@@ -1024,15 +1040,7 @@ class FirestoreRepository implements DataRepository {
   Future<List<(UserProfile, LearningProgress)>>
   getChildrenWithProgressByHomeGroup(String homeGroupId) async {
     final members = await listHomeGroupMembers(homeGroupId);
-    final results = <(UserProfile, LearningProgress)>[];
-    for (final m in members) {
-      final profile = await getProfileById(m.profileId);
-      if (profile == null) continue;
-      if (profile.isGuestPlayer) continue;
-      final progress = await getProgress(m.profileId);
-      results.add((profile, progress));
-    }
-    return results;
+    return withProgressFor(members.map((m) => m.profileId));
   }
 
   /// Add a member row to a home group. Mirrors [addMember] for
@@ -1176,9 +1184,9 @@ class FirestoreRepository implements DataRepository {
   /// **This MOVES the profile; it does not share it.** Every write rule in
   /// `firestore.rules` goes through `ownsProfile(profileId)`, which reads the
   /// `owner_uid` this method overwrites — so the device the profile was
-  /// restored *away from* loses cloud write access for it from this point on.
-  /// Reads stay open to any signed-in user, which is why the old device keeps
-  /// looking healthy: its writes land in Hive and are refused by Firestore.
+  /// restored *away from* loses cloud write access for it from this point on
+  /// (and, since 1.4.1, read access too): its writes land in Hive and are
+  /// refused by Firestore, which `ProfileOwnershipService` tells it.
   ///
   /// One profile has exactly one owner, deliberately. Two devices editing one
   /// teacher at once is a **future feature** and would need a real membership
@@ -1203,16 +1211,14 @@ class FirestoreRepository implements DataRepository {
       );
     }
 
-    // Pull the current profile and progress docs so we can return a
-    // complete model after the claim. Reads at this point use the new
-    // uid but rules allow `signedIn()` reads on profiles/progress.
-    final profile = await getProfileById(profileId);
-    if (profile == null) {
-      throw StateError(
-        'Profile $profileId not found on Firestore. Cannot claim a '
-        'profile that no longer exists.',
-      );
-    }
+    // Since 1.4.1 a device may read a profile only once it is theirs (or
+    // their learner's, or a classmate's), so the profile is read after the
+    // claim, not before: an app from before 1.4.1 read it first and is
+    // refused.
+    StateError notFound() => StateError(
+      'Profile $profileId not found on Firestore. Cannot claim a '
+      'profile that no longer exists.',
+    );
 
     // Find all docs we need to re-stamp.
     final cardSnap = await _db
@@ -1235,11 +1241,13 @@ class FirestoreRepository implements DataRepository {
     // profile.
     final batch = _db.batch();
 
-    batch.set(_db.collection('profiles').doc(profileId), {
+    // An update, not a merge: a profile that no longer exists fails the
+    // whole batch instead of being re-created with nothing but an owner.
+    batch.update(_db.collection('profiles').doc(profileId), {
       'owner_uid': newUid,
       '_recovery_code': code,
       'updated_at': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    });
 
     batch.set(_db.collection('progress').doc(profileId), {
       'owner_uid': newUid,
@@ -1281,8 +1289,25 @@ class FirestoreRepository implements DataRepository {
       'redeemed_by_uid': newUid,
     });
 
-    await batch.commit();
+    try {
+      await batch.commit();
+    } on FirebaseException catch (e) {
+      if (e.code == 'not-found') throw notFound();
+      rethrow;
+    }
 
-    return profile.copyWith(ownerUid: () => newUid);
+    // The profile is this device's now. The claim is done, so a read that
+    // fails on a flaky connection is tried again rather than reported as a
+    // failed restore (the code is used: it could not be redeemed twice).
+    for (var attempt = 1; ; attempt++) {
+      try {
+        final profile = await getProfileById(profileId);
+        if (profile == null) throw notFound();
+        return profile.copyWith(ownerUid: () => newUid);
+      } on FirebaseException {
+        if (attempt == 3) rethrow;
+        await Future<void>.delayed(Duration(seconds: attempt));
+      }
+    }
   }
 }

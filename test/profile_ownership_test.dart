@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -60,6 +61,32 @@ void main() {
       // and find another tablet that does not exist.
       final svc = ProfileOwnershipService(
         remoteOwnerUid: (_) async => throw Exception('offline'),
+        currentUid: () => _me,
+      );
+      expect(await svc.check('p'), ProfileCloudOwnership.unknown);
+    });
+
+    test('a refused read means another device owns it (rules since 1.4.1)',
+        () async {
+      // A device may read only its own profiles (and its learners' and
+      // classmates'); the one that lost a profile is refused, and that is
+      // exactly the device that must be told.
+      final svc = ProfileOwnershipService(
+        remoteOwnerUid: (_) async => throw FirebaseException(
+          plugin: 'cloud_firestore',
+          code: 'permission-denied',
+        ),
+        currentUid: () => _me,
+      );
+      expect(await svc.check('p'), ProfileCloudOwnership.elsewhere);
+    });
+
+    test('any other cloud error is still unknown', () async {
+      final svc = ProfileOwnershipService(
+        remoteOwnerUid: (_) async => throw FirebaseException(
+          plugin: 'cloud_firestore',
+          code: 'unavailable',
+        ),
         currentUid: () => _me,
       );
       expect(await svc.check('p'), ProfileCloudOwnership.unknown);

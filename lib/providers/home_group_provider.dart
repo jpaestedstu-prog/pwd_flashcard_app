@@ -95,6 +95,7 @@ class HomeGroupManagementNotifier
       name: name.trim().isEmpty ? 'My Family' : name.trim(),
       ownerProfileId: parentProfileId,
       accessibility: accessibility,
+      ownerUid: FirebaseService.currentUid,
       createdAt: now,
       updatedAt: now,
     );
