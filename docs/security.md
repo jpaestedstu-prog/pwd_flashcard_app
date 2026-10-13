@@ -137,15 +137,14 @@ channel can never have it:
 | Channel | Attestation | What it needs |
 |---|---|---|
 | Google Play | Play Integrity | a Google Play Console account (one-time registration fee) |
-| App Store | App Attest, DeviceCheck fallback | the Apple Developer Program (yearly fee) |
 | Website APK | none possible | installed outside any store: nothing can vouch for it |
 
 Once a store account exists:
 
 1. Build that store copy with `--dart-define=FLASHLEARN_APP_CHECK=true`.
 2. In the Firebase console, App Check → Apps: register the Play app (with its
-   SHA-256 signing-key fingerprint from Play App Signing) and the iOS app
-   (App Attest needs the App Attest capability in the provisioning profile).
+   SHA-256 signing-key fingerprint from Play App Signing). (iOS support was
+   stopped on 13 October 2026, so there is no App Store copy to register.)
 3. Watch **App Check → APIs → Cloud Firestore** for a few weeks: it shows how
    many requests are verified. Debug builds use the debug provider and print a
    token to register under "Manage debug tokens".

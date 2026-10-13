@@ -146,6 +146,10 @@ tablet badge, 7-inch and 10-inch tablet screenshots.
 
 ## Apple App Store — what to fill in
 
+> **Not planned.** iOS support was stopped on 13 October 2026 (see
+> [../ios_testing.md](../ios_testing.md)). The Apple sections below are kept
+> only as a record; nothing in them is maintained.
+
 Register the bundle id `io.github.jpaestedstuprog.flashlearnpwd` (no special
 capabilities: the app uses no push notifications, iCloud or App Groups), then
 create the app in App Store Connect: name **FlashLearn PWD**, primary language

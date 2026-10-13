@@ -30,6 +30,10 @@
 > statements (Sections 1.4.1, 1.4.2, 3.3, 3.4.4 and 5.4, and a note in 5.3.1) now
 > describe the app turning with the device and the iPhone/iPad build, which is
 > tested on simulators only. The measured figures above are unchanged.
+>
+> **Updated 13 October 2026:** iOS support was stopped. The platform statements
+> now describe an Android-only system whose iPhone/iPad build was checked on
+> simulators only until then.
 
 ---
 
@@ -688,8 +692,9 @@ website. It targets Android 10 (API level 29) as its minimum supported version a
 Android 16 (API level 36) as its target version. Since version 1.4.0 it works
 upright and sideways, in split screen and in resizable windows, and each profile
 may keep the screen in one orientation (Section 3.4.4). The same codebase also
-builds for iPhone and iPad and for the Google Play Store; those versions pass
-automated tests on simulators and emulators but have not been published.
+builds for the Google Play Store, a version that has not been published. An
+iPhone and iPad build was checked on simulators up to version 1.4.0; iOS support
+was then stopped, and there is no iPhone or iPad version.
 
 **Vocabulary content.** The application ships with 177 bilingual English–Filipino
 flashcards distributed across 13 thematic categories, as shown in Table 1. Each
@@ -762,9 +767,9 @@ vocabulary measure.
 The following limitations bound the claims this study is entitled to make.
 
 1. **Android first.** The system was developed, tested, and evaluated on Android
-   devices. An iPhone and iPad version is built from the same code and is checked
-   by automated walkthroughs on iOS simulators, but it has not been run on a
-   physical Apple device or with learners, and it is not published. No claim is
+   devices. An iPhone and iPad build was checked by automated walkthroughs on
+   iOS simulators up to version 1.4.0, but it was never run on a physical Apple
+   device or with learners, and iOS support was stopped in October 2026. No claim is
    made regarding its behaviour on real Apple hardware (camera-based head-pose
    control, game controllers, speech) or on the web, Windows, macOS, and Linux
    targets the codebase also contains.
@@ -2003,8 +2008,7 @@ The system imposes no hardware requirement on the deploying institution beyond a
 Android device meeting the minimum specification in Table 5. No server, no network
 appliance, no interactive whiteboard, and no dedicated assistive peripheral is
 required. Two optional peripherals are supported where available: a Bluetooth
-gamepad conforming to the standard Android game-controller profile (on iPhone and
-iPad, any controller Apple's game-controller framework supports), and any device
+gamepad conforming to the standard Android game-controller profile, and any device
 on the local network with a web browser for the TV-cast display function.
 
 ---
@@ -4542,8 +4546,8 @@ declared test executes once per cell.
 These figures describe the evaluation build. The suite kept growing with each
 later version: version 1.4.0 (October 2026) runs more than 5,200 automated tests,
 all passing, and every change is also checked by automated walkthroughs on Android
-phone and tablet emulators and on iPhone and iPad simulators, upright and
-sideways.
+phone and tablet emulators, upright and sideways (and on iPhone and iPad
+simulators until iOS support was stopped).
 
 #### 5.3.2 Test Coverage by Functional Area
 
@@ -4862,8 +4866,8 @@ maintainability and reliability indicators that do not depend on evaluator
 opinion.
 
 *Portability* ranks lowest. This is the expected and correct result: the system
-was developed, tested, and evaluated on Android; an iPhone and iPad build exists
-and passes automated simulator walkthroughs, but no claim is made about real Apple
+was developed, tested, and evaluated on Android; an iPhone and iPad build passed
+automated simulator walkthroughs until iOS support was stopped, but no claim is made about real Apple
 devices or the codebase's other platform targets. A low relative portability rating is an accurate reflection of the
 delivered artefact, not a defect in it.
 

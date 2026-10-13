@@ -52,7 +52,7 @@ hard stop, only alerts.
 |---|---|---|
 | Firebase Blaze plan | pay as you go | Cloud Functions, Cloud Storage, push messages, or more than the Spark quotas. Not needed today |
 | Google Play Console | one-time registration fee | publishing on Google Play (the website APK needs nothing) |
-| Apple Developer Program | yearly fee | signing and publishing an iPhone/iPad app ([ios_testing.md](ios_testing.md)) |
+| Apple Developer Program | yearly fee | not needed: iOS support was stopped on 13 October 2026 ([ios_testing.md](ios_testing.md)) |
 | A custom domain | yearly fee | only if the website moves off `github.io` |
 
 None of these is required for the Android app as it is distributed today.

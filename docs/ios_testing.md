@@ -1,12 +1,19 @@
 # iPhone and iPad: status and testing
 
+## Stopped on 13 October 2026
+
+**iOS support is stopped, at the project owner's decision: FlashLearn PWD is
+an Android app.** The iOS build and its simulator checks were removed from
+the continuous integration, and nothing on iOS is built, tested or kept up
+to date any more. The `ios/` folder stays in the repository as it was. The
+rest of this page is the record of what was checked while iOS was built
+(up to 1.4.0); none of it is maintained.
+
 ## Status for 1.4.0: not released
 
 **FlashLearn PWD 1.4.0 is an Android release.** There is no iPhone or iPad
-version for users, and none is planned until the project has an Apple device
-and an Apple Developer Program membership. The iOS code stays in the project
-and is built and checked on every change, so it does not fall behind, but no
-iOS feature has been verified on a real iPhone or iPad.
+version for users. Until 13 October the iOS code was built and checked on
+every change, but no iOS feature was ever verified on a real iPhone or iPad.
 
 Why it cannot simply be put on the website like the Android app:
 
