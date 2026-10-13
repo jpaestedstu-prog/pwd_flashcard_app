@@ -15,6 +15,7 @@ import '../../../widgets/shared_widgets.dart';
 import '../../../core/utils/csv_export_service.dart';
 import '../../../core/services/session_tracker.dart';
 import '../../../providers/app_providers.dart';
+import '../../progress/models/category_mastery.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../l10n/app_localizations.dart';
@@ -51,9 +52,16 @@ class DashboardScreen extends ConsumerWidget {
         ? DailyChallenge.getStreak(profile.id)
         : 0;
 
+    // How much of each category the learner has learned, as their own Cards
+    // and Progress tabs show it. `categoryProgress` is a rolling average of
+    // game accuracy: shown here it read "Animals 28%" (and "doing great") for
+    // a learner who knew 1 animal word of 12.
+    final mastery = ref.watch(categoryMasteryProvider);
+    double coverageOf(FlashcardCategory cat) => mastery[cat]?.coverage ?? 0.0;
+
     // Find weakest & strongest categories
     final categoryScores = FlashcardCategory.values.map((cat) {
-      return (cat, progress.categoryProgress[cat.label] ?? 0.0);
+      return (cat, coverageOf(cat));
     }).toList()..sort((a, b) => a.$2.compareTo(b.$2));
     final weakCategories = categoryScores.take(2).toList();
     final strongCategories = categoryScores.reversed.take(2).toList();
@@ -229,7 +237,7 @@ class DashboardScreen extends ConsumerWidget {
             ...FlashcardCategory.values.asMap().entries.map((entry) {
               final i = entry.key;
               final cat = entry.value;
-              final pct = progress.categoryProgress[cat.label] ?? 0.0;
+              final pct = coverageOf(cat);
               final catCards = allCards.where((c) => c.category == cat).length;
               return Padding(
                     padding: const EdgeInsets.only(bottom: 10),
