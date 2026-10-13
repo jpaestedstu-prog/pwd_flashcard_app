@@ -854,27 +854,61 @@ class AssessmentCloudService {
   /// would suppress the row locally forever while the cloud kept serving it to
   /// every other device. A tombstone is cleared only on a confirmed delete, so
   /// a still-failing one simply waits for the next hydrate.
+  ///
+  /// A delete of a document that is already gone (deleted on the educator's
+  /// other tablet, or by the deleted-learner check) is refused too: the rules
+  /// read the owner from the document they guard. Such a tombstone used to be
+  /// retried at every sync, forever. A refused one is now checked against the
+  /// server's own list of this educator's documents and, when its document is
+  /// not there, cleared: gone is what it asked for.
   Future<void> _replayPendingDeletions(String educatorId) async {
     final buckets = {
-      'assessments_$educatorId': assessmentsCollection,
-      'assignments_$educatorId': assignmentsCollection,
+      'assessments_$educatorId': (assessmentsCollection, 'created_by_profile_id'),
+      'assignments_$educatorId': (assignmentsCollection, 'assignedBy'),
     };
-    for (final entry in buckets.entries) {
-      for (final id in AssessmentService.getPendingDeletions(entry.key)) {
+    for (final MapEntry(key: bucket, value: (collection, owner))
+        in buckets.entries) {
+      final refused = <String>{};
+      for (final id in AssessmentService.getPendingDeletions(bucket)) {
         try {
           await _db
-              .collection(entry.value)
+              .collection(collection)
               .doc(id)
               .delete()
               .timeout(remoteTimeout);
-          await AssessmentService.clearDeletion(entry.key, id);
+          await AssessmentService.clearDeletion(bucket, id);
+        } on FirebaseException catch (e, s) {
+          _log('replayDelete($collection/$id)', e, s);
+          if (e.code == 'permission-denied') refused.add(id);
+          // Otherwise leave the tombstone in place and try again next time.
         } catch (e, s) {
-          _log('replayDelete(${entry.value}/$id)', e, s);
-          // Leave the tombstone in place and try again next time.
+          _log('replayDelete($collection/$id)', e, s);
         }
+      }
+      if (refused.isEmpty) continue;
+      try {
+        final listed = await _db
+            .collection(collection)
+            .where(owner, isEqualTo: educatorId)
+            .get(const GetOptions(source: Source.server))
+            .timeout(remoteTimeout);
+        for (final id in alreadyGone(
+          refused,
+          listed.docs.map((d) => d.id).toSet(),
+        )) {
+          await AssessmentService.clearDeletion(bucket, id);
+        }
+      } catch (e, s) {
+        _log('replayDelete($collection): listing', e, s);
       }
     }
   }
+
+  /// The refused deletes whose documents the server no longer lists for
+  /// this educator: already done. Pure.
+  @visibleForTesting
+  static Set<String> alreadyGone(Set<String> refused, Set<String> listed) =>
+      refused.difference(listed);
 
   /// Decide what to do with local rows the cloud did not return.
   ///

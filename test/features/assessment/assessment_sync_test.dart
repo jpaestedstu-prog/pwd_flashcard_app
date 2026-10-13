@@ -1057,6 +1057,30 @@ void main() {
     );
   });
 
+  // ─── Deletes the cloud already did ───────────────────────
+
+  group('alreadyGone', () {
+    // A delete of a document deleted elsewhere is refused (the rules read
+    // the owner from the document they guard), and its tombstone used to be
+    // retried at every sync, forever.
+    test('a refused delete whose document the server no longer lists is done',
+        () {
+      expect(
+        AssessmentCloudService.alreadyGone({'gone', 'still-there'},
+            {'still-there', 'other'}),
+        {'gone'},
+      );
+    });
+
+    test('a refused delete of a document still listed keeps its tombstone', () {
+      expect(AssessmentCloudService.alreadyGone({'a'}, {'a'}), isEmpty);
+    });
+
+    test('nothing refused, nothing cleared', () {
+      expect(AssessmentCloudService.alreadyGone(const {}, {'a'}), isEmpty);
+    });
+  });
+
   // ─── Query chunking ─────────────────────────────────────
 
   group('chunkIds', () {
