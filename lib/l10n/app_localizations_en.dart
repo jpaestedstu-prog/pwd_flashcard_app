@@ -5454,6 +5454,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dcListen => 'Listen to English pronunciation';
 
   @override
+  String get dcListenFilipino => 'Listen to Filipino pronunciation';
+
+  @override
   String get dcFinish => 'Finish Mission';
 
   @override

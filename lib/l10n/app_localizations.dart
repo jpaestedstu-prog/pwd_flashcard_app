@@ -8936,6 +8936,12 @@ abstract class AppLocalizations {
   /// **'Listen to English pronunciation'**
   String get dcListen;
 
+  /// No description provided for @dcListenFilipino.
+  ///
+  /// In en, this message translates to:
+  /// **'Listen to Filipino pronunciation'**
+  String get dcListenFilipino;
+
   /// No description provided for @dcFinish.
   ///
   /// In en, this message translates to:

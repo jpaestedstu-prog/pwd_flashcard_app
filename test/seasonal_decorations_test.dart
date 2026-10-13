@@ -187,4 +187,38 @@ void main() {
       isNot(contains(isA<EmojiParticlePainter>())),
     );
   });
+
+  testWidgets('the banner closes with a labelled, full-size button', (
+    tester,
+  ) async {
+    // It was a 20-pixel icon under a bare tap handler: no label for a screen
+    // reader, nothing a switch, gaze or keyboard could reach, and a target
+    // well under 48 dp, on the learner's home.
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          seasonalEventProvider.overrideWithValue(event),
+          settingsProvider.overrideWith(_FixedSettings.new),
+        ],
+        child: const MaterialApp(
+          home: Scaffold(
+            body: CustomScrollView(
+              slivers: [SliverToBoxAdapter(child: SeasonalBannerStrip())],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final close = find.byTooltip('Close');
+    expect(close, findsOneWidget);
+    final size = tester.getSize(find.byType(IconButton));
+    expect(size.width, greaterThanOrEqualTo(48));
+    expect(size.height, greaterThanOrEqualTo(48));
+
+    await tester.tap(close);
+    await tester.pumpAndSettle();
+    expect(find.text(event.name), findsNothing);
+  });
 }

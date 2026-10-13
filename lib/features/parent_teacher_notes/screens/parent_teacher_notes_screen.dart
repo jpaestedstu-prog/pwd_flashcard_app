@@ -290,7 +290,7 @@ class _ParentTeacherNotesScreenState
                           itemCount: notes.length,
                           itemBuilder: (context, index) {
                             final note = notes[index];
-                            return _NoteCard(
+                            return NoteCard(
                               note: note,
                               hc: hc,
                               isFilipino: isFilipino,
@@ -617,7 +617,8 @@ class _FilterChip extends StatelessWidget {
   }
 }
 
-class _NoteCard extends StatelessWidget {
+/// One note in the list. Public for its tests.
+class NoteCard extends StatelessWidget {
   final ParentTeacherNote note;
   final HCColor hc;
   final bool isFilipino;
@@ -628,7 +629,8 @@ class _NoteCard extends StatelessWidget {
   /// learner, since the app bar already names them.
   final String? learnerName;
 
-  const _NoteCard({
+  const NoteCard({
+    super.key,
     required this.note,
     required this.hc,
     required this.isFilipino,
@@ -672,17 +674,16 @@ class _NoteCard extends StatelessWidget {
                     color: hc.textSecondary,
                   ),
                 ),
-                if (isAuthor) ...[
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () => _confirmDelete(context),
-                    child: Icon(
-                      Icons.delete_outline_rounded,
-                      size: 18,
-                      color: hc.error,
-                    ),
+                // A real button: an 18-pixel icon under a bare tap handler
+                // had no label for a screen reader, no focus for a switch,
+                // gaze or keyboard, and a target far under 48 dp.
+                if (isAuthor)
+                  IconButton(
+                    onPressed: () => _confirmDelete(context),
+                    tooltip: isFilipino ? 'Burahin ang tala' : 'Delete note',
+                    color: hc.error,
+                    icon: const Icon(Icons.delete_outline_rounded, size: 20),
                   ),
-                ],
               ],
             ),
             const SizedBox(height: 12),

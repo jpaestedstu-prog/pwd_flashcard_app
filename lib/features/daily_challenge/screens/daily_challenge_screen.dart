@@ -404,17 +404,13 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Semantics(
-                        button: true,
-                        label: _t(context).dcListen,
-                        child: GestureDetector(
-                          onTap: _speakWord,
-                          child: Icon(
-                            Icons.volume_up_rounded,
-                            size: 24,
-                            color: hc.primary,
-                          ),
-                        ),
+                      // Real buttons, so a switch, gaze or keyboard reaches
+                      // them and the target is a full 48 dp.
+                      IconButton(
+                        onPressed: _speakWord,
+                        tooltip: _t(context).dcListen,
+                        color: hc.primary,
+                        icon: const Icon(Icons.volume_up_rounded, size: 24),
                       ),
                     ],
                   ),
@@ -591,13 +587,11 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          GestureDetector(
-                            onTap: _speakFilipino,
-                            child: Icon(
-                              Icons.volume_up_rounded,
-                              size: 20,
-                              color: hc.primary,
-                            ),
+                          IconButton(
+                            onPressed: _speakFilipino,
+                            tooltip: _t(context).dcListenFilipino,
+                            color: hc.primary,
+                            icon: const Icon(Icons.volume_up_rounded, size: 20),
                           ),
                         ],
                       ),

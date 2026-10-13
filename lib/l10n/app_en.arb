@@ -3807,6 +3807,7 @@
     }
   },
   "dcListen": "Listen to English pronunciation",
+  "dcListenFilipino": "Listen to Filipino pronunciation",
   "dcFinish": "Finish Mission",
   "dcNextWord": "Next Word",
   "dcCorrect": "Correct! +1 star ⭐",

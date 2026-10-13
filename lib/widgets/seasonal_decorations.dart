@@ -6,6 +6,8 @@ import 'package:pwdpwdpwd/data/models/seasonal_events.dart';
 import 'package:pwdpwdpwd/providers/app_providers.dart';
 import 'package:pwdpwdpwd/providers/seasonal_event_provider.dart';
 import '../core/utils/reduced_motion.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/app_localizations_en.dart';
 
 /// Seasonal banner + falling emoji decorations overlay.
 ///
@@ -344,13 +346,14 @@ class _SeasonalBanner extends StatelessWidget {
                     ),
                   ),
                 const SizedBox(width: 4),
-                GestureDetector(
-                  onTap: onDismiss,
-                  child: Icon(
-                    Icons.close,
-                    color: Colors.white.withValues(alpha: 0.7),
-                    size: 20,
-                  ),
+                // A real button: labelled for a screen reader, reachable by
+                // a switch, gaze or keyboard, and a full 48 dp to hit.
+                IconButton(
+                  onPressed: onDismiss,
+                  tooltip: (AppLocalizations.of(context) ?? AppLocalizationsEn())
+                      .close,
+                  color: Colors.white.withValues(alpha: 0.7),
+                  icon: const Icon(Icons.close, size: 20),
                 ),
               ],
             ),

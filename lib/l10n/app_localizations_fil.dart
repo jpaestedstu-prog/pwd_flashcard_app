@@ -5390,6 +5390,9 @@ class AppLocalizationsFil extends AppLocalizations {
   String get dcListen => 'Pakinggan ang bigkas sa Ingles';
 
   @override
+  String get dcListenFilipino => 'Pakinggan ang bigkas sa Filipino';
+
+  @override
   String get dcFinish => 'Tapusin ang Misyon';
 
   @override
