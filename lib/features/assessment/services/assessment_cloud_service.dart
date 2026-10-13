@@ -667,13 +667,9 @@ class AssessmentCloudService {
         if (want.isEmpty || listEquals(want, have)) continue;
         updates.add((d.reference, want));
       }
-      for (var i = 0; i < updates.length; i += 400) {
-        final batch = _db.batch();
-        for (final (ref, uids) in updates.skip(i).take(400)) {
-          batch.update(ref, {studentUidsField: uids});
-        }
-        await batch.commit().timeout(remoteTimeout);
-      }
+      await _commitAll([
+        for (final (ref, uids) in updates) (ref, {studentUidsField: uids}),
+      ], update: true);
     } catch (e, s) {
       _log('backfillLearnerUids', e, s);
     }
@@ -993,23 +989,58 @@ class AssessmentCloudService {
 
     if (writes.isEmpty) return;
 
-    // Firestore caps a batch at 500 operations.
-    const perBatch = 400;
-    for (var i = 0; i < writes.length; i += perBatch) {
-      final batch = _db.batch();
-      for (final (ref, data) in writes.skip(i).take(perBatch)) {
-        batch.set(ref, data);
-      }
-      await batch.commit().timeout(remoteTimeout);
-    }
+    final refused = await _commitAll(writes);
+    // A refused row stays local and unsynced: it is offered again next time.
     await AssessmentService.markSynced(
       assessmentBucket,
-      assessmentPlan.toPush,
+      assessmentPlan.toPush.difference(refused),
     );
     await AssessmentService.markSynced(
       assignmentBucket,
-      assignmentPlan.toPush,
+      assignmentPlan.toPush.difference(refused),
     );
+  }
+
+  /// Writes [writes] (an update of the given fields when [update], else a
+  /// whole document) in batches, and returns the ids the rules refused.
+  ///
+  /// A batch is all or nothing, so one document the rules refuse held back
+  /// every other one: since 1.4.1 an assignment that names a learner no
+  /// longer on this educator's roster (one who left, or deleted their
+  /// profile) is refused, and with it every template and assignment made
+  /// offline alongside it. A refused batch is written again one document at
+  /// a time.
+  Future<Set<String>> _commitAll(
+    List<(DocumentReference<Map<String, dynamic>>, Map<String, dynamic>)>
+    writes, {
+    bool update = false,
+  }) async {
+    final refused = <String>{};
+    // Firestore caps a batch at 500 operations.
+    const perBatch = 400;
+    for (var i = 0; i < writes.length; i += perBatch) {
+      final chunk = writes.skip(i).take(perBatch).toList();
+      final batch = _db.batch();
+      for (final (ref, data) in chunk) {
+        update ? batch.update(ref, data) : batch.set(ref, data);
+      }
+      try {
+        await batch.commit().timeout(remoteTimeout);
+      } on FirebaseException catch (e) {
+        if (e.code != 'permission-denied') rethrow;
+        for (final (ref, data) in chunk) {
+          try {
+            await (update ? ref.update(data) : ref.set(data))
+                .timeout(remoteTimeout);
+          } on FirebaseException catch (e) {
+            if (e.code != 'permission-denied') rethrow;
+            refused.add(ref.id);
+            _log('commit(${ref.id})', e, StackTrace.current);
+          }
+        }
+      }
+    }
+    return refused;
   }
 
   /// Firestore rejects a `whereIn` with more than [_whereInLimit] values.

@@ -179,6 +179,8 @@ def main():
     print("-- the teacher's roster")
     check("a learner's device puts them on their teacher's roster",
           write(f"educator_rosters/{uT}", {"learners": {pS1: uS1}, "via": {pS1: c}, "learner": pS1}, tS1), 200)
+    # Only the roster's own device may delete it: clean it up as the teacher.
+    created[:] = [(p, tT if p == f"educator_rosters/{uT}" else t) for p, t in created]
     check("a stranger puts themselves on it",
           write(f"educator_rosters/{uT}", {"learners": {pS1: uS1, pX: uX}, "via": {pS1: c, pX: c},
                                            "learner": pX}, tX), 403)
