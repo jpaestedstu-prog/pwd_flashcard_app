@@ -418,7 +418,9 @@ class ReportGenerator {
           ],
         ),
         ...categories.map((cat) {
-          final progress = child.categoryProgress[cat.label] ?? 0.0;
+          // Words learned over the category's words: the column says
+          // Progress and draws a mastery bar, which the accuracy average is not.
+          final progress = child.categoryCoverage[cat.label] ?? 0.0;
           final percentage = (progress * 100).toStringAsFixed(0);
           final barWidth = progress * 150;
           final barColor = progress >= 0.8

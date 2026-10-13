@@ -40,9 +40,10 @@ class _StudentComparisonScreenState
 
   void _loadStudents() {
     final allData = HiveService.getAllProfilesWithProgress();
+    final cards = ref.read(allFlashcardsProvider);
     _allStudents = allData
         .where((d) => d.$1.role.isEnrollableLearner)
-        .map((d) => StudentAnalytics.from(d.$1, d.$2))
+        .map((d) => StudentAnalytics.from(d.$1, d.$2, cards: cards))
         .toList()
       ..sort((a, b) => a.name.compareTo(b.name));
   }

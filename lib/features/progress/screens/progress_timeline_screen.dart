@@ -6,8 +6,10 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/services/session_tracker.dart';
 import '../../../data/local/hive_service.dart';
+import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../providers/app_providers.dart';
+import '../models/category_mastery.dart';
 import '../widgets/charts/activity_heatmap.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../core/widgets/fit_text.dart';
@@ -101,7 +103,18 @@ class ProgressTimelineScreen extends ConsumerWidget {
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                 child: _CategoryProgressSection(
-                  categoryProgress: progress.categoryProgress,
+                  // Words learned over each category's words, for the
+                  // categories begun. `categoryProgress` is a rolling
+                  // accuracy average, which these bars used to show.
+                  categoryProgress: {
+                    for (final e in CategoryMastery.forProgress(
+                      progress,
+                      ref.watch(allFlashcardsProvider),
+                    ).entries)
+                      if (progress.categoryProgress.containsKey(e.key.label) ||
+                          e.value.coverage > 0)
+                        e.key.label: e.value.coverage,
+                  },
                   hc: hc,
                 ).animate().fadeIn(duration: 400.ms, delay: 300.ms),
               ),

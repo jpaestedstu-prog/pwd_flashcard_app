@@ -1,4 +1,7 @@
+import '../../../data/local/seed_data.dart';
+import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
+import '../../progress/models/category_mastery.dart';
 
 /// How a learner is doing, as an educator would triage them.
 ///
@@ -35,6 +38,12 @@ class StudentAnalytics {
   final int streakDays;
   final int gamesPlayed;
   final double averageAccuracy;
+
+  /// How much of each category the learner has learned (words learned over
+  /// the category's words), by category label: the categories they have
+  /// played or learned a word in. It used to be the rolling game-accuracy
+  /// average, which reads high for a category barely opened; accuracy is
+  /// [averageAccuracy].
   final Map<String, double> categoryProgress;
   final String? strongestCategory;
   final String? weakestCategory;
@@ -81,6 +90,7 @@ class StudentAnalytics {
     UserProfile profile,
     LearningProgress progress, {
     Duration studyTime = Duration.zero,
+    List<Flashcard>? cards,
   }) {
     // Calculate average accuracy from recent scores
     double avgAccuracy = 0.0;
@@ -92,12 +102,22 @@ class StudentAnalytics {
       avgAccuracy = sum / progress.recentScores.length;
     }
 
+    final coverage = <String, double>{
+      for (final e in CategoryMastery.forProgress(
+        progress,
+        cards ?? SeedData.allFlashcards,
+      ).entries)
+        if (progress.categoryProgress.containsKey(e.key.label) ||
+            e.value.coverage > 0)
+          e.key.label: e.value.coverage,
+    };
+
     // Find strongest and weakest categories
     String? strongest;
     String? weakest;
     double maxProgress = -1;
     double minProgress = 2;
-    for (final entry in progress.categoryProgress.entries) {
+    for (final entry in coverage.entries) {
       if (entry.value > maxProgress) {
         maxProgress = entry.value;
         strongest = entry.key;
@@ -117,7 +137,7 @@ class StudentAnalytics {
       streakDays: progress.liveStreakDays,
       gamesPlayed: progress.effectiveGamesPlayed,
       averageAccuracy: avgAccuracy,
-      categoryProgress: progress.categoryProgress,
+      categoryProgress: coverage,
       strongestCategory: strongest,
       weakestCategory: weakest,
       totalStudyTime: studyTime,

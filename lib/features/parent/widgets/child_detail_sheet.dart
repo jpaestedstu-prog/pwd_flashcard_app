@@ -668,7 +668,7 @@ class _StrengthsCard extends StatelessWidget {
               iconColor: AppColors.success,
               title: _t(context).cdsStrongest(QuestionPrompt.categoryName(strongest, _t(context))),
               subtitle: _t(context).cdsPctMastery(
-                ((child.categoryProgress[strongest] ?? 0) * 100).round(),
+                ((child.categoryCoverage[strongest] ?? 0) * 100).round(),
               ),
             ),
           if (weakest != null && weakest != strongest)
@@ -677,7 +677,7 @@ class _StrengthsCard extends StatelessWidget {
               iconColor: AppColors.warning,
               title: _t(context).cdsNeedsWork(QuestionPrompt.categoryName(weakest, _t(context))),
               subtitle: _t(context).cdsPctMasteryMore(
-                ((child.categoryProgress[weakest] ?? 0) * 100).round(),
+                ((child.categoryCoverage[weakest] ?? 0) * 100).round(),
               ),
             ),
           if (unexplored.isNotEmpty)

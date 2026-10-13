@@ -9,6 +9,7 @@ import '../../../core/utils/responsive_utils.dart';
 import '../../../core/widgets/pro_surface.dart';
 import '../../../data/models/enums.dart';
 import '../../../providers/app_providers.dart';
+import '../../../data/models/models.dart';
 import '../../../providers/parent_provider.dart';
 import '../../notifications/services/alert_service.dart';
 import '../../parent/models/educator_audience.dart';
@@ -28,13 +29,13 @@ class TeacherAnalyticsScreen extends ConsumerWidget {
   }
 
   ClassAnalytics _analyticsFrom(
-      List<(dynamic, dynamic)> pairs) {
+      List<(dynamic, dynamic)> pairs, List<Flashcard> cards) {
     final studentData = pairs
         .where((d) =>
             (d.$1.role as UserRole).isEnrollableLearner && !d.$1.isGuestPlayer)
         .toList();
     final studentAnalytics = studentData
-        .map((d) => StudentAnalytics.from(d.$1, d.$2))
+        .map((d) => StudentAnalytics.from(d.$1, d.$2, cards: cards))
         .toList();
     return ClassAnalytics.fromStudents(studentAnalytics);
   }
@@ -51,7 +52,7 @@ class TeacherAnalyticsScreen extends ConsumerWidget {
         : AsyncData(ref.watch(allProfilesWithProgressProvider));
 
     final analytics = rosterAsync.maybeWhen(
-      data: (pairs) => _analyticsFrom(pairs),
+      data: (pairs) => _analyticsFrom(pairs, ref.watch(allFlashcardsProvider)),
       orElse: () => ClassAnalytics.fromStudents(const []),
     );
     final loading = rosterAsync.isLoading;
