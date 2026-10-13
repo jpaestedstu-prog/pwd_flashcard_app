@@ -3,9 +3,9 @@
 Version **1.4.1 (14)**, for Android phones and tablets: a privacy and
 fix-up release for 1.4.0, from the on-screen checks of the published 1.4.0 on
 the Honor tablet and a review of the code, the security rules and the screens
-on 13 October 2026. Branch `work/v1.4.1`. **Status: checked; publication
-approved by the owner on 13 October, on condition that every open issue was
-fixed and verified first.**
+on 13 October 2026. **Status: published on 13 October 2026** (approved by
+the owner once every open issue was fixed and verified, and the remaining
+limitations below accepted).
 
 The 1.4.0 report, with every earlier check, is
 [release-1.4.0-verification.md](release-1.4.0-verification.md); the rules are
@@ -94,9 +94,11 @@ Also in this round:
   class is; the test emulator (UTC) showed the 8-hour difference.
 - Everything else in [security.md](security.md), "Known trade-offs".
 
-## Publication (approved by the owner on 13 October)
+## Publication (13 October, approved by the owner)
 
-1. GitHub Release v1.4.1 with the three website APKs.
-2. The website: the 1.4.1 download section and changelog, and the
-   Android-only wording on the download page, the FAQ and the privacy page.
-3. `main` fast-forwarded to the release.
+| Step | When (Philippine time) | Result |
+|---|---|---|
+| Firestore rules (eb5c446), after the backfill | 16:41 | live; read back: identical to the file; 228 live checks pass |
+| GitHub Release [v1.4.1](https://github.com/jpaestedstu-prog/pwd_flashcard_app/releases/tag/v1.4.1) (id 411548245), the three website APKs | 18:30 | latest; tag on 1472905 (the commit the APKs were built from); uploaded as a draft over the owner's phone hotspot (with their OK), each file's digest equal to the scanned build before it was made public |
+| Website ([download page](https://jpaestedstu-prog.github.io/pwd_flashcard_app/download.html)) | 18:30 (gh-pages 7eb0e77 from 734c6f6, built 18:31) | every checked page byte-identical to the commit; the live page's links, sizes and checksums and `version.json` match the release; the arm64 downloaded back through the public link: same SHA-256 |
+| `main` | 18:32 | fast-forwarded from e9226c4 to 734c6f6 (the release line); no force-push |
