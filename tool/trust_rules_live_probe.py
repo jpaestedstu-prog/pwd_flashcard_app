@@ -8,9 +8,9 @@ Checks, against production, that a stranger with a learner's ids cannot:
   * read a learner's achievements or the notes about them, or write a note;
   * set a child's time limit, alarms, routine or unlock, or overwrite what
     their parent set;
-and that the real teacher, parent and learner still can (the teacher of a
-student who joined without a link too, through the class on the student's
-profile).
+and that the real teacher, parent and learner still can (a teacher or parent
+of a learner who joined without a link too, through the class or family
+group on the learner's own profile: what an app from before 1.4.0 relies on).
 
 Signs in throwaway anonymous users (as the app does) and gives each its own
 profiles, class or family group, exactly the way the app would; every
@@ -137,9 +137,11 @@ def main():
     uS, tS = signin()
     uS2, tS2 = signin()
     uC, tC = signin()
+    uC2, tC2 = signin()
     uX, tX = signin()
     tag = uX[:8]
-    pT, pP, pS, pS2, pC = (f"trustprobe-{n}-{tag}" for n in ("teacher", "parent", "student", "student2", "child"))
+    pT, pP, pS, pS2, pC, pC2 = (f"trustprobe-{n}-{tag}" for n in ("teacher", "parent", "student", "student2",
+                                                                 "child", "child2"))
     pX, pXP, pXT = (f"trustprobe-{n}-{tag}" for n in ("stranger", "strangerparent", "strangerteacher"))
     cT, gP, cX, gX = (f"trustprobe-{n}-{tag}" for n in ("class", "family", "fakeclass", "fakefamily"))
 
@@ -160,6 +162,10 @@ def main():
     setup("child profile", write(f"profiles/{pC}", {"owner_uid": uC, "name": "Probe child", "role": 3}, tC))
     setup("child joins the family", write(f"home_group_members/{gP}_{pC}", {"home_group_id": gP, "profile_id": pC},
                                           tC, exists=False))
+    setup("second child (no link: their parent's app is older)",
+          write(f"profiles/{pC2}", {"owner_uid": uC2, "name": "Probe child 2", "role": 3, "home_group_id": gP}, tC2))
+    setup("second child joins the family", write(f"home_group_members/{gP}_{pC2}",
+                                                 {"home_group_id": gP, "profile_id": pC2}, tC2, exists=False))
     setup("teacher's link", write(f"note_readers/{uT}_{pS}", {"profile_id": pS, "classroom_id": cT}, tT, exists=False))
     setup("parent's link", write(f"note_readers/{uP}_{pC}", {"profile_id": pC, "home_group_id": gP}, tP, exists=False))
     setup("student's achievement", write(f"achievements/{pS}/items/first", {"owner_uid": uS, "profile_id": pS,
@@ -229,6 +235,10 @@ def main():
     check("stranger acts on the student's routine day",
           write(f"routine_actions/{pS}_2026-10-13", {"child_profile_id": pS, "setter_profile_id": pXT,
                                                     "owner_uid": uX}, tX), 403)
+    check("stranger sets a limit for a child whose parent has no link",
+          write(f"child_time_limits/{pC2}", {"child_profile_id": pC2, "setter_profile_id": pXP, "owner_uid": uX,
+                                            "daily_minutes": 1}, tX), 403)
+    check("... or reads the notes about them", read(f"parent_teacher_notes/{pC2}/notes", tX), 403)
 
     print("-- the real educators and learners")
     check("the teacher reads the notes about their student", read(f"parent_teacher_notes/{pS}/notes", tT), 200)
@@ -248,6 +258,10 @@ def main():
     check("the teacher guides a student who joined without a link (class on their profile)",
           write(f"child_time_limits/{pS2}", {"child_profile_id": pS2, "setter_profile_id": pT, "owner_uid": uT,
                                             "daily_minutes": 30}, tT), 200)
+    check("a parent on an older app guides a child who joined without a link (family group on their profile)",
+          write(f"child_time_limits/{pC2}", {"child_profile_id": pC2, "setter_profile_id": pP, "owner_uid": uP,
+                                            "daily_minutes": 30}, tP), 200)
+    check("... and reads the notes about them", read(f"parent_teacher_notes/{pC2}/notes", tP), 200)
     check("the student reads their own achievements", read(f"achievements/{pS}/items", tS), 200)
 
     cleanup()
