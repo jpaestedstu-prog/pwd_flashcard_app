@@ -2,7 +2,7 @@
    Screenshots and videos are not precached (they load when shown, then stay
    cached); assets/fsl-dict.js is build input for the dictionary page, not
    something a page loads. */
-const CACHE = 'flp-site-v35-a3ddb18a';
+const CACHE = 'flp-site-v36-9d0b232b';
 const CORE = [
   './',
   'index.html',
@@ -18,8 +18,8 @@ const CORE = [
   'privacy.html',
   'gaze-control.html',
   'manifest.webmanifest',
-  'assets/site.css?v=1032330bac',
-  'assets/site.js?v=66570b5b38',
+  'assets/site.css?v=ad7d0d3635',
+  'assets/site.js?v=7277155a41',
   'assets/try.js?v=97e7687e01',
   'assets/logo.webp',
   'assets/videos/app-demo.en.vtt',

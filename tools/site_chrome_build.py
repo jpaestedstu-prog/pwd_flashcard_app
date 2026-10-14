@@ -112,12 +112,13 @@ def asset(name):
 
 
 # Runs before the page is painted: marks JavaScript as available and applies
-# the visitor's saved text size / dyslexia / contrast / language choices, so a
-# Filipino reader never sees the English page flash first.
+# the visitor's saved text size / dyslexia / contrast / motion / language
+# choices, so a Filipino reader never sees the English page flash first and a
+# "Reduce motion" visitor never sees anything start moving.
 EARLY_JS = (
     "<script>(function(h){h.classList.add('js');try{var p=JSON.parse(localStorage.getItem('flp-a11y')||'{}');"
     "if(p.font==='lg'||p.font==='xl')h.classList.add('fs-'+p.font);if(p.dys)h.classList.add('dys');"
-    "if(p.hc)h.classList.add('hc');if(p.fil){h.classList.add('fil');h.setAttribute('lang','fil');}"
+    "if(p.hc)h.classList.add('hc');if(p.still)h.classList.add('still');if(p.fil){h.classList.add('fil');h.setAttribute('lang','fil');}"
     "if(p.fil||p.font==='lg'||p.font==='xl')h.classList.add('nav-compact');}catch(e){}})"
     "(document.documentElement);</script>"
 )
@@ -190,6 +191,7 @@ def render_header(key):
     </div>
     <button type="button" class="switch" id="btnDys" role="switch" aria-checked="false"><span>{bi("Dyslexia-friendly font", "Font para sa may dyslexia")}</span><span class="track" aria-hidden="true"></span></button>
     <button type="button" class="switch" id="btnHC" role="switch" aria-checked="false"><span>{bi("High contrast", "Mataas na contrast")}</span><span class="track" aria-hidden="true"></span></button>
+    <button type="button" class="switch" id="btnStill" role="switch" aria-checked="false"><span>{bi("Reduce motion", "Bawasan ang galaw")}</span><span class="track" aria-hidden="true"></span></button>
     <div class="panel-foot">
       <p class="panel-note">{bi("Saved on this device for every page.", "Naka-save sa device na ito para sa bawat pahina.")}</p>
       <button type="button" class="link-btn" id="btnA11yReset">{bi("Reset", "I-reset")}</button>
@@ -238,7 +240,7 @@ def render_footer(key):
     </div>
     <div class="footer-bottom">
       <p>{bi("Made with 💜 for inclusive education in the Philippines.", "Ginawa nang may 💜 para sa inklusibong edukasyon sa Pilipinas.")}</p>
-      <p>© 2026 FlashLearn PWD. {bi("Screenshots and the demo video come from the real app on an Android tablet.", "Galing sa totoong app sa isang Android tablet ang mga screenshot at demo video.")}</p>
+      <p>© 2026 FlashLearn PWD. {bi("Screenshots and the app in our videos come from the real app on an Android tablet.", "Galing sa totoong app sa isang Android tablet ang mga screenshot at ang app sa aming mga video.")}</p>
     </div>
   </div>
 </footer>

@@ -153,6 +153,24 @@ Each one has a `--check` (or is a pure regenerate) that fails on drift.
 | `games_page_build.py` | `games.html` from `games_page.template.html` + the app's game data | games change |
 | `fsl_dict_page_build.py` | `fsl-dictionary.html` from `fsl_dict_page.template.html` + `website/assets/fsl-dict.js` | signs change |
 | `release_page_build.py` | the download card on `download.html`, the app JSON-LD on `index.html`, `version.json` (the app's update check opens its `page`, now `download.html`) | every release |
+| `site_video_build.py` | the home page film (`film-{en,fil}.mp4` + `-tall` upright copies, two posters), the app preview in the hero's phone (`hero-loop.mp4`), and the film section of `index.html` (`<!--gen:site-film-->`: player, transcript, download links with real sizes, VideoObject JSON-LD) | the app's look, the stats band or the film's words (`COPY`) change |
+
+**The films are drawn, not edited.** `tools/site_video/stage.html` links the
+site's own `site.css`, so the film uses the site's fonts, colours and tiles;
+`stage.js` is a pure function of time, and the script screenshots it frame by
+frame in headless Chrome and encodes with ffmpeg (both needed, nothing else).
+The words live in `COPY` (English + Filipino) and also write the page's
+"Read what the film shows" transcript; the numbers come from the home page's
+stats band; the app on screen is real footage cut from `app-demo.mp4`
+(`FOOTAGE`, `HERO` — re-cut both if that recording is redone). Review without
+a full render: `--stills` (one picture per scene per version, and a layout
+check that fails on words off the frame or into the phone) or
+`--frames 3.5,4,4.5 --lang en --shape wide`. A full render takes ~35 min and
+keeps 1080p masters in `build/site_video/` (for YouTube/Facebook). `--check`
+is fast: files present, 8-bit H.264, bt709, faststart, under budget, all four
+films the same length (the page swaps between them mid-play), section current.
+The films are silent by design — every word is on screen — so nothing depends
+on hearing them.
 
 Order after editing a template: the page builder first, then
 `site_chrome_build.py`. Never hand-edit `games.html` or `fsl-dictionary.html`.

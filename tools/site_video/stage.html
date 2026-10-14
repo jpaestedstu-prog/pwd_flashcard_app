@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<!-- The stage the website's films are drawn on. Not a page of the site:
+     tools/site_video_build.py opens it in headless Chrome, calls FLP.setup()
+     and screenshots FLP.frame(t) for every frame. It links the site's own
+     stylesheet, so the films use the same fonts, colours and components as
+     the pages they play on. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>FlashLearn PWD film stage</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../../website/assets/site.css">
+<link rel="stylesheet" href="stage.css">
+</head>
+<body>
+<div id="stage" class="stage"></div>
+<script src="stage.js"></script>
+</body>
+</html>
