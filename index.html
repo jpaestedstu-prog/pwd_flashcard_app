@@ -35,8 +35,8 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
-<link rel="stylesheet" href="assets/site.css?v=1032330bac">
-<script>(function(h){h.classList.add('js');try{var p=JSON.parse(localStorage.getItem('flp-a11y')||'{}');if(p.font==='lg'||p.font==='xl')h.classList.add('fs-'+p.font);if(p.dys)h.classList.add('dys');if(p.hc)h.classList.add('hc');if(p.fil){h.classList.add('fil');h.setAttribute('lang','fil');}if(p.fil||p.font==='lg'||p.font==='xl')h.classList.add('nav-compact');}catch(e){}})(document.documentElement);</script>
+<link rel="stylesheet" href="assets/site.css?v=ad7d0d3635">
+<script>(function(h){h.classList.add('js');try{var p=JSON.parse(localStorage.getItem('flp-a11y')||'{}');if(p.font==='lg'||p.font==='xl')h.classList.add('fs-'+p.font);if(p.dys)h.classList.add('dys');if(p.hc)h.classList.add('hc');if(p.still)h.classList.add('still');if(p.fil){h.classList.add('fil');h.setAttribute('lang','fil');}if(p.fil||p.font==='lg'||p.font==='xl')h.classList.add('nav-compact');}catch(e){}})(document.documentElement);</script>
 <!--/gen:site-head-->
 <!--gen:app-jsonld--><script type="application/ld+json">
 {
@@ -91,6 +91,7 @@
     </div>
     <button type="button" class="switch" id="btnDys" role="switch" aria-checked="false"><span><span class="en">Dyslexia-friendly font</span><span class="fil">Font para sa may dyslexia</span></span><span class="track" aria-hidden="true"></span></button>
     <button type="button" class="switch" id="btnHC" role="switch" aria-checked="false"><span><span class="en">High contrast</span><span class="fil">Mataas na contrast</span></span><span class="track" aria-hidden="true"></span></button>
+    <button type="button" class="switch" id="btnStill" role="switch" aria-checked="false"><span><span class="en">Reduce motion</span><span class="fil">Bawasan ang galaw</span></span><span class="track" aria-hidden="true"></span></button>
     <div class="panel-foot">
       <p class="panel-note"><span class="en">Saved on this device for every page.</span><span class="fil">Naka-save sa device na ito para sa bawat pahina.</span></p>
       <button type="button" class="link-btn" id="btnA11yReset"><span class="en">Reset</span><span class="fil">I-reset</span></button>
@@ -117,9 +118,21 @@
         <li><span aria-hidden="true">🆓</span> <span class="en">100% free</span><span class="fil">100% libre</span></li>
         <li><span aria-hidden="true">🚫</span> <span class="en">No ads</span><span class="fil">Walang ads</span></li>
       </ul>
+      <p class="hero-watch"><a class="watch-link" href="#film"><span class="watch-ico" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg></span><span class="en">Watch the short film</span><span class="fil">Panoorin ang maikling pelikula</span></a></p>
     </div>
-    <div class="hero-art">
-      <div class="device"><img class="zoomable" src="assets/screenshots/02-home.webp" width="1200" height="1920" alt="FlashLearn PWD home screen greeting the learner, with day streak, words and stars, a My Day card, a Mood Check-In row of faces, and a Daily Challenge asking what Rainbow is in Filipino."></div>
+    <!-- The phone shows the real app moving (assets/videos/hero-loop.mp4, cut
+         from the tablet recording by tools/site_video_build.py). site.js only
+         starts it when nobody asked for less motion or less data; until then,
+         and without JavaScript, the screenshot below is what shows. -->
+    <div class="hero-art" id="heroArt">
+      <span class="ico float-tile ft-1 t-teal" aria-hidden="true">🤟</span>
+      <span class="ico float-tile ft-2 t-pink" aria-hidden="true">🎮</span>
+      <span class="ico float-tile ft-3 t-gold" aria-hidden="true">⭐</span>
+      <span class="ico float-tile ft-4 t-purple" aria-hidden="true">🃏</span>
+      <div class="device" data-loop="assets/videos/hero-loop.mp4"><img class="zoomable" src="assets/screenshots/02-home.webp" width="1200" height="1920" alt="FlashLearn PWD home screen greeting the learner, with day streak, words and stars, a My Day card, a Mood Check-In row of faces, and a Daily Challenge asking what Rainbow is in Filipino."></div>
+      <div class="loop-ctl needs-js">
+        <button type="button" class="loop-btn" id="btnLoop"><span class="loop-ico" aria-hidden="true"><svg class="when-on" viewBox="0 0 24 24" focusable="false"><path d="M7 5h3.6v14H7zM13.4 5H17v14h-3.6z" fill="currentColor"/></svg><svg class="when-off" viewBox="0 0 24 24" focusable="false"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg></span><span class="when-on"><span class="en">Pause the app preview</span><span class="fil">I-pause ang preview ng app</span></span><span class="when-off"><span class="en">Play the app preview</span><span class="fil">I-play ang preview ng app</span></span></button>
+      </div>
     </div>
   </div>
 </section>
@@ -137,6 +150,82 @@
     </div>
   </div>
 </section>
+
+<!-- ============ The film: written by tools/site_video_build.py ============ -->
+<!--gen:site-film-->
+<section class="section tint film-section" id="film" aria-labelledby="filmTitle">
+  <div class="container">
+    <div class="section-head center">
+      <p class="eyebrow"><span aria-hidden="true">🎬</span> <span class="en">Watch</span><span class="fil">Panoorin</span></p>
+      <h2 id="filmTitle"><span class="en">FlashLearn PWD in 50 seconds</span><span class="fil">Ang FlashLearn PWD sa loob ng 50 segundo</span></h2>
+      <p class="lead"><span class="en">A short film with no sound: every word is on the screen, in the language you choose at the top of the page.</span><span class="fil">Isang maikling pelikula na walang tunog: nasa screen ang bawat salita, sa wikang pipiliin mo sa itaas ng pahina.</span></p>
+    </div>
+    <div class="film" id="filmPlayer" data-film="{&quot;en&quot;:{&quot;wide&quot;:&quot;assets/videos/film-en.mp4&quot;,&quot;tall&quot;:&quot;assets/videos/film-en-tall.mp4&quot;},&quot;fil&quot;:{&quot;wide&quot;:&quot;assets/videos/film-fil.mp4&quot;,&quot;tall&quot;:&quot;assets/videos/film-fil-tall.mp4&quot;}}" data-film-en="FlashLearn PWD film, 50 seconds, no sound" data-film-fil="Pelikula ng FlashLearn PWD, 50 segundo, walang tunog">
+      <a class="film-facade" href="assets/videos/film-en.mp4">
+        <picture>
+          <source media="(max-width: 640px) and (orientation: portrait)" srcset="assets/videos/film-tall-poster.webp" width="720" height="1280">
+          <img src="assets/videos/film-poster.webp" width="1280" height="720" alt="" loading="lazy" decoding="async">
+        </picture>
+        <span class="film-play"><span class="film-play-ico" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg></span><span class="film-play-txt"><span class="en">Play the film</span><span class="fil">I-play ang pelikula</span></span><span class="film-len"><span class="sr-only"><span class="en">(50 seconds)</span><span class="fil">(50 segundo)</span></span><span aria-hidden="true">0:50</span></span></span>
+      </a>
+      <p class="film-msg" role="status" hidden><span class="en">The film needs the internet. Check the connection, then press Play again.</span><span class="fil">Kailangan ng internet ang pelikula. Tingnan ang koneksyon, saka pindutin muli ang Play.</span></p>
+    </div>
+    <details class="disclosure film-words">
+      <summary><span class="en">Read what the film shows</span><span class="fil">Basahin ang ipinapakita ng pelikula</span></summary>
+      <div class="d-body">
+        <ol class="film-script">
+          <li><span class="en"><b>On screen:</b> Learning made joyful, for every child. <b>We see:</b> The FlashLearn PWD logo.</span><span class="fil"><b>Nakasulat:</b> Masayang pagkatuto, para sa bawat bata. <b>Makikita:</b> Ang logo ng FlashLearn PWD.</span></li>
+          <li><span class="en"><b>On screen:</b> Free · English &amp; Filipino · Android. A free learning app for children with disabilities. Flashcards, sign language, games and stories that adapt to each learner. <b>We see:</b> On a tablet: the app’s Home screen.</span><span class="fil"><b>Nakasulat:</b> Libre · English at Filipino · Android. Libreng app sa pag-aaral para sa mga batang may kapansanan. Flashcards, sign language, mga laro at kuwentong umaangkop sa bawat mag-aaral. <b>Makikita:</b> Sa isang tablet: ang Home screen ng app.</span></li>
+          <li><span class="en"><b>On screen:</b> Bilingual flashcards. 177 words · 13 decks. Pictures, real photos and spoken English &amp; Filipino. <b>We see:</b> A learner opens the Dog card (Aso in Filipino) and turns it over.</span><span class="fil"><b>Nakasulat:</b> Bilingual na flashcards. 177 salita · 13 deck. May larawan, totoong litrato, at binibigkas sa English at Filipino. <b>Makikita:</b> Binuksan ng mag-aaral ang kard na Dog (Aso sa Filipino) at binaligtad ito.</span></li>
+          <li><span class="en"><b>On screen:</b> Filipino Sign Language. 143 sign videos. Watch everyday words signed. Slow them down, play them again. <b>We see:</b> The card’s sign video plays: the FSL sign for Dog.</span><span class="fil"><b>Nakasulat:</b> Filipino Sign Language. 143 video ng senyas. Panoorin ang senyas ng mga salita. Pabagalin, ulitin. <b>Makikita:</b> Lumabas ang video ng senyas ng kard: ang senyas sa FSL para sa Dog.</span></li>
+          <li><span class="en"><b>On screen:</b> Learning games. 15 games. Ten for each accessibility profile, at a level that adapts. <b>We see:</b> In Word Match, the learner picks Butterfly for “Paru-paro”, and it turns green.</span><span class="fil"><b>Nakasulat:</b> Mga larong pampag-aaral. 15 laro. Sampu para sa bawat accessibility profile, sa antas na umaangkop. <b>Makikita:</b> Sa Word Match, pinili ng mag-aaral ang Butterfly para sa “Paru-paro”, at naging berde ito.</span></li>
+          <li><span class="en"><b>On screen:</b> Talk Board. Tap pictures, make a sentence. The tablet says it aloud: a voice for learners who don’t speak yet. <b>We see:</b> On the Talk Board, the learner taps “Hello” and “I am thirsty”, and the tablet reads the sentence aloud.</span><span class="fil"><b>Nakasulat:</b> Talk Board. Mag-tap ng larawan, bumuo ng pangungusap. Binibigkas ito ng tablet: boses para sa mga mag-aaral na hindi pa nagsasalita. <b>Makikita:</b> Sa Talk Board, pinindot ng mag-aaral ang “Hello” at “I am thirsty”, at binasa nang malakas ng tablet ang pangungusap (sa Filipino: “Kamusta. Nauuhaw ako.”).</span></li>
+          <li><span class="en"><b>On screen:</b> Made for every kind of learner. Choose a preset and the whole app sets itself up. Visual: Large text, voice guide; Hearing: Sign videos, pictures first; Motor: Gaze, voice, big buttons; Cognitive: Calm, short, adaptive; Multiple: Every support together. <b>We see:</b> Five cards, one for each preset.</span><span class="fil"><b>Nakasulat:</b> Para sa bawat uri ng mag-aaral. Pumili ng preset at kusang mag-aayos ang buong app. Paningin: Malaking letra, gabay na boses; Pandinig: Video ng senyas, larawan muna; Paggalaw: Tingin, boses, malaking button; Kognitibo: Kalmado, maikli, umaangkop; Maramihan: Lahat ng suporta nang sabay. <b>Makikita:</b> Limang kard, isa para sa bawat preset.</span></li>
+          <li><span class="en"><b>On screen:</b> For teachers &amp; parents. Follow every step. Classes, progress reports, pre- and post-tests, and messages home. <b>We see:</b> The learner’s Progress screen: streak, stars, words learned and level.</span><span class="fil"><b>Nakasulat:</b> Para sa guro at magulang. Subaybayan ang bawat hakbang. Mga klase, progress report, pre-test at post-test, at mensahe sa tahanan. <b>Makikita:</b> Ang screen na Progress ng mag-aaral: streak, stars, mga natutunang salita at level.</span></li>
+          <li><span class="en"><b>On screen:</b> Ready to start learning? 100% free · No ads · No login · Works offline. Download free. For Android 10 and newer. Scan to open the website. jpaestedstu-prog.github.io/pwd_flashcard_app <b>We see:</b> A QR code that opens this website.</span><span class="fil"><b>Nakasulat:</b> Handa nang matuto? 100% libre · Walang ads · Walang login · Gumagana offline. I-download nang libre. Para sa Android 10 pataas. I-scan para mabuksan ang website. jpaestedstu-prog.github.io/pwd_flashcard_app <b>Makikita:</b> Isang QR code na nagbubukas ng website na ito.</span></li>
+        </ol>
+      </div>
+    </details>
+    <div class="film-share">
+      <p><span class="en">Show it in class or share it: download the film.</span><span class="fil">Ipalabas sa klase o ibahagi: i-download ang pelikula.</span></p>
+      <ul>
+        <li><a href="assets/videos/film-en.mp4" download="FlashLearn-PWD-film-EN.mp4">English — <span class="en">landscape</span><span class="fil">pahiga</span> (3.0 MB)</a></li>
+        <li><a href="assets/videos/film-en-tall.mp4" download="FlashLearn-PWD-film-EN-phone.mp4">English — <span class="en">upright, for phones</span><span class="fil">patayo, para sa phone</span> (2.9 MB)</a></li>
+        <li><a href="assets/videos/film-fil.mp4" download="FlashLearn-PWD-film-FIL.mp4">Filipino — <span class="en">landscape</span><span class="fil">pahiga</span> (3.1 MB)</a></li>
+        <li><a href="assets/videos/film-fil-tall.mp4" download="FlashLearn-PWD-film-FIL-phone.mp4">Filipino — <span class="en">upright, for phones</span><span class="fil">patayo, para sa phone</span> (3.0 MB)</a></li>
+      </ul>
+    </div>
+  </div>
+  <script type="application/ld+json">
+[
+ {
+  "@context": "https://schema.org",
+  "@type": "VideoObject",
+  "name": "FlashLearn PWD in 50 seconds",
+  "description": "A short silent film about FlashLearn PWD, a free bilingual flashcard app for children with disabilities: flashcards, Filipino Sign Language videos, learning games, the Talk Board, and presets for every kind of learner.",
+  "inLanguage": "en",
+  "uploadDate": "2026-10-14",
+  "duration": "PT50S",
+  "thumbnailUrl": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/film-poster.webp",
+  "contentUrl": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/film-en.mp4",
+  "embedUrl": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/#film"
+ },
+ {
+  "@context": "https://schema.org",
+  "@type": "VideoObject",
+  "name": "Ang FlashLearn PWD sa loob ng 50 segundo",
+  "description": "Isang maikling pelikulang walang tunog tungkol sa FlashLearn PWD, libreng bilingual na flashcard app para sa mga batang may kapansanan: flashcards, video ng senyas sa FSL, mga larong pampag-aaral, ang Talk Board, at mga preset para sa bawat uri ng mag-aaral.",
+  "inLanguage": "fil",
+  "uploadDate": "2026-10-14",
+  "duration": "PT50S",
+  "thumbnailUrl": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/film-poster.webp",
+  "contentUrl": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/film-fil.mp4",
+  "embedUrl": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/#film"
+ }
+]
+  </script>
+</section>
+<!--/gen:site-film-->
 
 <!-- ============ Where to start ============ -->
 <section class="section" id="start">
@@ -332,11 +421,11 @@
     </div>
     <div class="footer-bottom">
       <p><span class="en">Made with 💜 for inclusive education in the Philippines.</span><span class="fil">Ginawa nang may 💜 para sa inklusibong edukasyon sa Pilipinas.</span></p>
-      <p>© 2026 FlashLearn PWD. <span class="en">Screenshots and the demo video come from the real app on an Android tablet.</span><span class="fil">Galing sa totoong app sa isang Android tablet ang mga screenshot at demo video.</span></p>
+      <p>© 2026 FlashLearn PWD. <span class="en">Screenshots and the app in our videos come from the real app on an Android tablet.</span><span class="fil">Galing sa totoong app sa isang Android tablet ang mga screenshot at ang app sa aming mga video.</span></p>
     </div>
   </div>
 </footer>
-<script src="assets/site.js?v=66570b5b38"></script>
+<script src="assets/site.js?v=7277155a41"></script>
 <!--/gen:site-footer-->
 </body>
 </html>

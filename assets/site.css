@@ -89,6 +89,10 @@ html{ scroll-behavior:smooth; scroll-padding-top:calc(var(--header-h) + 16px); -
   html{ scroll-behavior:auto; }
   *,*::before,*::after{ animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important; }
 }
+/* The same, chosen on this site ("Reduce motion" in the Aa panel) — for
+   visitors who cannot change their device's setting, e.g. at school. */
+html.still{ scroll-behavior:auto; }
+html.still *,html.still *::before,html.still *::after{ animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important; }
 body{
   font-family:var(--font-body); font-size:1.0625rem; line-height:1.7; color:var(--ink-2);
   background:var(--bg); overflow-x:hidden; text-rendering:optimizeLegibility;
@@ -554,6 +558,118 @@ html.hc .device{ background:#000; box-shadow:none; }
 html.hc .cta-band{ background:#000; box-shadow:none; }
 html.hc .cta-band .btn-primary{ background:#fff; color:#000; }
 html.hc .cta-band .btn-secondary{ color:#fff; border-color:#fff; }
+
+/* ============ Home: the moving app preview and the film ============
+   Both are made by tools/site_video_build.py. */
+.hero-watch{ margin-top:1.25rem; }
+.watch-link{ display:inline-flex; align-items:center; gap:.6rem; min-height:2.75rem; font-weight:800; text-decoration:none; }
+.watch-link:hover .en,.watch-link:hover .fil{ text-decoration:underline; }
+.watch-ico{
+  display:grid; place-items:center; flex:0 0 auto; width:2.4rem; height:2.4rem; border-radius:50%; color:#fff;
+  background:linear-gradient(150deg,#F291B5,#C2185B);
+  box-shadow:inset 0 1px 2px rgba(255,255,255,.4), inset 0 -2px 3px rgba(0,0,0,.18), 0 6px 14px rgba(194,24,91,.25);
+}
+.watch-ico svg{ width:1.1rem; height:1.1rem; margin-left:.12rem; }
+html.hc .watch-ico{ background:#000; box-shadow:none; }
+
+/* The preview plays over the screenshot (which stays underneath as its
+   poster, its description and its zoom), fading in once it is moving. */
+.hero-art .device{ position:relative; }
+.device .loop{
+  position:absolute; left:.7rem; top:.7rem; width:calc(100% - 1.4rem); height:calc(100% - 1.4rem);
+  border-radius:1.6rem; object-fit:cover; opacity:0; transition:opacity .6s ease; pointer-events:none;
+}
+.device.is-playing .loop{ opacity:1; }
+.loop-ctl{ display:flex; justify-content:center; margin-top:1rem; }
+.loop-btn{
+  display:inline-flex; align-items:center; gap:.55rem; min-height:2.75rem; padding:.35rem 1rem .35rem .4rem; cursor:pointer;
+  border-radius:999px; border:1px solid var(--border); background:var(--surface); color:var(--ink);
+  font-weight:800; font-size:.92rem; line-height:1.25; box-shadow:var(--shadow-1);
+}
+.loop-btn:hover{ border-color:var(--brand); }
+.loop-ico{ display:grid; place-items:center; flex:0 0 auto; width:2rem; height:2rem; border-radius:50%; background:var(--brand-soft); color:var(--brand-ink); }
+.loop-ico svg{ width:1rem; height:1rem; }
+.loop-btn .when-off,.loop-btn.is-off .when-on{ display:none; }
+.loop-btn.is-off .when-off{ display:inline; }
+.loop-btn.is-off svg.when-off{ display:block; }
+html.hc .loop-btn{ border:2px solid #000; box-shadow:none; }
+html.hc .loop-ico{ border:2px solid #000; }
+/* Floating 3D tiles beside the phone, the same tiles the cards use. */
+.hero-art .float-tile{
+  position:absolute; z-index:2; margin:0; width:3.25rem; height:3.25rem; font-size:1.5rem; pointer-events:none;
+  animation:flp-bob 7s ease-in-out infinite;
+}
+.float-tile.ft-1{ left:4%; top:10%; }
+.float-tile.ft-2{ right:3%; top:30%; animation-duration:8s; animation-delay:-2.2s; }
+.float-tile.ft-3{ left:1%; top:58%; animation-duration:7.5s; animation-delay:-4.1s; }
+.float-tile.ft-4{ right:6%; top:74%; animation-duration:6.5s; animation-delay:-1.3s; }
+@keyframes flp-bob{ 0%,100%{ transform:translateY(0) rotate(-4deg); } 50%{ transform:translateY(-12px) rotate(4deg); } }
+.hero-art.paused .float-tile{ animation-play-state:paused; }
+html.hc .hero-art .float-tile{ display:none; }
+@media (max-width:900px){ .hero-art .float-tile{ width:2.75rem; height:2.75rem; font-size:1.25rem; border-radius:.85rem; } }
+@media (max-width:480px){ .float-tile.ft-3,.float-tile.ft-4{ display:none; } }
+
+/* The film: a poster with a big Play button until someone presses it. */
+.film-section .section-head{ margin-bottom:1.75rem; }
+.film{
+  position:relative; max-width:60rem; margin:0 auto; aspect-ratio:16/9;
+  border-radius:24px; overflow:hidden; background:#1C1930; box-shadow:var(--shadow-2);
+}
+.film-facade,.film > video{ position:absolute; inset:0; width:100%; height:100%; }
+.film-facade{ display:block; color:#fff; text-decoration:none; cursor:pointer; }
+.film-facade[hidden]{ display:none; }   /* once playing it must leave the Tab order too */
+.film-facade picture,.film-facade img{ display:block; width:100%; height:100%; }
+.film-facade img{ object-fit:cover; }
+.film > video{ display:block; object-fit:contain; background:#1C1930; }
+.film-play{
+  position:absolute; left:clamp(.9rem,4%,2.5rem); bottom:clamp(.9rem,6%,2.5rem);
+  display:inline-flex; align-items:center; gap:.7rem; padding:.5rem 1.15rem .5rem .5rem; border-radius:999px;
+  background:linear-gradient(170deg,#6C5CE7 0%,#6152DC 45%,#5345B8 100%); color:#fff;
+  font-family:var(--font-head); font-weight:600; font-size:1.15rem; line-height:1.2;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35), inset 0 -3px 0 rgba(0,0,0,.14), 0 10px 26px rgba(46,44,72,.35);
+  transition:transform .15s ease, box-shadow .15s ease;
+}
+.film-play-ico{ display:grid; place-items:center; flex:0 0 auto; width:3rem; height:3rem; border-radius:50%; background:#fff; color:#4B3DB5; box-shadow:0 2px 6px rgba(0,0,0,.18); }
+.film-play-ico svg{ width:1.5rem; height:1.5rem; margin-left:.15rem; }
+.film-len{ font-family:var(--font-body); font-weight:800; font-size:.9rem; color:#fff; background:rgba(20,16,60,.35); border-radius:999px; padding:.1rem .55rem; font-variant-numeric:tabular-nums; }
+.film-facade:hover .film-play{ transform:translateY(-2px); box-shadow:inset 0 1px 0 rgba(255,255,255,.35), inset 0 -3px 0 rgba(0,0,0,.14), 0 14px 30px rgba(46,44,72,.42); }
+.film-facade:focus-visible{ outline:none; }
+.film-facade:focus-visible .film-play{ outline:3px solid #fff; outline-offset:3px; box-shadow:0 0 0 6px #2A1C9A; }
+.film:focus-within{ box-shadow:0 0 0 3px var(--focus), var(--shadow-2); }
+.film-msg{
+  position:absolute; z-index:2; left:50%; top:clamp(.75rem,4%,1.5rem); transform:translateX(-50%);
+  width:max-content; max-width:calc(100% - 2rem); padding:.55rem 1.1rem; border-radius:999px;
+  background:#1C1930; color:#fff; font-weight:800; font-size:.92rem; line-height:1.35; text-align:center;
+  box-shadow:0 6px 16px rgba(0,0,0,.28);
+}
+.film-msg[hidden]{ display:none; }
+html.hc .film-msg{ background:#000; border:2px solid #fff; }
+/* Phones held upright get the upright film (site.js picks it, same query). */
+@media (max-width:640px) and (orientation:portrait){
+  .film{ aspect-ratio:9/16; width:min(100%, calc(78vh * 9 / 16)); }
+  .film-play{ left:50%; bottom:auto; top:38%; transform:translate(-50%,-50%); white-space:nowrap; }
+  .film-facade:hover .film-play{ transform:translate(-50%,calc(-50% - 2px)); }
+}
+@supports (height:1svh){ @media (max-width:640px) and (orientation:portrait){ .film{ width:min(100%, calc(78svh * 9 / 16)); } } }
+@media (max-width:420px){ .film-play{ font-size:1rem; gap:.55rem; } .film-play-ico{ width:2.5rem; height:2.5rem; } }
+html.hc .film{ border:3px solid #000; box-shadow:none; }
+html.hc .film-play{ background:#000; border:2px solid #fff; box-shadow:none; }
+html.hc .film-play-ico{ color:#000; }
+.film-words{ max-width:60rem; margin:1.25rem auto 0; }
+.film-script{ padding-left:1.4em; }
+.film-script li{ max-width:none; }
+.film-script li + li{ margin-top:.6rem; }
+.film-share{ max-width:60rem; margin:1.5rem auto 0; text-align:center; }
+.film-share p{ max-width:none; font-weight:800; color:var(--ink); }
+.film-share ul{ list-style:none; display:flex; flex-wrap:wrap; justify-content:center; gap:.55rem .7rem; margin-top:.7rem; }
+.film-share li{ max-width:none; }
+.film-share a{
+  display:inline-flex; align-items:center; min-height:2.75rem; padding:.4rem 1rem; border-radius:999px;
+  background:var(--surface); border:1px solid var(--border); box-shadow:var(--shadow-1);
+  font-weight:800; font-size:.92rem; text-decoration:none;
+}
+.film-share a:hover{ border-color:var(--brand); text-decoration:underline; }
+html.hc .film-share a{ border:2px solid #000; box-shadow:none; }
 
 /* ============ Try it ============ */
 .try-layout{ display:grid; grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr); gap:3rem; align-items:start; }
