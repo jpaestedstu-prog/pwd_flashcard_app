@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -9,8 +10,10 @@ import '../../../core/security/pin_credential_helper.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
+import '../../../core/widgets/fit_text.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../../../core/services/analytics_service.dart';
+import '../../../core/services/fsl_clip_quality.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/review_reminder_service.dart';
 import '../../../core/constants/distribution.dart';
@@ -41,6 +44,7 @@ class SettingsScreen extends ConsumerWidget {
     final settings = ref.watch(settingsProvider);
     final profile = ref.watch(profileProvider);
     final settingsNotifier = ref.read(settingsProvider.notifier);
+    final fslChoice = ref.watch(fslQualityChoiceProvider);
 
     // Teacher / Parent are monitoring-only roles: they review student progress
     // via the Dashboard, Analytics, and Reports rather than using the learning
@@ -362,19 +366,27 @@ class SettingsScreen extends ConsumerWidget {
               ),
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    for (final choice in ScreenOrientationChoice.values) ...[
-                      if (choice.index > 0) const SizedBox(width: 8),
-                      _OrientationChoiceButton(
-                        choice: choice,
+                child: _ChoiceRow(
+                  choices: [
+                    for (final choice in ScreenOrientationChoice.values)
+                      _ChoiceButton(
+                        icon: switch (choice) {
+                          ScreenOrientationChoice.device =>
+                            Icons.screen_rotation_rounded,
+                          ScreenOrientationChoice.portrait =>
+                            Icons.stay_current_portrait_rounded,
+                          ScreenOrientationChoice.landscape =>
+                            Icons.stay_current_landscape_rounded,
+                        },
+                        label: _orientationLabel(_t(context), choice),
+                        semanticsLabel: _t(context).setOrientationTo(
+                          _orientationLabel(_t(context), choice),
+                        ),
                         isActive: settings.screenOrientation == choice,
                         onTap: () => settingsNotifier.update(
                           settings.copyWith(screenOrientation: choice),
                         ),
                       ),
-                    ],
                   ],
                 ),
               ),
@@ -485,13 +497,17 @@ class SettingsScreen extends ConsumerWidget {
               // It used to sit at the bottom of "Data", below Cloud Sync and
               // Backup & Restore — the learners who most need it were the least
               // likely to scroll that far, and nothing about it is a data setting.
-              _SettingsTile(
-                icon: Icons.remove_red_eye_rounded,
-                title: l10n?.settingGazeControlTitle ?? 'Gaze Control (Preview)',
-                subtitle: l10n?.settingGazeControlDesc ??
+              // Not in a browser: the face tracker runs on the device itself
+              // (see GazeSettingsNotifier, which keeps it off there).
+              if (!kIsWeb)
+                _SettingsTile(
+                  icon: Icons.remove_red_eye_rounded,
+                  title:
+                      l10n?.settingGazeControlTitle ?? 'Gaze Control (Preview)',
+                  subtitle: l10n?.settingGazeControlDesc ??
                       'Hands-free: move your head or blink to select',
-                onTap: () => context.push('/gaze-settings'),
-              ),
+                  onTap: () => context.push('/gaze-settings'),
+                ),
 
               // Bluetooth game controller. Sits next to Gaze Control because
               // it answers the same question — how does a learner who cannot
@@ -977,6 +993,44 @@ class SettingsScreen extends ConsumerWidget {
                       'Sign in with email to restore on any device',
                   onTap: () => context.push('/backup-account'),
                 ),
+
+              // ─── Sign videos ─────────────────
+              // Which copy of each FSL sign this device downloads (see
+              // FslClipQuality). Automatic gives phones the smaller copy: a
+              // friend's phone froze on the full-HD ones or never started
+              // them. Kept for the device, whoever is signed in.
+              _SettingsTile(
+                icon: Icons.sign_language_rounded,
+                title: _t(context).signVideoQuality,
+                subtitle: _signVideoDesc(_t(context), fslChoice),
+                onTap: () => ref.read(fslQualityChoiceProvider.notifier).set(
+                      FslQualityChoice.values[(fslChoice.index + 1) %
+                          FslQualityChoice.values.length],
+                    ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _ChoiceRow(
+                  choices: [
+                    for (final choice in FslQualityChoice.values)
+                      _ChoiceButton(
+                        icon: switch (choice) {
+                          FslQualityChoice.auto => Icons.auto_awesome_rounded,
+                          FslQualityChoice.light => Icons.data_saver_on_rounded,
+                          FslQualityChoice.full => Icons.hd_rounded,
+                        },
+                        label: _signVideoLabel(_t(context), choice),
+                        semanticsLabel: _t(context).setSignVideoTo(
+                          _signVideoLabel(_t(context), choice),
+                        ),
+                        isActive: fslChoice == choice,
+                        onTap: () => ref
+                            .read(fslQualityChoiceProvider.notifier)
+                            .set(choice),
+                      ),
+                  ],
+                ),
+              ),
 
               // "Classroom Mode" (real-time student monitoring + casting) is a
               // teacher/parent tool — hidden for player profiles, which focus on
@@ -1515,12 +1569,16 @@ class _SectionHeader extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            Text(
-              title.toUpperCase(),
-              style: AppTypography.labelMedium.copyWith(
-                color: HCColor.of(context).textSecondary,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.2,
+            // Wraps between its words at large text: "MGA MODE NG
+            // PAGKATUTO" ran past a phone's edge at 2.0x.
+            Flexible(
+              child: Text(
+                title.toUpperCase(),
+                style: AppTypography.labelMedium.copyWith(
+                  color: HCColor.of(context).textSecondary,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.2,
+                ),
               ),
             ),
           ],
@@ -1722,69 +1780,149 @@ class _SettingsTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: HCColor.of(context).border),
       ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: HCColor.of(context).primaryLight,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: HCColor.of(context).primary.withValues(alpha: 0.2),
-                  blurRadius: 8,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final below = _controlBelow(context, constraints.maxWidth);
+          final control =
+              trailing == null ? null : _control(context, fullWidth: below);
+          final top = Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: HCColor.of(context).primaryLight,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color:
+                          HCColor.of(context).primary.withValues(alpha: 0.2),
+                      blurRadius: 8,
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: Icon(icon, color: HCColor.of(context).primary, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: AppTypography.labelLarge.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                child: Icon(icon, color: HCColor.of(context).primary, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: _titleStyle),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: _subtitleStyle.copyWith(
+                        color: HCColor.of(context).textSecondary,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: AppTypography.bodySmall.copyWith(
-                    color: HCColor.of(context).textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // When the row itself is the control, the trailing switch must not
-          // *also* take focus. A Switch is focusable by default and wins the
-          // traversal order, so focus landed inside its internals — a subtree
-          // with no text — and the row announced "Unnamed item" even though it
-          // carried a perfectly good label. One focusable per row: the row.
-          if (trailing != null)
-            onTap == null
-                // No row action means the trailing widget *is* the control —
-                // a slider, a dropdown. Focus lands deep inside it, far below
-                // the row's own label, so repeat the label right here where
-                // the focused node can actually find it.
-                ? Semantics(
-                    container: true,
-                    label: _spokenLabel(context),
-                    child: trailing!,
-                  )
-                : ExcludeFocus(child: trailing!)
-          else
-            Icon(
-              Icons.arrow_forward_ios_rounded,
-              size: 18,
-              color: HCColor.of(context).textSecondary,
-            ),
-        ],
+              ),
+              if (control == null)
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 18,
+                  color: HCColor.of(context).textSecondary,
+                )
+              else if (!below)
+                control,
+            ],
+          );
+          if (!below) return top;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              top,
+              const SizedBox(height: 8),
+              Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: control,
+              ),
+            ],
+          );
+        },
       ),
     );
+  }
+
+  static TextStyle get _titleStyle =>
+      AppTypography.labelLarge.copyWith(fontWeight: FontWeight.w600);
+
+  static TextStyle get _subtitleStyle => AppTypography.bodySmall;
+
+  /// The icon's box and the gap after it.
+  static const double _leadingWidth = 36 + 12;
+
+  /// Whether [trailing] goes under the name instead of beside it.
+  ///
+  /// Beside the name on a phone at large text, a control squeezed the name
+  /// until its words broke ("Spee / ch", "Reminde / r") or pushed the row
+  /// past the screen's edge: the sliders are 150 dp whatever the text size,
+  /// and a menu or a "Change" button grows with the font. So a control
+  /// moves under the name when a word of the name or the description would
+  /// not fit beside it whole, and a menu or button does once text is large
+  /// on a phone-sized row. At the default size and on a tablet the rows look
+  /// as they always did. Widths are FitText's estimate (0.58 em a
+  /// character): the font is not resolved at layout time.
+  bool _controlBelow(BuildContext context, double rowWidth) {
+    final control = trailing;
+    if (control == null) return false;
+    final scaler = MediaQuery.textScalerOf(context);
+    final double controlWidth;
+    if (control is Switch) {
+      controlWidth = 60;
+    } else if (control is SizedBox) {
+      controlWidth = control.width ?? 0;
+    } else if (control is IconButton) {
+      controlWidth = 48;
+    } else {
+      // Its width is its label's, at the current text size.
+      if (scaler.scale(1) >= 1.3 && rowWidth < 420) return true;
+      return false;
+    }
+    final room = rowWidth - _leadingWidth - controlWidth;
+    return !_wordsFit(title, _titleStyle, scaler, room) ||
+        !_wordsFit(subtitle, _subtitleStyle, scaler, room);
+  }
+
+  static bool _wordsFit(
+    String text,
+    TextStyle style,
+    TextScaler scaler,
+    double room,
+  ) {
+    // Letter spacing is per character and does not scale with the font.
+    final perChar =
+        0.58 * scaler.scale(style.fontSize ?? 14) + (style.letterSpacing ?? 0);
+    final longest = text
+        .split(RegExp(r'\s+'))
+        .fold<int>(0, (max, w) => w.length > max ? w.length : max);
+    return longest * perChar <= room;
+  }
+
+  /// [trailing], ready to sit beside the name or under it. Under the name a
+  /// slider takes the full width: a longer track is an easier target.
+  Widget _control(BuildContext context, {required bool fullWidth}) {
+    var control = trailing!;
+    if (fullWidth && control is SizedBox && control.child != null) {
+      control = SizedBox(width: double.infinity, child: control.child);
+    }
+    // When the row itself is the control, the trailing switch must not
+    // *also* take focus. A Switch is focusable by default and wins the
+    // traversal order, so focus landed inside its internals — a subtree
+    // with no text — and the row announced "Unnamed item" even though it
+    // carried a perfectly good label. One focusable per row: the row.
+    return onTap == null
+        // No row action means the trailing widget *is* the control —
+        // a slider, a dropdown. Focus lands deep inside it, far below
+        // the row's own label, so repeat the label right here where
+        // the focused node can actually find it.
+        ? Semantics(
+            container: true,
+            label: _spokenLabel(context),
+            child: control,
+          )
+        : ExcludeFocus(child: control);
   }
 }
 
@@ -1921,79 +2059,175 @@ String _orientationDesc(AppLocalizations l, ScreenOrientationChoice c) =>
       ScreenOrientationChoice.landscape => l.orientationLandscapeDesc,
     };
 
-/// One of the three orientation choices: an icon that shows the shape, and
-/// its name under it (two lines at the largest font sizes).
-class _OrientationChoiceButton extends StatelessWidget {
-  const _OrientationChoiceButton({
-    required this.choice,
+String _signVideoLabel(AppLocalizations l, FslQualityChoice c) => switch (c) {
+      FslQualityChoice.auto => l.signVideoAuto,
+      FslQualityChoice.light => l.signVideoLight,
+      FslQualityChoice.full => l.signVideoFull,
+    };
+
+String _signVideoDesc(AppLocalizations l, FslQualityChoice c) => switch (c) {
+      FslQualityChoice.auto => l.signVideoAutoDesc,
+      FslQualityChoice.light => l.signVideoLightDesc,
+      FslQualityChoice.full => l.signVideoFullDesc,
+    };
+
+/// The choices under a setting (Screen orientation, Sign videos): side by
+/// side while every name fits its share of the width in at most two lines,
+/// words whole; else one under another, each the full width. Three across
+/// a phone held "Pinakamalinaw" (Sharpest, in Filipino) only as
+/// "Pinakamali / naw", and "Landscape" at large text as "Landsca / pe".
+class _ChoiceRow extends StatelessWidget {
+  const _ChoiceRow({required this.choices});
+
+  final List<_ChoiceButton> choices;
+
+  static const _gap = 8.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final share = (constraints.maxWidth - _gap * (choices.length - 1)) /
+            choices.length;
+        if (choices.every((c) => c.fitsAcross(context, share))) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final (i, choice) in choices.indexed) ...[
+                if (i > 0) const SizedBox(width: _gap),
+                Expanded(child: choice),
+              ],
+            ],
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final (i, choice) in choices.indexed) ...[
+              if (i > 0) const SizedBox(height: _gap),
+              choice.asStacked(),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// One of the choices under a setting: an icon and its name under it, or
+/// beside it when [stacked] ([_ChoiceRow] decides). [semanticsLabel] is what
+/// a screen reader says ("Set screen orientation to Portrait").
+class _ChoiceButton extends StatelessWidget {
+  const _ChoiceButton({
+    required this.icon,
+    required this.label,
+    required this.semanticsLabel,
     required this.isActive,
     required this.onTap,
+    this.stacked = false,
   });
 
-  final ScreenOrientationChoice choice;
+  final IconData icon;
+  final String label;
+  final String semanticsLabel;
   final bool isActive;
   final VoidCallback onTap;
+  final bool stacked;
+
+  static const _acrossPadding =
+      EdgeInsets.symmetric(vertical: 10, horizontal: 6);
+
+  static TextStyle get _labelStyle =>
+      AppTypography.labelMedium.copyWith(fontWeight: FontWeight.w700);
+
+  _ChoiceButton asStacked() => _ChoiceButton(
+        icon: icon,
+        label: label,
+        semanticsLabel: semanticsLabel,
+        isActive: isActive,
+        onTap: onTap,
+        stacked: true,
+      );
+
+  /// Whether [label] fits a button [width] wide in at most two lines with no
+  /// word broken, at the current text size. [FitText]'s estimate (0.58 em a
+  /// character): the label's font is not resolved when this is laid out.
+  bool fitsAcross(BuildContext context, double width) {
+    final style = _labelStyle;
+    final size = MediaQuery.textScalerOf(context).scale(style.fontSize ?? 14);
+    // Letter spacing is per character and does not scale with the font.
+    final perChar = 0.58 * size + (style.letterSpacing ?? 0);
+    final room = width - _acrossPadding.horizontal - 2; // and the border
+    var lines = 1;
+    var line = 0.0;
+    for (final word in label.split(RegExp(r'\s+'))) {
+      final w = word.length * perChar;
+      if (w > room) return false;
+      if (line == 0) {
+        line = w;
+      } else if (line + perChar + w <= room) {
+        line += perChar + w;
+      } else {
+        lines++;
+        line = w;
+      }
+    }
+    return lines <= 2;
+  }
 
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
-    final label = _orientationLabel(_t(context), choice);
     final color = isActive ? hc.textOnPrimary : hc.textSecondary;
-    return Expanded(
-      child: Semantics(
-        button: true,
-        selected: isActive,
-        label: _t(context).setOrientationTo(label),
-        excludeSemantics: true,
-        child: GestureDetector(
-          onTap: onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
-            decoration: BoxDecoration(
-              color: isActive ? hc.primary : hc.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isActive ? AppColors.primary : hc.border,
-              ),
-              boxShadow: isActive
-                  ? [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
-                  : null,
+    final name = FitText(
+      label,
+      textAlign: stacked ? TextAlign.start : TextAlign.center,
+      style: _labelStyle.copyWith(color: color),
+    );
+    return Semantics(
+      button: true,
+      selected: isActive,
+      label: semanticsLabel,
+      excludeSemantics: true,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: stacked
+              ? const EdgeInsets.symmetric(vertical: 10, horizontal: 12)
+              : _acrossPadding,
+          decoration: BoxDecoration(
+            color: isActive ? hc.primary : hc.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isActive ? AppColors.primary : hc.border,
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  switch (choice) {
-                    ScreenOrientationChoice.device =>
-                      Icons.screen_rotation_rounded,
-                    ScreenOrientationChoice.portrait =>
-                      Icons.stay_current_portrait_rounded,
-                    ScreenOrientationChoice.landscape =>
-                      Icons.stay_current_landscape_rounded,
-                  },
-                  color: color,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.labelMedium.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
+            boxShadow: isActive
+                ? [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
           ),
+          child: stacked
+              ? Row(
+                  children: [
+                    Icon(icon, color: color),
+                    const SizedBox(width: 10),
+                    Expanded(child: name),
+                  ],
+                )
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, color: color),
+                    const SizedBox(height: 4),
+                    name,
+                  ],
+                ),
         ),
       ),
     );
