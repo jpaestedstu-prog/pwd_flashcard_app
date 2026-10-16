@@ -417,6 +417,7 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
         child: Stack(
           children: [
             Scaffold(
+              bottomNavigationBar: GameBreakBar(onHold: holdForBreak, onResume: resumeFromBreak),
               appBar: fullscreenBar(
                 ref,
                 AppBar(
@@ -427,6 +428,7 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
                   ),
                   title: Text('${_currentIndex + 1} / $_totalCards'),
                   actions: [
+                    GameBreakAction(onHold: holdForBreak, onResume: resumeFromBreak),
                     IconButton(
                       icon: const Icon(Icons.pause_circle_outline_rounded),
                       tooltip: l10n.pauseLabel,
@@ -602,7 +604,6 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
                 },
               ),
             ),
-            GameBreakButton(onHold: holdForBreak, onResume: resumeFromBreak),
             if (isPaused)
               PauseOverlay(
                 onResume: resumeGame,
@@ -650,7 +651,11 @@ class _ActionButton extends StatelessWidget {
         child: Builder(
           builder: (context) {
             final size = context.responsiveSize(60);
+            // Only as tall as the circle and its label: on a phone held
+            // sideways a full-height column made the whole left (or right)
+            // strip of the screen a "Still Learning" (or "I Know") tap.
             return Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
                   width: size,

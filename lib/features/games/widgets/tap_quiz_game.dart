@@ -655,6 +655,7 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
         child: Stack(
           children: [
             Scaffold(
+              bottomNavigationBar: GameBreakBar(onHold: holdForBreak, onResume: resumeFromBreak),
               appBar: fullscreenBar(
                 ref,
                 AppBar(
@@ -671,6 +672,7 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
                     ),
                   ),
                   actions: [
+                    GameBreakAction(onHold: holdForBreak, onResume: resumeFromBreak),
                     IconButton(
                       icon: const Icon(Icons.pause_circle_outline_rounded),
                       tooltip: l10n.pauseLabel,
@@ -767,7 +769,6 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
                 ),
               ),
             ),
-            GameBreakButton(onHold: holdForBreak, onResume: resumeFromBreak),
             if (isPaused)
               PauseOverlay(
                 onResume: resumeGame,

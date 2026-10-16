@@ -79,12 +79,14 @@ class BreakButton extends StatelessWidget {
   }
 }
 
-/// An always-visible floating "Break" pill for **gameplay**, so an overwhelmed
-/// student can reach a calming break in one tap (the pause-menu option stays
-/// too). Drop it into a game's full-screen `Stack` — it returns a
-/// [Positioned.fill] that anchors a compact pill to the bottom-left inside the
-/// safe area, and only the pill itself absorbs taps (the rest of the game stays
-/// interactive). When the game is paused the pause overlay paints over it.
+/// An always-visible "Break" pill for **gameplay**, so an overwhelmed student
+/// can reach a calming break in one tap (the pause-menu option stays too).
+/// Put it in the game's `Scaffold.bottomNavigationBar`: it is a lane of its
+/// own under the game, so the game is laid out above it and nothing of the
+/// game is ever underneath. (It used to float over the game, bottom-left, and
+/// covered answer cards, buttons and puzzle pieces in 11 of 13 games on a
+/// phone, some on a tablet too: a tap there opened a break instead.) When the
+/// game is paused the pause overlay paints over it.
 ///
 /// Tapping it [onHold]s the game (pause the timer + media without showing the
 /// pause overlay), opens the break, then [onResume]s — so the student lands
@@ -92,11 +94,11 @@ class BreakButton extends StatelessWidget {
 /// `GamePauseMixin.holdForBreak` / `resumeFromBreak`.
 ///
 /// Compatibility: a stadium pill with a `min` height of 48 (a comfortable touch
-/// target on any phone), safe-area insets on every side it touches, and a
+/// target on any phone), clear of the system's bottom bar, and a
 /// high-contrast variant — so it reads and works on every Android phone,
 /// tablet, and OS version, in any orientation.
-class GameBreakButton extends StatelessWidget {
-  const GameBreakButton({
+class GameBreakBar extends StatelessWidget {
+  const GameBreakBar({
     super.key,
     required this.onHold,
     required this.onResume,
@@ -108,11 +110,71 @@ class GameBreakButton extends StatelessWidget {
   /// Resume the game after the student returns from the break.
   final VoidCallback onResume;
 
-  Future<void> _open(BuildContext context) async {
-    onHold();
-    await showBreakTime(context);
-    onResume();
+  @override
+  Widget build(BuildContext context) {
+    // A short screen gets the pill in its app bar instead (GameBreakAction).
+    if (breakPillInAppBar(context)) return const SizedBox.shrink();
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          heightFactor: 1,
+          child: _BreakPill(
+            onTap: () => _openBreak(context, onHold, onResume),
+          ),
+        ),
+      ),
+    );
   }
+}
+
+/// The same pill for a game's `AppBar.actions`, shown only on a short screen
+/// (a phone held sideways), where the [GameBreakBar] lane would take a sixth
+/// of the height the game needs and the app bar has width to spare. Every
+/// game has both; exactly one of them shows.
+class GameBreakAction extends StatelessWidget {
+  const GameBreakAction({
+    super.key,
+    required this.onHold,
+    required this.onResume,
+  });
+
+  final VoidCallback onHold;
+  final VoidCallback onResume;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!breakPillInAppBar(context)) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Center(
+        child: _BreakPill(onTap: () => _openBreak(context, onHold, onResume)),
+      ),
+    );
+  }
+}
+
+/// Whether the Break pill sits in the app bar rather than in its own lane
+/// under the game: on a screen under 480 dp tall.
+bool breakPillInAppBar(BuildContext context) =>
+    MediaQuery.sizeOf(context).height < 480;
+
+Future<void> _openBreak(
+  BuildContext context,
+  VoidCallback onHold,
+  VoidCallback onResume,
+) async {
+  onHold();
+  await showBreakTime(context);
+  onResume();
+}
+
+class _BreakPill extends StatelessWidget {
+  const _BreakPill({required this.onTap});
+
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -124,61 +186,51 @@ class GameBreakButton extends StatelessWidget {
         : hc.fillFor(const Color(0xFF26A69A));
     final Color fg = highContrast ? const Color(0xFFFFEB3B) : Colors.white;
 
-    return Positioned.fill(
-      child: SafeArea(
-        child: Align(
-          alignment: Alignment.bottomLeft,
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Semantics(
-              button: true,
-              label: l10n.iNeedABreakTooltip,
-              child: Tooltip(
-                message: l10n.iNeedABreakTooltip,
-                child: Material(
-                  color: bg,
-                  elevation: 6,
-                  shadowColor: Colors.black54,
-                  shape: StadiumBorder(
-                    side: highContrast
-                        ? const BorderSide(color: Color(0xFFFFEB3B), width: 2)
-                        : BorderSide(
-                            color: Colors.white.withValues(alpha: 0.6),
-                            width: 1.5,
-                          ),
+    return Semantics(
+      button: true,
+      label: l10n.iNeedABreakTooltip,
+      child: Tooltip(
+        message: l10n.iNeedABreakTooltip,
+        child: Material(
+          color: bg,
+          elevation: 6,
+          shadowColor: Colors.black54,
+          shape: StadiumBorder(
+            side: highContrast
+                ? const BorderSide(color: Color(0xFFFFEB3B), width: 2)
+                : BorderSide(
+                    color: Colors.white.withValues(alpha: 0.6),
+                    width: 1.5,
                   ),
-                  child: InkWell(
-                    customBorder: const StadiumBorder(),
-                    onTap: () => _open(context),
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(minHeight: 48),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.self_improvement_rounded,
-                              color: fg,
-                              size: 22,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              l10n.breakButton,
-                              style: TextStyle(
-                                color: fg,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 15,
-                              ),
-                            ),
-                          ],
-                        ),
+          ),
+          child: InkWell(
+            customBorder: const StadiumBorder(),
+            onTap: onTap,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 48),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.self_improvement_rounded,
+                      color: fg,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      l10n.breakButton,
+                      style: TextStyle(
+                        color: fg,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ),

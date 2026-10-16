@@ -106,7 +106,7 @@ void main() {
     });
   });
 
-  group('GameBreakButton (floating, in-game)', () {
+  group('GameBreakBar (in-game, under the game)', () {
     testWidgets('pauses, opens the break, then resumes on return',
         (tester) async {
       var holds = 0;
@@ -126,14 +126,11 @@ void main() {
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             home: Scaffold(
-              body: Stack(
-                children: [
-                  const SizedBox.expand(), // stand-in for the game body
-                  GameBreakButton(
-                    onHold: () => holds++,
-                    onResume: () => resumes++,
-                  ),
-                ],
+              // Stand-in for the game body.
+              body: const SizedBox.expand(key: Key('game-body')),
+              bottomNavigationBar: GameBreakBar(
+                onHold: () => holds++,
+                onResume: () => resumes++,
               ),
             ),
           ),
@@ -141,8 +138,12 @@ void main() {
       );
       await tester.pump();
 
-      // The floating "Break" pill is visible during gameplay.
+      // The "Break" pill is visible during gameplay, in a lane of its own
+      // under the game: nothing of the game is underneath it.
       expect(find.text('Break'), findsOneWidget);
+      final pill = tester.getRect(find.text('Break'));
+      final body = tester.getRect(find.byKey(const Key('game-body')));
+      expect(pill.top, greaterThanOrEqualTo(body.bottom));
 
       await tester.tap(find.text('Break'));
       await tester.pump(); // begin the push

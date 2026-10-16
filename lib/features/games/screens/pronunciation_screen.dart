@@ -626,6 +626,7 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
         child: Stack(
           children: [
             Scaffold(
+              bottomNavigationBar: GameBreakBar(onHold: holdForBreak, onResume: resumeFromBreak),
               appBar: fullscreenBar(
                 ref,
                 AppBar(
@@ -642,6 +643,7 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
                     ),
                   ),
                   actions: [
+                    GameBreakAction(onHold: holdForBreak, onResume: resumeFromBreak),
                     IconButton(
                       icon: const Icon(Icons.pause_circle_outline_rounded),
                       tooltip: l10n.pauseLabel,
@@ -982,28 +984,39 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
                                         children: [
                                           // Shrinks instead of overflowing when the cell is short
                                           // (a phone held sideways, the largest text); the word
-                                          // below keeps its size.
+                                          // below keeps its size. The gap under the picture
+                                          // shrinks with it: on a 360 dp phone at the largest
+                                          // font a fixed gap left the cell 5 px short.
                                           Flexible(
                                             child: FittedBox(
                                               fit: BoxFit.scaleDown,
-                                              child: FlashcardPicture(card: choice, extent: 42),
+                                              child: Padding(
+                                                padding: const EdgeInsets.only(bottom: 8),
+                                                child: FlashcardPicture(card: choice, extent: 42),
+                                              ),
                                             ),
                                           ),
-                                          const SizedBox(height: 8),
-                                          Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                            ),
-                                            // The answer word itself, in a fixed
-                                            // grid cell: it split "Maglaka / d".
-                                            child: FitText(
-                                              choiceText,
-                                              style: AppTypography.titleSmall
-                                                  .copyWith(
-                                                    color: textColor,
-                                                    fontWeight: FontWeight.w700,
-                                                  ),
-                                              textAlign: TextAlign.center,
+                                          // Flexible as well: in the shortest cell
+                                          // (a phone held sideways, the largest
+                                          // font) a two-line word was 1 px taller
+                                          // than the cell once the picture had
+                                          // shrunk away.
+                                          Flexible(
+                                            child: Padding(
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 8,
+                                              ),
+                                              // The answer word itself, in a fixed
+                                              // grid cell: it split "Maglaka / d".
+                                              child: FitText(
+                                                choiceText,
+                                                style: AppTypography.titleSmall
+                                                    .copyWith(
+                                                      color: textColor,
+                                                      fontWeight: FontWeight.w700,
+                                                    ),
+                                                textAlign: TextAlign.center,
+                                              ),
                                             ),
                                           ),
                                         ],
@@ -1060,7 +1073,6 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
                 ),
               ),
             ),
-            GameBreakButton(onHold: holdForBreak, onResume: resumeFromBreak),
             if (isPaused)
               PauseOverlay(
                 onResume: resumeGame,

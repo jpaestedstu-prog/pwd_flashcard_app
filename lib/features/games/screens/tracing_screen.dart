@@ -28,6 +28,7 @@ import '../../break_time/break_time.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/fullscreen_host.dart';
+import '../../../widgets/gesture_edge_padding.dart';
 import '../../../core/widgets/fit_text.dart';
 
 class TracingScreen extends ConsumerStatefulWidget {
@@ -411,6 +412,7 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
       child: Stack(
         children: [
           Scaffold(
+            bottomNavigationBar: GameBreakBar(onHold: holdForBreak, onResume: resumeFromBreak),
             appBar: fullscreenBar(
               ref,
               AppBar(
@@ -421,6 +423,7 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
                 ),
                 title: Text(AppLocalizations.of(context)!.tracing),
                 actions: [
+                  GameBreakAction(onHold: holdForBreak, onResume: resumeFromBreak),
                   IconButton(
                     icon: const Icon(Icons.pause_circle_outline_rounded),
                     tooltip: l10n.pauseLabel,
@@ -450,7 +453,11 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
               ),
             ),
             body: Padding(
-              padding: const EdgeInsets.all(16),
+              // Clear of the back-gesture strips at the screen edges: on a
+              // phone with gesture navigation a stroke begun there paused
+              // the game instead of drawing.
+              padding: gestureSafeHorizontal(context)
+                  .copyWith(top: 16, bottom: 16),
               child: Column(
                 children: [
                   // Word info card
@@ -479,7 +486,6 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
               ),
             ),
           ),
-          GameBreakButton(onHold: holdForBreak, onResume: resumeFromBreak),
           if (isPaused)
             PauseOverlay(
               onResume: resumeGame,

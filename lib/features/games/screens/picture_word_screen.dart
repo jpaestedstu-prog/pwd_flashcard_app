@@ -457,6 +457,7 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
         child: Stack(
           children: [
             Scaffold(
+              bottomNavigationBar: GameBreakBar(onHold: holdForBreak, onResume: resumeFromBreak),
               appBar: fullscreenBar(
                 ref,
                 AppBar(
@@ -473,6 +474,7 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
                     ),
                   ),
                   actions: [
+                    GameBreakAction(onHold: holdForBreak, onResume: resumeFromBreak),
                     IconButton(
                       icon: const Icon(Icons.pause_circle_outline_rounded),
                       tooltip: l10n.pauseLabel,
@@ -555,7 +557,6 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
                 ),
               ),
             ),
-            GameBreakButton(onHold: holdForBreak, onResume: resumeFromBreak),
             if (isPaused)
               PauseOverlay(
                 onResume: resumeGame,

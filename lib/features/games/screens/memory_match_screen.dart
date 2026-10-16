@@ -561,6 +561,7 @@ class _MemoryMatchScreenState extends ConsumerState<MemoryMatchScreen>
         child: Stack(
           children: [
             Scaffold(
+              bottomNavigationBar: GameBreakBar(onHold: holdForBreak, onResume: resumeFromBreak),
               appBar: fullscreenBar(
                 ref,
                 AppBar(
@@ -571,6 +572,7 @@ class _MemoryMatchScreenState extends ConsumerState<MemoryMatchScreen>
                   ),
                   title: Text(AppLocalizations.of(context)!.memoryMatch),
                   actions: [
+                    GameBreakAction(onHold: holdForBreak, onResume: resumeFromBreak),
                     IconButton(
                       icon: const Icon(Icons.pause_circle_outline_rounded),
                       tooltip: l10n.pauseLabel,
@@ -703,7 +705,6 @@ class _MemoryMatchScreenState extends ConsumerState<MemoryMatchScreen>
                 ),
               ),
             ),
-            GameBreakButton(onHold: holdForBreak, onResume: resumeFromBreak),
             if (isPaused)
               PauseOverlay(
                 onResume: resumeGame,

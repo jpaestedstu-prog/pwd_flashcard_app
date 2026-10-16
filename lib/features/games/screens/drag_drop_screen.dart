@@ -26,6 +26,7 @@ import '../../../widgets/flashcard_image.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/fullscreen_host.dart';
 import '../../../core/widgets/fit_text.dart';
+import '../../../widgets/gesture_edge_padding.dart';
 import '../unfinished_round_stars.dart';
 
 class DragDropScreen extends ConsumerStatefulWidget {
@@ -258,6 +259,7 @@ class _DragDropScreenState extends ConsumerState<DragDropScreen>
       child: Stack(
         children: [
           Scaffold(
+            bottomNavigationBar: GameBreakBar(onHold: holdForBreak, onResume: resumeFromBreak),
             appBar: fullscreenBar(
               ref,
               AppBar(
@@ -268,6 +270,7 @@ class _DragDropScreenState extends ConsumerState<DragDropScreen>
                 ),
                 title: Text(AppLocalizations.of(context)!.dragAndDrop),
                 actions: [
+                  GameBreakAction(onHold: holdForBreak, onResume: resumeFromBreak),
                   IconButton(
                     icon: const Icon(Icons.pause_circle_outline_rounded),
                     tooltip: l10n.pauseLabel,
@@ -297,7 +300,10 @@ class _DragDropScreenState extends ConsumerState<DragDropScreen>
               ),
             ),
             body: Padding(
-              padding: const EdgeInsets.all(20),
+              // Clear of the back-gesture strips: a word dragged from the
+              // screen's edge went "back" on a phone with gesture navigation.
+              padding: gestureSafeHorizontal(context, minimum: 20)
+                  .copyWith(top: 20, bottom: 20),
               // Scroll the whole board so a short (landscape) viewport or large font
               // scale never overflows — on a tablet it all fits without scrolling.
               child: SingleChildScrollView(
@@ -412,7 +418,6 @@ class _DragDropScreenState extends ConsumerState<DragDropScreen>
               ),
             ),
           ),
-          GameBreakButton(onHold: holdForBreak, onResume: resumeFromBreak),
           if (isPaused)
             PauseOverlay(
               onResume: resumeGame,

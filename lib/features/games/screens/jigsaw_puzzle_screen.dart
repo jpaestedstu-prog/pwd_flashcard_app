@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/fit_text.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../data/local/seed_data.dart';
@@ -421,6 +422,7 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
       child: Stack(
         children: [
           Scaffold(
+            bottomNavigationBar: GameBreakBar(onHold: holdForBreak, onResume: resumeFromBreak),
             appBar: fullscreenBar(
               ref,
               AppBar(
@@ -437,6 +439,7 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
                   ),
                 ),
                 actions: [
+                  GameBreakAction(onHold: holdForBreak, onResume: resumeFromBreak),
                   IconButton(
                     icon: const Icon(Icons.pause_circle_outline_rounded),
                     tooltip: l10n.pauseLabel,
@@ -528,30 +531,50 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
                               color: card.category.color.withValues(alpha: 0.3),
                             ),
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
+                          // A Wrap: at a large font on a phone the word pair
+                          // and the moves chip were 155 px wider than the
+                          // screen. The chip now drops below the words, and
+                          // each word stays whole on its line.
+                          child: Wrap(
+                            alignment: WrapAlignment.center,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 12,
+                            runSpacing: 8,
                             children: [
-                              FlashcardImage(card: card, size: 28),
-                              const SizedBox(width: 12),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Text(
-                                    card.wordEnglish,
-                                    style: AppTypography.titleMedium.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                      color: card.category.darkColor,
-                                    ),
-                                  ),
-                                  Text(
-                                    card.wordFilipino,
-                                    style: AppTypography.bodySmall.copyWith(
-                                      color: HCColor.of(context).textSecondary,
+                                  FlashcardImage(card: card, size: 28),
+                                  const SizedBox(width: 12),
+                                  Flexible(
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        FitText(
+                                          card.wordEnglish,
+                                          maxLines: 1,
+                                          style: AppTypography.titleMedium
+                                              .copyWith(
+                                            fontWeight: FontWeight.w700,
+                                            color: card.category.darkColor,
+                                          ),
+                                        ),
+                                        FitText(
+                                          card.wordFilipino,
+                                          maxLines: 1,
+                                          style: AppTypography.bodySmall
+                                              .copyWith(
+                                            color: HCColor.of(context)
+                                                .textSecondary,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(width: 12),
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 8,
@@ -597,7 +620,6 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
               ),
             ),
           ),
-          GameBreakButton(onHold: holdForBreak, onResume: resumeFromBreak),
           if (isPaused)
             PauseOverlay(
               onResume: resumeGame,

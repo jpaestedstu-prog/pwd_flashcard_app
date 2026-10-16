@@ -643,6 +643,7 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen>
         child: Stack(
           children: [
             Scaffold(
+              bottomNavigationBar: GameBreakBar(onHold: holdForBreak, onResume: resumeFromBreak),
               appBar: fullscreenBar(
                 ref,
                 AppBar(
@@ -659,6 +660,7 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen>
                     ),
                   ),
                   actions: [
+                    GameBreakAction(onHold: holdForBreak, onResume: resumeFromBreak),
                     IconButton(
                       icon: const Icon(Icons.pause_circle_outline_rounded),
                       tooltip: l10n.pauseLabel,
@@ -1023,7 +1025,6 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen>
               ),
             ),
             if (_openingFullscreen) const FslLoadingOverlay(),
-            GameBreakButton(onHold: holdForBreak, onResume: resumeFromBreak),
             if (isPaused)
               PauseOverlay(
                 onResume: resumeGame,

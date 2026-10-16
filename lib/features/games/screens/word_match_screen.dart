@@ -511,6 +511,7 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
         child: Stack(
           children: [
             Scaffold(
+              bottomNavigationBar: GameBreakBar(onHold: holdForBreak, onResume: resumeFromBreak),
               appBar: fullscreenBar(
                 ref,
                 AppBar(
@@ -527,6 +528,7 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
                     ),
                   ),
                   actions: [
+                    GameBreakAction(onHold: holdForBreak, onResume: resumeFromBreak),
                     IconButton(
                       icon: const Icon(Icons.pause_circle_outline_rounded),
                       tooltip: l10n.pauseLabel,
@@ -822,7 +824,6 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
                 ),
               ),
             ),
-            GameBreakButton(onHold: holdForBreak, onResume: resumeFromBreak),
             if (isPaused)
               PauseOverlay(
                 onResume: resumeGame,
