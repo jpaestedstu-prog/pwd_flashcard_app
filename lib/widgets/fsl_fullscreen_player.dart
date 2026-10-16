@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:video_player/video_player.dart';
 
 import '../core/services/fsl_assets_service.dart';
+import '../core/services/orientation_hold.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/constants/app_constants.dart';
@@ -50,9 +51,10 @@ Future<Duration?> openFslFullscreenPlayer(
 
 /// A deaf-friendly fullscreen video player: gesture controls, progress bar,
 /// auto-hiding controls, subtitle labels, speed selector, pinch-to-zoom, and
-/// visual-only status cues. Portrait-only — the whole app is locked to
-/// portrait for spatial consistency, so the video is shown letterboxed rather
-/// than rotating the device.
+/// visual-only status cues. It turns with the device like the rest of the
+/// app, and its "turn sideways" button turns the screen itself: a phone held
+/// upright (often with auto-rotate off) showed the sign in a strip a quarter
+/// of the screen high.
 class FslFullscreenPlayer extends StatefulWidget {
   final VideoSource videoSource;
   final String wordEnglish;
@@ -98,10 +100,11 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
   String? _speedFeedback;
   Timer? _speedFeedbackTimer;
 
-  // Orientation tracking. The app is portrait-locked, so this stays false in
-  // practice; it's kept only so layout math degrades gracefully on the rare
-  // large-screen device that letterboxes instead of honoring the lock.
+  // The current shape, for the subtitle sizes.
   bool _isLandscape = false;
+
+  // True while this player holds the screen sideways ([_toggleSideways]).
+  bool _turned = false;
 
   // Pinch-to-zoom
   final TransformationController _transformController =
@@ -114,9 +117,6 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-
-    // The app is globally portrait-locked (see main.dart), so we don't touch
-    // orientation here — the video simply plays letterboxed in portrait.
 
     // Immersive mode — hide system UI for a distraction-free fullscreen video.
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
@@ -151,9 +151,10 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
     _transformController.dispose();
     WidgetsBinding.instance.removeObserver(this);
 
-    // Restore the normal (non-immersive) system UI. Orientation was never
-    // changed — the app stays portrait-locked throughout — so there's nothing
-    // to unwind there.
+    // Give the screen back the way it was before "turn sideways".
+    OrientationHold.release(this);
+
+    // Restore the normal (non-immersive) system UI.
     SystemChrome.setEnabledSystemUIMode(
       SystemUiMode.edgeToEdge,
       overlays: SystemUiOverlay.values,
@@ -245,6 +246,22 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
     _speedFeedbackTimer = Timer(const Duration(milliseconds: 800), () {
       if (mounted) setState(() => _speedFeedback = null);
     });
+    _startHideControlsTimer();
+  }
+
+  // ─── Turn sideways ──────────────────────────────────
+
+  /// Turns the screen sideways (a wide picture fills a held-upright phone
+  /// four times bigger), or back again. Works with auto-rotate off: the app
+  /// asks for the shape itself, and closing the player gives it back.
+  void _toggleSideways() {
+    HapticFeedback.selectionClick();
+    if (_turned) {
+      OrientationHold.release(this);
+    } else {
+      OrientationHold.holdShape(this, landscape: !_isLandscape);
+    }
+    setState(() => _turned = !_turned);
     _startHideControlsTimer();
   }
 
@@ -506,6 +523,23 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
               ),
             ),
           const Spacer(),
+          // Turn the screen: a held-upright phone letterboxes the wide clip.
+          IconButton(
+              // What a tap does from the shape the screen is now: undoing a
+              // turn goes back to the other shape, so the label still fits.
+              tooltip: _isLandscape
+                  ? _t(context).fpTurnUpright
+                  : _t(context).fpTurnSideways,
+              onPressed: _toggleSideways,
+              icon: const Icon(Icons.screen_rotation_alt_rounded),
+              color: Colors.white,
+              iconSize: 26,
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.black26,
+                minimumSize: const Size(48, 48),
+              ),
+            ),
+          const SizedBox(width: 4),
           // Captions toggle
           IconButton(
               tooltip: _showSubtitles ? _t(context).fpHideCaptions : _t(context).fpShowCaptions,

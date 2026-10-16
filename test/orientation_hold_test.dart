@@ -81,6 +81,37 @@ void main() {
     expect(OrientationHold.effective, isEmpty);
   });
 
+  test("the sign player's turn sideways wins, and gives the screen back", () {
+    final camera = Object();
+    final player = Object();
+    OrientationHold.prefer(ScreenOrientationChoice.portrait);
+
+    // A held-upright phone: turned sideways, even though the profile keeps it
+    // portrait (and a phone's auto-rotate may be off).
+    OrientationHold.holdShape(player, landscape: true);
+    expect(OrientationHold.effective.map((o) => o.toString()), _landscape);
+    OrientationHold.release(player);
+    expect(OrientationHold.effective.map((o) => o.toString()), _portrait);
+
+    // Over a head-tracking hold: the newest wins, and releasing it restores
+    // the camera's hold rather than the preference.
+    OrientationHold.holdShape(camera, landscape: false);
+    OrientationHold.holdShape(player, landscape: true);
+    expect(OrientationHold.effective.map((o) => o.toString()), _landscape);
+    OrientationHold.release(player);
+    expect(OrientationHold.effective.map((o) => o.toString()), _portrait);
+    OrientationHold.release(camera);
+  });
+
+  test('turning back and forth keeps one hold, the newest shape', () {
+    final player = Object();
+    OrientationHold.holdShape(player, landscape: true);
+    OrientationHold.holdShape(player, landscape: false);
+    expect(OrientationHold.effective.map((o) => o.toString()), _portrait);
+    OrientationHold.release(player);
+    expect(OrientationHold.effective, isEmpty);
+  });
+
   group('the choice is saved per profile', () {
     setUpAll(() async {
       Hive.init('./build/test_cache/orientation_hold');

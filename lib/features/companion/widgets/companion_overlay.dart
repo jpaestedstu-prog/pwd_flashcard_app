@@ -40,6 +40,27 @@ class CompanionHost extends StatelessWidget {
   }
 }
 
+/// The five hubs the floating buddy appears over, the tabs a learner starts
+/// from. Never the profile switcher, onboarding, a full-screen tutor or
+/// settings page, and never a game, the card viewer or a story being read:
+/// a prefix match (`/games/...`) floated it over every game, where on a phone
+/// it covered jigsaw pieces, answer cards and the reader's page controls.
+/// The full tutor is one tap away on every hub. Pure, so the rule is tested.
+const companionHubs = [
+  '/home',
+  '/flashcards',
+  '/games',
+  '/stories',
+  '/progress',
+];
+
+bool companionShownOn(String location) {
+  final path = location.length > 1 && location.endsWith('/')
+      ? location.substring(0, location.length - 1)
+      : location;
+  return companionHubs.contains(path);
+}
+
 /// The launcher + panel. Renders nothing (and blocks no touches) unless the
 /// active profile is a learner with the companion enabled on a non-immersive
 /// screen — see [companionVisibleProvider].
@@ -63,15 +84,6 @@ class _CompanionOverlayState extends ConsumerState<CompanionOverlay> {
     super.dispose();
   }
 
-  /// The floating buddy only appears over the core learner surfaces — never the
-  /// profile switcher, onboarding, or a full-screen tutor / settings page.
-  static const _shellRoots = [
-    '/home',
-    '/flashcards',
-    '/games',
-    '/stories',
-    '/progress',
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -111,7 +123,7 @@ class _CompanionOverlayState extends ConsumerState<CompanionOverlay> {
         final covered = !isOpen &&
             (shellModalObserver.covering.value ||
                 rootPopupObserver.covering.value);
-        if (!_shellRoots.any(loc.startsWith) || covered) {
+        if (!companionShownOn(loc) || covered) {
           // Off the hubs the launcher is not drawn, so it must not linger in
           // the controller's item list either.
           WidgetsBinding.instance.addPostFrameCallback((_) {

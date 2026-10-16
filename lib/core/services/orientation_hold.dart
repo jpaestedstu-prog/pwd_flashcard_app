@@ -43,6 +43,17 @@ class OrientationHold {
     _apply();
   }
 
+  /// Turns the screen [landscape] (or portrait) and keeps it so until
+  /// [release] is called with the same [owner], even with the device's
+  /// auto-rotate off: the full-screen sign player's "turn sideways", which a
+  /// phone held upright needs (the sign filled a quarter of its screen).
+  /// The newest hold wins, so releasing it restores whatever held before.
+  static void holdShape(Object owner, {required bool landscape}) {
+    _holds.remove(owner);
+    _holds[owner] = landscape ? _landscape : _portrait;
+    _apply();
+  }
+
   static void release(Object owner) {
     if (_holds.remove(owner) == null) return;
     _apply();

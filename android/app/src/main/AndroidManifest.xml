@@ -217,5 +217,14 @@
         <intent>
             <action android:name="android.speech.RecognitionService"/>
         </intent>
+        <!-- Text to speech (flutter_tts): the same filtering hides the
+             speech engines. Android's TextToSpeech documentation asks apps
+             targeting 11+ to declare this; without it, whether the engine
+             can be reached is up to the device maker (whether system apps
+             are visible to every app), so read-aloud could work on one
+             device and stay silent on another. -->
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE"/>
+        </intent>
     </queries>
 </manifest>
