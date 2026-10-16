@@ -56,8 +56,22 @@ BAD_TEXT = ("Something went wrong",)
 class WebDriver:
     def __init__(self, base, capabilities):
         self.base = base.rstrip("/")
+        self._wait_ready()
         r = self._call("POST", "/session", {"capabilities": {"alwaysMatch": capabilities}})
         self.sid = r["sessionId"] if "sessionId" in r else r["value"]["sessionId"]
+
+    def _wait_ready(self, seconds=60):
+        # A driver started just before (a CI step) may still be coming up:
+        # on GitHub one ChromeDriver was not listening yet 3 s after start.
+        end = time.time() + seconds
+        while True:
+            try:
+                self._call("GET", "/status", timeout=5)
+                return
+            except (OSError, RuntimeError):
+                if time.time() > end:
+                    raise
+                time.sleep(1)
 
     def _call(self, method, path, body=None, timeout=120):
         data = None if body is None else json.dumps(body).encode()

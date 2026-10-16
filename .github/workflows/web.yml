@@ -70,6 +70,9 @@ jobs:
           path: web-app
       - name: Serve the app
         run: python3 -m http.server 8080 --bind 127.0.0.1 --directory web-app > server.log 2>&1 &
+      # Each waits (up to 30 s) until it answers, and prints the driver's
+      # log if it never does: a fixed 3 s once found ChromeDriver not yet
+      # listening.
       - name: Start the driver
         run: |
           if [ "${{ matrix.browser }}" = chrome ]; then
@@ -77,13 +80,22 @@ jobs:
           else
             "$GECKOWEBDRIVER/geckodriver" --port 4444 > driver.log 2>&1 &
           fi
-          sleep 3
+          for i in $(seq 30); do
+            curl -sf http://127.0.0.1:8080/ > /dev/null \
+              && curl -sf http://127.0.0.1:4444/status > /dev/null && exit 0
+            sleep 1
+          done
+          cat driver.log server.log
+          exit 1
       - name: Walk the app
         run: >
           python3 tool/web_smoke.py --driver http://127.0.0.1:4444
           --browser ${{ matrix.browser }} --url http://127.0.0.1:8080/
           --out out/${{ matrix.browser }}-${{ matrix.window }}
           ${{ matrix.window == 'phone' && '--mobile' || '' }}
+      - name: Keep the server and driver logs
+        if: always()
+        run: mkdir -p out && cp server.log driver.log out/ || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -130,7 +142,13 @@ jobs:
         run: |
           sudo safaridriver --enable
           safaridriver --port 4444 > driver.log 2>&1 &
-          sleep 3
+          for i in $(seq 30); do
+            curl -sf http://127.0.0.1:8080/ > /dev/null \
+              && curl -sf http://127.0.0.1:4444/status > /dev/null && exit 0
+            sleep 1
+          done
+          cat driver.log server.log
+          exit 1
       - name: Walk the app
         run: |
           python3 tool/web_smoke.py --driver http://127.0.0.1:4444 \
@@ -142,6 +160,9 @@ jobs:
           python3 tool/web_smoke.py --driver http://127.0.0.1:4444 \
             --browser safari --url http://127.0.0.1:8080/ \
             --out out/safari-phone --mobile
+      - name: Keep the server and driver logs
+        if: always()
+        run: mkdir -p out && cp server.log driver.log out/ || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
