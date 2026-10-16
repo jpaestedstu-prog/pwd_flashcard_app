@@ -57,7 +57,16 @@ class WebDriver:
     def __init__(self, base, capabilities):
         self.base = base.rstrip("/")
         self._wait_ready()
-        r = self._call("POST", "/session", {"capabilities": {"alwaysMatch": capabilities}})
+        for attempt in range(3):
+            try:
+                r = self._call("POST", "/session", {"capabilities": {"alwaysMatch": capabilities}})
+                break
+            except RuntimeError as e:
+                # Mobile Safari's first start on a freshly booted simulator can
+                # outlast safaridriver's own wait ("session not created").
+                if attempt == 2 or "session not created" not in str(e):
+                    raise
+                time.sleep(10)
         self.sid = r["sessionId"] if "sessionId" in r else r["value"]["sessionId"]
 
     def _wait_ready(self, seconds=60):
