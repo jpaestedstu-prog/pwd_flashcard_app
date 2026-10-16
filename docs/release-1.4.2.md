@@ -21,16 +21,19 @@ Unisoc UMS9621S, a 720 x 1600 screen (423 dp wide at its display-size setting,
 | A stroke begun near the screen's edge in **Tracing**, or a word dragged from the edge in **Drag & Drop**, went "back" (paused the game) on phones with gesture navigation | Medium | learners on most current phones | both keep clear of the system's back-gesture strips | widget tests; the phone's strips measured (51 px each side) |
 | The floating **AI buddy** sat over every game, the card viewer and the story reader, covering answer cards and puzzle pieces on a phone | Medium | learners on phones | it appears over the five main tabs only (the full tutor is one tap away there) | unit test |
 | The **full-screen sign player** held upright showed the sign in a strip a quarter of the screen high, and many phones keep auto-rotate off | Medium | learners on phones | a "turn the video sideways" button, which works with auto-rotate off and gives the screen back on close | unit tests |
-| **Settings at large text on a phone** (1.4x, the Visual Impairment size, and 2.0x): the sliders, the "Change" button and the language menu squeezed each row's name until its words broke ("Spee / ch", "Reminde / r", "Pagsas / alita"); the language row and the header "MGA MODE NG PAGKATUTO" ran past the screen's edge; three choices across a phone broke "Pinakamalinaw" even at normal size | Medium | large-text and Visual Impairment learners on phones | a row's control moves under its name when the name would otherwise break (a slider then takes the full width); choices stack; headers wrap. At the default size and on tablets the rows look as before | a new test scrolls the whole of Settings at 360 dp in English and Filipino at 1.0x, 1.4x and 2.0x (learner and teacher); renders with the app's own fonts |
+| **Settings at large text on a phone** (1.4x, the Visual Impairment size, and 2.0x): the sliders, the "Change" button and the language menu squeezed each row's name until its words broke ("Spee / ch", "Reminde / r", "Pagsas / alita"); the language row and the header "MGA MODE NG PAGKATUTO" ran past the screen's edge; three choices across a phone broke "Pinakamalinaw" even at normal size | Medium | large-text and Visual Impairment learners on phones | a row's control moves under its name when the name would otherwise break (a slider then takes the full width); choices stack; headers wrap. At the default size and on tablets the rows look as before, except Screen orientation on a 360-dp phone, whose "Turns with device" was cut to "Turns / with…" and now stacks | a new test scrolls the whole of Settings at 360 dp in English and Filipino at 1.0x, 1.4x and 2.0x (learner and teacher); renders with the app's own fonts |
 | Jigsaw's word and moves line was 155 px wider than a phone at the largest text, so the moves count went off-screen; Pronunciation's answer cards were up to 5 px short | Low | large-text users on phones | the moves count wraps below, words stay whole; the cards shrink their picture | the check above, at 2.0x text |
 | Reading words aloud depended on the device maker: Android 11+ hides the speech engines unless the app declares them, which it did not | Medium | voice and screen-reader learners on some phones | declared (as Android's documentation asks) | the phone: text to speech spoke |
 | **TV Cast** on a phone sharing its own hotspot could show the mobile network's address, which no TV can open | Low | teachers casting from a phone | the cast link uses the Wi-Fi or hotspot address, never mobile data, VPN or carrier addresses; with none it says to join Wi-Fi | unit tests (tablet, phone on Wi-Fi, phone hotspot, mobile data only) |
 
 ## New: the web app
 
-The same app runs in a browser (Chrome, Edge, Firefox, Safari; phones and
-computers), built by `tool/build_web.sh`, to be published at
-`https://jpaestedstu-prog.github.io/pwd_flashcard_app/app/`.
+The same app runs in a browser, built by `tool/build_web.sh`, to be
+published at `https://jpaestedstu-prog.github.io/pwd_flashcard_app/app/`.
+Every learner screen was walked through in Chrome, Firefox and Safari on
+computers (desktop and phone-sized windows), in Chrome as an Android phone
+(a Pixel 7, emulated), and in Mobile Safari on an iPhone (the iOS
+Simulator). Edge shares Chrome's engine and was not tested separately.
 
 - Sign videos stream the website's light copies; pictures load from their
   host; data stays in that browser's storage on that device.
@@ -47,11 +50,12 @@ computers), built by `tool/build_web.sh`, to be published at
 
 | Check | Result |
 |---|---|
-| Unit and widget tests | _(to fill: full suite result)_ |
-| Walkthrough on the phone (profile build, real camera, speech) | _(to fill)_ |
-| The web app in Chrome (phone-sized), every learner screen | _(to fill)_ |
-| Safari, Firefox and Chrome on GitHub's machines | _(to fill: .github/workflows/web.yml)_ |
-| The Honor tablet | _(to fill)_ |
+| Unit and widget tests | 5,579 passed, 0 failed (46 of them new in this release); `flutter analyze`: no issues, at every commit |
+| Walkthrough on the phone (profile build, real camera, speech) | 58 screens, 0 problems, four times: upright at the phone's own display size (423 dp wide), sideways, upright at Android's default size (360 dp), and again on the final code. Every run: a sign plays its light copy (854 x 480) 1.5 to 2.2 s after the tap and keeps playing; Word Hunt takes a photo; Sign It records and plays back; Gaze Control starts the camera and finds a face; text to speech speaks; speech recognition is available; Settings opens its rows; the profile deletes itself |
+| The web app in Chrome (phone-sized), every learner screen | 57 screens, 0 problems (the offline test build, `tool/web_smoke.py`). A rehearsal of the deployment (the website and the release web app served together, as GitHub Pages will): 6 of 6 checks and no console errors; the website's offline store leaves `app/` alone; Firebase sign-in works from a browser |
+| Safari, Firefox and Chrome on GitHub's machines (`.github/workflows/web.yml`) | 57 of 57 learner screens, 0 problems, in each of: Safari on macOS (desktop and phone-sized window), Mobile Safari on an iPhone 17 Pro (iOS Simulator), Firefox (desktop and phone-sized), Chrome (desktop, and as a Pixel 7). The walk itself needed three fixes on the way (waiting for the browser's driver; how Flutter turns on its semantics in a phone browser; typing on iOS), the app none |
+| Android emulators on GitHub (`.github/workflows/android.yml`) | the walkthrough on a phone and a tablet, upright and sideways: all four pass; the full test suite and `flutter analyze` pass; the website and Google Play release builds succeed and their manifests check out |
+| The Honor tablet | not checked in this pass: it was not connected. Tablet sizes are covered by the widget tests and GitHub's tablet emulators, but the real tablet (its decoder keeping the full-size signs, its own profiles) still needs a run |
 
 ## Known limitations
 
