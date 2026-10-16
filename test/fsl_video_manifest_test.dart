@@ -7,6 +7,7 @@ import 'package:pwdpwdpwd/core/services/fsl_assets_service.dart';
 import 'package:pwdpwdpwd/core/services/media_url_resolver.dart';
 import 'package:pwdpwdpwd/data/local/seed_data.dart';
 import 'package:pwdpwdpwd/data/models/enums.dart';
+import 'package:pwdpwdpwd/data/models/models.dart' show Flashcard;
 
 /// Guards `assets/data/fsl_video_manifest.json` — the manifest that decides
 /// which flashcards get a "watch the sign" video.
@@ -160,6 +161,101 @@ void main() {
       for (final url in sample) {
         expect(await MediaUrlResolver.resolve(url), url);
       }
+    });
+  });
+
+  // ─── Light copies (phones) ──────────────────────────────────────
+  //
+  // Phones play the website's 480p copy of each sign (`light_url`): the
+  // 1080p60 originals froze on a friend's phone or never started. The app
+  // now depends on those website files, so renaming or deleting one breaks
+  // a sign in the app, and a light copy filed under the wrong word would
+  // teach the wrong sign. tools/fsl_light_urls.py writes these, attaching a
+  // copy only when it is the same recording as the original (by duration).
+  group('Light copies (phones)', () {
+    const site =
+        'https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/';
+
+    Map<String, String> websiteClipByWord() {
+      final js = File('website/assets/fsl-dict.js').readAsStringSync();
+      final cats = (json.decode(
+        RegExp(r'window.FSL_CATS = (\[.*?\]);', dotAll: true)
+            .firstMatch(js)!
+            .group(1)!,
+      ) as List)
+          .map((c) => (c as Map)['en'] as String)
+          .toList();
+      return {
+        for (final m in RegExp(r'\{c:(\d+),f:"([^"]+)",en:"([^"]+)"')
+            .allMatches(js))
+          '${cats[int.parse(m.group(1)!)]}__${m.group(3)!.toLowerCase()}':
+              m.group(2)!,
+      };
+    }
+
+    test('every light copy is a website clip that exists', () {
+      for (final e in entries) {
+        final url = e['light_url'] as String?;
+        if (url == null) continue;
+        expect(url, startsWith(site),
+            reason: '${e['category']} / ${e['slug']}: light_url is not a '
+                'website clip');
+        final name = url.substring(site.length);
+        expect(File('website/assets/videos/fsl/$name').existsSync(), isTrue,
+            reason: '${e['category']} / ${e['slug']}: website clip $name is '
+                'missing — the app plays it on phones');
+      }
+    });
+
+    test("each light copy is the website's clip for the same word", () {
+      final clipByWord = websiteClipByWord();
+      for (final e in entries) {
+        final url = e['light_url'] as String?;
+        if (url == null) continue;
+        final word = '${e['category']}__${(e['word_english'] as String).toLowerCase()}';
+        expect('$site${clipByWord[word]}.mp4', url,
+            reason: '$word: its light copy belongs to another word');
+      }
+    });
+
+    test('almost every sign has one (a dropped field would fail here)', () {
+      final withLight = entries.where((e) => e['light_url'] != null).length;
+      expect(withLight / entries.length, greaterThanOrEqualTo(0.9),
+          reason: 'only $withLight of ${entries.length} signs have a light '
+              'copy: run tools/fsl_light_urls.py');
+    });
+
+    test('the service reads them, and a borrowed sign borrows its light copy',
+        () {
+      final dog = SeedData.allFlashcards.firstWhere(
+          (c) => c.category == FlashcardCategory.animals && c.wordEnglish == 'Dog');
+      expect(FslAssetsService.lightUrlFor(dog), '${site}dog.mp4');
+
+      final walk = SeedData.allFlashcards.firstWhere(
+          (c) => c.category == FlashcardCategory.actions && c.wordEnglish == 'Walk');
+      final lender = SeedData.allFlashcards.firstWhere((c) =>
+          c.category == FlashcardCategory.transportation && c.wordEnglish == 'Walk');
+      expect(FslAssetsService.lightUrlFor(walk), isNotNull);
+      expect(FslAssetsService.lightUrlFor(walk),
+          FslAssetsService.lightUrlFor(lender));
+    });
+
+    test('a browser streams the light copy, else the 720p twin', () {
+      Flashcard card(FlashcardCategory c, String word) => SeedData.allFlashcards
+          .firstWhere((f) => f.category == c && f.wordEnglish == word);
+
+      final dog = FslAssetsService.webSourceFor(
+        card(FlashcardCategory.animals, 'Dog'),
+      );
+      expect(dog, isA<NetworkVideoSource>());
+      expect((dog! as NetworkVideoSource).url, '${site}dog.mp4');
+
+      // Its website clip is another recording, so it has no light copy.
+      final yellow = card(FlashcardCategory.colorsAndShapes, 'Yellow');
+      expect(FslAssetsService.lightUrlFor(yellow), isNull);
+      final source = FslAssetsService.webSourceFor(yellow);
+      expect((source! as NetworkVideoSource).url,
+          FslAssetsService.streamUrlFor(yellow));
     });
   });
 

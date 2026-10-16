@@ -50,6 +50,8 @@ import 'package:pwdpwdpwd/features/gaze_control/services/gaze_detector.dart'
     show MlKitGazeDetector;
 import 'package:pwdpwdpwd/main.dart' as app;
 import 'package:pwdpwdpwd/navigation/app_router.dart' show rootNavigatorKey;
+import 'package:video_player/video_player.dart'
+    show VideoPlayer, VideoPlayerController;
 
 import 'fixtures/face_photo.dart';
 
@@ -293,6 +295,8 @@ class _Walk {
     await _settle(const Duration(seconds: 2));
     await _shot('viewer_flipped');
 
+    await _checkFslVideo();
+
     if (_deviceChecks) await _checkDevice();
     await _checkSettings();
     await _deleteOwnProfile();
@@ -304,6 +308,75 @@ class _Walk {
     await _settle(const Duration(milliseconds: 800));
     _router.push(route);
     await _settle(const Duration(seconds: 3));
+  }
+
+  /// A flashcard's sign, the way a learner opens it: the FSL button, then the
+  /// clip must be playing within [limit] and keep playing. The wait is timed
+  /// and printed with the picture size, which says which copy of the clip
+  /// played. A friend's phone froze or never started the full-HD clips (8 MB
+  /// at 1080p60, longer than a budget phone's decoder or mobile data allow).
+  Future<void> _checkFslVideo({
+    Duration limit = const Duration(seconds: 45),
+  }) async {
+    final errorsBefore = _frameworkErrors.length;
+    final since = DateTime.now();
+    await _open('/flashcards/viewer/0');
+    await _settle(const Duration(seconds: 3));
+    final button = find.byIcon(Icons.sign_language_rounded);
+    if (!await _waitFor(button, const Duration(seconds: 15))) {
+      failures.add('FSL video: no FSL button on the first card');
+      await _shot('fsl_no_button');
+      return;
+    }
+    final start = DateTime.now();
+    await _tap(button.first);
+    VideoPlayerController? controller;
+    var state = 'no player';
+    while (DateTime.now().difference(start) < limit) {
+      await _settle(const Duration(milliseconds: 250));
+      final players = find.byType(VideoPlayer).evaluate();
+      if (players.isEmpty) {
+        if (await _has(find.textContaining('internet'))) {
+          state = 'says it needs the internet';
+          break;
+        }
+        continue;
+      }
+      final c = (players.first.widget as VideoPlayer).controller;
+      final v = c.value;
+      if (v.hasError) {
+        state = 'player error: ${v.errorDescription}';
+        break;
+      }
+      state = v.isInitialized ? 'ready but not playing' : 'initialising';
+      if (v.isInitialized && v.isPlaying && v.position > Duration.zero) {
+        controller = c;
+        break;
+      }
+    }
+    final waited = DateTime.now().difference(start);
+    if (controller == null) {
+      // ignore: avoid_print
+      print('WALK FSL video: $state after ${waited.inMilliseconds} ms');
+      failures.add('FSL video: not playing after ${waited.inSeconds} s ($state)');
+      await _shot('fsl_not_playing');
+      _reportSince(since, 'FSL video', framework: errorsBefore);
+      return;
+    }
+    final size = controller.value.size;
+    // Frozen pictures keep isPlaying true: the position has to move. The
+    // clip loops, so a wrap-around counts as moving.
+    final before = controller.value.position;
+    await _settle(const Duration(seconds: 3));
+    final after = controller.value.position;
+    final moved = after != before;
+    // ignore: avoid_print
+    print('WALK FSL video: playing ${size.width.toInt()}x${size.height.toInt()} '
+        'after ${waited.inMilliseconds} ms; position '
+        '${before.inMilliseconds} -> ${after.inMilliseconds} ms');
+    if (!moved) failures.add('FSL video: the picture froze (position stuck)');
+    await _shot('fsl_playing');
+    _reportSince(since, 'FSL video', framework: errorsBefore);
   }
 
   /// The camera and voice features end to end. With a camera: Word Hunt
@@ -692,8 +765,30 @@ class _Walk {
     }
     await _settle(const Duration(seconds: 1));
     await _shot('profile_form');
-    await tester.enterText(find.byType(TextFormField).first, _profileName);
+    // Type only once the keyboard is up, and check the name stuck: on a real
+    // phone (Villaon V671N) the system keyboard connected AFTER the test had
+    // typed and sent its own empty text, and the form refused an empty name.
+    final nameField = find.byType(TextFormField).first;
+    await _tap(nameField);
     await _keyboard(shown: true);
+    for (var attempt = 0; attempt < 2; attempt++) {
+      await tester.enterText(nameField, _profileName);
+      await _settle(const Duration(milliseconds: 800));
+      if (await _has(find.text(_profileName))) break;
+    }
+    if (!await _has(find.text(_profileName))) {
+      // The test's typed text never reached the field on that phone (a
+      // profile build, its own keyboard up): put it in the field's
+      // controller, which is what the form reads, as typing would.
+      final editable = tester.widget<EditableText>(
+        find.descendant(of: nameField, matching: find.byType(EditableText)),
+      );
+      editable.controller.text = _profileName;
+      await _settle(const Duration(milliseconds: 800));
+    }
+    if (!await _has(find.text(_profileName))) {
+      failures.add('Profile form: the name would not stay in its field');
+    }
     await _shot('profile_form_keyboard');
     FocusManager.instance.primaryFocus?.unfocus();
     await _keyboard(shown: false);

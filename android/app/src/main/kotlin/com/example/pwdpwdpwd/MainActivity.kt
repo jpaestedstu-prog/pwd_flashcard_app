@@ -1,8 +1,13 @@
 package com.example.pwdpwdpwd
 
+import android.app.ActivityManager
 import android.app.KeyguardManager
 import android.content.Intent
 import android.media.AudioManager
+import android.media.MediaCodecInfo
+import android.media.MediaCodecList
+import android.media.MediaFormat
+import android.net.ConnectivityManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -41,6 +46,9 @@ class MainActivity : FlutterActivity() {
 
         /** Mirrors `DeviceSound._channel` on the Dart side. */
         private const val AUDIO_CHANNEL = "flashlearn/audio"
+
+        /** Mirrors `DeviceVideoSupport._channel` on the Dart side. */
+        private const val MEDIA_CHANNEL = "flashlearn/media"
 
         /**
          * True while FlashLearn is the app in front. [RoutineAlarms] reads it
@@ -273,6 +281,27 @@ class MainActivity : FlutterActivity() {
                 }
             }
 
+        // What this device can play, for the choice between an FSL sign's
+        // original (1080p, 60 frames a second) and its light copy — see
+        // `FslClipQuality` on the Dart side.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, MEDIA_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "videoCapabilities" -> {
+                        val activity = getSystemService(ActivityManager::class.java)
+                        val fullHd60 = decodesFullHd60()
+                        val lowRam = activity?.isLowRamDevice ?: false
+                        Log.i("DeviceVideo", "1080p60 decoder $fullHd60, low RAM $lowRam")
+                        result.success(mapOf("fullHd60" to fullHd60, "lowRam" to lowRam))
+                    }
+                    "networkMetered" -> {
+                        val connectivity = getSystemService(ConnectivityManager::class.java)
+                        result.success(connectivity?.isActiveNetworkMetered)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+
         // "My Day" reminders and locks — see [RoutineAlarms].
         routineChannel = MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
@@ -341,6 +370,33 @@ class MainActivity : FlutterActivity() {
      * is not listening yet, so it is kept for `takeLaunch`; while running it is
      * delivered straight away.
      */
+    /**
+     * Whether a hardware H.264 decoder is rated for 1920x1080 at 60 frames a
+     * second: by its declared performance points where it has them, else by
+     * its size-and-rate limits. Budget phones whose decoders stop at 1080p30
+     * froze on the original sign clips or never started them.
+     */
+    private fun decodesFullHd60(): Boolean = try {
+        val wanted = MediaCodecInfo.VideoCapabilities.PerformancePoint(1920, 1080, 60)
+        MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos.any { info ->
+            if (info.isEncoder || !info.isHardwareAccelerated) return@any false
+            val type = info.supportedTypes.firstOrNull {
+                it.equals(MediaFormat.MIMETYPE_VIDEO_AVC, ignoreCase = true)
+            } ?: return@any false
+            val video = info.getCapabilitiesForType(type).videoCapabilities
+                ?: return@any false
+            val points = video.supportedPerformancePoints
+            if (!points.isNullOrEmpty()) {
+                points.any { it.covers(wanted) }
+            } else {
+                video.areSizeAndRateSupported(1920, 1080, 60.0)
+            }
+        }
+    } catch (e: Exception) {
+        Log.w("DeviceVideo", "could not read the video decoders", e)
+        false
+    }
+
     private fun captureRoutineLaunch(intent: Intent?, running: Boolean) {
         val payload = intent?.getStringExtra(RoutineAlarms.EXTRA_PAYLOAD) ?: return
         val lock = intent.getBooleanExtra(RoutineAlarms.EXTRA_LOCK, false)

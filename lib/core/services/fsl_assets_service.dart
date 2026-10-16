@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart' show visibleForTesting;
+import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:flutter/services.dart' show AssetManifest, rootBundle;
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:video_player/video_player.dart';
@@ -9,12 +9,13 @@ import 'package:video_player/video_player.dart';
 import '../../data/local/seed_data.dart';
 import '../../data/models/enums.dart';
 import '../../data/models/models.dart';
+import 'fsl_clip_quality.dart';
 import 'media_url_resolver.dart';
 
 /// Reports which FSL sign-language videos are available to this build and
 /// resolves them to playable [VideoSource]s.
 ///
-/// A card's video can come from three places, checked in order:
+/// A card's video can come from these places:
 ///   1. Local bundled asset under `assets/videos/fsl/<Category>/<word>.mp4`.
 ///   2. A direct download URL registered in `assets/data/fsl_video_manifest.json`
 ///      as `download_url` (used for the original GitHub-Releases hosting).
@@ -23,6 +24,10 @@ import 'media_url_resolver.dart';
 ///      play, then downloaded and cached by [_videoCache]. The cache key is
 ///      the card key, not the URL, so cached files survive URL rotations and
 ///      a re-host doesn't invalidate anything already on disk.
+///   4. A light copy of the same recording, `light_url` (the website's
+///      480p, 30 frames a second clip), which phones play instead: see
+///      [FslClipQuality]. [fslClipPlan] orders 2 to 4 for the copy wanted,
+///      and the light copy is cached under its own key ([_cacheKeyFor]).
 ///
 /// Filenames are matched to flashcards case-insensitively, so files can be
 /// `DOG.mp4`, `dog.mp4`, or `Dog.mp4`; the original case is preserved when
@@ -111,6 +116,10 @@ class FslAssetsService {
   /// Card key → optional secondary CDN URL (resolved at runtime).
   static final Map<String, String> _streamUrlByKey = {};
 
+  /// Card key → optional light copy of the same recording (see
+  /// [FslClipQuality.light]).
+  static final Map<String, String> _lightUrlByKey = {};
+
   /// Cache manager dedicated to FSL videos. Separate key namespace from any
   /// other CacheManager use in the app, longer max-age (videos never change
   /// once published), and a generous object count cap.
@@ -137,12 +146,14 @@ class FslAssetsService {
     _assetPathByKey.clear();
     _downloadUrlByKey.clear();
     _streamUrlByKey.clear();
+    _lightUrlByKey.clear();
   }
 
   static Future<FslAvailability> _resolve() async {
     _assetPathByKey.clear();
     _downloadUrlByKey.clear();
     _streamUrlByKey.clear();
+    _lightUrlByKey.clear();
 
     // 1. Discover locally bundled videos from the asset manifest.
     final assetPaths = await _scanBundledAssets();
@@ -203,7 +214,8 @@ class FslAssetsService {
       final alreadyHasOwn =
           _assetPathByKey.containsKey(borrower) ||
           _downloadUrlByKey.containsKey(borrower) ||
-          _streamUrlByKey.containsKey(borrower);
+          _streamUrlByKey.containsKey(borrower) ||
+          _lightUrlByKey.containsKey(borrower);
       if (alreadyHasOwn) return;
 
       final asset = _assetPathByKey[lender];
@@ -212,6 +224,8 @@ class FslAssetsService {
       if (direct != null) _downloadUrlByKey[borrower] = direct;
       final stream = _streamUrlByKey[lender];
       if (stream != null) _streamUrlByKey[borrower] = stream;
+      final light = _lightUrlByKey[lender];
+      if (light != null) _lightUrlByKey[borrower] = light;
     });
   }
 
@@ -252,6 +266,8 @@ class FslAssetsService {
         if (directUrl.isNotEmpty) _downloadUrlByKey[key] = directUrl;
         final streamUrl = (e['stream_url'] as String?) ?? '';
         if (streamUrl.isNotEmpty) _streamUrlByKey[key] = streamUrl;
+        final lightUrl = (e['light_url'] as String?) ?? '';
+        if (lightUrl.isNotEmpty) _lightUrlByKey[key] = lightUrl;
       }
     } catch (_) {
       // No manifest yet (first run, asset missing) — degrade gracefully.
@@ -266,7 +282,8 @@ class FslAssetsService {
       final available =
           _assetPathByKey.containsKey(key) ||
           _downloadUrlByKey.containsKey(key) ||
-          _streamUrlByKey.containsKey(key);
+          _streamUrlByKey.containsKey(key) ||
+          _lightUrlByKey.containsKey(key);
       if (available) {
         cards.add(card);
         perCategory.update(card.category, (n) => n + 1, ifAbsent: () => 1);
@@ -298,17 +315,40 @@ class FslAssetsService {
   /// Secondary CDN URL for the card's video, or null if not registered.
   static String? streamUrlFor(Flashcard card) => _streamUrlByKey[_keyFor(card)];
 
+  /// The light copy of the card's video ([FslClipQuality.light]), or null
+  /// when the sign has none.
+  static String? lightUrlFor(Flashcard card) => _lightUrlByKey[_keyFor(card)];
+
   /// True if a video is bundled locally for [card].
   static bool hasVideo(Flashcard card) =>
       _assetPathByKey.containsKey(_keyFor(card));
 
   /// True if any video source exists for the card — bundled, direct download,
-  /// or secondary CDN. Use this to gate UI that triggers an async resolve.
+  /// secondary CDN, or a light copy. Use this to gate UI that triggers an
+  /// async resolve.
   static bool hasAnyVideoSource(Flashcard card) {
     final key = _keyFor(card);
     return _assetPathByKey.containsKey(key) ||
         _downloadUrlByKey.containsKey(key) ||
-        _streamUrlByKey.containsKey(key);
+        _streamUrlByKey.containsKey(key) ||
+        _lightUrlByKey.containsKey(key);
+  }
+
+  /// The disk-cache key for [quality]'s copy of the clip behind [cardKey].
+  /// The original keeps the bare card key it has always had, so clips already
+  /// downloaded stay cached; the light copy gets its own suffix, because two
+  /// different files must never share one key (see `MediaCacheKey`).
+  static String _cacheKeyFor(String cardKey, FslClipQuality quality) =>
+      quality == FslClipQuality.light ? '$cardKey@light' : cardKey;
+
+  /// The cached file under [key], or null (not downloaded, or the cache
+  /// could not be read).
+  static Future<File?> _fromCache(String key) async {
+    try {
+      return (await _videoCache.getFileFromCache(key))?.file;
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Resolves the card's video to a playable [VideoSource], or null if no
@@ -323,8 +363,27 @@ class FslAssetsService {
     final localPath = assetPathFor(card);
     if (localPath != null) return _AssetVideoSource(localPath);
 
+    if (kIsWeb) return webSourceFor(card);
+
     final file = await cachedVideoFile(card);
     return file != null ? _FileVideoSource(file) : null;
+  }
+
+  /// In a browser: there is no file system to download into, so the clip is
+  /// streamed, and the browser's own cache keeps it. The light copy first
+  /// (served by the website itself, `video/mp4` with CORS open); a sign
+  /// without one streams its 720p twin. The GitHub original is last: it
+  /// arrives as an `application/octet-stream` download, which Safari may
+  /// refuse to play.
+  @visibleForTesting
+  static VideoSource? webSourceFor(Flashcard card) {
+    final plan = fslClipPlan(
+      quality: FslClipQuality.light,
+      light: lightUrlFor(card),
+      download: downloadUrlFor(card),
+      stream: streamUrlFor(card),
+    );
+    return plan.isEmpty ? null : NetworkVideoSource(plan.first.url);
   }
 
   /// Test seam: stands in for [videoSourceFor] (a widget test has neither the
@@ -351,6 +410,14 @@ class FslAssetsService {
     required String cacheKey,
   }) async {
     if (pageUrl.trim().isEmpty) return null;
+
+    if (kIsWeb) {
+      // Streamed in a browser (see [webSourceFor]).
+      final direct = await MediaUrlResolver.resolve(pageUrl);
+      return direct == null || direct.isEmpty
+          ? null
+          : NetworkVideoSource(direct);
+    }
 
     // Cache hit short-circuits all network work — instant, offline-safe replay
     // and immunity to a source URL being rotated or re-hosted.
@@ -385,7 +452,8 @@ class FslAssetsService {
     String pageUrl, {
     required String cacheKey,
   }) async {
-    if (pageUrl.trim().isEmpty) return null;
+    // No files in a browser (and no TV Cast server to hand one to).
+    if (kIsWeb || pageUrl.trim().isEmpty) return null;
 
     // Cache hit short-circuits all network work — instant, offline-safe replay
     // and immunity to a source URL being rotated or re-hosted.
@@ -409,6 +477,7 @@ class FslAssetsService {
   /// cache (no network needed to play it). Backs the cast UI's per-page FSL
   /// readiness badge for Stories, the URL-keyed analogue of [isCached].
   static Future<bool> isUrlCached(String cacheKey) async {
+    if (kIsWeb) return false;
     try {
       final cached = await _videoCache.getFileFromCache(cacheKey);
       return cached != null;
@@ -425,7 +494,7 @@ class FslAssetsService {
     String pageUrl, {
     required String cacheKey,
   }) async {
-    if (pageUrl.trim().isEmpty) return;
+    if (kIsWeb || pageUrl.trim().isEmpty) return;
     try {
       final cached = await _videoCache.getFileFromCache(cacheKey);
       if (cached != null) return;
@@ -446,86 +515,110 @@ class FslAssetsService {
   /// (if ever added) are served separately from the asset bundle and are not
   /// handled here — see [assetPathFor].
   ///
-  /// Resolution order: in-memory disk cache → direct `download_url` →
-  /// `stream_url`. The cache key is the card key (not the URL), so cached
-  /// files survive a re-host of either source.
-  static Future<File?> cachedVideoFile(Flashcard card) async {
+  /// [quality] is the copy wanted, by default this device's
+  /// ([FslClipQualityService.current]). Resolution order: that copy in the
+  /// disk cache, then the sources in [fslClipPlan] order. Before the first
+  /// source of the OTHER copy is downloaded, a cached file of it is used
+  /// instead, so a sign already on the device always plays offline. Cache
+  /// keys are the card key (not the URL), so cached files survive a re-host.
+  static Future<File?> cachedVideoFile(
+    Flashcard card, {
+    FslClipQuality? quality,
+  }) async {
+    if (kIsWeb) return null; // streamed instead: see [webSourceFor]
     final key = _keyFor(card);
+    final wanted = quality ?? await FslClipQualityService.current();
 
     // Cache hit short-circuits any cloud work — important for offline play
     // and to avoid re-resolving URLs that may have rotated.
-    try {
-      final cached = await _videoCache.getFileFromCache(key);
-      if (cached != null) return cached.file;
-    } catch (_) {
-      // ignore and fall through to a fresh download
-    }
+    final hit = await _fromCache(_cacheKeyFor(key, wanted));
+    if (hit != null) return hit;
 
-    final directUrl = downloadUrlFor(card);
-    if (directUrl != null) {
+    var otherChecked = false;
+    for (final source in fslClipPlan(
+      quality: wanted,
+      light: lightUrlFor(card),
+      download: downloadUrlFor(card),
+      stream: streamUrlFor(card),
+    )) {
+      if (source.quality != wanted && !otherChecked) {
+        otherChecked = true;
+        final other = await _fromCache(_cacheKeyFor(key, source.quality));
+        if (other != null) return other;
+      }
       try {
-        return await _videoCache.getSingleFile(directUrl, key: key);
+        final url = source.resolve
+            ? await MediaUrlResolver.resolve(source.url)
+            : source.url;
+        if (url == null || url.isEmpty) continue;
+        return await _videoCache.getSingleFile(
+          url,
+          key: _cacheKeyFor(key, source.quality),
+        );
       } catch (_) {
-        // fall through to the secondary CDN
+        // Try the next source.
       }
     }
-
-    final streamUrl = streamUrlFor(card);
-    if (streamUrl != null) {
-      try {
-        final resolved = await MediaUrlResolver.resolve(streamUrl);
-        if (resolved != null && resolved.isNotEmpty) {
-          return await _videoCache.getSingleFile(resolved, key: key);
-        }
-      } catch (_) {
-        // give up
+    if (!otherChecked) {
+      for (final q in FslClipQuality.values) {
+        if (q == wanted) continue;
+        final other = await _fromCache(_cacheKeyFor(key, q));
+        if (other != null) return other;
       }
     }
-
     return null;
   }
 
   /// True if the card's video is already present in the on-device disk cache
-  /// (no network needed to play it). Bundled assets are always "cached" in
-  /// this sense. Used by the TV Cast phone UI to show a per-word readiness
-  /// badge without triggering a download.
+  /// (no network needed to play it), as either copy. Bundled assets are
+  /// always "cached" in this sense. Used by the TV Cast phone UI to show a
+  /// per-word readiness badge without triggering a download.
   static Future<bool> isCached(Flashcard card) async {
     if (hasVideo(card)) return true;
-    try {
-      final cached = await _videoCache.getFileFromCache(_keyFor(card));
-      return cached != null;
-    } catch (_) {
-      return false;
+    // A browser streams every sign; nothing waits on a download first.
+    if (kIsWeb) return hasAnyVideoSource(card);
+    final key = _keyFor(card);
+    for (final q in FslClipQuality.values) {
+      if (await _fromCache(_cacheKeyFor(key, q)) != null) return true;
     }
+    return false;
   }
 
-  /// Bytes [card]'s clip occupies on disk, or 0 when it isn't downloaded.
+  /// Bytes [card]'s clip occupies on disk (both copies, if both were
+  /// downloaded), or 0 when it isn't downloaded.
   ///
   /// Backs the offline sign packs UI, which has to answer "how much of this
   /// tablet am I about to spend?" before a teacher commits to a download, and
   /// "how much would I get back?" before they clear one. Bundled assets report
   /// 0: they ship inside the APK and freeing them is not on offer.
   static Future<int> cachedBytes(Flashcard card) async {
-    if (hasVideo(card)) return 0;
-    try {
-      final cached = await _videoCache.getFileFromCache(_keyFor(card));
-      if (cached == null) return 0;
-      return await cached.file.length();
-    } catch (_) {
-      return 0;
+    if (kIsWeb || hasVideo(card)) return 0;
+    final key = _keyFor(card);
+    var total = 0;
+    for (final q in FslClipQuality.values) {
+      try {
+        final file = await _fromCache(_cacheKeyFor(key, q));
+        if (file != null) total += await file.length();
+      } catch (_) {
+        // Removed mid-read: nothing to count.
+      }
     }
+    return total;
   }
 
-  /// Drops [card]'s downloaded clip from the disk cache. No-op when the clip
-  /// is bundled or was never downloaded; the word keeps working, it just needs
-  /// the network again on next play.
+  /// Drops [card]'s downloaded clip (both copies) from the disk cache. No-op
+  /// when the clip is bundled or was never downloaded; the word keeps
+  /// working, it just needs the network again on next play.
   static Future<void> evict(Flashcard card) async {
-    if (hasVideo(card)) return;
-    try {
-      await _videoCache.removeFile(_keyFor(card));
-    } catch (_) {
-      // Already gone, or the cache is mid-write — either way there is nothing
-      // for the caller to do about it.
+    if (kIsWeb || hasVideo(card)) return;
+    final key = _keyFor(card);
+    for (final q in FslClipQuality.values) {
+      try {
+        await _videoCache.removeFile(_cacheKeyFor(key, q));
+      } catch (_) {
+        // Already gone, or the cache is mid-write — either way there is
+        // nothing for the caller to do about it.
+      }
     }
   }
 
@@ -545,36 +638,15 @@ class FslAssetsService {
     return _videoCache.getSingleFile(url, key: _keyFor(card));
   }
 
-  /// Best-effort warm-up — kicks off a download so the next play is instant.
-  /// Safe to call without awaiting; network failures are swallowed. No-op
-  /// when the video is already bundled locally.
+  /// Best-effort warm-up — downloads the copy this device plays (see
+  /// [cachedVideoFile]) so the next play is instant. Safe to call without
+  /// awaiting; network failures are swallowed. No-op when the video is
+  /// already bundled locally or on disk.
   static Future<void> prefetch(Flashcard card) async {
-    if (hasVideo(card)) return;
-    final key = _keyFor(card);
-
-    // Skip if already cached.
+    if (kIsWeb || hasVideo(card)) return;
     try {
-      final cached = await _videoCache.getFileFromCache(key);
-      if (cached != null) return;
+      await cachedVideoFile(card);
     } catch (_) {}
-
-    final directUrl = downloadUrlFor(card);
-    if (directUrl != null) {
-      try {
-        await _videoCache.downloadFile(directUrl, key: key);
-        return;
-      } catch (_) {}
-    }
-
-    final streamUrl = streamUrlFor(card);
-    if (streamUrl != null) {
-      try {
-        final resolved = await MediaUrlResolver.resolve(streamUrl);
-        if (resolved != null && resolved.isNotEmpty) {
-          await _videoCache.downloadFile(resolved, key: key);
-        }
-      } catch (_) {}
-    }
   }
 }
 
@@ -600,6 +672,16 @@ class _FileVideoSource implements VideoSource {
   const _FileVideoSource(this.file);
   @override
   VideoPlayerController createController() => VideoPlayerController.file(file);
+}
+
+/// A clip streamed from its URL: how a browser plays every sign (see
+/// [FslAssetsService.webSourceFor]).
+class NetworkVideoSource implements VideoSource {
+  final String url;
+  const NetworkVideoSource(this.url);
+  @override
+  VideoPlayerController createController() =>
+      VideoPlayerController.networkUrl(Uri.parse(url));
 }
 
 /// Snapshot of which FSL videos are available right now.
