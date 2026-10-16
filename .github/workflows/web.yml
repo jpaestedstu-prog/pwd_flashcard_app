@@ -4,8 +4,9 @@ name: Web
 # repository): Chrome and Firefox on Linux, Safari on macOS and Mobile Safari
 # in the iOS Simulator. Each one walks every learner screen with
 # tool/web_smoke.py (W3C WebDriver, standard-library Python) at a desktop and
-# a phone-sized window, and fails on the app's error banner, an error box, a
-# page error, or an app that never starts. The build is the offline one
+# a phone-sized window (Chrome's emulates a Pixel 7: Android user agent and
+# touch), and fails on the app's error banner, an error box, a page error, or
+# an app that never starts. The build is the offline one
 # (FLASHLEARN_OFFLINE): nothing a test does reaches the cloud. Screenshots of
 # every stop are kept 14 days.
 

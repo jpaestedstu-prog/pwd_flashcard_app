@@ -225,6 +225,46 @@ class Smoke:
     def text(self):
         return " | ".join(l[0].replace("\n", " ") for l in self.labels())
 
+    def _enable_semantics(self):
+        """Turns on Flutter's semantics tree, which every lookup reads.
+
+        A desktop browser turns it on with any click on the placeholder. A
+        phone browser (Mobile Safari) only with one landing within a pixel of
+        the placeholder's centre, as VoiceOver's tap does; the placeholder
+        covers the view there. So: a plain click, then one at the centre
+        (the engine reads the click's offset within the placeholder), then a
+        real tap at the centre through the driver.
+        """
+        wd = self.wd
+        on = "return document.querySelectorAll('flt-semantics').length > 0;"
+        wd.js("const p = document.querySelector('flt-semantics-placeholder');"
+              "if (p) p.click();")
+        time.sleep(1)
+        if wd.js(on):
+            return
+        centre = wd.js(
+            "const p = document.querySelector('flt-semantics-placeholder');"
+            "if (!p) return null; const r = p.getBoundingClientRect();"
+            "p.dispatchEvent(new MouseEvent('click', {bubbles: true, cancelable: true,"
+            "  clientX: 2 * r.left + r.width / 2, clientY: 2 * r.top + r.height / 2}));"
+            "return [r.left + r.width / 2, r.top + r.height / 2];")
+        time.sleep(1)
+        if centre is None or wd.js(on):
+            return
+        try:
+            wd.s("POST", "/actions", {"actions": [{
+                "type": "pointer", "id": "finger",
+                "parameters": {"pointerType": "touch"},
+                "actions": [
+                    {"type": "pointerMove", "duration": 0, "origin": "viewport",
+                     "x": round(centre[0]), "y": round(centre[1])},
+                    {"type": "pointerDown", "button": 0},
+                    {"type": "pointerUp", "button": 0},
+                ]}]})
+        except RuntimeError:
+            pass  # a driver without touch actions: the lookups will say so
+        time.sleep(1)
+
     def onboard(self):
         wd = self.wd
         wd.go(self.url)
@@ -235,7 +275,7 @@ class Smoke:
                 break
             time.sleep(1)
         time.sleep(4)
-        wd.js("const p = document.querySelector('flt-semantics-placeholder'); if (p) p.click();")
+        self._enable_semantics()
         time.sleep(2)
         # A browser that kept this site's data from an earlier walk starts
         # further on: at "Who are you?", or at the list with our profile.
@@ -343,13 +383,19 @@ class Smoke:
             self.failures.append(f"{route}: {str(e)[:200]}")
 
 
-def capabilities(browser):
+def capabilities(browser, mobile=False):
     if browser == "safari":
         return {"browserName": "safari"}
     if browser == "safari-ios":
         return {"browserName": "safari", "platformName": "iOS", "safari:useSimulator": True}
     if browser == "chrome":
-        return {"browserName": "chrome", "goog:chromeOptions": {"args": ["--headless=new", "--no-sandbox"]}}
+        options = {"args": ["--headless=new", "--no-sandbox"]}
+        if mobile:
+            # A phone as Chrome on Android presents itself (user agent, touch,
+            # pixel ratio), so the app takes its phone-browser paths too; a
+            # narrow desktop window alone does not.
+            options["mobileEmulation"] = {"deviceName": "Pixel 7"}
+        return {"browserName": "chrome", "goog:chromeOptions": options}
     if browser == "firefox":
         return {"browserName": "firefox", "moz:firefoxOptions": {"args": ["-headless"]}}
     raise SystemExit(f"unknown browser {browser}")
@@ -364,7 +410,7 @@ def main():
     ap.add_argument("--mobile", action="store_true")
     args = ap.parse_args()
 
-    wd = WebDriver(args.driver, capabilities(args.browser))
+    wd = WebDriver(args.driver, capabilities(args.browser, mobile=args.mobile))
     smoke = Smoke(wd, args.url, args.out)
     try:
         if args.mobile:
