@@ -38,6 +38,10 @@ class AnalyticsService {
   /// to render the toggle's current value.
   static bool get isOptIn => _optIn;
 
+  /// Crashlytics has no browser version (Analytics has): in the web app it
+  /// is skipped, which keeps Analytics working when an educator opts in.
+  static bool get _crashlytics => !kIsWeb;
+
   /// Initialise Crashlytics + Analytics and apply the persisted opt-in
   /// flag. Call this after [FirebaseService.init] succeeds.
   ///
@@ -47,8 +51,10 @@ class AnalyticsService {
     if (!FirebaseService.isConfigured) return;
     try {
       _optIn = await _loadOptIn();
-      await FirebaseCrashlytics.instance
-          .setCrashlyticsCollectionEnabled(_optIn);
+      if (_crashlytics) {
+        await FirebaseCrashlytics.instance
+            .setCrashlyticsCollectionEnabled(_optIn);
+      }
       await FirebaseAnalytics.instance.setAnalyticsCollectionEnabled(_optIn);
       _ready = true;
       if (kDebugMode) {
@@ -73,8 +79,10 @@ class AnalyticsService {
     await HiveService.saveSetting(_optInKey, enabled);
     if (!_ready) return;
     try {
-      await FirebaseCrashlytics.instance
-          .setCrashlyticsCollectionEnabled(enabled);
+      if (_crashlytics) {
+        await FirebaseCrashlytics.instance
+            .setCrashlyticsCollectionEnabled(enabled);
+      }
       await FirebaseAnalytics.instance.setAnalyticsCollectionEnabled(enabled);
     } catch (e, stack) {
       if (kDebugMode) {
@@ -94,7 +102,7 @@ class AnalyticsService {
     String? source,
     String? context,
   }) async {
-    if (!_ready || !_optIn) return;
+    if (!_ready || !_optIn || !_crashlytics) return;
     try {
       await FirebaseCrashlytics.instance.recordError(
         error,
@@ -113,7 +121,7 @@ class AnalyticsService {
   /// Record a Flutter framework error (build/layout/etc.) with full
   /// FlutterErrorDetails context. No-op when opt-in is off.
   static Future<void> recordFlutterError(FlutterErrorDetails details) async {
-    if (!_ready || !_optIn) return;
+    if (!_ready || !_optIn || !_crashlytics) return;
     try {
       await FirebaseCrashlytics.instance.recordFlutterError(details);
     } catch (_) {

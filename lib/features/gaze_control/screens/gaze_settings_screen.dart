@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -68,6 +69,18 @@ class GazeSettingsScreen extends ConsumerWidget {
         children: [
           if (id != null) ...[
             _LearnerBanner(name: learnerName ?? ''),
+            const SizedBox(height: 12),
+          ],
+          // A browser cannot run the face tracker, so the learner's own head
+          // control stays off there (GazeSettingsNotifier); say why. Setting
+          // up a learner's (id != null) is for their Android device.
+          if (kIsWeb && id == null) ...[
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.info_outline_rounded),
+                title: Text(t.gzsWebNotice),
+              ),
+            ),
             const SizedBox(height: 12),
           ],
           const _IntroCard(),

@@ -1,12 +1,14 @@
 {
-    "name": "pwdpwdpwd",
-    "short_name": "pwdpwdpwd",
+    "name": "FlashLearn PWD",
+    "short_name": "FlashLearn",
     "start_url": ".",
+    "scope": ".",
     "display": "standalone",
     "background_color": "#F5F1FB",
-    "theme_color": "#F5F1FB",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "theme_color": "#6C5CE7",
+    "description": "Bilingual (English/Filipino) flashcards, FSL sign videos, games and stories for learners with disabilities.",
+    "lang": "en",
+    "orientation": "any",
     "prefer_related_applications": false,
     "icons": [
         {

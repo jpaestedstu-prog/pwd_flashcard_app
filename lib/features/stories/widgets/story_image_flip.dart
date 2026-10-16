@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import '../../../core/services/story_image_service.dart';
@@ -115,6 +116,11 @@ class _StoryImageFlipState extends State<StoryImageFlip> {
 
   void _resolveCartoon() {
     if (_cartoon != null || _resolvingCartoon) return;
+    // A browser loads the picture from its URL (no files to cache into).
+    if (kIsWeb) {
+      _cartoon = NetworkImage(widget.pair.cartoonUrl);
+      return;
+    }
     final cached = StoryImageService.resolvedFile(_cartoonKey);
     if (cached != null) {
       _cartoon = FileImage(cached);
@@ -137,6 +143,10 @@ class _StoryImageFlipState extends State<StoryImageFlip> {
 
   void _resolveReal() {
     if (_real != null || _resolvingReal) return;
+    if (kIsWeb) {
+      _real = NetworkImage(widget.pair.realUrl);
+      return;
+    }
     final cached = StoryImageService.resolvedFile(_realKey);
     if (cached != null) {
       _real = FileImage(cached);

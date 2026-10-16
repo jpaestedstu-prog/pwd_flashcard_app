@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -29,7 +30,17 @@ import '../widgets/photo_results_panel.dart';
 import '../../../core/utils/seeded_random.dart';
 import '../../../core/theme/accessible_theme.dart';
 
-enum _ScanStatus { initializing, ready, noCamera, permissionDenied, failed }
+/// [unsupported]: a browser. The recogniser (Google ML Kit) runs on the
+/// phone or tablet itself and has no web version: closing it in the web app
+/// threw, and the "Something went wrong" banner then sat over every screen.
+enum _ScanStatus {
+  initializing,
+  ready,
+  noCamera,
+  permissionDenied,
+  failed,
+  unsupported,
+}
 
 /// Where the learner is in the photo flow: aiming, waiting for the shutter,
 /// or looking at a captured photo with its detected words.
@@ -122,7 +133,11 @@ class _ObjectScanScreenState extends ConsumerState<ObjectScanScreen>
     final gaze = ref.read(gazeSettingsProvider);
     if (gaze.enabled && gaze.voiceCommands) startVoiceControl();
     _loadDiscoveries();
-    _initCamera();
+    if (kIsWeb) {
+      _status = _ScanStatus.unsupported;
+    } else {
+      _initCamera();
+    }
   }
 
   @override
@@ -131,7 +146,9 @@ class _ObjectScanScreenState extends ConsumerState<ObjectScanScreen>
     disposeVoiceControl();
     _controller?.dispose();
     _controller = null;
-    _labeler.close();
+    // Never started in a browser; and a platform without the recogniser must
+    // not turn closing it into an app-wide error.
+    if (!kIsWeb) _labeler.close().catchError((Object _) {});
     _deletePhoto();
     gazeCameraOwners.release(_cameraToken);
     super.dispose();
@@ -218,7 +235,8 @@ class _ObjectScanScreenState extends ConsumerState<ObjectScanScreen>
     } else if (state == AppLifecycleState.resumed &&
         controller == null &&
         !_initInFlight &&
-        _status != _ScanStatus.noCamera) {
+        _status != _ScanStatus.noCamera &&
+        _status != _ScanStatus.unsupported) {
       // Re-acquire after backgrounding; also retries after the user grants
       // permission from system settings.
       _initCamera();
@@ -778,8 +796,12 @@ class _FallbackState extends StatelessWidget {
     final (emoji, message) = switch (status) {
       _ScanStatus.noCamera => ('🚫', l10n.wordHuntNoCamera),
       _ScanStatus.permissionDenied => ('🙈', l10n.wordHuntCameraDenied),
+      _ScanStatus.unsupported => ('📱', l10n.wordHuntNeedsApp),
       _ => ('😕', l10n.wordHuntCameraError),
     };
+    // Trying again cannot help without a camera, or in a browser.
+    final canRetry = status != _ScanStatus.noCamera &&
+        status != _ScanStatus.unsupported;
     return Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(32),
@@ -793,7 +815,7 @@ class _FallbackState extends StatelessWidget {
               style: const TextStyle(color: Colors.white, fontSize: 16),
               textAlign: TextAlign.center,
             ),
-            if (status != _ScanStatus.noCamera) ...[
+            if (canRetry) ...[
               const SizedBox(height: 20),
               ElevatedButton.icon(
                 onPressed: onRetry,

@@ -1,0 +1,150 @@
+name: Web
+
+# The web app in real browsers, on GitHub's machines (free for a public
+# repository): Chrome and Firefox on Linux, Safari on macOS and Mobile Safari
+# in the iOS Simulator. Each one walks every learner screen with
+# tool/web_smoke.py (W3C WebDriver, standard-library Python) at a desktop and
+# a phone-sized window, and fails on the app's error banner, an error box, a
+# page error, or an app that never starts. The build is the offline one
+# (FLASHLEARN_OFFLINE): nothing a test does reaches the cloud. Screenshots of
+# every stop are kept 14 days.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, work/v1.4.2]
+    paths-ignore:
+      - 'docs/**'
+      - 'CHAPTER*/**'
+      - '**/*.md'
+
+concurrency:
+  group: web-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  FLUTTER_VERSION: '3.44.0'
+
+jobs:
+  build:
+    name: Build the web app
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: flutter build web (offline test build)
+        run: >
+          flutter build web --release --no-wasm-dry-run
+          --dart-define=FLASHLEARN_OFFLINE=true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-app
+          path: build/web
+          retention-days: 3
+
+  linux:
+    name: ${{ matrix.browser }} (${{ matrix.window }})
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chrome, firefox]
+        window: [desktop, phone]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-app
+          path: web-app
+      - name: Serve the app
+        run: python3 -m http.server 8080 --bind 127.0.0.1 --directory web-app > server.log 2>&1 &
+      - name: Start the driver
+        run: |
+          if [ "${{ matrix.browser }}" = chrome ]; then
+            "$CHROMEWEBDRIVER/chromedriver" --port=4444 > driver.log 2>&1 &
+          else
+            "$GECKOWEBDRIVER/geckodriver" --port 4444 > driver.log 2>&1 &
+          fi
+          sleep 3
+      - name: Walk the app
+        run: >
+          python3 tool/web_smoke.py --driver http://127.0.0.1:4444
+          --browser ${{ matrix.browser }} --url http://127.0.0.1:8080/
+          --out out/${{ matrix.browser }}-${{ matrix.window }}
+          ${{ matrix.window == 'phone' && '--mobile' || '' }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-${{ matrix.browser }}-${{ matrix.window }}
+          path: out
+          retention-days: 14
+
+  safari:
+    name: Safari (${{ matrix.target }})
+    needs: build
+    runs-on: macos-15
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [safari, safari-ios]
+    # Mobile Safari in the Simulator depends on the runner image's
+    # simulators; it is reported, not allowed to fail the run.
+    continue-on-error: ${{ matrix.target == 'safari-ios' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-app
+          path: web-app
+      - name: Serve the app
+        run: python3 -m http.server 8080 --bind 127.0.0.1 --directory web-app > server.log 2>&1 &
+      - name: Boot an iPhone simulator
+        if: matrix.target == 'safari-ios'
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c "
+          import json, sys
+          d = json.load(sys.stdin)['devices']
+          for runtime, devs in sorted(d.items(), reverse=True):
+              if 'iOS' in runtime:
+                  for dev in devs:
+                      if dev['name'].startswith('iPhone'):
+                          print(dev['udid']); sys.exit()
+          ")
+          echo "Simulator $UDID"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+      - name: Start safaridriver
+        run: |
+          sudo safaridriver --enable
+          safaridriver --port 4444 > driver.log 2>&1 &
+          sleep 3
+      - name: Walk the app
+        run: |
+          python3 tool/web_smoke.py --driver http://127.0.0.1:4444 \
+            --browser ${{ matrix.target }} --url http://127.0.0.1:8080/ \
+            --out out/${{ matrix.target }}
+      - name: Walk the app (phone-sized window)
+        if: matrix.target == 'safari'
+        run: |
+          python3 tool/web_smoke.py --driver http://127.0.0.1:4444 \
+            --browser safari --url http://127.0.0.1:8080/ \
+            --out out/safari-phone --mobile
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-${{ matrix.target }}
+          path: out
+          retention-days: 14

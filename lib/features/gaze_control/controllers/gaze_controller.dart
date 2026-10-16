@@ -3,7 +3,7 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
-import 'package:flutter/foundation.dart' show kReleaseMode;
+import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
@@ -440,6 +440,13 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> _initCameraInner() async {
+    // A browser has no face tracker (ML Kit is Android and iOS only), and the
+    // settings keep head control off there; never start a camera for it.
+    if (kIsWeb) {
+      _status = GazeStatus.noCamera;
+      _notify();
+      return;
+    }
     if (_status != GazeStatus.initializing) {
       _status = GazeStatus.initializing;
       _notify();

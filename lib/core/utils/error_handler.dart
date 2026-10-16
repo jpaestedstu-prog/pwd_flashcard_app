@@ -223,6 +223,12 @@ class ErrorHandler {
 
   /// Manually report an error from anywhere in the codebase.
   /// Use this instead of silently swallowing with `catch (_) {}`.
+  /// `--dart-define=FLASHLEARN_LOG_ERRORS=true` prints every report in a
+  /// profile or release build too, to the browser console or logcat: how a
+  /// web build or a phone build is checked without a debugger attached (a
+  /// debug web build loads 2,335 scripts and is too slow to test with).
+  static const bool _logAlways = bool.fromEnvironment('FLASHLEARN_LOG_ERRORS');
+
   static void report(Object error, [StackTrace? stack, String? source]) {
     _handleError(error, stack, source: source ?? 'Manual');
   }
@@ -255,8 +261,8 @@ class ErrorHandler {
       stackTrace: stack?.toString(),
     );
 
-    // Log to console in debug mode
-    if (kDebugMode) {
+    // Log to console in debug mode, or in a test build that asks for it.
+    if (kDebugMode || _logAlways) {
       debugPrint('┌── ERROR [$source] ──────────────────────');
       if (context != null) debugPrint('│ Context: $context');
       debugPrint('│ $error');

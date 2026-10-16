@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../core/constants/flashcard_emojis.dart';
 import '../core/services/flashcard_photo_service.dart';
@@ -185,6 +186,14 @@ class _FlashcardImageState extends State<FlashcardImage> {
       return;
     }
 
+    // A browser has no files to cache pictures in: it loads the URL itself
+    // (Cloudinary allows any origin) and keeps it in its own cache.
+    if (kIsWeb) {
+      final url = FlashcardPhotoService.urlFor(widget.card);
+      if (url != null) _photo = NetworkImage(url);
+      return;
+    }
+
     final cached = FlashcardPhotoService.resolvedFile(widget.card);
     if (cached != null) {
       _photo = FileImage(cached);
@@ -202,6 +211,12 @@ class _FlashcardImageState extends State<FlashcardImage> {
 
   void _resolveCartoon() {
     if (!_hasCartoonSource || _cartoon != null) return;
+
+    if (kIsWeb) {
+      final url = FlashcardPhotoService.cartoonUrlFor(widget.card);
+      if (url != null) _cartoon = NetworkImage(url);
+      return;
+    }
 
     final cached = FlashcardPhotoService.resolvedCartoon(widget.card);
     if (cached != null) {

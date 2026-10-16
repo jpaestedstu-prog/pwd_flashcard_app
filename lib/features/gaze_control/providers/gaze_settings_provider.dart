@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/local/hive_service.dart';
@@ -29,7 +30,15 @@ class GazeSettingsNotifier extends Notifier<GazeSettings>
   GazeSettings get current => state;
 
   @override
-  GazeSettings build() {
+  GazeSettings build() => _effective(_stored());
+
+  /// In a browser head control stays off: it needs the device's own face
+  /// tracker (Google ML Kit), which has no web version. The learner's choice
+  /// is still saved, so the same profile has it in the Android app.
+  static GazeSettings _effective(GazeSettings s) =>
+      kIsWeb && s.enabled ? s.copyWith(enabled: false) : s;
+
+  GazeSettings _stored() {
     final profileId = _watchProfileId();
     try {
       final raw = HiveService.getProfileSetting(
@@ -90,7 +99,7 @@ class GazeSettingsNotifier extends Notifier<GazeSettings>
 
   @override
   void update(GazeSettings settings) {
-    state = settings;
+    state = _effective(settings);
     _persist(settings);
   }
 

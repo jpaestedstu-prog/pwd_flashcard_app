@@ -2,7 +2,9 @@
    Screenshots and videos are not precached (they load when shown, then stay
    cached); assets/fsl-dict.js is build input for the dictionary page, not
    something a page loads. */
-const CACHE = 'flp-site-v36-9d0b232b';
+const CACHE = 'flp-site-v37-9d0b232b';
+// Where the FlashLearn web app lives, under this site's scope.
+const APP_PATH = new URL('app/', self.registration.scope).pathname;
 const CORE = [
   './',
   'index.html',
@@ -55,6 +57,10 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET' || url.origin !== location.origin) return;
   // The release manifest must always be fresh — never answer it from cache.
   if (url.pathname.endsWith('/version.json')) return;
+  // The web app (app/) is left to the browser: its code changes with every
+  // release, and answering it from this cache-first store would pair a new
+  // page with old code (and keep ~20 MB of it per visitor).
+  if (url.pathname.startsWith(APP_PATH)) return;
 
   // Pages: network first (fresh content), fall back to cache when offline.
   if (req.mode === 'navigate') {

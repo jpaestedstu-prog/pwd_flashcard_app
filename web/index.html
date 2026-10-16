@@ -1,46 +1,102 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
+    The base path the app is served from. `flutter build web` replaces it
+    with --base-href (e.g. /pwd_flashcard_app/app/ on GitHub Pages); it must
+    start and end with a slash.
   -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="FlashLearn PWD in your browser: bilingual (English/Filipino) flashcards, FSL sign videos, games and stories for learners with disabilities. Free, no sign-up needed.">
+  <meta name="theme-color" content="#6C5CE7">
+  <meta name="color-scheme" content="light dark">
 
-  <!-- iOS meta tags & icons -->
+  <!-- Home-screen app on iPhone / iPad (Safari) and Android (Chrome). -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="pwdpwdpwd">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="FlashLearn">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <link rel="icon" type="image/png" href="favicon.png">
 
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
-
-  <title>pwdpwdpwd</title>
+  <title>FlashLearn PWD</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    /* Shown while the app downloads (about 6 MB the first time; the browser
+       keeps it afterwards). Removed on Flutter's first frame. */
+    :root { --bg: #F5F1FB; --ink: #2D2A3E; --soft: #5B5670; --accent: #6C5CE7; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #17151F; --ink: #F1EEFA; --soft: #C9C3DD; --accent: #A99BFF; }
+    }
+    html, body { margin: 0; height: 100%; background: var(--bg); }
+    #fl-loading {
+      position: fixed; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 18px;
+      padding: 24px; box-sizing: border-box; text-align: center;
+      font: 600 18px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      color: var(--ink);
+    }
+    #fl-loading img { width: 112px; height: 112px; border-radius: 28px;
+      box-shadow: 0 10px 30px rgba(108, 92, 231, .25); }
+    #fl-loading .fil { color: var(--soft); font-weight: 500; font-size: 16px; }
+    #fl-loading .bar { width: min(260px, 70vw); height: 8px; border-radius: 99px;
+      background: rgba(108, 92, 231, .18); overflow: hidden; }
+    #fl-loading .bar span { display: block; height: 100%; width: 40%;
+      border-radius: 99px; background: var(--accent);
+      animation: fl-slide 1.4s ease-in-out infinite; }
+    @keyframes fl-slide { 0% { transform: translateX(-110%); }
+                          100% { transform: translateX(260%); } }
+    @media (prefers-reduced-motion: reduce) {
+      #fl-loading .bar span { animation: none; width: 100%; opacity: .55; }
+    }
+    #fl-loading .slow { display: none; max-width: 30em; color: var(--soft);
+      font-weight: 500; font-size: 15px; }
+    #fl-loading.is-slow .slow { display: block; }
+  </style>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
-
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
+  <div id="fl-loading" role="status" aria-live="polite">
+    <img src="icons/Icon-192.png" alt="">
+    <div>
+      <div>Loading FlashLearn…</div>
+      <div class="fil" lang="fil">Inihahanda ang FlashLearn…</div>
+    </div>
+    <div class="bar" aria-hidden="true"><span></span></div>
+    <p class="slow">This takes longer on a slow connection; it is quicker
+      next time. <span lang="fil">Mas matagal ito kapag mabagal ang internet;
+      mas mabilis na sa susunod.</span></p>
+  </div>
+  <noscript>
+    <p style="font: 18px system-ui, sans-serif; padding: 24px; text-align: center">
+      FlashLearn needs JavaScript. Please turn it on, or use the Android app.
+    </p>
+  </noscript>
+  <script>
+    // Errors the page could not handle, kept in memory only (nothing is sent
+    // anywhere) so the browser tests (tool/web_smoke.py) can read them.
+    window.__flErrors = [];
+    window.addEventListener('error', function (e) {
+      window.__flErrors.push(String(e.message || e.error || e));
+    });
+    window.addEventListener('unhandledrejection', function (e) {
+      window.__flErrors.push('unhandled: ' + String(e.reason));
+    });
+    // Say so after a while on a slow connection, and leave once the app has
+    // drawn its first frame.
+    setTimeout(function () {
+      var l = document.getElementById('fl-loading');
+      if (l) l.className = 'is-slow';
+    }, 8000);
+    window.addEventListener('flutter-first-frame', function () {
+      var l = document.getElementById('fl-loading');
+      if (l) l.remove();
+    });
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

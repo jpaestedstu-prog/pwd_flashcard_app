@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
@@ -94,6 +95,8 @@ class _ShowMeSheet extends StatefulWidget {
 class _ShowMeSheetState extends State<_ShowMeSheet> {
   VideoPlayerController? _controller;
   ActionClip? _clip;
+  // In a browser a GIF is shown straight from its URL: there are no files.
+  String? _webGif;
   bool _loading = true;
   bool _error = false;
 
@@ -105,6 +108,7 @@ class _ShowMeSheetState extends State<_ShowMeSheet> {
 
   Future<void> _resolve() async {
     await ActionClipService.load();
+    if (kIsWeb) return _resolveInBrowser();
     final clip = await ActionClipService.resolveClip(widget.card);
     if (!mounted) return;
 
@@ -125,7 +129,32 @@ class _ShowMeSheetState extends State<_ShowMeSheet> {
       return;
     }
 
-    final controller = VideoPlayerController.file(clip.file);
+    await _play(VideoPlayerController.file(clip.file), clip);
+  }
+
+  /// A browser has no download cache: the GIF is shown from its URL and a
+  /// video clip is streamed from it.
+  Future<void> _resolveInBrowser() async {
+    final url = ActionClipService.urlFor(widget.card);
+    if (!mounted) return;
+    if (url == null) {
+      setState(() {
+        _loading = false;
+        _error = true;
+      });
+      return;
+    }
+    if (ActionClipService.isGifFor(widget.card)) {
+      setState(() {
+        _webGif = url;
+        _loading = false;
+      });
+      return;
+    }
+    await _play(VideoPlayerController.networkUrl(Uri.parse(url)), null);
+  }
+
+  Future<void> _play(VideoPlayerController controller, ActionClip? clip) async {
     try {
       await controller.initialize();
       if (!mounted) {
@@ -173,7 +202,22 @@ class _ShowMeSheetState extends State<_ShowMeSheet> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_error || _clip == null) {
+    final gif = _webGif;
+    if (gif != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Image.network(
+          gif,
+          width: double.infinity,
+          height: double.infinity,
+          fit: BoxFit.contain,
+          gaplessPlayback: true,
+          errorBuilder: (_, _, _) => const SizedBox.shrink(),
+        ),
+      );
+    }
+
+    if (_error || (_clip == null && _controller == null)) {
       return Center(
         child: Text(
           "This clip isn't available right now.",
@@ -183,8 +227,8 @@ class _ShowMeSheetState extends State<_ShowMeSheet> {
       );
     }
 
-    final clip = _clip!;
-    if (clip.isGif) {
+    final clip = _clip;
+    if (clip != null && clip.isGif) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: Image.file(

@@ -32,14 +32,17 @@ class AppCheckService {
 
   /// Whether this build attests at all — pure, so it is tested. A website
   /// APK never does in release (no store to vouch for it); in a debug build
-  /// the debug provider lets a developer try the flow on any channel.
+  /// the debug provider lets a developer try the flow on any channel. The web
+  /// app never does: it would need a reCAPTCHA key, and none is registered.
   @visibleForTesting
   static bool shouldActivate({
     required bool requested,
     required Distribution distribution,
     required bool debugBuild,
   }) =>
-      requested && (distribution != Distribution.website || debugBuild);
+      requested &&
+      distribution != Distribution.web &&
+      (distribution != Distribution.website || debugBuild);
 
   /// Must run right after `Firebase.initializeApp`, before Firestore or Auth
   /// make their first request. Never throws: App Check failing to start must

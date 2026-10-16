@@ -20,7 +20,13 @@ enum Distribution {
   play,
 
   /// Every iOS build — the App Store, TestFlight, or a test install.
-  appStore;
+  appStore,
+
+  /// The web app, in any browser. The site serves the newest version on
+  /// every visit, so there is nothing to update; a browser reports the
+  /// visitor's own system as [defaultTargetPlatform] (Android in Chrome on a
+  /// phone), so without this the web app offered the APK as an update.
+  web;
 
   /// The `--dart-define` a Play build is made with.
   static const String _define = String.fromEnvironment(
@@ -33,6 +39,7 @@ enum Distribution {
   static Distribution get current => resolve(
         platform: defaultTargetPlatform,
         define: _define,
+        isWeb: kIsWeb,
       );
 
   /// The rule behind [current] — pure, so it is tested.
@@ -40,7 +47,9 @@ enum Distribution {
   static Distribution resolve({
     required TargetPlatform platform,
     required String define,
+    bool isWeb = false,
   }) {
+    if (isWeb) return web;
     if (platform == TargetPlatform.iOS) return appStore;
     return define == 'play' ? play : website;
   }
