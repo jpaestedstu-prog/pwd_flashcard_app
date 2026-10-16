@@ -252,18 +252,28 @@ class Smoke:
         if centre is None or wd.js(on):
             return
         try:
-            wd.s("POST", "/actions", {"actions": [{
-                "type": "pointer", "id": "finger",
-                "parameters": {"pointerType": "touch"},
-                "actions": [
-                    {"type": "pointerMove", "duration": 0, "origin": "viewport",
-                     "x": round(centre[0]), "y": round(centre[1])},
-                    {"type": "pointerDown", "button": 0},
-                    {"type": "pointerUp", "button": 0},
-                ]}]})
+            self._tap(centre[0], centre[1])
         except RuntimeError:
             pass  # a driver without touch actions: the lookups will say so
         time.sleep(1)
+
+    def _tap(self, x, y):
+        """A real tap through the driver (a touch, on a phone) at viewport
+        point (x, y): what a page script's click cannot stand in for."""
+        self.wd.s("POST", "/actions", {"actions": [{
+            "type": "pointer", "id": "finger",
+            "parameters": {"pointerType": "touch"},
+            "actions": [
+                {"type": "pointerMove", "duration": 0, "origin": "viewport",
+                 "x": round(x), "y": round(y)},
+                {"type": "pointerDown", "button": 0},
+                {"type": "pause", "duration": 80},
+                {"type": "pointerUp", "button": 0},
+            ]}]})
+        try:
+            self.wd.s("DELETE", "/actions")
+        except RuntimeError:
+            pass
 
     def onboard(self):
         wd = self.wd
@@ -310,15 +320,33 @@ class Smoke:
         if not field:
             name = self.find("name")
             field = name[2:4] if name else None
+        typing = ("const a = document.activeElement;"
+                  "return !!a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA');")
         if field:
             wd.js(CLICK_JS, field[0], field[1])
             time.sleep(1)
+            if not wd.js(typing):
+                # iOS gives a text field focus (and its keyboard) only for a
+                # real tap, never for a page script's click.
+                try:
+                    self._tap(field[0], field[1])
+                except RuntimeError:
+                    pass
+                time.sleep(1.5)
         try:
             active = wd.s("GET", "/element/active")
             eid = list(active.values())[0]
             wd.s("POST", f"/element/{eid}/value", {"text": "Web Tester"})
         except RuntimeError as e:
             self.failures.append(f"could not type the name: {e}")
+        time.sleep(1)
+        # A driver whose keys did not reach the field: put the name in the
+        # way a keyboard does, through the input event the app listens to.
+        wd.js("const a = document.activeElement;"
+              "if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA') && !a.value) {"
+              "  a.value = 'Web Tester';"
+              "  a.dispatchEvent(new Event('input', {bubbles: true}));"
+              "}")
         time.sleep(1)
         wd.js("document.activeElement && document.activeElement.blur && document.activeElement.blur();")
         self.click("Tap to select birth date")

@@ -20,6 +20,11 @@ on:
       - 'docs/**'
       - 'CHAPTER*/**'
       - '**/*.md'
+      # The browser version's own page and checks: web.yml runs those.
+      - 'web/**'
+      - 'tool/web_smoke.py'
+      - 'tool/build_web.sh'
+      - '.github/workflows/web.yml'
 
 concurrency:
   group: android-${{ github.ref }}
