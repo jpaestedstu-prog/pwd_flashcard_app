@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
   pull_request:
   push:
-    branches: [main, work/v1.4.0, work/v1.4.1, work/sign-interpreter]
+    branches: [main, work/v1.4.0, work/v1.4.1, work/v1.4.2, work/sign-interpreter]
     paths-ignore:
       - 'website/**'
       - 'docs/**'
