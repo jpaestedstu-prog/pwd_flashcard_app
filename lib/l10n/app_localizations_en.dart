@@ -1423,6 +1423,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'This device has no camera, so Word Hunt can\'t run here.';
 
   @override
+  String get wordHuntNeedsApp =>
+      'Word Hunt works in the Android app: it recognises things with the phone or tablet itself, which a browser cannot do.';
+
+  @override
   String get wordHuntCameraDenied =>
       'Word Hunt needs the camera to find objects around you. Please allow camera access.';
 
@@ -2870,6 +2874,34 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String setOrientationTo(String choice) {
     return 'Set screen orientation to $choice';
+  }
+
+  @override
+  String get signVideoQuality => 'Sign videos';
+
+  @override
+  String get signVideoAuto => 'Automatic';
+
+  @override
+  String get signVideoLight => 'Smaller';
+
+  @override
+  String get signVideoFull => 'Sharpest';
+
+  @override
+  String get signVideoAutoDesc =>
+      'Smaller, faster videos on phones and mobile data; the sharpest on tablets with Wi-Fi';
+
+  @override
+  String get signVideoLightDesc =>
+      'Always the smaller videos: they start at once and use little data';
+
+  @override
+  String get signVideoFullDesc => 'Always the sharpest videos, about 8 MB each';
+
+  @override
+  String setSignVideoTo(String choice) {
+    return 'Set sign videos to $choice';
   }
 
   @override
@@ -8882,6 +8914,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gzsTitle => '👁️  Gaze Control';
 
   @override
+  String get gzsWebNotice =>
+      'Gaze Control works in the Android app. In a browser it stays off: it needs the phone or tablet\'s own face tracker.';
+
+  @override
   String get gzsEnable => 'Enable Gaze Control';
 
   @override
@@ -9291,6 +9327,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get fpSpeedSettings => 'Playback speed settings';
+
+  @override
+  String get fpTurnSideways => 'Turn the video sideways';
+
+  @override
+  String get fpTurnUpright => 'Turn the video upright';
 
   @override
   String get fpPause => 'Pause video';

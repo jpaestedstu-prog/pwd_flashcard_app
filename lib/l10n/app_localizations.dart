@@ -2672,6 +2672,12 @@ abstract class AppLocalizations {
   /// **'This device has no camera, so Word Hunt can\'t run here.'**
   String get wordHuntNoCamera;
 
+  /// No description provided for @wordHuntNeedsApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Word Hunt works in the Android app: it recognises things with the phone or tablet itself, which a browser cannot do.'**
+  String get wordHuntNeedsApp;
+
   /// No description provided for @wordHuntCameraDenied.
   ///
   /// In en, this message translates to:
@@ -5090,6 +5096,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Set screen orientation to {choice}'**
   String setOrientationTo(String choice);
+
+  /// No description provided for @signVideoQuality.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign videos'**
+  String get signVideoQuality;
+
+  /// No description provided for @signVideoAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic'**
+  String get signVideoAuto;
+
+  /// No description provided for @signVideoLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Smaller'**
+  String get signVideoLight;
+
+  /// No description provided for @signVideoFull.
+  ///
+  /// In en, this message translates to:
+  /// **'Sharpest'**
+  String get signVideoFull;
+
+  /// No description provided for @signVideoAutoDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Smaller, faster videos on phones and mobile data; the sharpest on tablets with Wi-Fi'**
+  String get signVideoAutoDesc;
+
+  /// No description provided for @signVideoLightDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Always the smaller videos: they start at once and use little data'**
+  String get signVideoLightDesc;
+
+  /// No description provided for @signVideoFullDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Always the sharpest videos, about 8 MB each'**
+  String get signVideoFullDesc;
+
+  /// No description provided for @setSignVideoTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Set sign videos to {choice}'**
+  String setSignVideoTo(String choice);
 
   /// No description provided for @soundOffTitle.
   ///
@@ -14732,6 +14786,12 @@ abstract class AppLocalizations {
   /// **'👁️  Gaze Control'**
   String get gzsTitle;
 
+  /// No description provided for @gzsWebNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Gaze Control works in the Android app. In a browser it stays off: it needs the phone or tablet\'s own face tracker.'**
+  String get gzsWebNotice;
+
   /// No description provided for @gzsEnable.
   ///
   /// In en, this message translates to:
@@ -15457,6 +15517,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Playback speed settings'**
   String get fpSpeedSettings;
+
+  /// No description provided for @fpTurnSideways.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn the video sideways'**
+  String get fpTurnSideways;
+
+  /// No description provided for @fpTurnUpright.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn the video upright'**
+  String get fpTurnUpright;
 
   /// No description provided for @fpPause.
   ///

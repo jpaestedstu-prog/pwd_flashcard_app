@@ -733,6 +733,7 @@
   "wordHuntNoneFound": "I couldn't find a word in this photo. Get closer and try again!",
   "wordHuntRetake": "New photo",
   "wordHuntNoCamera": "This device has no camera, so Word Hunt can't run here.",
+  "wordHuntNeedsApp": "Word Hunt works in the Android app: it recognises things with the phone or tablet itself, which a browser cannot do.",
   "wordHuntCameraDenied": "Word Hunt needs the camera to find objects around you. Please allow camera access.",
   "wordHuntCameraError": "The camera couldn't start. Please try again.",
   "wordHuntNewWord": "New word found! +1 ⭐",
@@ -1871,6 +1872,21 @@
   "orientationLandscapeDesc": "Always wide, however the device is held",
   "setOrientationTo": "Set screen orientation to {choice}",
   "@setOrientationTo": {
+    "placeholders": {
+      "choice": {
+        "type": "String"
+      }
+    }
+  },
+  "signVideoQuality": "Sign videos",
+  "signVideoAuto": "Automatic",
+  "signVideoLight": "Smaller",
+  "signVideoFull": "Sharpest",
+  "signVideoAutoDesc": "Smaller, faster videos on phones and mobile data; the sharpest on tablets with Wi-Fi",
+  "signVideoLightDesc": "Always the smaller videos: they start at once and use little data",
+  "signVideoFullDesc": "Always the sharpest videos, about 8 MB each",
+  "setSignVideoTo": "Set sign videos to {choice}",
+  "@setSignVideoTo": {
     "placeholders": {
       "choice": {
         "type": "String"
@@ -6087,6 +6103,7 @@
   "gzStatusPermission": "Gaze: camera permission needed",
   "gzUnavailable": "Gaze unavailable",
   "gzsTitle": "👁️  Gaze Control",
+  "gzsWebNotice": "Gaze Control works in the Android app. In a browser it stays off: it needs the phone or tablet's own face tracker.",
   "gzsEnable": "Enable Gaze Control",
   "gzsOn": "Head movements & blinks can drive the app",
   "gzsTryNow": "Try gaze control now",
@@ -6315,6 +6332,8 @@
   "fpHideCaptions": "Hide captions",
   "fpShowCaptions": "Show captions",
   "fpSpeedSettings": "Playback speed settings",
+  "fpTurnSideways": "Turn the video sideways",
+  "fpTurnUpright": "Turn the video upright",
   "fpPause": "Pause video",
   "fpPlay": "Play video",
   "fpSetSpeed": "Set speed to {speed}x",

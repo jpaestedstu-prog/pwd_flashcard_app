@@ -1439,6 +1439,10 @@ class AppLocalizationsFil extends AppLocalizations {
       'Walang camera ang device na ito, kaya hindi magagamit ang Word Hunt.';
 
   @override
+  String get wordHuntNeedsApp =>
+      'Gumagana ang Word Hunt sa Android app: kinikilala nito ang mga bagay gamit mismo ang phone o tablet, na hindi kaya ng browser.';
+
+  @override
   String get wordHuntCameraDenied =>
       'Kailangan ng Word Hunt ang camera para mahanap ang mga bagay sa paligid mo. Paki-payagan ang camera.';
 
@@ -2912,6 +2916,35 @@ class AppLocalizationsFil extends AppLocalizations {
   @override
   String setOrientationTo(String choice) {
     return 'Itakda ang direksyon ng screen sa $choice';
+  }
+
+  @override
+  String get signVideoQuality => 'Mga video ng senyas';
+
+  @override
+  String get signVideoAuto => 'Awtomatiko';
+
+  @override
+  String get signVideoLight => 'Mas maliit';
+
+  @override
+  String get signVideoFull => 'Pinakamalinaw';
+
+  @override
+  String get signVideoAutoDesc =>
+      'Mas maliit at mas mabilis na video sa phone at mobile data; pinakamalinaw sa tablet na naka-Wi-Fi';
+
+  @override
+  String get signVideoLightDesc =>
+      'Laging ang mas maliit na video: agad nagsisimula at kaunti ang gamit na data';
+
+  @override
+  String get signVideoFullDesc =>
+      'Laging ang pinakamalinaw na video, mga 8 MB bawat isa';
+
+  @override
+  String setSignVideoTo(String choice) {
+    return 'Itakda ang mga video ng senyas sa $choice';
   }
 
   @override
@@ -8802,6 +8835,10 @@ class AppLocalizationsFil extends AppLocalizations {
   String get gzsTitle => '👁️  Kontrol gamit ang Tingin';
 
   @override
+  String get gzsWebNotice =>
+      'Gumagana ang Kontrol gamit ang Tingin sa Android app. Sa browser, naka-off ito: kailangan nito ang sariling face tracker ng phone o tablet.';
+
+  @override
   String get gzsEnable => 'Buksan ang Gaze Control';
 
   @override
@@ -9220,6 +9257,12 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String get fpSpeedSettings => 'Setting ng bilis ng video';
+
+  @override
+  String get fpTurnSideways => 'Ipahiga ang video';
+
+  @override
+  String get fpTurnUpright => 'Itayo ang video';
 
   @override
   String get fpPause => 'I-pause ang video';
