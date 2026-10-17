@@ -1,6 +1,6 @@
 import 'dart:io' show Platform;
 
-import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode, kIsWeb;
 import 'package:flutter/services.dart';
 
 
@@ -25,8 +25,9 @@ class TvCastKeepAlive {
   static const _channel = MethodChannel('flashlearn/tv_cast_keepalive');
 
   /// Whether the platform has a keep-alive implementation at all. iOS has no
-  /// equivalent for a background listening socket, so we don't pretend.
-  static bool get isSupported => Platform.isAndroid;
+  /// equivalent for a background listening socket, so we don't pretend. (A
+  /// browser has no [Platform] at all: asking it throws.)
+  static bool get isSupported => !kIsWeb && Platform.isAndroid;
 
   /// Starts (or refreshes) the ongoing notification. [code] is the cast
   /// session code, [detail] the one-line status shown under the title, and

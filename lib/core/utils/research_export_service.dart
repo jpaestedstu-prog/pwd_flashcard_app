@@ -1,9 +1,6 @@
-import 'dart:io';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 import '../../data/models/models.dart';
 import '../../data/models/enums.dart';
 import '../../data/local/hive_service.dart';
@@ -20,6 +17,7 @@ import '../../features/gaze_control/services/gaze_metrics.dart';
 import '../services/adaptive_difficulty_service.dart';
 import '../services/engagement_tracker.dart';
 import 'research_export_rows.dart';
+import 'share_file.dart';
 import '../accessibility/learner_support.dart';
 
 /// Generates anonymized, cross-student research data exports for thesis
@@ -164,21 +162,16 @@ class ResearchExportService {
     ];
     if (learners.isEmpty) return;
 
-    final dir = await getTemporaryDirectory();
     final dateStr = DateTime.now().toString().split(' ').first;
-    final exportDir = Directory('${dir.path}/FlashLearn_Research_$dateStr');
-    if (await exportDir.exists()) {
-      await exportDir.delete(recursive: true);
-    }
-    await exportDir.create(recursive: true);
-
-    final files = <XFile>[
-      for (final entry in buildFiles(learners).entries)
-        await _writeFile(exportDir, entry.key, entry.value),
-    ];
-
-    await Share.shareXFiles(
-      files,
+    await ShareFile.share(
+      [
+        for (final entry in buildFiles(learners).entries)
+          ShareFile.text(
+            entry.value,
+            name: entry.key,
+            mimeType: _mimeFor(entry.key),
+          ),
+      ],
       subject: 'FlashLearn PWD – Research Data Export ($dateStr)',
     );
   }
@@ -967,14 +960,13 @@ class ResearchExportService {
 
   // ─── Helpers ────────────────────────────────────────────
 
-  static Future<XFile> _writeFile(
-    Directory dir,
-    String fileName,
-    String content,
-  ) async {
-    final file = File('${dir.path}/$fileName');
-    await file.writeAsString(content);
-    return XFile(file.path);
+  static String _mimeFor(String fileName) {
+    if (fileName.endsWith('.csv')) return 'text/csv';
+    if (fileName.endsWith('.json')) return 'application/json';
+    if (fileName.endsWith('.txt') || fileName.endsWith('.md')) {
+      return 'text/plain';
+    }
+    return 'application/octet-stream';
   }
 
   static String _esc(String value) => ResearchExportRows.esc(value);

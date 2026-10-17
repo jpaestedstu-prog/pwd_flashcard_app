@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 import '../../../core/accessibility/haptic_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/utils/platform_caps.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../data/models/enums.dart';
 import '../../../providers/app_providers.dart';
@@ -23,6 +24,7 @@ import '../../../core/widgets/media_capture_screen.dart';
 import '../../../core/accessibility/learner_support.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../widgets/android_app_notice.dart';
 import '../models/question_prompt.dart';
 import '../services/assessment_media_cache.dart';
 import '../services/assessment_media_store.dart';
@@ -375,6 +377,25 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
       _answered = true;
       _isCorrect = false;
       _selectedAnswer = value;
+    });
+  }
+
+  /// The browser version's way past a video question it cannot record
+  /// (see [_buildVideoAnswer]): left unanswered, not sent for review.
+  void _skipVideoAnswer() {
+    if (_answered || _finished) return;
+    final q = _currentQuestion;
+    _answers.removeWhere((a) => a.questionId == q.id);
+    _answers.add(QuestionAnswer(
+      questionId: q.id,
+      givenAnswer: '',
+      isCorrect: false,
+      responseTimeMs: _now().difference(_questionStartTime).inMilliseconds,
+    ));
+    setState(() {
+      _answered = true;
+      _isCorrect = false;
+      _selectedAnswer = null;
     });
   }
 
@@ -1352,7 +1373,22 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
           style: AppTypography.bodyLarge.copyWith(color: hc.textPrimary),
         ),
         const SizedBox(height: 14),
-        if (taken == null)
+        // A browser cannot keep a camera take: say so, and let the learner
+        // go on instead of leaving them stuck on this question.
+        if (taken == null && PlatformCaps.isWeb) ...[
+          AndroidAppNotice(message: _t.webVideoAnswerNeedsApp),
+          if (!_answered) ...[
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: _skipVideoAnswer,
+              icon: const Icon(Icons.skip_next_rounded),
+              label: Text(_t.skip),
+              style: OutlinedButton.styleFrom(
+                minimumSize: Size.fromHeight(scaledControlHeight(context, 52)),
+              ),
+            ),
+          ],
+        ] else if (taken == null)
           SizedBox(
             height: scaledControlHeight(context, 64),
             child: FilledButton.icon(
@@ -1498,11 +1534,17 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
         ),
         child: Row(
           children: [
-            const Text('🎥', style: TextStyle(fontSize: 28)),
+            Text(
+              _selectedAnswer == null ? '⏭️' : '🎥',
+              style: const TextStyle(fontSize: 28),
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                _t.assessVideoAnswerSaved,
+                // Null only when skipped in a browser: nothing was saved.
+                _selectedAnswer == null
+                    ? _t.webVideoAnswerSkipped
+                    : _t.assessVideoAnswerSaved,
                 style: AppTypography.titleSmall.copyWith(
                   color: hc.textPrimary,
                   fontWeight: FontWeight.w700,

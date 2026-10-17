@@ -165,6 +165,9 @@ class SharedMediaService {
   /// tablet does not have it yet. Null when it cannot be had right now.
   Future<File?> resolve(String value) {
     if (!isShared(value)) return Future<File?>.value();
+    // A browser has nowhere to keep the file: it used to download every
+    // chunk (Firestore reads, each time) only to fail writing it.
+    if (kIsWeb) return Future<File?>.value();
     final id = idOf(value);
     // A block body on purpose: an arrow would return the removed entry —
     // this very future — and `whenComplete` would then wait on itself for

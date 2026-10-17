@@ -1,11 +1,9 @@
-import 'dart:io';
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 import '../../data/models/models.dart';
 import '../../data/models/enums.dart';
 import '../../data/local/spaced_repetition_service.dart';
 import '../../data/local/hive_service.dart';
 import '../../features/progress/models/category_mastery.dart';
+import 'share_file.dart';
 
 /// Generates CSV data exports for teacher/parent use.
 ///
@@ -30,16 +28,15 @@ class CsvExportService {
       allCards: allCards,
     );
 
-    // Write to temp file
-    final dir = await getTemporaryDirectory();
     final dateStr = DateTime.now().toString().split(' ').first;
-    final file = File(
-        '${dir.path}/FlashLearn_Data_${profile.name}_$dateStr.csv');
-    await file.writeAsString(csv);
-
-    // Share
-    await Share.shareXFiles(
-      [XFile(file.path)],
+    await ShareFile.share(
+      [
+        ShareFile.text(
+          csv,
+          name: 'FlashLearn_Data_${profile.name}_$dateStr.csv',
+          mimeType: 'text/csv',
+        ),
+      ],
       subject: 'FlashLearn PWD - Data Export for ${profile.name}',
     );
   }

@@ -12,11 +12,15 @@
 # printed to the console): never publish that one.
 #
 # What the browser version cannot do, because it needs the phone or tablet
-# itself, says so where it is offered: Word Hunt (on-device recognition),
-# Gaze Control (on-device face tracking), TV Cast (a local server),
-# reminders and the My Day lock (system alarms). Sign videos stream the
-# website's light copies; pictures load straight from their host. The site's
-# service worker leaves app/ alone (website/sw.js).
+# itself, says so where it is offered (AndroidAppNotice, with a link to the
+# download page): Word Hunt (on-device recognition), Gaze Control (on-device
+# face tracking), TV Cast (a local server), reminders and the My Day lock
+# (system alarms), backup files, game controllers, and adding photos or
+# videos to cards, messages, My Day steps and tests (no file system; a
+# pasted link still works). Exports download instead of opening a share
+# sheet (ShareFile). Sign videos stream the website's light copies; pictures
+# load straight from their host. The site's service worker leaves app/ alone
+# (website/sw.js).
 #
 # After a build: check it with tool/web_smoke.py (see .github/workflows/web.yml),
 # then publish only with the owner's go-ahead (docs: release flow).

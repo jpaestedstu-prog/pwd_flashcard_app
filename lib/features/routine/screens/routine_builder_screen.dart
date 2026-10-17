@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -1028,7 +1029,9 @@ class _OpenByItselfRowState extends State<_OpenByItselfRow> {
     final l = widget.filipino;
     // iOS and the desktop test harness have no such permission, and a row
     // offering to fix a problem that cannot exist there is worse than no row.
-    if (Theme.of(context).platform != TargetPlatform.android) {
+    // kIsWeb too: Chrome on an Android phone reports Android, and a
+    // browser has no such permission to grant.
+    if (kIsWeb || Theme.of(context).platform != TargetPlatform.android) {
       return const SizedBox.shrink();
     }
 

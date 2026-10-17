@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -30,7 +31,9 @@ class RoutineOverOtherAppsRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (Theme.of(context).platform != TargetPlatform.android) {
+    // kIsWeb too: Chrome on an Android phone reports Android, and a
+    // browser has no such permission to grant.
+    if (kIsWeb || Theme.of(context).platform != TargetPlatform.android) {
       return const SizedBox.shrink();
     }
     final hc = HCColor.of(context);
@@ -114,7 +117,9 @@ class RoutineOverOtherAppsBanner extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (Theme.of(context).platform != TargetPlatform.android) {
+    // kIsWeb too: Chrome on an Android phone reports Android, and a
+    // browser has no such permission to grant.
+    if (kIsWeb || Theme.of(context).platform != TargetPlatform.android) {
       return const SizedBox.shrink();
     }
     final granted = ref.watch(routineOverOtherAppsGrantedProvider).valueOrNull;

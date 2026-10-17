@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:pwdpwdpwd/core/accessibility/haptic_service.dart';
 import 'package:pwdpwdpwd/core/services/shared_media_service.dart';
+import 'package:pwdpwdpwd/core/utils/platform_caps.dart';
 import 'package:pwdpwdpwd/core/utils/research_export_rows.dart';
 import 'package:pwdpwdpwd/data/models/enums.dart';
 import 'package:pwdpwdpwd/data/models/models.dart';
@@ -413,6 +414,46 @@ void main() {
       _Learner.type = DisabilityType.visual;
       await pumpTest(tester, const [_video]);
       expect(find.text('Say your answer out loud to the camera.'), findsOneWidget);
+      await settleAndUnmount(tester);
+    });
+
+    testWidgets('in a browser, which cannot record, the learner is told so '
+        'and can skip the question instead of being stuck on it', (
+      tester,
+    ) async {
+      PlatformCaps.debugWeb = true;
+      addTearDown(() => PlatformCaps.debugWeb = null);
+      await pumpTest(tester, const [_video, _mc]);
+      expect(find.text('Record your answer'), findsNothing);
+      expect(
+        find.text('Video answers are recorded in the Android app. Here, you '
+            'can skip this question.'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('Skip'));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('Skipped: this question has no video answer.'),
+          findsOneWidget);
+      expect(find.text('Answer saved — your teacher or parent will watch it.'),
+          findsNothing, reason: 'nothing was saved');
+      expect(find.text('Skip'), findsNothing);
+
+      await tester.tap(find.text('Next Question'));
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.tap(find.text('Cat'));
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.text('Finish Assessment'));
+      for (var i = 0; i < 10; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+
+      final result = _FakeResults.saved.single;
+      expect(result.answers, hasLength(2));
+      expect(result.reviewAnswers, isEmpty,
+          reason: 'a skipped question has no video for anyone to watch');
+      expect(result.score, 1);
+      expect(result.totalQuestions, 1);
       await settleAndUnmount(tester);
     });
 

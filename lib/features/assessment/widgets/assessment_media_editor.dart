@@ -11,6 +11,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../widgets/android_app_notice.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../../routine/services/routine_media_store.dart';
 import '../../routine/widgets/routine_media.dart';
@@ -19,6 +20,7 @@ import '../models/assessment_media_presentation.dart';
 import '../services/assessment_media_cache.dart';
 import '../services/assessment_media_store.dart';
 import 'assessment_media_panel.dart';
+import '../../../core/utils/platform_caps.dart';
 
 AppLocalizations _tr(BuildContext context) =>
     AppLocalizations.of(context) ?? AppLocalizationsEn();
@@ -835,6 +837,11 @@ class _MediaSourceSheetState extends State<_MediaSourceSheet> {
               ),
             ],
             const SizedBox(height: 16),
+            // A browser cannot keep a camera take or a picked file (no file
+            // system): a link still works there, so only these two go.
+            if (PlatformCaps.isWeb)
+              AndroidAppNotice(message: t.webMediaNeedsApp)
+            else ...[
             if (_cameraMakes)
               Padding(
                 padding: const EdgeInsets.only(bottom: 10),
@@ -876,6 +883,7 @@ class _MediaSourceSheetState extends State<_MediaSourceSheet> {
                 color: widget.willShare ? hc.textSecondary : hc.warningText,
               ),
             ),
+            ],
             const SizedBox(height: 20),
             TextField(
               controller: _link,

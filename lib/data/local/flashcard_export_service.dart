@@ -1,9 +1,7 @@
 import 'dart:convert';
-import 'dart:io';
-import 'package:file_picker/file_picker.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
+import 'dart:typed_data';
 import '../../core/utils/error_handler.dart';
+import '../../core/utils/share_file.dart';
 import '../models/models.dart';
 import 'hive_service.dart';
 
@@ -23,15 +21,15 @@ class FlashcardExportService {
     final jsonList = cards.map((c) => c.toJson()).toList();
     final jsonString = const JsonEncoder.withIndent('  ').convert(jsonList);
 
-    // Write to a temp file
-    final dir = await getTemporaryDirectory();
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final file = File('${dir.path}/flashlearn_cards_$timestamp.json');
-    await file.writeAsString(jsonString);
-
-    // Share
-    await Share.shareXFiles(
-      [XFile(file.path)],
+    await ShareFile.share(
+      [
+        ShareFile.text(
+          jsonString,
+          name: 'flashlearn_cards_$timestamp.json',
+          mimeType: 'application/json',
+        ),
+      ],
       subject: 'FlashLearn PWD – Custom Flashcards',
       text: 'Here are ${cards.length} custom flashcards exported from FlashLearn PWD.',
     );
@@ -42,19 +40,18 @@ class FlashcardExportService {
   ///
   /// Returns the number of cards successfully imported, or -1 on error.
   static Future<int> importCards() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['json'],
-    );
-
-    if (result == null || result.files.isEmpty) return 0;
+    // Bytes, not a path: a browser hands over no path.
+    final Uint8List? bytes;
+    try {
+      bytes = await PickFile.bytes(extensions: ['json']);
+    } catch (e, stack) {
+      ErrorHandler.report(e, stack, 'FlashcardImport');
+      return -1;
+    }
+    if (bytes == null) return 0;
 
     try {
-      final path = result.files.single.path;
-      if (path == null) return -1;
-
-      final file = File(path);
-      final content = await file.readAsString();
+      final content = utf8.decode(bytes);
       final List<dynamic> jsonList = jsonDecode(content) as List<dynamic>;
 
       int imported = 0;

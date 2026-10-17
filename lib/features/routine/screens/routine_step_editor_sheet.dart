@@ -7,6 +7,9 @@ import '../../../core/services/shared_media_service.dart';
 import '../../../core/widgets/media_capture_screen.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/utils/platform_caps.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 import '../models/routine_catalog.dart';
 import '../models/routine_models.dart';
 import '../models/routine_timeline.dart';
@@ -894,6 +897,29 @@ class _MediaFieldState extends State<_MediaField> {
             ),
           ),
           const SizedBox(height: 6),
+          // A browser cannot keep a picked file or a camera take; a link
+          // typed above still works there.
+          if (PlatformCaps.isWeb)
+            Row(
+              children: [
+                Icon(
+                  Icons.phone_android_rounded,
+                  size: 16,
+                  color: hc.textSecondary,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    (AppLocalizations.of(context) ?? AppLocalizationsEn())
+                        .webMediaNeedsApp,
+                    style: AppTypography.labelSmall.copyWith(
+                      color: hc.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            )
+          else
           Row(
             children: [
               OutlinedButton.icon(
@@ -964,7 +990,7 @@ class _MediaFieldState extends State<_MediaField> {
               padding: const EdgeInsets.only(top: 4),
               child: LinearProgressIndicator(value: sharing),
             )
-          else if (onDevice && _canShare)
+          else if (onDevice && _canShare && !PlatformCaps.isWeb)
             Align(
               alignment: AlignmentDirectional.centerStart,
               child: TextButton.icon(

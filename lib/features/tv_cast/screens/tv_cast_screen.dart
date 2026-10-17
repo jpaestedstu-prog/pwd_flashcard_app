@@ -21,6 +21,7 @@ import '../../../data/local/seed_stories.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../providers/app_providers.dart';
+import '../../../widgets/android_app_notice.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../../../widgets/language_replay_bar.dart';
 import '../models/tv_cast_session.dart';
@@ -33,6 +34,7 @@ import '../widgets/tv_cast_qr_card.dart';
 import '../widgets/tv_cast_remote_controls.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/utils/platform_caps.dart';
 
 /// Vertical gap above a section header, and between a header and its content.
 ///
@@ -73,6 +75,7 @@ class _TvCastScreenState extends ConsumerState<TvCastScreen> {
   @override
   void initState() {
     super.initState();
+    if (PlatformCaps.isWeb) return; // no cast to watch over: see build
     _connSub = Connectivity().onConnectivityChanged.listen(
       (_) => _checkNetwork(),
     );
@@ -285,7 +288,11 @@ class _TvCastScreenState extends ConsumerState<TvCastScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (!state.isServerRunning) ...[
+              // A browser can't open the local server the TV connects to:
+              // say so, instead of a Start button that can only fail.
+              if (PlatformCaps.isWeb)
+                AndroidAppNotice(message: _t(context).webTvCastNeedsApp)
+              else if (!state.isServerRunning) ...[
                 _StartCard(
                   starting: _starting,
                   onStart: _start,
@@ -2879,7 +2886,8 @@ class _FslWordPicker extends ConsumerWidget {
         ),
         const SizedBox(height: 6),
         SizedBox(
-          height: 44,
+          // 48 dp: a shorter strip capped each chip's tap target.
+          height: 48 * MediaQuery.textScalerOf(context).scale(1.0),
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: entries.length,

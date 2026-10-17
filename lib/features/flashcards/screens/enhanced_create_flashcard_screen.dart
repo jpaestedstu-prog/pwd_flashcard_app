@@ -13,6 +13,8 @@ import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../data/local/hive_service.dart';
+import '../../../core/utils/platform_caps.dart';
+import '../../../widgets/android_app_notice.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../core/utils/accessible_sizing.dart';
@@ -237,6 +239,13 @@ class _EnhancedCreateFlashcardScreenState
               // ─── Image Section ────────────────────
               _SectionLabel(label: _t(context).cfImage, icon: Icons.image_rounded, hc: hc),
               const SizedBox(height: 8),
+              // A browser hands the picker no file path (asking for one
+              // throws), and a card's picture is kept as a file.
+              if (PlatformCaps.isWeb)
+                AndroidAppNotice(
+                  message: _t(context).webMediaNeedsApp,
+                )
+              else
               _ImagePickerArea(
                 imagePath: _imagePath,
                 hc: hc,
@@ -251,7 +260,8 @@ class _EnhancedCreateFlashcardScreenState
                   label: _t(context).cfCategory, icon: Icons.category_rounded, hc: hc),
               const SizedBox(height: 8),
               SizedBox(
-                height: 42,
+                // 48 dp: a shorter strip capped each chip's tap target.
+                height: 48 * MediaQuery.textScalerOf(context).scale(1.0),
                 child: ListView(
                   scrollDirection: Axis.horizontal,
                   children: FlashcardCategory.values.map((cat) {

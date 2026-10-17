@@ -11,6 +11,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../core/widgets/fit_text.dart';
+import '../../../widgets/android_app_notice.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../../../core/services/analytics_service.dart';
 import '../../../core/services/fsl_clip_quality.dart';
@@ -35,6 +36,7 @@ import '../../../providers/fullscreen_provider.dart';
 import '../../../widgets/profile_avatar.dart';
 import '../../../widgets/animated_dialogs.dart';
 import '../../../widgets/app_back_button.dart';
+import '../../../core/utils/platform_caps.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -348,7 +350,9 @@ class SettingsScreen extends ConsumerWidget {
               // ─── Screen orientation ──────────
               // The screen turns with the device unless this profile keeps
               // it one way (a mounted tablet, a learner whom a turning screen
-              // unsettles). Head tracking holds it still on its own.
+              // unsettles). Head tracking holds it still on its own. Not in a
+              // browser, which turns the page however it likes.
+              if (!PlatformCaps.isWeb) ...[
               _SettingsTile(
                 icon: Icons.screen_rotation_rounded,
                 title: _t(context).screenOrientation,
@@ -390,6 +394,7 @@ class SettingsScreen extends ConsumerWidget {
                   ],
                 ),
               ),
+              ],
 
               _SettingsTile(
                 icon: Icons.animation_rounded,
@@ -819,6 +824,11 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
 
+                // A browser cannot send a reminder while FlashLearn is
+                // closed: say so, instead of switches that do nothing.
+                if (PlatformCaps.isWeb)
+                  AndroidAppNotice(message: _t(context).webRemindersNeedApp)
+                else ...[
                 _SettingsTile(
                   icon: Icons.notifications_active_rounded,
                   title:
@@ -957,6 +967,8 @@ class SettingsScreen extends ConsumerWidget {
                       },
                     ),
                   ),
+
+                ],
 
                 const SizedBox(height: 28),
               ],

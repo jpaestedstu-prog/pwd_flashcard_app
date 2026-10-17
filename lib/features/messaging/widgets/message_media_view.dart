@@ -6,6 +6,9 @@ import 'package:video_player/video_player.dart';
 import '../../../core/services/shared_media_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/utils/platform_caps.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 import '../models/messaging_models.dart';
 import '../services/message_media.dart';
 
@@ -40,7 +43,7 @@ class _MessageMediaBodyState extends State<MessageMediaBody> {
   @override
   void initState() {
     super.initState();
-    _file = _resolve();
+    _file = PlatformCaps.isWeb ? Future.value() : _resolve();
   }
 
   Future<File?> _resolve() {
@@ -90,7 +93,15 @@ class _MessageMediaBodyState extends State<MessageMediaBody> {
     );
 
     final Widget media;
-    if (MessageMedia.isExpired(widget.message)) {
+    // A browser has nowhere to keep the downloaded file, so this never
+    // loads there: say where it can be seen, instead of "try again".
+    if (PlatformCaps.isWeb) {
+      media = note(
+        Icons.phone_android_rounded,
+        (AppLocalizations.of(context) ?? AppLocalizationsEn())
+            .webMediaOpensInApp,
+      );
+    } else if (MessageMedia.isExpired(widget.message)) {
       media = note(
         Icons.hourglass_bottom_rounded,
         _isVideo

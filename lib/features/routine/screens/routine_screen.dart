@@ -14,6 +14,9 @@ import '../../../providers/lock_state_provider.dart' show canBeLockedByRoutine;
 import '../../../providers/profile_role_provider.dart';
 import '../../../providers/routine_provider.dart';
 import '../../../providers/wall_clock_provider.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
+import '../../../widgets/android_app_notice.dart';
 import '../../../widgets/animated_gradient_background.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../widgets/rich_empty_states.dart';
@@ -29,6 +32,7 @@ import '../../../widgets/on_time_alarms.dart';
 import '../widgets/routine_over_other_apps.dart';
 import '../widgets/routine_step_card.dart';
 import 'routine_step_screen.dart';
+import '../../../core/utils/platform_caps.dart';
 
 /// The learner's own routine — "My Day".
 ///
@@ -359,6 +363,20 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       children: [
+        // A browser shows the plan, but nothing rings or locks at a step's
+        // time: the learner (or whoever set it up) should know before
+        // relying on it.
+        if (PlatformCaps.isWeb &&
+            routines.any(
+              (r) => r.remindableSteps.isNotEmpty || r.lockingSteps.isNotEmpty,
+            ))
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: AndroidAppNotice(
+              message: (AppLocalizations.of(context) ?? AppLocalizationsEn())
+                  .webMyDayNote,
+            ),
+          ),
         if (asksForOverlay) RoutineOverOtherAppsBanner(filipino: filipino),
         if (asksForOnTime) OnTimeAlarmsBanner(filipino: filipino),
         _ProgressHeader(

@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/utils/platform_caps.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../core/accessibility/haptic_service.dart'
     show hapticServiceProvider;
@@ -576,6 +577,7 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
           centerTitle: true,
           leading: _activeConversation != null
               ? IconButton(
+                  tooltip: isFilipino ? 'Bumalik' : 'Back',
                   icon: const Icon(Icons.arrow_back_rounded),
                   onPressed: _closeConversation,
                 )
@@ -1479,7 +1481,9 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
           onPressed: () => _openStickerPicker(isFilipino),
           gazeCell: true,
         ),
-      if (composer.signVideos)
+      // Not in a browser, which cannot keep the camera's take (and shows
+      // received ones as "open in the Android app").
+      if (composer.signVideos && !PlatformCaps.isWeb)
         tool(
           icon: Icons.videocam_rounded,
           label: isFilipino ? 'Video' : 'Video',
@@ -1488,7 +1492,7 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
               : 'Record a sign or video',
           onPressed: () => _sendMedia(MessageType.video, isFilipino),
         ),
-      if (composer.photos)
+      if (composer.photos && !PlatformCaps.isWeb)
         tool(
           icon: Icons.photo_camera_rounded,
           label: isFilipino ? 'Larawan' : 'Photo',
@@ -1656,6 +1660,7 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
                             : null,
                       ),
                       child: IconButton.filled(
+                        tooltip: isFilipino ? 'Ipadala' : 'Send',
                         onPressed: () => _sendMessage(
                           _textController.text.trim(),
                           MessageType.text,

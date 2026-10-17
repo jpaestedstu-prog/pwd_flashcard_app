@@ -52,6 +52,14 @@ ROUTES = [
 
 BAD_TEXT = ("Something went wrong",)
 
+# What only the Android app can do says so where it is offered, instead of a
+# button that fails in a browser: these screens must show their notice.
+EXPECTED_TEXT = {
+    "/tv-cast": "TV Cast works in the Android app",
+    "/backup": "Backup files work in the Android app",
+    "/gamepad-settings": "Game controllers work in the Android app",
+}
+
 
 class WebDriver:
     def __init__(self, base, capabilities):
@@ -402,13 +410,17 @@ class Smoke:
         time.sleep(5)
         text = self.text()
         bad = [b for b in BAD_TEXT if b in text]
+        expected = EXPECTED_TEXT.get(route)
+        missing = expected is not None and expected not in text
         errs = self.page_errors()
         self.shot(route.strip("/").replace("/", "_") or "home")
-        ok = not bad and not errs
+        ok = not bad and not errs and not missing
         self.visited.append(("OK" if ok else "PROBLEM", route))
         print(("OK      " if ok else "PROBLEM ") + route)
         for b in bad:
             self.failures.append(f"{route}: {b!r} on screen")
+        if missing:
+            self.failures.append(f"{route}: no notice {expected!r}")
         if bad:
             # The app's error banner stays until OK is pressed: dismiss it so
             # the next screen is judged on its own.

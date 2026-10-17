@@ -3,15 +3,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/fit_text.dart';
 import '../../../providers/app_providers.dart' show settingsProvider;
 import '../logic/gamepad_speech.dart';
 import '../models/gamepad_settings.dart';
 import '../providers/gamepad_settings_provider.dart';
 import '../providers/gamepad_status_provider.dart';
+import '../services/gamepad_service.dart';
 import '../widgets/gamepad_guide.dart';
 import '../widgets/gaze_uses_controller_notice.dart';
+import '../../../widgets/android_app_notice.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/utils/platform_caps.dart';
 
 /// Configuration screen for Bluetooth gamepad control, plus the on-screen copy
 /// of the button guide.
@@ -29,6 +33,20 @@ class GamepadSettingsScreen extends ConsumerWidget {
     final notifier = ref.read(gamepadSettingsProvider.notifier);
     final status = ref.watch(gamepadStatusProvider);
     final appSettings = ref.watch(settingsProvider);
+
+    // No controller bridge here (a browser): only voice navigation can open
+    // this screen, and it should say why nothing on it would work.
+    if (PlatformCaps.isWeb || !GamepadService.isSupported) {
+      return Scaffold(
+        appBar: AppBar(title: Text(_t(context).gpTitle)),
+        body: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+          children: [
+            AndroidAppNotice(message: _t(context).webControllerNeedsApp),
+          ],
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(title: Text(_t(context).gpTitle)),
@@ -140,8 +158,16 @@ class GamepadSettingsScreen extends ConsumerWidget {
             contentPadding: EdgeInsets.zero,
             secondary: const Icon(Icons.vibration_rounded),
             title: Text(_t(context).gpVibrate),
+            // "kumpirmasyon" broke in two at 2x in Filipino.
             subtitle: Text(
               _t(context).gpVibrateHelp,
+              style: TextStyle(
+                fontSize: fittedStyle(
+                  context,
+                  _t(context).gpVibrateHelp,
+                  Theme.of(context).textTheme.bodyMedium,
+                )?.fontSize,
+              ),
             ),
             onChanged: notifier.setVibrate,
           ),
@@ -363,10 +389,13 @@ class _SliderTile extends StatelessWidget {
             children: [
               Icon(icon, size: 20, color: HCColor.of(context).readable(AppColors.primaryDark)),
               const SizedBox(width: 10),
+              // FitText: "pananalita" broke in two at 2x in Filipino.
               Expanded(
-                child: Text(
+                child: FitText(
                   title,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+                  style: DefaultTextStyle.of(context)
+                      .style
+                      .copyWith(fontWeight: FontWeight.w600),
                 ),
               ),
               Text(

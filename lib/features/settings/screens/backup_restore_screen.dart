@@ -6,11 +6,13 @@ import 'package:go_router/go_router.dart';
 import '../../../core/services/backup_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../widgets/android_app_notice.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/utils/platform_caps.dart';
 
 /// Screen for backing up and restoring all app data.
 class BackupRestoreScreen extends ConsumerStatefulWidget {
@@ -111,6 +113,17 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
 
           const SizedBox(height: 24),
 
+          // A browser has no files to write a backup to or read one from
+          // (and no gzip): it points to the Recovery Code instead.
+          if (PlatformCaps.isWeb) ...[
+            AndroidAppNotice(message: _t(context).webBackupNeedsApp),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () => context.push('/recovery/show'),
+              icon: const Icon(Icons.vpn_key_rounded),
+              label: Text(_t(context).settingRecoveryCodeTitle),
+            ),
+          ] else ...[
           // Create Backup button
           _ActionCard(
             icon: Icons.backup_rounded,
@@ -134,6 +147,7 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
             isLoading: _isRestoring,
             onPressed: _isRestoring ? null : _restoreBackup,
           ).animate().fadeIn(delay: 400.ms).slideX(begin: 0.1),
+          ],
 
           const SizedBox(height: 32),
 
@@ -400,7 +414,9 @@ class _InfoRow extends StatelessWidget {
         children: [
           Icon(icon, size: 20, color: HCColor.of(context).primary),
           const SizedBox(width: 10),
-          Text(text, style: AppTypography.bodyMedium),
+          // Wraps at large text: "App settings & accessibility" ran past a
+          // phone's edge at 1.4x.
+          Expanded(child: Text(text, style: AppTypography.bodyMedium)),
         ],
       ),
     );

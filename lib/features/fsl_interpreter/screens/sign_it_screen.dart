@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'dart:io';
 
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -359,7 +360,7 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
       // Treated as "no clip" below.
     }
     if (!mounted) {
-      if (file != null) File(file.path).delete().ignore();
+      if (file != null) _deleteFile(file.path);
       return;
     }
     // Clear REC immediately so the Stop button can't appear stuck behind the
@@ -372,7 +373,10 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
     // of hanging the panel.
     final path = file.path;
     _recordedPath = path;
-    final controller = VideoPlayerController.file(File(path));
+    // In a browser the take is a blob: URL in memory, not a file.
+    final controller = kIsWeb
+        ? VideoPlayerController.networkUrl(Uri.parse(path))
+        : VideoPlayerController.file(File(path));
     try {
       await controller.initialize().timeout(const Duration(seconds: 8));
       // Bail if the screen went away, the round advanced, or a newer take
@@ -397,7 +401,7 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
     if (cam != null && cam.value.isRecordingVideo) {
       try {
         final f = await cam.stopVideoRecording();
-        File(f.path).delete().ignore();
+        _deleteFile(f.path);
       } catch (_) {}
     }
     _replayController?.dispose();
@@ -409,7 +413,14 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
   void _deleteRecording() {
     final path = _recordedPath;
     _recordedPath = null;
-    if (path != null) File(path).delete().ignore();
+    if (path != null) _deleteFile(path);
+  }
+
+  /// Deletes a take's temp file. A browser's take is a blob in memory, with
+  /// no file to delete (and `File` throws there).
+  static void _deleteFile(String path) {
+    if (kIsWeb) return;
+    File(path).delete().ignore();
   }
 
   // ─── Flow ──────────────────────────────────────────────

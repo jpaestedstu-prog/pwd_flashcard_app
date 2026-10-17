@@ -1,8 +1,5 @@
-import 'dart:io';
-
-import 'package:path_provider/path_provider.dart';
-
 import '../../../data/remote/firestore_repository.dart';
+import '../../../core/utils/share_file.dart';
 
 /// One row in the exported CSV — a single learner's snapshot.
 class CsvReportRow {
@@ -113,17 +110,15 @@ class CsvReportService {
     return buf.toString();
   }
 
-  /// Build and write a CSV file to the app's temp directory. Returns the
-  /// absolute path. The caller should hand the path to share_plus's
-  /// `Share.shareXFiles([XFile(path)])` so the user can save / mail it.
-  static Future<File> writeReportFile({
+  /// Builds the CSV file, for [ShareFile.share] to hand over (the share
+  /// sheet on a device, a download in a browser).
+  static Future<ShareableFile> buildReportFile({
     required String classroomId,
     required String classroomLabel,
     Duration last = const Duration(days: 30),
   }) async {
     final rows = await buildRows(classroomId: classroomId, last: last);
     final csv = renderCsv(rows);
-    final dir = await getTemporaryDirectory();
     final stamp = DateTime.now()
         .toIso8601String()
         .substring(0, 10); // YYYY-MM-DD
@@ -131,9 +126,7 @@ class CsvReportService {
         .replaceAll(RegExp(r'[^A-Za-z0-9_-]+'), '_')
         .replaceAll(RegExp(r'_+'), '_');
     final filename = 'progress_${safeLabel}_$stamp.csv';
-    final file = File('${dir.path}/$filename');
-    await file.writeAsString(csv);
-    return file;
+    return ShareFile.text(csv, name: filename, mimeType: 'text/csv');
   }
 
   // ─── Helpers ─────────────────────────────────────────────

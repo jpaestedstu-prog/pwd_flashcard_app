@@ -15,11 +15,14 @@ import '../providers/gamepad_practice.dart';
 import '../providers/gamepad_settings_provider.dart';
 import '../providers/gamepad_status_provider.dart';
 import '../services/gamepad_announcer.dart';
+import '../services/gamepad_service.dart';
 import '../widgets/gaze_uses_controller_notice.dart';
+import '../../../widgets/android_app_notice.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../core/theme/accessible_theme.dart';
+import '../../../core/utils/platform_caps.dart';
 
 /// A place to press every button and be told what it does, with nothing at
 /// stake.
@@ -84,6 +87,8 @@ class _GamepadPracticeScreenState extends ConsumerState<GamepadPracticeScreen> {
 
   void _start() {
     if (!mounted) return;
+    // Nothing to practise with (see build): no "press a button" spoken.
+    if (PlatformCaps.isWeb || !GamepadService.isSupported) return;
     final service = ref.read(gamepadServiceProvider);
     service.start();
     _announcer = GamepadAnnouncer(ref.read(ttsServiceProvider))
@@ -168,6 +173,18 @@ class _GamepadPracticeScreenState extends ConsumerState<GamepadPracticeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // As on the settings screen: no controller bridge in a browser.
+    if (PlatformCaps.isWeb || !GamepadService.isSupported) {
+      return Scaffold(
+        appBar: AppBar(title: Text(_t(context).gppTitle)),
+        body: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            AndroidAppNotice(message: _t(context).webControllerNeedsApp),
+          ],
+        ),
+      );
+    }
     final status = ref.watch(gamepadStatusProvider);
     final phrases = _phrases;
     final theme = Theme.of(context);

@@ -10,6 +10,10 @@ class AppConstants {
   /// it reachable from inside the app, not only from the store page.
   static const String privacyPolicyUrl = '${websiteUrl}privacy.html';
 
+  /// Where the Android app is downloaded: the browser version sends a
+  /// learner here for what only the phone or tablet app can do.
+  static const String downloadPageUrl = '${websiteUrl}download.html';
+
   // ─── Animation Durations ────────────────────────────
   static const Duration instantDuration = Duration(milliseconds: 100);
   static const Duration fastDuration = Duration(milliseconds: 200);

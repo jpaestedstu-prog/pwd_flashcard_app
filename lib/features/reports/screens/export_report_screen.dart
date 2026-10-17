@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/utils/share_file.dart';
 import '../../../data/models/classroom.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/firestore_stream_helpers.dart';
@@ -69,14 +69,14 @@ class _ExportReportScreenState extends ConsumerState<ExportReportScreen> {
     );
     setState(() => _busy = true);
     try {
-      final file = await CsvReportService.writeReportFile(
+      final file = await CsvReportService.buildReportFile(
         classroomId: classroom.id,
         classroomLabel: classroom.name,
         last: _range.duration,
       );
       if (!mounted) return;
-      await Share.shareXFiles(
-        [XFile(file.path)],
+      await ShareFile.share(
+        [file],
         text: _t(context).erShareText(
           classroom.name,
           _rangeLabel(_t(context), _range),

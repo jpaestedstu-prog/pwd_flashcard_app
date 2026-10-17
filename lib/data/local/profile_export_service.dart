@@ -1,9 +1,7 @@
 import 'dart:convert';
-import 'dart:io';
-import 'package:file_picker/file_picker.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
+import 'dart:typed_data';
 import '../../core/utils/error_handler.dart';
+import '../../core/utils/share_file.dart';
 import '../models/enums.dart';
 import '../models/models.dart';
 import 'hive_service.dart';
@@ -47,17 +45,19 @@ class ProfileExportService {
 
     final jsonString = const JsonEncoder.withIndent('  ').convert(data);
 
-    final dir = await getTemporaryDirectory();
     final safeName = profile.name
         .replaceAll(RegExp(r'[^\w\s-]'), '')
         .replaceAll(RegExp(r'\s+'), '_')
         .toLowerCase();
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final file = File('${dir.path}/student_${safeName}_$timestamp.json');
-    await file.writeAsString(jsonString);
-
-    await Share.shareXFiles(
-      [XFile(file.path)],
+    await ShareFile.share(
+      [
+        ShareFile.text(
+          jsonString,
+          name: 'student_${safeName}_$timestamp.json',
+          mimeType: 'application/json',
+        ),
+      ],
       subject: 'Student Profile – ${profile.name}',
       text: 'Student profile “${profile.name}” exported from FlashLearn PWD.',
     );
@@ -70,23 +70,19 @@ class ProfileExportService {
   ///
   /// Returns a result record: `(success, message)`.
   static Future<({bool success, String message})> importProfile() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['json'],
-    );
-
-    if (result == null || result.files.isEmpty) {
+    // Bytes, not a path: a browser hands over no path.
+    final Uint8List? bytes;
+    try {
+      bytes = await PickFile.bytes(extensions: ['json']);
+    } catch (_) {
+      return (success: false, message: 'Could not read file');
+    }
+    if (bytes == null) {
       return (success: false, message: 'No file selected');
     }
 
     try {
-      final path = result.files.single.path;
-      if (path == null) {
-        return (success: false, message: 'Could not read file');
-      }
-
-      final file = File(path);
-      final content = await file.readAsString();
+      final content = utf8.decode(bytes);
       final data = jsonDecode(content);
 
       if (data is! Map<String, dynamic>) {
