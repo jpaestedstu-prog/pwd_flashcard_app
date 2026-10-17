@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/services/session_tracker.dart';
@@ -19,6 +18,7 @@ import '../models/category_mastery.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../navigation/nav_extensions.dart';
 
 /// Full-page analytics dashboard with interactive fl_chart visuals.
 class DetailedAnalyticsScreen extends ConsumerWidget {
@@ -37,7 +37,7 @@ class DetailedAnalyticsScreen extends ConsumerWidget {
           description: _t(context).daSelectProfile,
           actionLabel: _t(context).goBack,
           actionIcon: Icons.arrow_back_rounded,
-          onAction: () => context.pop(),
+          onAction: () => context.popOrGo('/progress'),
         ),
       );
     }

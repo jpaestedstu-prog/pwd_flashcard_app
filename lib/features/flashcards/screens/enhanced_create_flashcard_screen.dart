@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:uuid/uuid.dart';
 import '../../../core/theme/app_colors.dart';
@@ -20,6 +19,7 @@ import '../../../widgets/app_back_button.dart';
 import '../../../core/utils/accessible_sizing.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../navigation/nav_extensions.dart';
 
 /// Enhanced flashcard creator with image attachment and voice recording.
 ///
@@ -182,7 +182,10 @@ class _EnhancedCreateFlashcardScreenState
         context,
         message: _isEditing ? _t(context).cfUpdated : _t(context).cfCreated,
       );
-      context.pop(true);
+      // Opened straight from its address (a browser reload, a link) there
+      // is no screen to go back to, and the form just stayed: the cards
+      // instead.
+      context.popOrGo('/flashcards', true);
     }
   }
 

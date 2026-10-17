@@ -32,6 +32,7 @@ import '../services/assessment_service.dart';
 import '../services/sign_clip_readiness.dart';
 import '../widgets/assessment_media_panel.dart';
 import '../widgets/assessment_sign_clip.dart';
+import '../../../navigation/nav_extensions.dart';
 
 /// Screen that runs an assessment quiz — supports multiple choice,
 /// true/false, and fill-in-the-blank question formats. Fully accessible
@@ -605,7 +606,7 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
-              context.pop();
+              context.popOrGo('/assessment');
             },
             style: TextButton.styleFrom(foregroundColor: HCColor.of(context).errorText),
             child: Text(_t.testQuitConfirm),
@@ -663,7 +664,7 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
                     ),
                   ),
                   TextButton(
-                    onPressed: () => context.pop(),
+                    onPressed: () => context.popOrGo('/assessment'),
                     child: Text(l10n?.assessClipsGoBack ?? 'Go back'),
                   ),
                 ] else if (!_clipsMissing) ...[
@@ -711,7 +712,7 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
                   ),
                   const SizedBox(height: 8),
                   TextButton(
-                    onPressed: () => context.pop(),
+                    onPressed: () => context.popOrGo('/assessment'),
                     child: Text(l10n?.assessClipsGoBack ?? 'Go back'),
                   ),
                 ],

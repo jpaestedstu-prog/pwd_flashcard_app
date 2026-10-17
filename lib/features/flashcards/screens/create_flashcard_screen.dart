@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -14,6 +13,7 @@ import '../../../widgets/app_back_button.dart';
 import '../../../core/utils/accessible_sizing.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../navigation/nav_extensions.dart';
 
 class CreateFlashcardScreen extends ConsumerStatefulWidget {
   final Flashcard? editCard;
@@ -79,7 +79,9 @@ class _CreateFlashcardScreenState
 
     if (mounted) {
       AppSnackBar.success(context, message: _isEditing ? _t(context).cfUpdated : _t(context).cfCreated);
-      context.pop(true); // return true to signal a change was made
+      // True signals a change was made; with no screen to go back to (opened
+      // from its address) the cards instead.
+      context.popOrGo('/flashcards', true);
     }
   }
 

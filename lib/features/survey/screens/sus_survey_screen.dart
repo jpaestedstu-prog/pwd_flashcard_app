@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
@@ -12,6 +11,7 @@ import '../../../providers/app_providers.dart';
 import '../models/survey_models.dart';
 import '../services/survey_service.dart';
 import '../../../core/widgets/fit_text.dart';
+import '../../../navigation/nav_extensions.dart';
 
 /// Full SUS (System Usability Scale) survey screen.
 ///
@@ -67,7 +67,7 @@ class _SusSurveyScreenState extends ConsumerState<SusSurveyScreen> {
             ? 'Naisumite ang sarbey! Salamat sa iyong feedback.'
             : 'Survey submitted! Thank you for your feedback.',
       );
-      context.pop(result);
+      context.popOrGo('/home', result);
     }
   }
 

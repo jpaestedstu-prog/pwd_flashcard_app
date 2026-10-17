@@ -19,6 +19,7 @@ import '../providers/assessment_provider.dart';
 import '../services/assessment_service.dart';
 import '../services/class_analysis.dart';
 import '../models/question_prompt.dart';
+import '../../../navigation/nav_extensions.dart';
 
 /// The educator's read of the whole class rather than one learner at a time.
 ///
@@ -53,7 +54,7 @@ class ClassReportScreen extends ConsumerWidget {
                   'in the Assessment Center.',
           actionLabel: l10n?.goBack ?? 'Go back',
           actionIcon: Icons.arrow_back_rounded,
-          onAction: () => context.pop(),
+          onAction: () => context.popOrGo('/assessment'),
         ),
       );
     }

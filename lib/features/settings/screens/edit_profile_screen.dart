@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../../core/accessibility/accessibility_presets.dart';
 import '../../../core/accessibility/learner_support.dart';
 import '../../../core/constants/avatar_data.dart';
@@ -21,6 +20,7 @@ import '../../gaze_control/providers/gaze_settings_provider.dart';
 import '../../onboarding/widgets/learner_support_picker.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../core/utils/keyboard.dart';
+import '../../../navigation/nav_extensions.dart';
 
 /// Screen for editing an existing user profile (name, avatar, disability type).
 ///
@@ -278,7 +278,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
     if (mounted) {
       AppSnackBar.success(context, message: _t(context).epUpdated);
-      context.pop();
+      context.popOrGo('/settings');
     }
   }
 
@@ -388,7 +388,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           description: _t(context).epNoProfileBody,
           actionLabel: _t(context).lgGoBack,
           actionIcon: Icons.arrow_back_rounded,
-          onAction: () => context.pop(),
+          onAction: () => context.popOrGo('/settings'),
         ),
       );
     }

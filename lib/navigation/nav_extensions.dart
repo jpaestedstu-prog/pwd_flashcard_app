@@ -56,9 +56,14 @@ extension AppNavigation on BuildContext {
   /// pop — a notification deep-link, a lock-screen hand-off, or a flow that
   /// deliberately reset the stack. Callers should pass the hub the feature
   /// belongs to so that entry path still lands somewhere sensible.
-  void popOrGo(String fallbackRoute) {
+  ///
+  /// [result] goes back to whoever opened the screen, as with `pop(result)`.
+  /// A plain `context.pop()` with nothing below throws "There is nothing to
+  /// pop": Smart Review opened from its reminder (`go`), or any screen after
+  /// a browser reload, could not be closed.
+  void popOrGo(String fallbackRoute, [Object? result]) {
     if (canPop()) {
-      pop();
+      pop(result);
     } else {
       go(fallbackRoute);
     }

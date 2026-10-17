@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/fit_text.dart';
@@ -21,6 +20,7 @@ import '../widgets/charts/study_time_chart.dart';
 import '../../../widgets/app_back_button.dart';
 import '../models/category_mastery.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../navigation/nav_extensions.dart';
 
 /// Enhanced analytics dashboard with adaptive difficulty history,
 /// spaced repetition heatmap, and comprehensive learning insights.
@@ -42,7 +42,7 @@ class AdaptiveAnalyticsScreen extends ConsumerWidget {
           description: _t(context).aaSelectProfile,
           actionLabel: _t(context).goBack,
           actionIcon: Icons.arrow_back_rounded,
-          onAction: () => context.pop(),
+          onAction: () => context.popOrGo('/progress'),
         ),
       );
     }

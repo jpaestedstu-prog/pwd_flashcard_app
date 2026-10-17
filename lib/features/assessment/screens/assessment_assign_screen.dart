@@ -26,6 +26,7 @@ import '../../../l10n/app_localizations_en.dart';
 import '../../../core/utils/localized_date.dart';
 import '../models/question_prompt.dart';
 import '../../../core/utils/keyboard.dart';
+import '../../../navigation/nav_extensions.dart';
 
 /// Something an educator can hand out.
 ///
@@ -283,7 +284,7 @@ class _AssessmentAssignScreenState
             message: t.asgNotOwner,
           );
       }
-      context.pop();
+      context.popOrGo('/assessment');
     }
   }
 

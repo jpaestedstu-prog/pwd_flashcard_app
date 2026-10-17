@@ -14,6 +14,7 @@ import '../models/mood_context.dart';
 import '../models/mood_models.dart';
 import '../models/mood_presentation.dart';
 import '../widgets/mood_face.dart';
+import '../../../navigation/nav_extensions.dart';
 
 class MoodCheckInScreen extends ConsumerStatefulWidget {
   /// The moment being checked in on. Persisted with the entry so the Mood
@@ -102,7 +103,7 @@ class _MoodCheckInScreenState extends ConsumerState<MoodCheckInScreen> {
           ? 'Na-record ang mood! ${_selectedMood!.emoji}'
           : 'Mood recorded! ${_selectedMood!.emoji}',
     );
-    context.pop();
+    context.popOrGo('/home');
   }
 
   /// Switch into "correct what I logged" mode, pre-selecting the existing

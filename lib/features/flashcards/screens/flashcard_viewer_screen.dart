@@ -308,7 +308,7 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
       setState(() {
         _loadCards();
         if (_cards.isEmpty) {
-          context.pop();
+          context.popOrGo('/flashcards');
           return;
         }
         if (_currentIndex >= _cards.length) {

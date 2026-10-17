@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:percent_indicator/linear_percent_indicator.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -16,6 +15,7 @@ import '../services/guided_practice_service.dart';
 import '../../../core/utils/accessible_sizing.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../navigation/nav_extensions.dart';
 
 class GuidedPracticeScreen extends ConsumerStatefulWidget {
   final FlashcardCategory category;
@@ -159,7 +159,7 @@ class _GuidedPracticeScreenState extends ConsumerState<GuidedPracticeScreen> {
         session: _session!,
         isFilipino: isFilipino,
         onRestart: _startSession,
-        onClose: () => context.pop(),
+        onClose: () => context.popOrGo('/home'),
       );
     }
 

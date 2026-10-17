@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../widgets/app_snack_bar.dart';
@@ -24,6 +23,7 @@ import '../../../core/widgets/fit_text.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../l10n/app_localizations_fil.dart';
+import '../../../navigation/nav_extensions.dart';
 
 /// Screen for teachers to create custom assessments manually — or, given
 /// [editId], to change one they already saved.
@@ -533,14 +533,14 @@ class _AssessmentBuilderScreenState
       );
     }
 
-    context.pop();
+    context.popOrGo('/assessment');
   }
 
   // ─── Discard Confirmation ──────────────────────────
 
   void _confirmDiscard() {
     if (!_hasChanges) {
-      context.pop();
+      context.popOrGo('/assessment');
       return;
     }
     showDialog(
@@ -564,7 +564,7 @@ class _AssessmentBuilderScreenState
           FilledButton(
             onPressed: () {
               Navigator.pop(ctx);
-              context.pop();
+              context.popOrGo('/assessment');
             },
             style: FilledButton.styleFrom(
                 backgroundColor: HCColor.of(context).fillFor(AppColors.error)),

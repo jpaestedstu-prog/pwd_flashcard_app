@@ -22,6 +22,7 @@ import '../../../widgets/fullscreen_host.dart';
 import '../../gamepad/providers/gamepad_screen.dart';
 import '../../gamepad/widgets/gamepad_screen_registrar.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../navigation/nav_extensions.dart';
 
 /// Paginated story reader with TTS and vocabulary highlights.
 class StoryReaderScreen extends ConsumerStatefulWidget {
@@ -149,7 +150,7 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
               ),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: () => context.pop(),
+                onPressed: () => context.popOrGo('/stories'),
                 child: Text(AppLocalizations.of(context)!.goBack),
               ),
             ],
@@ -220,7 +221,7 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
           leading: AppIconButton(
             icon: Icons.close_rounded,
             tooltip: _t(context).close,
-            onPressed: () => context.pop(),
+            onPressed: () => context.popOrGo('/stories'),
           ),
           title: Text(_story!.titleEn),
         ),

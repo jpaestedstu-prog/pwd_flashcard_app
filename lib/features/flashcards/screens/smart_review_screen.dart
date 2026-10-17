@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/accessibility/haptic_service.dart';
@@ -21,6 +20,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../widgets/fullscreen_host.dart';
 import '../../../core/utils/accessible_sizing.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../navigation/nav_extensions.dart';
 
 /// Smart Review screen that uses spaced repetition to present
 /// the words the student struggles with most.
@@ -185,7 +185,7 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
           leading: IconButton(
             icon: const Icon(Icons.close_rounded),
             tooltip: _t(context).close,
-            onPressed: () => context.pop(),
+            onPressed: () => context.popOrGo('/home'),
           ),
           title: Text(
             '${AppLocalizations.of(context)!.smartReview}  ${_currentIndex + 1}/${_reviewCards.length}',
@@ -597,7 +597,7 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
                 width: double.infinity,
                 height: scaledControlHeight(context, 52),
                 child: OutlinedButton(
-                  onPressed: () => context.pop(),
+                  onPressed: () => context.popOrGo('/home'),
                   style: OutlinedButton.styleFrom(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),

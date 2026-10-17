@@ -17,6 +17,7 @@ import '../widgets/learning_gain_widgets.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../navigation/nav_extensions.dart';
 
 /// Dashboard visualizing pre-test vs post-test learning gains
 class LearningGainScreen extends ConsumerWidget {
@@ -35,7 +36,7 @@ class LearningGainScreen extends ConsumerWidget {
           description: _t(context).lgNoProfileBody,
           actionLabel: _t(context).lgGoBack,
           actionIcon: Icons.arrow_back_rounded,
-          onAction: () => context.pop(),
+          onAction: () => context.popOrGo('/home'),
         ),
       );
     }

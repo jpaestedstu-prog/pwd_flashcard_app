@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../widgets/app_snack_bar.dart';
@@ -11,6 +10,7 @@ import '../services/parental_controls_service.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../navigation/nav_extensions.dart';
 
 /// Educator / parent screen for configuring parental controls.
 ///
@@ -53,7 +53,7 @@ class _ParentalControlsScreenState
     }
     if (!mounted) return;
     AppSnackBar.success(context, message: _t(context).pcSaved);
-    context.pop();
+    context.popOrGo('/home');
   }
 
   @override

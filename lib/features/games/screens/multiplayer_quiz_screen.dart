@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
@@ -220,7 +219,7 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
                 IconButton(
                   tooltip: _t(context).close,
                   icon: const Icon(Icons.close_rounded),
-                  onPressed: () => context.pop(),
+                  onPressed: () => context.popOrGo('/games'),
                 ),
                 const Spacer(),
                 Flexible(
@@ -788,7 +787,7 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => context.pop(),
+                    onPressed: () => context.popOrGo('/games'),
                     icon: const Icon(Icons.home_rounded),
                     label: const Text('Home'),
                     style: OutlinedButton.styleFrom(

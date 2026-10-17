@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
@@ -12,6 +11,7 @@ import '../../../widgets/app_snack_bar.dart';
 import '../../../providers/app_providers.dart';
 import '../models/smileyometer_models.dart';
 import '../services/smileyometer_service.dart';
+import '../../../navigation/nav_extensions.dart';
 
 /// Child-friendly Smileyometer feedback screen for learners.
 ///
@@ -51,7 +51,7 @@ class _SmileyometerScreenState extends ConsumerState<SmileyometerScreen> {
         context,
         message: isFilipino ? 'Salamat sa iyong feedback!' : 'Thanks for your feedback!',
       );
-      context.pop(result);
+      context.popOrGo('/home', result);
     }
   }
 
