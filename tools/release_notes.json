@@ -2,6 +2,31 @@
   "_comment": "Newest first. tools/release_page_build.py renders the website's download section, changelog, website/version.json and the GitHub release notes from this file plus pubspec.yaml and the built APKs. The first entry must match the pubspec version.",
   "releases": [
     {
+      "version": "1.4.2",
+      "build": 15,
+      "date": "2026-10-17",
+      "summary_en": "A release for phones and web browsers. On phones the sign videos start in about two seconds (a light copy of the same recording) instead of up to 17, and play on phones that could not play the original; the Break button no longer covers a game’s buttons; and every screen reads well at large text, in English and Filipino. About 20 buttons a screen reader could not name have names, and every button is big enough for a finger. The same app also runs in a web browser: what needs an Android device says so there, and exports download as files. The app to install is for Android phones and tablets, from this website.",
+      "summary_fil": "Isang release para sa mga phone at web browser. Sa mga phone, nagsisimula na ang mga video ng senyas sa loob ng mga dalawang segundo (isang magaan na kopya ng parehong recording) sa halip na hanggang 17, at napapanood na sa mga phone na hindi kayang i-play ang orihinal; hindi na tinatakpan ng Break button ang mga button ng laro; at maayos nang mabasa ang bawat screen sa malaking teksto, sa English at Filipino. May pangalan na ang mga 20 button na hindi masabi ng screen reader, at sapat na ang laki ng bawat button para sa daliri. Gumagana na rin ang parehong app sa web browser: sinasabi roon kung ano ang kailangan ng Android device, at nada-download bilang file ang mga export. Para sa mga Android phone at tablet ang app na ini-install, mula sa website na ito.",
+      "notes_en": "Sign videos start quickly on phones, nothing in a game sits under the Break button, and every screen reads well at large text; the app also runs in a web browser.",
+      "notes_fil": "Mabilis nang magsimula ang mga video ng senyas sa phone, wala nang bahagi ng laro na natatakpan ng Break button, at maayos nang mabasa ang bawat screen sa malaking teksto; gumagana na rin ang app sa web browser.",
+      "bullets_en": [
+        "Sign videos on phones start in about 2 seconds, from a light copy of the same recording (854 x 480), instead of 11 to 17 seconds, and play on budget phones whose video decoders stop at 1080p. Tablets on Wi-Fi keep the originals; Settings > Data > Sign videos chooses.",
+        "The Break button has a lane of its own: on a phone it sat over answer cards and buttons in 11 of 13 games.",
+        "On phones with gesture navigation, a Tracing stroke or a Drag & Drop word begun near the screen’s edge no longer pauses the game.",
+        "The AI buddy floats over the five main tabs only, never over a game, the card viewer or a story.",
+        "The full-screen sign player can turn the video sideways, even with auto-rotate off, and keeps its controls while a screen reader is on.",
+        "Large text on phones (1.4x and 2.0x): no word breaks in the middle and no row runs off the screen, on every screen, in English and Filipino.",
+        "About 20 buttons that a screen reader called only “button” have names, and every button and chip is at least 48 dp.",
+        "The status bar comes back after the full-screen sign player, the My Day lock and Time’s up.",
+        "Reading words aloud works on phones whose maker hides the speech engines.",
+        "Save on Create Card, and Close or Back on 18 other screens, work when that screen was the first one open (from a reminder or a link).",
+        "Exports work for a learner whose name has a slash, and Export cards says when there are no cards of your own yet.",
+        "TV Cast from a phone sharing its own hotspot shows an address a TV can open.",
+        "New: the same app in a web browser, on a computer, an Android phone, an iPhone or an iPad. Sign videos stream and exports download; what needs the Android app (Word Hunt, Gaze Control, TV Cast, reminders and the My Day lock, backups, game controllers, recording video answers, adding photos or videos) says so.",
+        "The app to install is for Android phones and tablets, from this website."
+      ]
+    },
+    {
       "version": "1.4.1",
       "build": 14,
       "date": "2026-10-13",
