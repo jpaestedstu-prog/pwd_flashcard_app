@@ -140,4 +140,57 @@ void main() {
     }
     await unmount(tester);
   });
+
+  testWidgets('with a screen reader, Close works the way TalkBack presses it '
+      '(a double tap is its tap action), long after the fade would have '
+      'been', (tester) async {
+    final semantics = tester.ensureSemantics();
+    tester.view.physicalSize = const Size(1200, 1920);
+    tester.view.devicePixelRatio = 1.5;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(MaterialApp(
+      locale: const Locale('en'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(accessibleNavigation: true),
+        child: child!,
+      ),
+      home: Builder(
+        builder: (context) => Scaffold(
+          body: TextButton(
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+              builder: (_) => const FslFullscreenPlayer(
+                videoSource: NetworkVideoSource('https://example.org/dog.mp4'),
+                wordEnglish: 'Dog',
+                wordFilipino: 'Aso',
+              ),
+            )),
+            child: const Text('Open the sign'),
+          ),
+        ),
+      ),
+    ));
+    await tester.tap(find.text('Open the sign'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(seconds: 10));
+
+    // The button TalkBack reads as "Close fullscreen video" (its tooltip),
+    // still in reach of a swipe.
+    final close = find.semantics.byPredicate(
+      (node) => node.tooltip == 'Close fullscreen video',
+      describeMatch: (_) => 'the Close button',
+    );
+    expect(close, findsOne);
+    // What TalkBack sends on a double tap: the node's tap action.
+    tester.semantics.tap(close);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(FslFullscreenPlayer), findsNothing);
+    expect(find.text('Open the sign'), findsOneWidget);
+    semantics.dispose();
+    await unmount(tester);
+  });
 }
