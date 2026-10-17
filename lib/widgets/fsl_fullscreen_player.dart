@@ -465,12 +465,21 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
 
   // ─── Controls overlay ───────────────────────────────
 
+  /// With a screen reader on, the controls never go: its user reaches them
+  /// one swipe at a time. A timer, or a double tap on the video, used to take
+  /// Close and the speed out of reach, and switching the reader on part-way
+  /// through did not bring them back.
+  bool get _controlsVisible =>
+      _showControls ||
+      (MediaQuery.maybeAccessibleNavigationOf(context) ?? false);
+
   Widget _buildControlsOverlay() {
+    final visible = _controlsVisible;
     return AnimatedOpacity(
-      opacity: _showControls ? 1.0 : 0.0,
+      opacity: visible ? 1.0 : 0.0,
       duration: AppConstants.fastDuration,
       child: IgnorePointer(
-        ignoring: !_showControls,
+        ignoring: !visible,
         child: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
