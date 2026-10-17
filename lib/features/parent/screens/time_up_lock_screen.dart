@@ -10,6 +10,7 @@ import 'package:video_player/video_player.dart';
 import '../../../core/constants/lock_media.dart';
 import '../../../core/security/pin_auth_service.dart';
 import '../../../core/security/pin_credential_helper.dart';
+import '../../../core/utils/system_bars.dart';
 import '../../../core/services/fsl_assets_service.dart';
 import '../../../core/services/guardian_address.dart';
 import '../../../core/services/handoff_target.dart';
@@ -137,7 +138,7 @@ class _TimeUpLockScreenState extends ConsumerState<TimeUpLockScreen>
 
   @override
   void dispose() {
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    unawaited(SystemBars.restore());
     _announceTimer?.cancel();
     _cooldownTicker?.cancel();
     _pulse?.dispose();
@@ -481,7 +482,7 @@ class _TimeUpLockScreenState extends ConsumerState<TimeUpLockScreen>
   /// selected again, so this is a hand-off, not a bypass.
   void _switchAccount() {
     unawaited(_announcer?.stop());
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    unawaited(SystemBars.restore());
     GoRouter.of(context).go('/profile-switcher');
   }
 

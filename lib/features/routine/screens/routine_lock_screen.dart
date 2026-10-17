@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/services/fsl_assets_service.dart';
 import '../../../core/services/lock_announcer.dart';
 import '../../../core/services/lock_enforcer.dart';
+import '../../../core/utils/system_bars.dart';
 import '../../../core/services/lock_presentation.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -165,7 +166,7 @@ class _RoutineLockScreenState extends ConsumerState<RoutineLockScreen>
 
   @override
   void dispose() {
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    unawaited(SystemBars.restore());
     unawaited(RoutineNativeAlarms.setShowWhenLocked(false));
     _resumeListener?.dispose();
     _announceTimer?.cancel();

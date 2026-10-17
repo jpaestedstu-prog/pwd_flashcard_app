@@ -6,6 +6,7 @@ import 'package:video_player/video_player.dart';
 
 import '../core/services/fsl_assets_service.dart';
 import '../core/services/orientation_hold.dart';
+import '../core/utils/system_bars.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/constants/app_constants.dart';
@@ -13,6 +14,7 @@ import '../core/utils/reduced_motion.dart';
 import '../l10n/app_localizations.dart';
 import '../l10n/app_localizations_en.dart';
 import '../core/theme/accessible_theme.dart';
+import '../core/utils/platform_caps.dart';
 
 /// Opens the FSL fullscreen video player as a fullscreen dialog.
 ///
@@ -154,11 +156,8 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
     // Give the screen back the way it was before "turn sideways".
     OrientationHold.release(this);
 
-    // Restore the normal (non-immersive) system UI.
-    SystemChrome.setEnabledSystemUIMode(
-      SystemUiMode.edgeToEdge,
-      overlays: SystemUiOverlay.values,
-    );
+    // The bars back, as on every other page.
+    unawaited(SystemBars.restore());
 
     super.dispose();
   }
@@ -174,6 +173,10 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
 
   void _startHideControlsTimer() {
     _hideControlsTimer?.cancel();
+    // With a screen reader on, the controls stay: its user moves through
+    // them one swipe at a time, and hiding them after 3 s took Close and the
+    // speed out of reach half way there.
+    if (MediaQuery.maybeAccessibleNavigationOf(context) ?? false) return;
     _hideControlsTimer = Timer(_controlsHideDelay, () {
       if (mounted && _controller.value.isPlaying) {
         setState(() {
@@ -524,6 +527,8 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
             ),
           const Spacer(),
           // Turn the screen: a held-upright phone letterboxes the wide clip.
+          // Not in a browser: it cannot turn the page.
+          if (!PlatformCaps.isWeb)
           IconButton(
               // What a tap does from the shape the screen is now: undoing a
               // turn goes back to the other shape, so the label still fits.
@@ -539,7 +544,7 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
                 minimumSize: const Size(48, 48),
               ),
             ),
-          const SizedBox(width: 4),
+          if (!PlatformCaps.isWeb) const SizedBox(width: 4),
           // Captions toggle
           IconButton(
               tooltip: _showSubtitles ? _t(context).fpHideCaptions : _t(context).fpShowCaptions,
