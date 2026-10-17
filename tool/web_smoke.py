@@ -371,6 +371,9 @@ class Smoke:
         time.sleep(1.5)
         self.shot("date_picker")
         self.click("OK")
+        # The date picker is still closing for a moment: a tap then lands on
+        # its fading barrier (seen in Chrome on a real tablet).
+        time.sleep(1.5)
         self.click("Let's Go!")
         time.sleep(3)
         return self._reach_home()
@@ -381,7 +384,11 @@ class Smoke:
         for i in range(6):
             if self.find("Games") and self.find("Cards"):
                 break
-            if self.find("Collect"):
+            if self.find("Let's Go!"):
+                # The form is still there: the first press did not land.
+                self.click("Let's Go!")
+                time.sleep(3)
+            elif self.find("Collect"):
                 # The first visit's Daily Reward sits over Home and hides the
                 # tab bar from the accessibility tree.
                 self.shot("daily_reward")
