@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <!-- viewport-fit=cover lets the layout reach into any TV safe-area/overscan
+       inset; the web-app-capable flags make WebView-based casting dongles run
+       the page chrome-less (the Fullscreen API in app.js handles the rest). -->
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#121218">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>FlashLearn TV</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div id="stage">
+    <div class="splash">
+      <div class="splash-emoji">📺</div>
+      <h1>FlashLearn TV</h1>
+      <p>Waiting for the teacher to start casting&hellip;</p>
+    </div>
+  </div>
+  <div id="footer-pill" class="footer-pill hidden"></div>
+  <div id="sound-hint" class="sound-hint hidden"></div>
+  <script src="/app.js"></script>
+</body>
+</html>

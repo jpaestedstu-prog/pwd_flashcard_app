@@ -1,0 +1,1767 @@
+/* The app's own typefaces, served by the phone.
+ *
+ * The TV used to render in whatever sans-serif it shipped with, so a learner
+ * saw Nunito on their phone and Segoe UI or Roboto on the classroom screen —
+ * the single clearest reason the two read as separate products. Nunito is the
+ * app's face; Lexend is what the dyslexia template switches to, matching the
+ * in-app dyslexia theme rather than approximating it.
+ *
+ * Relative url() on purpose: the browser resolves it against this stylesheet's
+ * own address, which is already inside the /c/<code> session gate.
+ *
+ * `font-display: swap` so a slow first paint shows the fallback rather than
+ * nothing — a blank stage on a classroom TV is worse than the wrong face for
+ * one second. The fallback stack is the old list, unchanged, so a TV that
+ * cannot load the file looks exactly as it did before.
+ */
+@font-face {
+  font-family: "FlashLearn Nunito";
+  src: url("fonts/nunito-regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "FlashLearn Nunito";
+  src: url("fonts/nunito-bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: "FlashLearn Lexend";
+  src: url("fonts/lexend-regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "FlashLearn Lexend";
+  src: url("fonts/lexend-bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  /* AppColors' dark scaffold (#121218), not the stock slate this started as,
+     so the TV's dark ground is literally the app's. Slightly better contrast
+     too: 17.83:1 against the body text where the slate gave 17.06:1. The many
+     other #0f172a values in this file are dark *ink* on the light templates
+     and are deliberately left alone. */
+  background: #121218;
+  color: #f8fafc;
+  font-family: "FlashLearn Nunito", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  overflow: hidden;
+}
+
+#stage {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.splash {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6vh;
+}
+
+.splash-emoji {
+  font-size: 22vh;
+  line-height: 1;
+  margin-bottom: 4vh;
+}
+
+.splash h1 {
+  font-size: 8vh;
+  margin: 0 0 2vh 0;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.splash p {
+  font-size: 3.5vh;
+  margin: 0;
+  color: #94a3b8;
+}
+
+/* ─── Flashcard slide ──────────────────────────── */
+.slide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 4vh;
+  box-sizing: border-box;
+}
+
+/* The card itself — a light "flashcard" surface floating on the themed
+   stage, mirroring the in-app Cards section. Stays light across every theme
+   (the high-contrast theme overrides it further down) so the words always sit
+   on a readable surface; category colours are applied inline by app.js. */
+.fcard {
+  position: relative;
+  z-index: 0; /* own stacking context so the decor / shine layers always sort */
+  box-sizing: border-box;
+  width: 64vw;
+  max-width: 1200px;
+  max-height: 90vh;
+  padding: 6vh 5vw 5vh;
+  background: #ffffff;
+  border-radius: 3.5vh;
+  box-shadow: 0 2vh 6vh rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  transform-origin: 50% 50%;
+  /* 3D flip-in entrance — the TV analog of the in-app flip card's
+     easeOutBack scale/rotate reveal. Self-perspective() keeps it to a single
+     element. Old browsers that can't parse the transform still fade in. */
+  animation: cardFlipIn 0.6s cubic-bezier(0.2, 0.7, 0.2, 1.02) both;
+}
+
+/* The real card content sits above the blobs and below the shine sweep. */
+.fcard-body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+/* Category colour strip across the top edge (background set inline). */
+.fcard-accent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1.4vh;
+  z-index: 3; /* above the content + shine layers */
+}
+
+/* ── Decorative tinted corner blobs (behind the content) ──
+   The TV analog of the in-app card's soft corner circles. The pastel tint is
+   applied inline; they drift very slowly and are clipped to the card's rounded
+   corners by `.fcard { overflow: hidden }`. */
+.fcard-blob {
+  position: absolute;
+  z-index: 0;
+  border-radius: 50%;
+  opacity: 0.3;
+  animation: blobFloat 6s ease-in-out infinite;
+}
+
+.fcard-blob-tr { top: -8vh; right: -7vh; width: 26vh; height: 26vh; }
+
+.fcard-blob-bl {
+  bottom: -6vh;
+  left: -6vh;
+  width: 18vh;
+  height: 18vh;
+  animation-delay: -3s;
+}
+
+/* ── One-shot glossy light sweep ──
+   Mirrors the glossy highlight that slides across the in-app card during its
+   3D flip. Runs once, just after the card lands. The base transform parks it
+   off the left edge so reduced-motion / Calm (which null out `animation`)
+   never leave a bright band sitting on the card. */
+.fcard-shine {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 45%;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.55) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: translateX(-160%) skewX(-12deg);
+  animation: cardShine 1.1s ease-out 0.45s both;
+}
+
+/* Category badge: emoji + label, tinted with the category colours inline. */
+.fcard-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 1vw;
+  padding: 1vh 2.4vw;
+  border-radius: 4vh;
+  font-size: 3vh;
+  font-weight: 800;
+  margin-bottom: 3vh;
+}
+
+.fcard-badge-ico { font-size: 3.2vh; line-height: 1; }
+
+/* The word's picture inside a rounded, category-tinted tile (background set
+   inline). Also the 3D stage for the emoji⇄photo flip — `perspective` gives
+   the rotation real depth. Prefixed for old Android WebKit / smart-TV browsers;
+   ones that ignore it still show the flip (just flatter) or, with no transform
+   support at all, the photo simply painted over the emoji. */
+.fcard-pic {
+  position: relative;
+  width: 30vh;
+  height: 30vh;
+  border-radius: 3vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 3.5vh;
+  -webkit-perspective: 1200px;
+  perspective: 1200px;
+}
+
+.fcard-pic-emoji { font-size: 20vh; line-height: 1; }
+
+/* ── Emoji⇄photo 3D flip (the TV analog of the in-app "Cards" flip) ──
+   Two stacked faces inside the tile: the emoji (front) and the real photo /
+   GIF (back, pre-rotated 180°). app.js adds `.is-flipped` once the photo has
+   loaded, rotating the card to reveal it. The 0.66s easeOut curve mirrors the
+   in-app card's 650ms easeOutBack reveal. reduced-motion / Calm null the
+   transition below, so the photo then appears instantly. */
+.fcard-flip {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  -webkit-transform-style: preserve-3d;
+  transform-style: preserve-3d;
+  -webkit-transition: -webkit-transform 0.66s cubic-bezier(0.2, 0.7, 0.2, 1.02);
+  transition: transform 0.66s cubic-bezier(0.2, 0.7, 0.2, 1.02);
+}
+
+.fcard-flip.is-flipped {
+  -webkit-transform: rotateY(180deg);
+  transform: rotateY(180deg);
+}
+
+.fcard-face {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: inherit;
+  overflow: hidden;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  /* Photo (set inline by app.js) fills the tile, cropped to centre — the
+     background route works back to old Android WebKit and animates GIFs. */
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+}
+
+.fcard-face-back {
+  -webkit-transform: rotateY(180deg);
+  transform: rotateY(180deg);
+}
+
+/* Illustrated front face. Fills the tile the same way the photo face does; it
+   starts out holding the emoji span and app.js swaps in the background image
+   once the picture has downloaded. */
+.fcard-face-art {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: inherit;
+  overflow: hidden;
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+}
+
+/* The cartoon⇄photo flip is driven by the phone's "Flip" button (the TV is a
+   passive display), so the tile itself has no tap target or hint. */
+
+/* "Show Me" action clip rendered as a looping GIF — fills the stage like the
+   FSL video does. (MP4 clips reuse the .fsl-video-box / video rules below.) */
+.clip-gif-box { line-height: 0; }
+
+.clip-gif {
+  max-width: 95vw;
+  max-height: 80vh;
+  border-radius: 1vh;
+  box-shadow: 0 0 4vh rgba(0, 0, 0, 0.5);
+  background: #000;
+}
+
+.fcard-word-en {
+  font-size: 9vh;
+  font-weight: 900;
+  color: #0f172a;
+  margin: 0;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  text-align: center;
+}
+
+/* Colour set inline (the category's deep tone) to match the in-app card. */
+.fcard-word-fil {
+  font-size: 5vh;
+  font-weight: 700;
+  font-style: italic;
+  margin-top: 1vh;
+  text-align: center;
+}
+
+.fcard-example {
+  margin-top: 3vh;
+  font-size: 3.2vh;
+  font-style: italic;
+  color: #475569;
+  max-width: 50vw;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.fcard-example .quote { font-weight: 900; font-style: normal; }
+
+/* ── Staggered entrance for the card's inner content ──
+   Each element rises + fades in turn, echoing the in-app card's reveal, while
+   the word's emoji pops with a springy overshoot. Base styles stay fully
+   visible, so reduced-motion / Calm (which null out `animation`) show
+   everything immediately with no leftover hidden state. */
+.fcard-badge     { animation: cardRise 0.5s ease 0.10s both; }
+.fcard-pic       { animation: cardRise 0.5s ease 0.18s both; }
+.fcard-pic-emoji {
+  display: inline-block; /* transforms are ignored on plain inline spans */
+  animation: popIn 0.6s cubic-bezier(0.18, 0.89, 0.32, 1.28) 0.30s both;
+}
+.fcard-word-en   { animation: cardRise 0.5s ease 0.30s both; }
+.fcard-word-fil  { animation: cardRise 0.5s ease 0.40s both; }
+.fcard-example   { animation: cardRise 0.5s ease 0.50s both; }
+
+@keyframes cardFlipIn {
+  0% {
+    opacity: 0;
+    transform: perspective(1600px) rotateY(-24deg) translateY(3vh) scale(0.92);
+  }
+  60% { opacity: 1; }
+  100% {
+    opacity: 1;
+    transform: perspective(1600px) rotateY(0deg) translateY(0) scale(1);
+  }
+}
+
+@keyframes cardRise {
+  from { opacity: 0; transform: translateY(2.4vh); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes popIn {
+  0%   { opacity: 0; transform: scale(0.4); }
+  70%  { opacity: 1; transform: scale(1.12); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes blobFloat {
+  0%, 100% { transform: translate(0, 0); }
+  50%      { transform: translate(0, -1.4vh); }
+}
+
+@keyframes cardShine {
+  0%   { transform: translateX(-160%) skewX(-12deg); opacity: 0; }
+  12%  { opacity: 1; }
+  100% { transform: translateX(330%) skewX(-12deg); opacity: 0; }
+}
+
+/* ─── FSL video ────────────────────────────────── */
+.fsl-wrap {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2vh;
+  box-sizing: border-box;
+}
+
+/* Wraps the <video> so the loading spinner can sit exactly over it. */
+.fsl-video-box {
+  position: relative;
+  line-height: 0;
+}
+
+.fsl-wrap video {
+  max-width: 95vw;
+  max-height: 80vh;
+  background: #000;
+  border-radius: 1vh;
+  box-shadow: 0 0 4vh rgba(0,0,0,0.5);
+}
+
+/* Loading overlay — shown until the clip starts playing, hidden via JS. */
+.fsl-loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.45);
+  border-radius: 1vh;
+}
+
+.fsl-loading-text {
+  margin-top: 2.5vh;
+  font-size: 3vh;
+  color: #e2e8f0;
+  font-weight: 600;
+}
+
+.spinner {
+  width: 9vh;
+  height: 9vh;
+  border: 0.9vh solid rgba(255,255,255,0.25);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.fsl-caption {
+  font-size: 5vh;
+  font-weight: 800;
+  margin-top: 2vh;
+}
+
+.fsl-caption .fil {
+  font-size: 3vh;
+  font-weight: 400;
+  font-style: italic;
+  color: #94a3b8;
+  margin-left: 1vw;
+}
+
+.fsl-missing {
+  font-size: 5vh;
+  text-align: center;
+  color: #94a3b8;
+}
+
+.fsl-missing .emoji {
+  font-size: 18vh;
+  display: block;
+  margin-bottom: 2vh;
+}
+
+/* ─── Story page ───────────────────────────────── */
+.story {
+  width: 90vw;
+  max-width: 1600px;
+  padding: 4vh;
+  text-align: center;
+}
+
+.story-emoji {
+  font-size: 22vh;
+  line-height: 1;
+  margin-bottom: 3vh;
+}
+
+.story-title {
+  font-size: 6vh;
+  font-weight: 800;
+  margin: 0 0 2vh 0;
+}
+
+.story-text-en {
+  font-size: 5.5vh;
+  line-height: 1.4;
+  margin: 2vh 0 1vh 0;
+}
+
+.story-text-fil {
+  font-size: 3.5vh;
+  font-style: italic;
+  color: #94a3b8;
+  margin: 0;
+}
+
+/* ── Story cartoon ⇄ real-life flip picture ──
+   The TV analog of the in-app Stories "tap to flip" illustration. For pages
+   that ship a picture pair the emoji is dropped and BOTH pictures sit above the
+   title, stacked as two faces of a 3D flip (cartoon front, real photo back,
+   pre-rotated 180°). The flip is driven by the phone's "Tap to Flip Animation"
+   button (the TV is a passive display), animating the same ~0.66s easeOut reveal
+   as the flashcard emoji⇄photo flip. Prefixed for old Android WebKit / smart-TV
+   browsers; the global reduce-motion / Calm rule nulls the transition so the
+   picture then appears instantly. */
+.story-pic {
+  position: relative;
+  width: 46vh;
+  height: 34.5vh;        /* 4:3 picture box */
+  max-width: 80vw;
+  margin: 0 auto 3.5vh auto;
+  border-radius: 3vh;
+  -webkit-perspective: 1400px;
+  perspective: 1400px;
+  animation: cardRise 0.5s ease 0.06s both;
+}
+
+.story-flip {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  -webkit-transform-style: preserve-3d;
+  transform-style: preserve-3d;
+  -webkit-transition: -webkit-transform 0.66s cubic-bezier(0.2, 0.7, 0.2, 1.02);
+  transition: transform 0.66s cubic-bezier(0.2, 0.7, 0.2, 1.02);
+}
+
+.story-flip.is-flipped {
+  -webkit-transform: rotateY(180deg);
+  transform: rotateY(180deg);
+}
+
+.story-flip-face {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  /* Neutral tint shown until the picture (set inline by app.js) loads. The
+     background fills the box, cropped to centre — the background route works
+     back to old Android WebKit and animates GIFs. */
+  background-color: rgba(148, 163, 184, 0.18);
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  box-shadow: 0 1.4vh 3.6vh rgba(0, 0, 0, 0.30);
+}
+
+.story-flip-back {
+  -webkit-transform: rotateY(180deg);
+  transform: rotateY(180deg);
+}
+
+/* ─── Progress leaderboard ─────────────────────── */
+.board {
+  width: 90vw;
+  max-width: 1600px;
+  padding: 4vh;
+}
+
+.board h2 {
+  font-size: 6vh;
+  margin: 0 0 3vh 0;
+  font-weight: 800;
+  text-align: center;
+}
+
+.board .row {
+  display: flex;
+  align-items: center;
+  padding: 1.6vh 2vw;
+  margin-bottom: 1.2vh;
+  background: #1e293b;
+  border-radius: 1.5vh;
+  font-size: 3.5vh;
+}
+
+.board .rank {
+  width: 6vw;
+  font-weight: 900;
+  /* The app's own primary (AppColors.primary, soft purple) rather than a
+     stock blue, so the default cast reads as the same product as the phone.
+     7.45:1 on this ground — slightly better than the 7.02:1 blue it replaces,
+     which matters on a screen read from across a room. */
+  color: #b39ddb;
+}
+
+.board .rank.top1 { color: #fbbf24; }
+.board .rank.top2 { color: #d1d5db; }
+.board .rank.top3 { color: #fb923c; }
+
+.board .name {
+  flex: 1;
+  font-weight: 700;
+  text-align: left;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.board .stat {
+  margin-left: 2vw;
+  color: #cbd5e1;
+  white-space: nowrap;
+}
+
+.board .stat .v {
+  color: #f8fafc;
+  font-weight: 800;
+  margin-right: 0.5vw;
+}
+
+.board .empty {
+  text-align: center;
+  padding: 6vh;
+  color: #94a3b8;
+  font-size: 4vh;
+}
+
+/* ─── Story closing screen ("The End") ───────────────────
+   Shown once the story has been read through. Celebratory but calm — this is
+   also the screen a class sees at the end of a wind-down reading session, so
+   it stays quiet enough for the Calm template and the low-stimulation
+   profiles. Honours the language filter like every other story text. */
+.story-end {
+  width: 90vw;
+  max-width: 1500px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  animation: fadeIn 0.5s ease both;
+}
+
+.se-emoji {
+  font-size: 22vh;
+  line-height: 1;
+  margin-bottom: 1vh;
+}
+
+.se-title {
+  font-size: 11vh;
+  font-weight: 900;
+  margin: 0 0 2vh 0;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.se-story {
+  font-size: 5vh;
+  font-weight: 700;
+  margin-bottom: 1.5vh;
+}
+
+.se-story .fil {
+  display: block;
+  font-size: 3.4vh;
+  font-weight: 400;
+  font-style: italic;
+  color: #94a3b8;
+  margin-top: 0.6vh;
+}
+
+.se-pages {
+  font-size: 3vh;
+  color: #94a3b8;
+}
+
+body.lang-en .se-story .fil { display: none; }
+body.lang-fil .se-story { font-size: 0; }
+body.lang-fil .se-story .fil {
+  font-size: 5vh;
+  font-weight: 700;
+  font-style: normal;
+  color: inherit;
+}
+
+body.text-lg .se-title { font-size: 13vh; }
+body.text-lg .se-story { font-size: 6vh; }
+body.text-xl .se-title { font-size: 15vh; }
+body.text-xl .se-story { font-size: 7vh; }
+
+body.theme-light .se-story .fil,
+body.theme-light .se-pages,
+body.theme-classroom .se-story .fil,
+body.theme-classroom .se-pages,
+body.theme-playful .se-story .fil,
+body.theme-playful .se-pages,
+body.theme-calm .se-story .fil,
+body.theme-calm .se-pages,
+body.theme-seasonal .se-story .fil,
+body.theme-seasonal .se-pages { color: #475569; }
+
+body.theme-highContrast .se-title { color: #ffff00; }
+body.theme-highContrast .se-story,
+body.theme-highContrast .se-pages { color: #ffffff; }
+
+/* The Calm template drops the celebration emoji's size — a low-stimulation
+   room doesn't need a 22vh party popper. */
+body.theme-calm .se-emoji { font-size: 14vh; }
+
+/* ─── Lesson timer overlay ───────────────────────────────
+   Top-right, above the content but clear of the raised-hands banner (top-left)
+   and the footer pill (bottom). Readable across a room without covering the
+   word being taught. */
+.lesson-timer {
+  position: fixed;
+  top: 2vh;
+  right: 2vw;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.4vh 2vw;
+  border-radius: 2vh;
+  background: rgba(15, 23, 42, 0.82);
+  border: 0.3vh solid rgba(148, 163, 184, 0.4);
+  color: #f8fafc;
+  font-variant-numeric: tabular-nums;
+}
+
+.lesson-timer.hidden { display: none; }
+
+.lesson-timer .lt-clock {
+  font-size: 7vh;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.lesson-timer .lt-label {
+  font-size: 2.4vh;
+  color: #cbd5e1;
+  margin-top: 0.4vh;
+}
+
+/* Last 30 seconds. Colour AND a border change, never colour alone — a
+   colour-blind learner has to be able to see the difference too. */
+.lesson-timer.ending {
+  border-color: #f59e0b;
+  border-width: 0.5vh;
+}
+.lesson-timer.ending .lt-clock { color: #fbbf24; }
+
+.lesson-timer.finished {
+  background: rgba(220, 38, 38, 0.92);
+  border-color: #fecaca;
+  border-width: 0.5vh;
+}
+.lesson-timer.finished .lt-clock { font-size: 5.5vh; color: #ffffff; }
+.lesson-timer.paused { opacity: 0.75; }
+
+body.theme-light .lesson-timer,
+body.theme-classroom .lesson-timer,
+body.theme-playful .lesson-timer,
+body.theme-calm .lesson-timer,
+body.theme-seasonal .lesson-timer {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(15, 23, 42, 0.18);
+  color: #0f172a;
+}
+body.theme-light .lesson-timer .lt-label,
+body.theme-classroom .lesson-timer .lt-label,
+body.theme-playful .lesson-timer .lt-label,
+body.theme-calm .lesson-timer .lt-label,
+body.theme-seasonal .lesson-timer .lt-label { color: #475569; }
+body.theme-light .lesson-timer.finished .lt-clock,
+body.theme-classroom .lesson-timer.finished .lt-clock,
+body.theme-playful .lesson-timer.finished .lt-clock,
+body.theme-calm .lesson-timer.finished .lt-clock,
+body.theme-seasonal .lesson-timer.finished .lt-clock { color: #ffffff; }
+
+body.theme-highContrast .lesson-timer {
+  background: #000000;
+  border: 0.4vh solid #ffffff;
+  color: #ffffff;
+}
+body.theme-highContrast .lesson-timer .lt-clock { color: #ffff00; }
+body.theme-highContrast .lesson-timer .lt-label { color: #ffffff; }
+body.theme-highContrast .lesson-timer.finished {
+  background: #ffff00;
+}
+body.theme-highContrast .lesson-timer.finished .lt-clock,
+body.theme-highContrast .lesson-timer.finished .lt-label { color: #000000; }
+
+/* ─── Text size (body.text-lg / body.text-xl) ────────────
+   Only the text that carries the lesson grows — the word, the story line, the
+   sign caption, the answer options, the roster rows. Layout chrome (badges,
+   emoji, the "N answered" line) is deliberately left alone: scaling everything
+   just re-creates the original proportions at a size that overflows, whereas
+   growing only the words is what actually helps the back row.
+   Authored last-ish in the file so these win over the base rules; the per-theme
+   colour blocks below don't set font-size, so they don't conflict. */
+body.text-lg .fcard-word-en { font-size: 11.5vh; }
+body.text-lg .fcard-word-fil { font-size: 6.5vh; }
+body.text-lg .fcard-example { font-size: 4vh; }
+body.text-lg .story-text-en { font-size: 7vh; }
+body.text-lg .story-text-fil { font-size: 4.5vh; }
+body.text-lg .story-title { font-size: 7vh; }
+body.text-lg .fsl-caption { font-size: 6.5vh; }
+body.text-lg .fsl-caption .fil { font-size: 4vh; }
+body.text-lg .live-prompt { font-size: 9.5vh; }
+body.text-lg .live-opt { font-size: 5.5vh; }
+body.text-lg .live-sub { font-size: 4.2vh; }
+body.text-lg .board .row { font-size: 4.3vh; }
+body.text-lg .wins-name { font-size: 4vh; }
+body.text-lg .wins-line { font-size: 3.2vh; }
+
+body.text-xl .fcard-word-en { font-size: 14vh; }
+body.text-xl .fcard-word-fil { font-size: 8vh; }
+body.text-xl .fcard-example { font-size: 4.6vh; }
+body.text-xl .story-text-en { font-size: 8.5vh; }
+body.text-xl .story-text-fil { font-size: 5.5vh; }
+body.text-xl .story-title { font-size: 8vh; }
+body.text-xl .fsl-caption { font-size: 8vh; }
+body.text-xl .fsl-caption .fil { font-size: 5vh; }
+body.text-xl .live-prompt { font-size: 11vh; }
+body.text-xl .live-opt { font-size: 6.5vh; }
+body.text-xl .live-sub { font-size: 5vh; }
+body.text-xl .board .row { font-size: 5.2vh; }
+body.text-xl .wins-name { font-size: 4.8vh; }
+body.text-xl .wins-line { font-size: 3.8vh; }
+
+/* At the largest size a long story page can outrun the screen; let it scroll
+   rather than clip the last line off the bottom. */
+body.text-xl .story { overflow-y: auto; max-height: 96vh; }
+
+/* ─── Language filter (body.lang-en / body.lang-fil) ─────
+   Hides the language the teacher isn't working in. The markup still carries
+   both (the payload is unchanged), so switching back is instant and nothing
+   needs re-fetching. */
+body.lang-en .fcard-word-fil,
+body.lang-en .story-text-fil,
+body.lang-en .fsl-caption .fil { display: none; }
+
+/* Filipino-only promotes the Filipino line to the headline's size, so the
+   remaining text doesn't read as a de-emphasised subtitle of nothing. */
+body.lang-fil .fcard-word-en,
+body.lang-fil .story-text-en { display: none; }
+body.lang-fil .fcard-word-fil {
+  font-size: 9vh;
+  font-style: normal;
+  font-weight: 900;
+}
+body.lang-fil .story-text-fil {
+  font-size: 5.5vh;
+  font-style: normal;
+  color: inherit;
+}
+body.lang-fil .fsl-caption { font-size: 0; }
+body.lang-fil .fsl-caption .fil { font-size: 5vh; font-weight: 800; }
+body.text-lg.lang-fil .fcard-word-fil { font-size: 11.5vh; }
+body.text-xl.lang-fil .fcard-word-fil { font-size: 14vh; }
+body.text-lg.lang-fil .story-text-fil { font-size: 7vh; }
+body.text-xl.lang-fil .story-text-fil { font-size: 8.5vh; }
+
+/* ─── "Our Class Wins" (non-competitive progress view) ───
+   The class total leads, then everyone A–Z in identical cards. Identical is
+   the point: same size, same colour, no rank column, no podium — nothing in
+   the layout lets the room infer an order. */
+.board.wins {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.wins-totals {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2vw;
+  margin-bottom: 3.5vh;
+  width: 100%;
+}
+
+.wins-stat {
+  background: #1e293b;
+  border-radius: 2vh;
+  padding: 2vh 2.5vw;
+  min-width: 18vw;
+  text-align: center;
+  font-size: 2.4vh;
+  color: #94a3b8;
+  line-height: 1.3;
+}
+
+.wins-stat .v {
+  display: block;
+  font-size: 6vh;
+  font-weight: 900;
+  color: #4ade80;
+  line-height: 1.05;
+}
+
+.wins-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.5vh 1.5vw;
+  width: 100%;
+}
+
+.wins-card {
+  background: #1e293b;
+  border-radius: 1.5vh;
+  padding: 1.6vh 2vw;
+  min-width: 26vw;
+  flex: 0 1 26vw;
+}
+
+.wins-name {
+  font-size: 3.2vh;
+  font-weight: 800;
+  margin-bottom: 0.6vh;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wins-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 1vw;
+  font-size: 2.6vh;
+  color: #94a3b8;
+}
+
+/* ─── Footer pill (counter + paused) ───────────── */
+.footer-pill {
+  position: fixed;
+  right: 3vh;
+  bottom: 3vh;
+  padding: 1.5vh 3vh;
+  border-radius: 5vh;
+  background: rgba(0,0,0,0.55);
+  font-size: 2.4vh;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.footer-pill .paused { color: #fbbf24; margin-left: 1vw; }
+
+/* ─── "Enable sound" hint (Web Speech gesture unlock) ───
+   A centered top banner so the teacher / class can't miss the one-time
+   "press OK to turn on sound" gesture. Hides itself the moment audio
+   actually starts (app.js onUtteranceStart). */
+.sound-hint {
+  position: fixed;
+  left: 50%;
+  top: 3vh;
+  transform: translateX(-50%);
+  max-width: 90vw;
+  padding: 2vh 4vh;
+  border-radius: 6vh;
+  background: rgba(0,0,0,0.82);
+  border: 0.3vh solid #ffd54f;
+  box-shadow: 0 0.6vh 2vh rgba(0,0,0,0.45);
+  color: #ffffff;
+  font-size: 3vh;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-align: center;
+  animation: soundPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes soundPulse {
+  0%, 100% { transform: translateX(-50%) scale(1); }
+  50%      { transform: translateX(-50%) scale(1.04); }
+}
+
+.hidden { display: none !important; }
+
+/* ─── Entrance animation (gracefully ignored by old browsers) ─── */
+.slide, .story, .fsl-wrap, .board {
+  animation: fadeIn 0.45s ease both;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(2.5vh); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ─── "Teacher is out" / reconnecting splash variants ───
+   Both reuse the .splash layout above; only small accents differ. */
+.splash.reconnect h1 { color: #fbbf24; }
+
+.pulse { animation: pulse 1.4s ease-in-out infinite; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1;    transform: scale(1); }
+  50%      { opacity: 0.55; transform: scale(0.92); }
+}
+
+/* ─── Live interactive activity ────────────────── */
+.live {
+  width: 92vw;
+  max-width: 1700px;
+  padding: 3vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  animation: fadeIn 0.45s ease both;
+}
+
+.live-qnum {
+  font-size: 3vh;
+  font-weight: 800;
+  /* Same app primary as the leaderboard rank — see the note there. */
+  color: #b39ddb;
+  letter-spacing: 0.04em;
+  margin-bottom: 1.5vh;
+}
+
+.live-prompt {
+  font-size: 8vh;
+  font-weight: 900;
+  line-height: 1.1;
+  margin: 0 0 3vh 0;
+  letter-spacing: -0.02em;
+}
+
+.live-emoji {
+  font-size: 30vh;
+  line-height: 1;
+  margin: 0 0 1vh 0;
+}
+
+/* The sign clip / real photograph for a card-backed question. Sized so the
+   media, the answer options and the "N answered" line all still fit on a 16:9
+   screen — an fslSign question is unanswerable if the options scroll off. */
+.live-media {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin: 0 0 1.5vh 0;
+}
+
+.live-media video,
+.live-media img {
+  max-height: 42vh;
+  max-width: 70vw;
+  border-radius: 2vh;
+  background: #0b1220;
+  object-fit: contain;
+}
+
+.live-sub {
+  font-size: 3.5vh;
+  color: #94a3b8;
+  margin-bottom: 3vh;
+}
+
+.live-options {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2vh;
+  width: 100%;
+}
+
+.live-opt {
+  background: #1e293b;
+  border: 0.3vh solid #334155;
+  border-radius: 1.5vh;
+  padding: 2vh 3vw;
+  font-size: 4.5vh;
+  font-weight: 700;
+  min-width: 28vw;
+}
+
+.live-responded {
+  margin-top: 3vh;
+  font-size: 3vh;
+  font-weight: 700;
+  color: #34d399;
+}
+
+.live-wait {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.live-wait h1 { font-size: 7vh; margin: 0 0 1vh 0; font-weight: 800; }
+.live-wait p { font-size: 3.5vh; color: #94a3b8; margin: 0; }
+
+.live-board {
+  margin-top: 4vh;
+  width: 100%;
+}
+
+.live-board h2 {
+  font-size: 4vh;
+  margin: 0 0 2vh 0;
+  font-weight: 800;
+}
+
+.live-row {
+  display: flex;
+  align-items: center;
+  padding: 1.2vh 2vw;
+  margin-bottom: 1vh;
+  background: #1e293b;
+  border-radius: 1.2vh;
+  font-size: 3vh;
+}
+
+.live-row .rk { width: 5vw; font-weight: 900; color: #fbbf24; text-align: left; }
+.live-row .nm {
+  flex: 1;
+  text-align: left;
+  font-weight: 700;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.live-row .sc { font-weight: 800; white-space: nowrap; }
+
+/* ─── Raised-hands banner (all modes) ──────────── */
+.hands-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.4vh;
+  padding: 1.6vh 3vh;
+  background: rgba(251, 191, 36, 0.95);
+  color: #1f2937;
+  z-index: 50;
+  animation: fadeIn 0.3s ease both;
+}
+
+.hands-banner .hand-title {
+  font-size: 3vh;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
+.hands-banner .hand-chip {
+  font-size: 2.8vh;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 4vh;
+  padding: 0.6vh 2vh;
+}
+
+.hand-chip::before { content: "✋ "; }
+
+/* ───────────────────────────────────────────────────────────────
+   THEMES
+   Colours are scoped per `body.theme-*` class with explicit values
+   (no CSS `var()`) so they work on old Tizen / webOS / Chromecast
+   browsers. `theme-dark` is the base (rules above); only `light` and
+   `highContrast` override here.
+   ─────────────────────────────────────────────────────────────── */
+
+/* ─── Light theme ──────────────────────────────── */
+body.theme-light {
+  background: #f8fafc;
+  color: #0f172a;
+}
+body.theme-light .splash p,
+body.theme-light .story-text-fil,
+body.theme-light .fsl-caption .fil,
+body.theme-light .fsl-missing,
+body.theme-light .fsl-loading-text { color: #475569; }
+body.theme-light .board .row { background: #e2e8f0; }
+body.theme-light .board .rank { color: #2563eb; }
+body.theme-light .board .name,
+body.theme-light .board .stat .v { color: #0f172a; }
+body.theme-light .board .stat { color: #475569; }
+body.theme-light .board .empty { color: #64748b; }
+body.theme-light .wins-stat,
+body.theme-light .wins-card { background: #e2e8f0; }
+body.theme-light .wins-stat { color: #475569; }
+body.theme-light .wins-stat .v { color: #15803d; }
+body.theme-light .wins-name { color: #0f172a; }
+body.theme-light .wins-line { color: #475569; }
+body.theme-light .footer-pill {
+  background: rgba(15,23,42,0.08);
+  color: #0f172a;
+}
+body.theme-light .fsl-loading { background: rgba(255,255,255,0.55); }
+body.theme-light .spinner {
+  border-color: rgba(15,23,42,0.18);
+  border-top-color: #2563eb;
+}
+
+/* ─── High-contrast theme (accessibility) ──────── */
+body.theme-highContrast {
+  background: #000000;
+  color: #ffffff;
+}
+body.theme-highContrast .splash p { color: #ffff00; }
+body.theme-highContrast .splash.reconnect h1 { color: #ffff00; }
+body.theme-highContrast .story-text-fil,
+body.theme-highContrast .fsl-caption .fil { color: #ffff00; }
+body.theme-highContrast .fsl-missing,
+body.theme-highContrast .fsl-loading-text { color: #ffffff; }
+/* Bigger, bolder captions for low-vision viewers. */
+body.theme-highContrast .fsl-caption { font-size: 6vh; }
+body.theme-highContrast .fsl-wrap video {
+  border: 0.6vh solid #ffffff;
+  background: #000;
+}
+body.theme-highContrast .board .row {
+  background: #111111;
+  border: 0.3vh solid #ffffff;
+}
+body.theme-highContrast .board .rank { color: #ffff00; }
+body.theme-highContrast .board .rank.top1,
+body.theme-highContrast .board .rank.top2,
+body.theme-highContrast .board .rank.top3 { color: #ffff00; }
+body.theme-highContrast .board .name,
+body.theme-highContrast .board .stat,
+body.theme-highContrast .board .stat .v { color: #ffffff; }
+body.theme-highContrast .wins-stat,
+body.theme-highContrast .wins-card {
+  background: #111111;
+  border: 0.3vh solid #ffffff;
+}
+body.theme-highContrast .wins-stat,
+body.theme-highContrast .wins-name,
+body.theme-highContrast .wins-line { color: #ffffff; }
+body.theme-highContrast .wins-stat .v { color: #ffff00; }
+body.theme-highContrast .footer-pill,
+body.theme-highContrast .sound-hint {
+  background: #000000;
+  border: 0.3vh solid #ffffff;
+  color: #ffffff;
+}
+body.theme-highContrast .footer-pill .paused { color: #ffff00; }
+body.theme-highContrast .spinner {
+  border-color: rgba(255,255,255,0.3);
+  border-top-color: #ffff00;
+}
+/* Flashcard — force black/white/yellow over the inline category colours. */
+body.theme-highContrast .fcard {
+  background: #000000;
+  border: 0.4vh solid #ffffff;
+}
+body.theme-highContrast .fcard-accent { background: #ffff00 !important; }
+body.theme-highContrast .fcard-badge {
+  background: #000000 !important;
+  color: #ffff00 !important;
+  border: 0.3vh solid #ffff00;
+}
+body.theme-highContrast .fcard-pic {
+  background: #000000 !important;
+  border: 0.3vh solid #ffffff;
+}
+body.theme-highContrast .fcard-word-en { color: #ffffff; }
+body.theme-highContrast .fcard-word-fil { color: #ffff00 !important; }
+body.theme-highContrast .fcard-example { color: #ffffff; }
+body.theme-highContrast .fcard-example .quote { color: #ffff00 !important; }
+/* Drop the tinted blobs + glossy sheen — keep the strict black/white/yellow. */
+body.theme-highContrast .fcard-blob,
+body.theme-highContrast .fcard-shine { display: none; }
+/* Action GIF gets a white frame in the strict high-contrast palette. */
+body.theme-highContrast .clip-gif { border: 0.6vh solid #ffffff; }
+
+/* ─── Live activity — light theme ──────────────── */
+body.theme-light .live-sub,
+body.theme-light .live-wait p { color: #475569; }
+body.theme-light .live-opt {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+body.theme-light .live-row { background: #e2e8f0; }
+body.theme-light .live-row .nm,
+body.theme-light .live-row .sc { color: #0f172a; }
+body.theme-light .live-responded { color: #059669; }
+
+/* ─── Live activity — high-contrast theme ──────── */
+body.theme-highContrast .live-prompt,
+body.theme-highContrast .live-wait h1 { color: #ffffff; }
+body.theme-highContrast .live-qnum,
+body.theme-highContrast .live-row .rk { color: #ffff00; }
+body.theme-highContrast .live-sub,
+body.theme-highContrast .live-wait p { color: #ffffff; }
+body.theme-highContrast .live-responded { color: #ffff00; }
+body.theme-highContrast .live-opt {
+  background: #000000;
+  border: 0.4vh solid #ffffff;
+  color: #ffffff;
+  font-size: 5vh;
+}
+body.theme-highContrast .live-row {
+  background: #111111;
+  border: 0.3vh solid #ffffff;
+}
+body.theme-highContrast .live-row .nm,
+body.theme-highContrast .live-row .sc { color: #ffffff; }
+body.theme-highContrast .hands-banner {
+  background: #000000;
+  color: #ffff00;
+  border-bottom: 0.4vh solid #ffff00;
+}
+body.theme-highContrast .hands-banner .hand-chip {
+  background: #000000;
+  border: 0.3vh solid #ffff00;
+  color: #ffffff;
+}
+
+/* ───────────────────────────────────────────────────────────────
+   BRANDING HEADER + DECORATION + REDUCED MOTION
+   ─────────────────────────────────────────────────────────────── */
+
+/* Optional "Show on TV" branding pill (top-left). Created lazily by app.js. */
+#cast-brand {
+  position: fixed;
+  top: 2.5vh;
+  left: 3vh;
+  z-index: 40;
+  padding: 1.2vh 2.6vh;
+  border-radius: 5vh;
+  background: rgba(0, 0, 0, 0.45);
+  color: #ffffff;
+  font-size: 2.6vh;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  max-width: 60vw;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Seasonal corner decoration emoji (top-right). */
+#cast-decoration {
+  position: fixed;
+  top: 2vh;
+  right: 3vh;
+  z-index: 40;
+  font-size: 9vh;
+  line-height: 1;
+  animation: floaty 3.5s ease-in-out infinite;
+}
+
+@keyframes floaty {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-1.5vh); }
+}
+
+/* Honour the app's reduced-motion setting (and the Calm template). */
+body.reduce-motion *,
+body.theme-calm * {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* ───────────────────────────────────────────────────────────────
+   LIGHT-BACKGROUND TEMPLATES (classroom / playful / calm / seasonal)
+   Share a readable dark-on-light base, then each adds its own accent.
+   ─────────────────────────────────────────────────────────────── */
+body.theme-classroom,
+body.theme-playful,
+body.theme-calm,
+body.theme-seasonal {
+  background: #f8fafc;
+  color: #0f172a;
+}
+body.theme-classroom .splash p, body.theme-playful .splash p,
+body.theme-calm .splash p, body.theme-seasonal .splash p,
+body.theme-classroom .story-text-fil, body.theme-playful .story-text-fil,
+body.theme-calm .story-text-fil, body.theme-seasonal .story-text-fil,
+body.theme-classroom .fsl-caption .fil, body.theme-playful .fsl-caption .fil,
+body.theme-calm .fsl-caption .fil, body.theme-seasonal .fsl-caption .fil,
+body.theme-classroom .fsl-missing, body.theme-playful .fsl-missing,
+body.theme-calm .fsl-missing, body.theme-seasonal .fsl-missing,
+body.theme-classroom .fsl-loading-text, body.theme-playful .fsl-loading-text,
+body.theme-calm .fsl-loading-text, body.theme-seasonal .fsl-loading-text,
+body.theme-classroom .live-sub, body.theme-playful .live-sub,
+body.theme-calm .live-sub, body.theme-seasonal .live-sub,
+body.theme-classroom .live-wait p, body.theme-playful .live-wait p,
+body.theme-calm .live-wait p, body.theme-seasonal .live-wait p {
+  color: #475569;
+}
+body.theme-classroom .board .row, body.theme-playful .board .row,
+body.theme-calm .board .row, body.theme-seasonal .board .row,
+body.theme-classroom .live-row, body.theme-playful .live-row,
+body.theme-calm .live-row, body.theme-seasonal .live-row,
+body.theme-classroom .live-opt, body.theme-playful .live-opt,
+body.theme-calm .live-opt, body.theme-seasonal .live-opt,
+body.theme-classroom .wins-stat, body.theme-playful .wins-stat,
+body.theme-calm .wins-stat, body.theme-seasonal .wins-stat,
+body.theme-classroom .wins-card, body.theme-playful .wins-card,
+body.theme-calm .wins-card, body.theme-seasonal .wins-card {
+  background: #e8eef5;
+}
+body.theme-classroom .wins-stat, body.theme-playful .wins-stat,
+body.theme-calm .wins-stat, body.theme-seasonal .wins-stat,
+body.theme-classroom .wins-line, body.theme-playful .wins-line,
+body.theme-calm .wins-line, body.theme-seasonal .wins-line {
+  color: #475569;
+}
+body.theme-classroom .wins-stat .v, body.theme-playful .wins-stat .v,
+body.theme-calm .wins-stat .v, body.theme-seasonal .wins-stat .v {
+  color: #15803d;
+}
+body.theme-classroom .live-opt, body.theme-playful .live-opt,
+body.theme-calm .live-opt, body.theme-seasonal .live-opt {
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+body.theme-classroom .board .name, body.theme-playful .board .name,
+body.theme-calm .board .name, body.theme-seasonal .board .name,
+body.theme-classroom .board .stat .v, body.theme-playful .board .stat .v,
+body.theme-calm .board .stat .v, body.theme-seasonal .board .stat .v,
+body.theme-classroom .live-row .nm, body.theme-playful .live-row .nm,
+body.theme-calm .live-row .nm, body.theme-seasonal .live-row .nm,
+body.theme-classroom .live-row .sc, body.theme-playful .live-row .sc,
+body.theme-calm .live-row .sc, body.theme-seasonal .live-row .sc,
+body.theme-classroom .wins-name, body.theme-playful .wins-name,
+body.theme-calm .wins-name, body.theme-seasonal .wins-name {
+  color: #0f172a;
+}
+body.theme-classroom .footer-pill, body.theme-playful .footer-pill,
+body.theme-calm .footer-pill, body.theme-seasonal .footer-pill {
+  background: rgba(15, 23, 42, 0.10);
+  color: #0f172a;
+}
+body.theme-classroom #cast-brand, body.theme-playful #cast-brand,
+body.theme-calm #cast-brand, body.theme-seasonal #cast-brand {
+  background: rgba(15, 23, 42, 0.85);
+}
+
+/* ─── Classroom: crisp blue accents ────────────────── */
+body.theme-classroom .board .rank,
+body.theme-classroom .live-qnum { color: #1565c0; }
+body.theme-classroom .live-prompt { color: #0f172a; }
+body.theme-classroom .live-responded { color: #1565c0; }
+
+/* ─── Playful: vibrant, rounded, bouncy ────────────── */
+body.theme-playful { color: #3b0764; }
+body.theme-playful .live-prompt,
+body.theme-playful .story-title,
+body.theme-playful .live-wait h1 { color: #c2185b; }
+body.theme-playful .live-qnum,
+body.theme-playful .board .rank { color: #7b1fa2; }
+body.theme-playful .live-responded { color: #00897b; }
+body.theme-playful .live-emoji { font-size: 42vh; }
+/* Playful: rounder card + bigger picture, pink word — matches the kid look. */
+body.theme-playful .fcard { border-radius: 5.5vh; }
+body.theme-playful .fcard-pic { border-radius: 4.5vh; }
+body.theme-playful .fcard-pic-emoji { font-size: 23vh; }
+body.theme-playful .fcard-word-en { color: #c2185b; }
+body.theme-playful .live-opt,
+body.theme-playful .board .row,
+body.theme-playful .live-row { border-radius: 4vh; }
+body.theme-playful .story,
+body.theme-playful .live, body.theme-playful .board {
+  animation: bounceIn 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28) both;
+}
+/* Playful: the flashcard flips in with extra bounce + livelier blobs (the
+   .slide stays a plain fade so its scale doesn't compound with the flip). */
+body.theme-playful .fcard {
+  animation: cardFlipIn 0.62s cubic-bezier(0.18, 0.89, 0.32, 1.28) both;
+}
+body.theme-playful .fcard-blob { opacity: 0.42; }
+@keyframes bounceIn {
+  0%   { opacity: 0; transform: scale(0.85); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* ─── Calm: muted, roomy, still ────────────────────── */
+body.theme-calm { background: #eef1f4; color: #334155; }
+body.theme-calm .live-prompt,
+body.theme-calm .story-title { color: #334155; font-weight: 700; }
+body.theme-calm .live-qnum,
+body.theme-calm .board .rank { color: #00897b; }
+body.theme-calm .live-responded { color: #00897b; }
+body.theme-calm .slide, body.theme-calm .story,
+body.theme-calm .live { padding: 6vh; }
+body.theme-calm .live-options { gap: 3vh; }
+
+/* ─── Dyslexia-friendly: mirrors the app's dyslexia theme ──────────────
+ *
+ * Not an approximation — the same values the Flutter theme uses, so a learner
+ * who reads in this mode on their phone sees the same page on the class TV:
+ * Lexend, the warm cream ground (#FAF0D7), soft black rather than pure black,
+ * and the 1.6 line height / 0.6px letter spacing that make the difference.
+ *
+ * The looser spacing is the point of the template, so it is set on the body and
+ * left to inherit rather than being listed per element.
+ */
+body.theme-dyslexia {
+  background: #faf0d7;
+  color: #2c2c2c;
+  font-family: "FlashLearn Lexend", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.6;
+  letter-spacing: 0.6px;
+}
+body.theme-dyslexia .live-prompt,
+body.theme-dyslexia .story-title,
+body.theme-dyslexia .se-title { color: #2c2c2c; font-weight: 700; }
+body.theme-dyslexia .live-qnum,
+body.theme-dyslexia .board .rank,
+body.theme-dyslexia .live-responded { color: #2f5daf; }
+body.theme-dyslexia .se-story,
+body.theme-dyslexia .se-pages { color: #5c5c5c; }
+/* Cards and option tiles sit on the lighter cream surface with the theme's
+   own border, so they separate from the ground without a heavy shadow. */
+body.theme-dyslexia .slide,
+body.theme-dyslexia .live-option {
+  background: #fffcf3;
+  border: 0.3vh solid #d9cda9;
+}
+/* The flashcard face itself, which is what a learner actually reads off.
+ *
+ * `.slide` is only the frame — `.fcard` sits on top of it and ships pure
+ * white, so without this the cream ground was cosmetic and the reading surface
+ * stayed at full glare. Low-glare paper is the point of the template, not a
+ * background detail. Found on a real screen; the theme looked right until the
+ * card was measured.
+ *
+ * The default's heavy black drop shadow goes with it: on cream it reads as
+ * dirt rather than depth, so the card separates with the theme's own border
+ * the way the in-app dyslexia cards do.
+ */
+body.theme-dyslexia .fcard {
+  background: #fffcf3;
+  border: 0.3vh solid #d9cda9;
+  box-shadow: 0 1vh 3vh rgba(90, 74, 42, 0.12);
+}
+/* The Filipino gloss takes the app's dyslexia primary (a calm blue) rather
+   than the default purple, so the pair matches the phone. */
+body.theme-dyslexia .fcard-word-fil { color: #2f5daf !important; }
+body.theme-dyslexia .fcard-word-en { color: #2c2c2c; }
+body.theme-dyslexia .fcard-example { color: #5c5c5c; }
+
+/* ─── Seasonal: festive frame; accent colour + emoji come from app.js ── */
+body.theme-seasonal { background: #fdf6fb; }
+body.theme-seasonal .live-qnum,
+body.theme-seasonal .board .rank,
+body.theme-seasonal .live-responded { color: #8e24aa; }
+body.theme-seasonal .live-prompt,
+body.theme-seasonal .story-title { color: #6a1b9a; }
+/* A thin festive frame; app.js recolours it inline from the event. */
+body.theme-seasonal #stage {
+  box-sizing: border-box;
+  border: 0.8vh solid #8e24aa;
+}
+
+/* ─── Fullscreen picture & video ("big picture") ───────────────────────
+ *
+ * The phone's "Fullscreen picture & video" switch. Its sibling, "Fullscreen on
+ * TV", drops the *browser's* chrome; this drops the *page's*. The card frame,
+ * category badge and example sentence come off and the picture / GIF / sign clip
+ * grows to fill the stage. Measured on a 1080p screen: the flashcard picture
+ * goes from a 324px tile (cropped square) to 821px of the whole picture, the
+ * "Show Me" GIF from 480px to 1080px, a sign clip from its native 1280x720 to
+ * the full 1920x1080, and a story illustration from a cropped 497px to 1268px.
+ * That is the difference between "there is a picture" and "I can see what it
+ * is" from the back of a room.
+ *
+ * Three rules this block follows:
+ *
+ * 1. CSS only, from one body class. Toggling it restyles what is already on
+ *    screen instead of rebuilding it, so a sign clip mid-play keeps playing —
+ *    the same reason the lesson timer is an overlay rather than a mode. It also
+ *    composes with every template, text size and the language filter for free.
+ * 2. Media is fitted, never cropped. The card tile can afford `cover` because it
+ *    is small and square; at full size a crop throws away the part of the
+ *    picture the lesson is about.
+ * 3. The word stays. The point is a bigger picture, not a wordless one — so the
+ *    picture shrinks as the text size grows rather than pushing the word off the
+ *    bottom. Hence the per-size heights below.
+ *
+ * This block must stay LAST in the file. `body.big-picture .fcard` and
+ * `body.theme-dyslexia .fcard` have identical specificity, so source order is
+ * the only thing deciding which wins.
+ *
+ * Untouched on purpose: live activities and the progress board (their text IS
+ * the content — blowing up the media would push the answer options off screen),
+ * the idle/away splashes and the story's closing screen. The phone disables the
+ * switch outside the three modes it applies to.
+ */
+
+/* ── Flashcard face ── */
+body.big-picture .slide { padding: 0; }
+
+/* The card grows to the full screen, but it stays a card: background, border
+   and word colours are left to whichever template is active.
+ *
+ * Making it transparent was the first attempt and it was wrong — `.fcard-word-en`
+ * is near-black ink chosen for a white card, so on the dark stage the word went
+ * from black-on-white to black-on-near-black and all but vanished. Every
+ * template styles `.fcard` for its own palette already; the right move is to
+ * inherit that, not to opt out of it. Only the geometry changes here: no
+ * rounding or drop shadow, because at full bleed there is no ground for a card
+ * to float above, and no 3D flip-in, because a whole screen rotating in is a lot
+ * of motion. The stage's own fade still carries the entrance. */
+body.big-picture .fcard {
+  width: 100vw;
+  max-width: none;
+  height: 100vh;
+  max-height: 100vh;
+  padding: 2vh 2vw 2.5vh;
+  border-radius: 0;
+  box-shadow: none;
+  justify-content: center;
+  animation: none;
+}
+
+/* Everything that decorates the card rather than teaching the word. */
+body.big-picture .fcard-accent,
+body.big-picture .fcard-blob,
+body.big-picture .fcard-shine,
+body.big-picture .fcard-badge,
+body.big-picture .fcard-example { display: none; }
+
+body.big-picture .fcard-body { height: 100%; justify-content: center; }
+
+/* The picture tile becomes the screen. Square, because the pictures are: every
+   card face in flashcard_photo_manifest.json ships 800x800 (cartoons and
+   photos alike). A 96vw-wide tile would be the same picture with two hand-spans
+   of category tint bolted either side — the size is set by the height either
+   way, so the tile is shaped to what it holds. The tint stays as the ground so
+   a card whose picture is NOT square still letterboxes into the category's own
+   colour instead of a dead grey band. */
+body.big-picture .fcard-pic {
+  width: 76vh;
+  height: 76vh;
+  max-width: 96vw;
+  border-radius: 2vh;
+  margin-bottom: 2vh;
+}
+
+/* Fit, don't crop — see rule 2 above. */
+body.big-picture .fcard-face-art,
+body.big-picture .fcard-face-back { background-size: contain; }
+
+/* No artwork for this word: the emoji is the picture, so it grows too. */
+body.big-picture .fcard-pic-emoji { font-size: 42vh; }
+
+/* Dyslexia's 1.6 body line-height would otherwise add ~3vh under the gloss and
+   push it into the bottom edge; the English word already pins its own. */
+body.big-picture .fcard-word-fil { line-height: 1.15; }
+
+/* Bigger lesson text needs the height back. */
+body.text-lg.big-picture .fcard-pic { width: 70vh; height: 70vh; }
+body.text-xl.big-picture .fcard-pic { width: 64vh; height: 64vh; }
+body.text-lg.big-picture .fcard-pic-emoji { font-size: 38vh; }
+body.text-xl.big-picture .fcard-pic-emoji { font-size: 34vh; }
+
+/* ── FSL sign clips, "Show Me" action clips and GIFs ── */
+body.big-picture .fsl-wrap {
+  padding: 0;
+  position: relative;
+  justify-content: center;
+}
+
+/* `height`, not just `max-height`. The clips are SMALLER than the screen — a
+   sign clip ships 1280x720 and a "Show Me" GIF 480x480 — and a cap can only
+   shrink, never scale up, so the caps alone changed nothing: measured on the
+   real renderer, the GIF sat at 480px wide on a 1920px TV with the mode on or
+   off, and the sign clip played at its native 1280x720 in the middle of a 1080p
+   panel.
+
+   Sizing one axis and leaving the other `auto` keeps the aspect ratio the way
+   every browser back to old WebKit has always done it for replaced elements;
+   `object-fit` is only insurance for the one case that clamps (media wider than
+   the screen even at full height), and `.live-media` already relies on it.
+   `box-sizing` matters because high contrast puts a border on the clip —
+   without it the frame would be 100vh + border and the page would grow a
+   scrollbar. */
+body.big-picture .fsl-wrap video,
+body.big-picture .clip-gif {
+  height: 100vh;
+  width: auto;
+  max-width: 100vw;
+  max-height: 100vh;
+  box-sizing: border-box;
+  object-fit: contain;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* The caption becomes a subtitle bar across the bottom of the screen instead of
+   a line under the clip, so the clip itself gets the full height. A scrim rather
+   than a solid bar: a signer's hands can come low in frame and a solid strip
+   would sit on top of them, while this stays readable with the picture showing
+   through. The flat rgba above it is the fallback for TV browsers too old to
+   parse a gradient. Light ink either way — the bar is over video on every
+   template, dark ground or light. */
+body.big-picture .fsl-caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  margin: 0;
+  padding: 2vh 3vw 1.4vh;
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.55);
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.88) 0%,
+    rgba(0, 0, 0, 0.6) 55%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  color: #ffffff;
+  text-shadow: 0 0.2vh 0.6vh rgba(0, 0, 0, 0.9);
+}
+
+body.big-picture .fsl-caption .fil { color: #e2e8f0; }
+
+/* High contrast does not do translucency: solid black, its own hard rule. */
+body.big-picture.theme-highContrast .fsl-caption {
+  background: #000000;
+  border-top: 0.3vh solid #ffffff;
+  text-shadow: none;
+}
+body.big-picture.theme-highContrast .fsl-caption .fil { color: #ffff00; }
+
+/* ── Story pages ── */
+body.big-picture .story {
+  width: 96vw;
+  max-width: none;
+  padding: 2vh;
+}
+
+/* The title repeats on every page of the story; the sentence is what changes
+   and what is being read aloud, so the sentence is what stays. */
+body.big-picture .story-title { display: none; }
+
+/* 16:9, because the story illustrations ship 1920x1080 — the normal page's 4:3
+   box has been cropping a slice off each side of every one of them (`cover`),
+   which is exactly the kind of loss this mode exists to undo. */
+body.big-picture .story-pic {
+  width: 117.4vh;
+  height: 66vh;
+  max-width: 96vw;
+  margin-bottom: 2.5vh;
+}
+
+body.text-lg.big-picture .story-pic { width: 103.1vh; height: 58vh; }
+body.text-xl.big-picture .story-pic { width: 92.4vh; height: 52vh; }
+
+body.big-picture .story-flip-face { background-size: contain; }
+
+/* Story pages with no picture pair fall back to the emoji, which is then the
+   only illustration on screen — so it grows the way the flashcard emoji does. */
+body.big-picture .story-emoji { font-size: 36vh; }
+body.text-lg.big-picture .story-emoji { font-size: 32vh; }
+body.text-xl.big-picture .story-emoji { font-size: 28vh; }

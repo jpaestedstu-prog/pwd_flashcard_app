@@ -1,0 +1,1289 @@
+{
+  "generated_at": "2026-08-15T14:52:10.411Z",
+  "release_tag": "v1",
+  "release_repo": "jpaestedstu-prog/pwd-fsl-videos",
+  "entries": [
+    {
+      "category": "Animals",
+      "slug": "dog",
+      "word_english": "Dog",
+      "word_filipino": "Aso",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/animals__dog.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237248/DOG_rj4gl3.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/dog.mp4"
+    },
+    {
+      "category": "Animals",
+      "slug": "cat",
+      "word_english": "Cat",
+      "word_filipino": "Pusa",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/animals__cat.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237230/CAT_yew5i6.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/cat.mp4"
+    },
+    {
+      "category": "Animals",
+      "slug": "bird",
+      "word_english": "Bird",
+      "word_filipino": "Ibon",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/animals__bird.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237167/BIRD_zd3ce1.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/bird.mp4"
+    },
+    {
+      "category": "Animals",
+      "slug": "fish",
+      "word_english": "Fish",
+      "word_filipino": "Isda",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/animals__fish.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237899/FISH_xnwrxj.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/fish.mp4"
+    },
+    {
+      "category": "Animals",
+      "slug": "butterfly",
+      "word_english": "Butterfly",
+      "word_filipino": "Paru-paro",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/animals__butterfly.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237200/BUTTERFLY_tjrvki.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/butterfly.mp4"
+    },
+    {
+      "category": "Animals",
+      "slug": "horse",
+      "word_english": "Horse",
+      "word_filipino": "Kabayo",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/animals__horse.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237664/HORSE_yk8p2b.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/horse.mp4"
+    },
+    {
+      "category": "Animals",
+      "slug": "chicken",
+      "word_english": "Chicken",
+      "word_filipino": "Manok",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/animals__chicken.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237222/CHICKEN_noo21i.mp4"
+    },
+    {
+      "category": "Animals",
+      "slug": "pig",
+      "word_english": "Pig",
+      "word_filipino": "Baboy",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/animals__pig.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237752/PIG_ut1caq.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/pig.mp4"
+    },
+    {
+      "category": "Animals",
+      "slug": "cow",
+      "word_english": "Cow",
+      "word_filipino": "Baka",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/animals__cow.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237884/COW_xl9tst.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/cow.mp4"
+    },
+    {
+      "category": "Animals",
+      "slug": "frog",
+      "word_english": "Frog",
+      "word_filipino": "Palaka",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/animals__frog.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237910/FROG_entyjn.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/frog.mp4"
+    },
+    {
+      "category": "Animals",
+      "slug": "elephant",
+      "word_english": "Elephant",
+      "word_filipino": "Elepante",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/animals__elephant.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237888/ELEPHANT_obch7w.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/elephant.mp4"
+    },
+    {
+      "category": "Animals",
+      "slug": "rabbit",
+      "word_english": "Rabbit",
+      "word_filipino": "Kuneho",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/animals__rabbit.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237734/RABBIT_skrapy.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/rabbit.mp4"
+    },
+    {
+      "category": "Colors & Shapes",
+      "slug": "red",
+      "word_english": "Red",
+      "word_filipino": "Pula",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/colors-shapes__red.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237737/RED_auerxk.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/red.mp4"
+    },
+    {
+      "category": "Colors & Shapes",
+      "slug": "blue",
+      "word_english": "Blue",
+      "word_filipino": "Asul",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/colors-shapes__blue.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237190/BLUE_ksvxmz.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/blue.mp4"
+    },
+    {
+      "category": "Colors & Shapes",
+      "slug": "yellow",
+      "word_english": "Yellow",
+      "word_filipino": "Dilaw",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/colors-shapes__yellow.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237869/WINDY_yqmjln.mp4"
+    },
+    {
+      "category": "Colors & Shapes",
+      "slug": "orange",
+      "word_english": "Orange",
+      "word_filipino": "Kahel",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/colors-shapes__orange.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237719/ORANGE_b3drrn.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/orange.mp4"
+    },
+    {
+      "category": "Colors & Shapes",
+      "slug": "purple",
+      "word_english": "Purple",
+      "word_filipino": "Lila",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/colors-shapes__purple.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237935/PURPLE_mzhqvw.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/purple.mp4"
+    },
+    {
+      "category": "Colors & Shapes",
+      "slug": "circle",
+      "word_english": "Circle",
+      "word_filipino": "Bilog",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/colors-shapes__circle.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237873/CIRCLE_vmlq0u.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/circle.mp4"
+    },
+    {
+      "category": "Colors & Shapes",
+      "slug": "square",
+      "word_english": "Square",
+      "word_filipino": "Parisukat",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/colors-shapes__square.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237962/SQUARE_ui7oal.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/square.mp4"
+    },
+    {
+      "category": "Colors & Shapes",
+      "slug": "triangle",
+      "word_english": "Triangle",
+      "word_filipino": "Tatsulok",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/colors-shapes__triangle.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237858/TRIANGLE_xvqmk5.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/triangle.mp4"
+    },
+    {
+      "category": "Colors & Shapes",
+      "slug": "star",
+      "word_english": "Star",
+      "word_filipino": "Bituin",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/colors-shapes__star.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237829/STAR_ov0l4x.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/star.mp4"
+    },
+    {
+      "category": "Colors & Shapes",
+      "slug": "heart",
+      "word_english": "Heart",
+      "word_filipino": "Puso",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/colors-shapes__heart.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237921/HEART_jsl9u6.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/heart.mp4"
+    },
+    {
+      "category": "Colors & Shapes",
+      "slug": "white",
+      "word_english": "White",
+      "word_filipino": "Puti",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/colors-shapes__white.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237844/WHITE_npij0f.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/white.mp4"
+    },
+    {
+      "category": "Numbers",
+      "slug": "one",
+      "word_english": "One",
+      "word_filipino": "Isa",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/numbers__one.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237110/1_a0j6pl.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/one.mp4"
+    },
+    {
+      "category": "Numbers",
+      "slug": "two",
+      "word_english": "Two",
+      "word_filipino": "Dalawa",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/numbers__two.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237114/2_n3jfn0.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/two.mp4"
+    },
+    {
+      "category": "Numbers",
+      "slug": "three",
+      "word_english": "Three",
+      "word_filipino": "Tatlo",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/numbers__three.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237689/THREE_oomaso.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/three.mp4"
+    },
+    {
+      "category": "Numbers",
+      "slug": "four",
+      "word_english": "Four",
+      "word_filipino": "Apat",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/numbers__four.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237126/4_fi1vbd.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/four.mp4"
+    },
+    {
+      "category": "Numbers",
+      "slug": "five",
+      "word_english": "Five",
+      "word_filipino": "Lima",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/numbers__five.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237133/5_yy27qg.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/five.mp4"
+    },
+    {
+      "category": "Numbers",
+      "slug": "six",
+      "word_english": "Six",
+      "word_filipino": "Anim",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/numbers__six.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237118/6_iolgv1.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/six.mp4"
+    },
+    {
+      "category": "Numbers",
+      "slug": "seven",
+      "word_english": "Seven",
+      "word_filipino": "Pito",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/numbers__seven.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/seven.mp4"
+    },
+    {
+      "category": "Numbers",
+      "slug": "eight",
+      "word_english": "Eight",
+      "word_filipino": "Walo",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/numbers__eight.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237129/8_bwox0v.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/eight.mp4"
+    },
+    {
+      "category": "Numbers",
+      "slug": "nine",
+      "word_english": "Nine",
+      "word_filipino": "Siyam",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/numbers__nine.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237137/9_hrvgp9.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/nine.mp4"
+    },
+    {
+      "category": "Numbers",
+      "slug": "ten",
+      "word_english": "Ten",
+      "word_filipino": "Sampu",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/numbers__ten.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237102/10_x0uot5.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/ten.mp4"
+    },
+    {
+      "category": "Numbers",
+      "slug": "twenty",
+      "word_english": "Twenty",
+      "word_filipino": "Dalawampu",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/numbers__twenty.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237833/TWENTY_hyjk82.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/twenty.mp4"
+    },
+    {
+      "category": "Numbers",
+      "slug": "hundred",
+      "word_english": "Hundred",
+      "word_filipino": "Isang Daan",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/numbers__hundred.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237123/100_ctvrgr.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/hundred.mp4"
+    },
+    {
+      "category": "Body Parts",
+      "slug": "head",
+      "word_english": "Head",
+      "word_filipino": "Ulo",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/body-parts__head.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237296/HEAD_rtwu3h.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/head.mp4"
+    },
+    {
+      "category": "Body Parts",
+      "slug": "eyes",
+      "word_english": "Eyes",
+      "word_filipino": "Mata",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/body-parts__eyes.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237263/EYE_hgtbws.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/eyes.mp4"
+    },
+    {
+      "category": "Body Parts",
+      "slug": "ears",
+      "word_english": "Ears",
+      "word_filipino": "Tenga",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/body-parts__ears.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237244/EAR_d4z7oj.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/ears.mp4"
+    },
+    {
+      "category": "Body Parts",
+      "slug": "nose",
+      "word_english": "Nose",
+      "word_filipino": "Ilong",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/body-parts__nose.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237656/NOSE_nqbi2g.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/nose.mp4"
+    },
+    {
+      "category": "Body Parts",
+      "slug": "mouth",
+      "word_english": "Mouth",
+      "word_filipino": "Bibig",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/body-parts__mouth.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237671/MOUTH_x18tq7.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/mouth.mp4"
+    },
+    {
+      "category": "Body Parts",
+      "slug": "hands",
+      "word_english": "Hands",
+      "word_filipino": "Kamay",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/body-parts__hands.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237918/HAND_xceokk.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/hands.mp4"
+    },
+    {
+      "category": "Body Parts",
+      "slug": "feet",
+      "word_english": "Feet",
+      "word_filipino": "Paa",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/body-parts__feet.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237895/FEET_edr4vr.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/feet.mp4"
+    },
+    {
+      "category": "Body Parts",
+      "slug": "fingers",
+      "word_english": "Fingers",
+      "word_filipino": "Daliri",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/body-parts__fingers.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237270/FINGER_xlijqb.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/fingers.mp4"
+    },
+    {
+      "category": "Body Parts",
+      "slug": "hair",
+      "word_english": "Hair",
+      "word_filipino": "Buhok",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/body-parts__hair.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237906/HAIR_v2f6td.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/hair.mp4"
+    },
+    {
+      "category": "Body Parts",
+      "slug": "teeth",
+      "word_english": "Teeth",
+      "word_filipino": "Ngipin",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/body-parts__teeth.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237851/TEETH_xy0mqs.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/teeth.mp4"
+    },
+    {
+      "category": "Body Parts",
+      "slug": "shoulders",
+      "word_english": "Shoulders",
+      "word_filipino": "Balikat",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/body-parts__shoulders.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237788/SHOULDERS_qqfnbv.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/shoulders.mp4"
+    },
+    {
+      "category": "Body Parts",
+      "slug": "knees",
+      "word_english": "Knees",
+      "word_filipino": "Tuhod",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/body-parts__knees.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237674/KNEE_ji4n1o.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/knees.mp4"
+    },
+    {
+      "category": "Food & Drinks",
+      "slug": "rice",
+      "word_english": "Rice",
+      "word_filipino": "Kanin",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/food-drinks__rice.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237940/RICE_sejeqb.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/rice.mp4"
+    },
+    {
+      "category": "Food & Drinks",
+      "slug": "water",
+      "word_english": "Water",
+      "word_filipino": "Tubig",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/food-drinks__water.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237825/WATER_gcyezm.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/water.mp4"
+    },
+    {
+      "category": "Food & Drinks",
+      "slug": "bread",
+      "word_english": "Bread",
+      "word_filipino": "Tinapay",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/food-drinks__bread.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237193/BREAD_njscdx.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/bread.mp4"
+    },
+    {
+      "category": "Food & Drinks",
+      "slug": "milk",
+      "word_english": "Milk",
+      "word_filipino": "Gatas",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/food-drinks__milk.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237307/MILK_idsdht.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/milk.mp4"
+    },
+    {
+      "category": "Food & Drinks",
+      "slug": "apple",
+      "word_english": "Apple",
+      "word_filipino": "Mansanas",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/food-drinks__apple.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237145/APPLE_knq7ej.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/apple.mp4"
+    },
+    {
+      "category": "Food & Drinks",
+      "slug": "banana",
+      "word_english": "Banana",
+      "word_filipino": "Saging",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/food-drinks__banana.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237163/BANANA_zgvz2f.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/banana.mp4"
+    },
+    {
+      "category": "Food & Drinks",
+      "slug": "egg",
+      "word_english": "Egg",
+      "word_filipino": "Itlog",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/food-drinks__egg.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237255/EGG_ujk72c.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/egg.mp4"
+    },
+    {
+      "category": "Food & Drinks",
+      "slug": "chicken",
+      "word_english": "Chicken",
+      "word_filipino": "Manok",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/food-drinks__chicken.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237234/FOOD_-_CHICKEN_x8fnhn.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/chicken-food.mp4"
+    },
+    {
+      "category": "Food & Drinks",
+      "slug": "juice",
+      "word_english": "Juice",
+      "word_filipino": "Katas",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/food-drinks__juice.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237693/JUICE_yttaa9.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/juice.mp4"
+    },
+    {
+      "category": "Food & Drinks",
+      "slug": "vegetables",
+      "word_english": "Vegetables",
+      "word_filipino": "Gulay",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/food-drinks__vegetables.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237836/VEGETABLES_ijw3lz.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/vegetables.mp4"
+    },
+    {
+      "category": "Food & Drinks",
+      "slug": "soup",
+      "word_english": "Soup",
+      "word_filipino": "Sabaw",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/food-drinks__soup.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237807/SOUP_dxmk5c.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/soup.mp4"
+    },
+    {
+      "category": "Food & Drinks",
+      "slug": "candy",
+      "word_english": "Candy",
+      "word_filipino": "Kendi",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/food-drinks__candy.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237204/CANDY_qrjhzs.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/candy.mp4"
+    },
+    {
+      "category": "Family & Greetings",
+      "slug": "mother",
+      "word_english": "Mother",
+      "word_filipino": "Nanay",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/family-greetings__mother.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237667/MOTHER_b5cxy8.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/mother.mp4"
+    },
+    {
+      "category": "Family & Greetings",
+      "slug": "father",
+      "word_english": "Father",
+      "word_filipino": "Tatay",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/family-greetings__father.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237259/FATHER_fnq1lu.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/father.mp4"
+    },
+    {
+      "category": "Family & Greetings",
+      "slug": "brother",
+      "word_english": "Brother",
+      "word_filipino": "Kapatid na lalaki",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/family-greetings__brother.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237152/BROTHER_vuqedp.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/brother.mp4"
+    },
+    {
+      "category": "Family & Greetings",
+      "slug": "sister",
+      "word_english": "Sister",
+      "word_filipino": "Kapatid na babae",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/family-greetings__sister.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237748/SISTER_ijtctq.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/sister.mp4"
+    },
+    {
+      "category": "Family & Greetings",
+      "slug": "grandmother",
+      "word_english": "Grandmother",
+      "word_filipino": "Lola",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/family-greetings__grandmother.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237288/GRANDMOTHER_bkmfbd.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/grandmother.mp4"
+    },
+    {
+      "category": "Family & Greetings",
+      "slug": "grandfather",
+      "word_english": "Grandfather",
+      "word_filipino": "Lolo",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/family-greetings__grandfather.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237303/GRANDFATHER_ukju6s.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/grandfather.mp4"
+    },
+    {
+      "category": "Family & Greetings",
+      "slug": "hello",
+      "word_english": "Hello",
+      "word_filipino": "Kumusta",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/family-greetings__hello.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237285/HELLO_sgazet.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/hello.mp4"
+    },
+    {
+      "category": "Family & Greetings",
+      "slug": "thank you",
+      "word_english": "Thank You",
+      "word_filipino": "Salamat",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/family-greetings__thank-you.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237847/THANK_YOU_cghtev.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/thank-you.mp4"
+    },
+    {
+      "category": "Family & Greetings",
+      "slug": "please",
+      "word_english": "Please",
+      "word_filipino": "Pakiusap",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/family-greetings__please.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237934/PLEASE_oy7vpg.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/please.mp4"
+    },
+    {
+      "category": "Family & Greetings",
+      "slug": "sorry",
+      "word_english": "Sorry",
+      "word_filipino": "Pasensya",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/family-greetings__sorry.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237792/SORRY_l5ynpf.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/sorry.mp4"
+    },
+    {
+      "category": "Family & Greetings",
+      "slug": "good morning",
+      "word_english": "Good Morning",
+      "word_filipino": "Magandang Umaga",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/family-greetings__good-morning.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237903/GOOD_MORNING_ocj6j4.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/good-morning.mp4"
+    },
+    {
+      "category": "Family & Greetings",
+      "slug": "friend",
+      "word_english": "Friend",
+      "word_filipino": "Kaibigan",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/family-greetings__friend.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237277/FRIEND_z5r7qy.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/friend.mp4"
+    },
+    {
+      "category": "Clothing",
+      "slug": "t-shirt",
+      "word_english": "T-shirt",
+      "word_filipino": "T-shirt",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/clothing__t-shirt.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237818/T-SHIRT_ogwqzi.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/t-shirt.mp4"
+    },
+    {
+      "category": "Clothing",
+      "slug": "pants",
+      "word_english": "Pants",
+      "word_filipino": "Pantalon",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/clothing__pants.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237715/PANTS_yvvnwe.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/pants.mp4"
+    },
+    {
+      "category": "Clothing",
+      "slug": "dress",
+      "word_english": "Dress",
+      "word_filipino": "Bestida",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/clothing__dress.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237252/DRESS_v03ajr.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/dress.mp4"
+    },
+    {
+      "category": "Clothing",
+      "slug": "socks",
+      "word_english": "Socks",
+      "word_filipino": "Medyas",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/clothing__socks.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237781/SOCKS_dgluut.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/socks.mp4"
+    },
+    {
+      "category": "Clothing",
+      "slug": "shoes",
+      "word_english": "Shoes",
+      "word_filipino": "Sapatos",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/clothing__shoes.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237766/SHOES_phkhxg.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/shoes.mp4"
+    },
+    {
+      "category": "Clothing",
+      "slug": "cap",
+      "word_english": "Cap",
+      "word_filipino": "Sombrero",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/clothing__cap.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237197/CAP_ozkhwx.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/cap.mp4"
+    },
+    {
+      "category": "Clothing",
+      "slug": "jacket",
+      "word_english": "Jacket",
+      "word_filipino": "Dyaket",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/clothing__jacket.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237685/JACKET_kiyc9h.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/jacket.mp4"
+    },
+    {
+      "category": "Clothing",
+      "slug": "uniform",
+      "word_english": "Uniform",
+      "word_filipino": "Uniporme",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/clothing__uniform.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237862/UNIFORM_op5zjh.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/uniform.mp4"
+    },
+    {
+      "category": "Clothing",
+      "slug": "shorts",
+      "word_english": "Shorts",
+      "word_filipino": "Shorts",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/clothing__shorts.mp4",
+      "size_bytes": 3474770,
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/shorts.mp4"
+    },
+    {
+      "category": "Clothing",
+      "slug": "gloves",
+      "word_english": "Gloves",
+      "word_filipino": "Guwantes",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/clothing__gloves.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237292/GLOVES_klfc9r.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/gloves.mp4"
+    },
+    {
+      "category": "Clothing",
+      "slug": "glasses",
+      "word_english": "Glasses",
+      "word_filipino": "Salamin sa mata",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/clothing__glasses.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237266/EYEGLASSES_ngypvv.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/glasses.mp4"
+    },
+    {
+      "category": "Clothing",
+      "slug": "backpack",
+      "word_english": "Backpack",
+      "word_filipino": "Bag",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/clothing__backpack.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237178/BACKPACK_qessjc.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/backpack.mp4"
+    },
+    {
+      "category": "Weather",
+      "slug": "sunny",
+      "word_english": "Sunny",
+      "word_filipino": "Maaraw",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/weather__sunny.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237799/SUNNY_xtlgp3.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/sunny.mp4"
+    },
+    {
+      "category": "Weather",
+      "slug": "rainy",
+      "word_english": "Rainy",
+      "word_filipino": "Maulan",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/weather__rainy.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237947/RAIN_i4kkw5.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/rainy.mp4"
+    },
+    {
+      "category": "Weather",
+      "slug": "cloudy",
+      "word_english": "Cloudy",
+      "word_filipino": "Maulap",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/weather__cloudy.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237877/CLOUDY_z7pynd.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/cloudy.mp4"
+    },
+    {
+      "category": "Weather",
+      "slug": "rainbow",
+      "word_english": "Rainbow",
+      "word_filipino": "Bahaghari",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/weather__rainbow.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237726/RAINBOW_u3lkvy.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/rainbow.mp4"
+    },
+    {
+      "category": "Weather",
+      "slug": "storm",
+      "word_english": "Storm",
+      "word_filipino": "Bagyo",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/weather__storm.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237958/STORMS_egcciv.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/storm.mp4"
+    },
+    {
+      "category": "Weather",
+      "slug": "windy",
+      "word_english": "Windy",
+      "word_filipino": "Mahangin",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/weather__windy.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237966/YELLOW_cgf0nx.mp4"
+    },
+    {
+      "category": "Weather",
+      "slug": "hot",
+      "word_english": "Hot",
+      "word_filipino": "Mainit",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/weather__hot.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237925/HOT_s1safy.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/hot.mp4"
+    },
+    {
+      "category": "Weather",
+      "slug": "cold",
+      "word_english": "Cold",
+      "word_filipino": "Malamig",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/weather__cold.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237237/COLD_xvley2.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/cold.mp4"
+    },
+    {
+      "category": "Weather",
+      "slug": "flood",
+      "word_english": "Flood",
+      "word_filipino": "Baha",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/weather__flood.mp4",
+      "size_bytes": 3854432,
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/flood.mp4"
+    },
+    {
+      "category": "Weather",
+      "slug": "lightning",
+      "word_english": "Lightning",
+      "word_filipino": "Kidlat",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/weather__lightning.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237678/LIGHT_lbhwhs.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/lightning.mp4"
+    },
+    {
+      "category": "Weather",
+      "slug": "partly cloudy",
+      "word_english": "Partly Cloudy",
+      "word_filipino": "Bahagyang Maulap",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/weather__partly-cloudy.mp4",
+      "size_bytes": 5311809,
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/partly-cloudy.mp4"
+    },
+    {
+      "category": "Weather",
+      "slug": "night",
+      "word_english": "Night",
+      "word_filipino": "Gabi",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/weather__night.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237929/NIGHT_v3izts.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/night.mp4"
+    },
+    {
+      "category": "Classroom",
+      "slug": "book",
+      "word_english": "Book",
+      "word_filipino": "Aklat",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/classroom__book.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237174/BOOK_klg2st.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/book.mp4"
+    },
+    {
+      "category": "Classroom",
+      "slug": "pencil",
+      "word_english": "Pencil",
+      "word_filipino": "Lapis",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/classroom__pencil.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237704/PENCIL_fvwnda.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/pencil.mp4"
+    },
+    {
+      "category": "Classroom",
+      "slug": "notebook",
+      "word_english": "Notebook",
+      "word_filipino": "Kuwaderno",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/classroom__notebook.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237682/NOTEBOOK_mblf27.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/notebook.mp4"
+    },
+    {
+      "category": "Classroom",
+      "slug": "crayon",
+      "word_english": "Crayon",
+      "word_filipino": "Krayola",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/classroom__crayon.mp4",
+      "size_bytes": 2720716,
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/crayon.mp4"
+    },
+    {
+      "category": "Classroom",
+      "slug": "ruler",
+      "word_english": "Ruler",
+      "word_filipino": "Ruler",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/classroom__ruler.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237744/RULER_yyzq4d.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/ruler.mp4"
+    },
+    {
+      "category": "Classroom",
+      "slug": "scissors",
+      "word_english": "Scissors",
+      "word_filipino": "Gunting",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/classroom__scissors.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237722/SCISSORS_xealz0.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/scissors.mp4"
+    },
+    {
+      "category": "Classroom",
+      "slug": "pen",
+      "word_english": "Pen",
+      "word_filipino": "Bolpen",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/classroom__pen.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237701/PEN_rumb2e.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/pen.mp4"
+    },
+    {
+      "category": "Classroom",
+      "slug": "paint",
+      "word_english": "Paint",
+      "word_filipino": "Pintura",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/classroom__paint.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237708/PAINT_f4du1n.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/paint.mp4"
+    },
+    {
+      "category": "Classroom",
+      "slug": "eraser",
+      "word_english": "Eraser",
+      "word_filipino": "Pambura",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/classroom__eraser.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237241/ERASER_smamgh.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/eraser.mp4"
+    },
+    {
+      "category": "Classroom",
+      "slug": "chair",
+      "word_english": "Chair",
+      "word_filipino": "Upuan",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/classroom__chair.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237216/CHAIR_tr5g3i.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/chair.mp4"
+    },
+    {
+      "category": "Classroom",
+      "slug": "school",
+      "word_english": "School",
+      "word_filipino": "Paaralan",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/classroom__school.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237755/SCHOOL_scgzrz.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/school.mp4"
+    },
+    {
+      "category": "Classroom",
+      "slug": "teacher",
+      "word_english": "Teacher",
+      "word_filipino": "Guro",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/classroom__teacher.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237796/TEACHER_ckpvvf.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/teacher.mp4"
+    },
+    {
+      "category": "Transportation",
+      "slug": "car",
+      "word_english": "Car",
+      "word_filipino": "Kotse",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/transportation__car.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237226/CAR_m7qfye.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/car.mp4"
+    },
+    {
+      "category": "Transportation",
+      "slug": "bus",
+      "word_english": "Bus",
+      "word_filipino": "Bus",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/transportation__bus.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237182/BUS_hynfdk.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/bus.mp4"
+    },
+    {
+      "category": "Transportation",
+      "slug": "bicycle",
+      "word_english": "Bicycle",
+      "word_filipino": "Bisikleta",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/transportation__bicycle.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237171/BICYCLE_uveuz6.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/bicycle.mp4"
+    },
+    {
+      "category": "Transportation",
+      "slug": "airplane",
+      "word_english": "Airplane",
+      "word_filipino": "Eroplano",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/transportation__airplane.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237141/AIRPLANE_n3wpri.mp4"
+    },
+    {
+      "category": "Transportation",
+      "slug": "ship",
+      "word_english": "Ship",
+      "word_filipino": "Barko",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/transportation__ship.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237951/SHIP_tlfenv.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/ship.mp4"
+    },
+    {
+      "category": "Transportation",
+      "slug": "train",
+      "word_english": "Train",
+      "word_filipino": "Tren",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/transportation__train.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237855/TRAIN_c8vu60.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/train.mp4"
+    },
+    {
+      "category": "Transportation",
+      "slug": "motorcycle",
+      "word_english": "Motorcycle",
+      "word_filipino": "Motorsiklo",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/transportation__motorcycle.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237653/MOTORCYCLE_rcey4q.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/motorcycle.mp4"
+    },
+    {
+      "category": "Transportation",
+      "slug": "helicopter",
+      "word_english": "Helicopter",
+      "word_filipino": "Helikopter",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/transportation__helicopter.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237651/HELICOPTER_wi8o0c.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/helicopter.mp4"
+    },
+    {
+      "category": "Transportation",
+      "slug": "taxi",
+      "word_english": "Taxi",
+      "word_filipino": "Taksi",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/transportation__taxi.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237777/TAXI_lmzt9p.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/taxi.mp4"
+    },
+    {
+      "category": "Transportation",
+      "slug": "boat",
+      "word_english": "Boat",
+      "word_filipino": "Bangka",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/transportation__boat.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237186/BOAT_yfjrmg.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/boat.mp4"
+    },
+    {
+      "category": "Transportation",
+      "slug": "walk",
+      "word_english": "Walk",
+      "word_filipino": "Lakad",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/transportation__walk.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237840/WALK_eptm7p.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/walk.mp4"
+    },
+    {
+      "category": "Transportation",
+      "slug": "road",
+      "word_english": "Road",
+      "word_filipino": "Daan",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/transportation__road.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237730/ROAD_pkxiqz.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/road.mp4"
+    },
+    {
+      "category": "Emotions",
+      "slug": "happy",
+      "word_english": "Happy",
+      "word_filipino": "Masaya",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/emotions__happy.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237914/HAPPY_ip2psd.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/happy.mp4"
+    },
+    {
+      "category": "Emotions",
+      "slug": "sad",
+      "word_english": "Sad",
+      "word_filipino": "Malungkot",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/emotions__sad.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237759/SAD_rrfjwc.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/sad.mp4"
+    },
+    {
+      "category": "Emotions",
+      "slug": "angry",
+      "word_english": "Angry",
+      "word_filipino": "Galit",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/emotions__angry.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237148/ANGRY_qsp64p.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/angry.mp4"
+    },
+    {
+      "category": "Emotions",
+      "slug": "scared",
+      "word_english": "Scared",
+      "word_filipino": "Takot",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/emotions__scared.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237710/SCARY_ojj3az.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/scared.mp4"
+    },
+    {
+      "category": "Emotions",
+      "slug": "surprised",
+      "word_english": "Surprised",
+      "word_filipino": "Nagulat",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/emotions__surprised.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237814/SURPRISE_xpmvkb.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/surprised.mp4"
+    },
+    {
+      "category": "Emotions",
+      "slug": "loved",
+      "word_english": "Loved",
+      "word_filipino": "Minamahal",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/emotions__loved.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237299/LOVE_cas1v3.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/loved.mp4"
+    },
+    {
+      "category": "Emotions",
+      "slug": "sleepy",
+      "word_english": "Sleepy",
+      "word_filipino": "Inaantok",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/emotions__sleepy.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237785/SLEEP_nnynr3.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/sleepy.mp4"
+    },
+    {
+      "category": "Emotions",
+      "slug": "sick",
+      "word_english": "Sick",
+      "word_filipino": "May sakit",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/emotions__sick.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237763/SICK_zv1okq.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/sick.mp4"
+    },
+    {
+      "category": "Emotions",
+      "slug": "proud",
+      "word_english": "Proud",
+      "word_filipino": "Proud",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/emotions__proud.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237741/PROUD_skpyzv.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/proud.mp4"
+    },
+    {
+      "category": "Emotions",
+      "slug": "confused",
+      "word_english": "Confused",
+      "word_filipino": "Naguguluhan",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/emotions__confused.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237880/CONFUSED_iagjxi.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/confused.mp4"
+    },
+    {
+      "category": "Emotions",
+      "slug": "excited",
+      "word_english": "Excited",
+      "word_filipino": "Nasasabik",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/emotions__excited.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237892/EXCITED_dwwww3.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/excited.mp4"
+    },
+    {
+      "category": "Emotions",
+      "slug": "calm",
+      "word_english": "Calm",
+      "word_filipino": "Kalmado",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/emotions__calm.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237208/CALM_xjukwv.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/calm.mp4"
+    },
+    {
+      "category": "Days & Time",
+      "slug": "monday",
+      "word_english": "Monday",
+      "word_filipino": "Lunes",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/days-time__monday.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237660/MONDAY_xjuvsu.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/monday.mp4"
+    },
+    {
+      "category": "Days & Time",
+      "slug": "tuesday",
+      "word_english": "Tuesday",
+      "word_filipino": "Martes",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/days-time__tuesday.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237803/TUESDAY_m0mex9.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/tuesday.mp4"
+    },
+    {
+      "category": "Days & Time",
+      "slug": "wednesday",
+      "word_english": "Wednesday",
+      "word_filipino": "Miyerkules",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/days-time__wednesday.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237866/WEDNESDAY_hhkrmx.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/wednesday.mp4"
+    },
+    {
+      "category": "Days & Time",
+      "slug": "thursday",
+      "word_english": "Thursday",
+      "word_filipino": "Huwebes",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/days-time__thursday.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237810/THURSDAY_wyu9dr.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/thursday.mp4"
+    },
+    {
+      "category": "Days & Time",
+      "slug": "friday",
+      "word_english": "Friday",
+      "word_filipino": "Biyernes",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/days-time__friday.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237274/FRIDAY_ehtnta.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/friday.mp4"
+    },
+    {
+      "category": "Days & Time",
+      "slug": "saturday",
+      "word_english": "Saturday",
+      "word_filipino": "Sabado",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/days-time__saturday.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237774/SATURDAY_i5gzwv.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/saturday.mp4"
+    },
+    {
+      "category": "Days & Time",
+      "slug": "sunday",
+      "word_english": "Sunday",
+      "word_filipino": "Linggo",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/days-time__sunday.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237954/SUNDAY_eg9qzg.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/sunday.mp4"
+    },
+    {
+      "category": "Days & Time",
+      "slug": "morning",
+      "word_english": "Morning",
+      "word_filipino": "Umaga",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/days-time__morning.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237697/MORNING_jyueze.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/morning.mp4"
+    },
+    {
+      "category": "Days & Time",
+      "slug": "afternoon",
+      "word_english": "Afternoon",
+      "word_filipino": "Hapon",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/days-time__afternoon.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237156/AFTERNOON_mhpye0.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/afternoon.mp4"
+    },
+    {
+      "category": "Days & Time",
+      "slug": "evening",
+      "word_english": "Evening",
+      "word_filipino": "Gabi",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/days-time__evening.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237160/AFTERNOON_2_oxuq25.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/evening.mp4"
+    },
+    {
+      "category": "Days & Time",
+      "slug": "clock",
+      "word_english": "Clock",
+      "word_filipino": "Orasan",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/days-time__clock.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237212/CLOCK_qimjcc.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/clock.mp4"
+    },
+    {
+      "category": "Days & Time",
+      "slug": "today",
+      "word_english": "Today",
+      "word_filipino": "Ngayon",
+      "download_url": "https://github.com/jpaestedstu-prog/pwd-fsl-videos/releases/download/v1/days-time__today.mp4",
+      "stream_url": "https://res.cloudinary.com/lorjhyp9/video/upload/v1785237822/TODAY_auj7gx.mp4",
+      "light_url": "https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/videos/fsl/today.mp4"
+    }
+  ]
+}
