@@ -173,6 +173,7 @@ class ResearchExportService {
           ),
       ],
       subject: 'FlashLearn PWD – Research Data Export ($dateStr)',
+      zipName: 'FlashLearn_Research_$dateStr',
     );
   }
 

@@ -69,6 +69,11 @@ dependencies:
   path_provider: ^2.1.5
   share_plus: ^10.1.4
   file_picker: ^8.3.7
+  # The browser version's exports: a download (web), and several files as
+  # one zip (archive). Both were already in the build through other
+  # packages.
+  web: ^1.1.1
+  archive: ^4.0.9
 
   # Notifications
   flutter_local_notifications: ^19.0.0
@@ -122,6 +127,9 @@ dev_dependencies:
   # Direct dev dep so the gaze camera tests can stand in for the camera
   # (already in the graph via camera).
   camera_platform_interface: ^2.13.0
+  # Direct dev dep so the full-screen player's tests can play a fake video
+  # (already in the graph via video_player).
+  video_player_platform_interface: ^6.7.0
 
 flutter:
   generate: true

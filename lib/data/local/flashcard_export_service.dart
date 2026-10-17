@@ -13,10 +13,12 @@ class FlashcardExportService {
   FlashcardExportService._();
 
   /// Exports all custom flashcards to a JSON file and opens the
-  /// platform share sheet so the user can save or send it.
-  static Future<void> exportCards() async {
+  /// platform share sheet so the user can save or send it (a browser
+  /// downloads it). Returns how many cards went: 0 when there are none,
+  /// which the caller says, rather than a tap that does nothing.
+  static Future<int> exportCards() async {
     final cards = HiveService.getCustomCards();
-    if (cards.isEmpty) return;
+    if (cards.isEmpty) return 0;
 
     final jsonList = cards.map((c) => c.toJson()).toList();
     final jsonString = const JsonEncoder.withIndent('  ').convert(jsonList);
@@ -33,6 +35,7 @@ class FlashcardExportService {
       subject: 'FlashLearn PWD – Custom Flashcards',
       text: 'Here are ${cards.length} custom flashcards exported from FlashLearn PWD.',
     );
+    return cards.length;
   }
 
   /// Opens a file picker for the user to select a JSON file,

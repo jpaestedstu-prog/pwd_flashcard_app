@@ -128,8 +128,24 @@ class DeckListScreen extends ConsumerWidget {
                                 label: AppLocalizations.of(
                                   context,
                                 )!.exportLabel,
+                                // Says what happened: with no cards of
+                                // its own to export, it did nothing.
                                 onTap: () async {
-                                  await FlashcardExportService.exportCards();
+                                  final l10n = AppLocalizations.of(context)!;
+                                  final count =
+                                      await FlashcardExportService.exportCards();
+                                  if (!context.mounted) return;
+                                  if (count == 0) {
+                                    AppSnackBar.info(
+                                      context,
+                                      message: l10n.deckNoCustomCards,
+                                    );
+                                  } else {
+                                    AppSnackBar.success(
+                                      context,
+                                      message: l10n.deckExportedCards(count),
+                                    );
+                                  }
                                 },
                               ),
                             ],

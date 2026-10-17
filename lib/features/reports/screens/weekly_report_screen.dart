@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +10,7 @@ import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/utils/share_file.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../../../providers/parent_provider.dart';
 import '../../../providers/app_providers.dart';
@@ -319,6 +321,13 @@ Future<void> sharePdfBytes(
   final origin = (box != null && box.hasSize)
       ? box.localToGlobal(Offset.zero) & box.size
       : null;
+  if (kIsWeb) {
+    // A browser: the same download as every export (no temp folder there).
+    await ShareFile.share([
+      (name: filename, bytes: bytes, mimeType: 'application/pdf'),
+    ]);
+    return;
+  }
   try {
     final dir = await getTemporaryDirectory();
     final file = File('${dir.path}/$filename');

@@ -2,21 +2,26 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:archive/archive.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+
+import 'web_download.dart';
 
 /// One file the app made, ready to hand over: its name, contents and type.
 typedef ShareableFile = ({String name, List<int> bytes, String mimeType});
 
 /// Hands the files the app makes (reports, data exports) to the person: the
 /// share sheet on a device, to save to Drive or send by email; in a browser,
-/// the browser's own share sheet where there is one, or a download.
+/// a download.
 ///
 /// A browser has no temporary folder to write a file into first, and that is
-/// what every export did, so every export failed there. Here the browser is
-/// handed the bytes instead.
+/// what every export did, so every export failed there. A browser downloads
+/// the bytes instead, into its Downloads: predictable on a computer and a
+/// phone alike (the plugin's browser share sheet was the Windows share panel
+/// on a computer, and did nothing at all where no sheet could open).
 abstract final class ShareFile {
   /// The file as one [ShareableFile], from text (CSV, JSON) in UTF-8.
   static ShareableFile text(String content, {
@@ -25,28 +30,28 @@ abstract final class ShareFile {
   }) =>
       (name: name, bytes: utf8.encode(content), mimeType: mimeType);
 
-  /// Shares [files] together, as one share or one download each.
+  /// Shares [files] together. In a browser: one file downloads as itself,
+  /// several as one zip called [zipName] (a browser asks before a page may
+  /// download more than one file).
   static Future<void> share(
     List<ShareableFile> files, {
     String? subject,
     String? text,
+    String zipName = 'FlashLearn',
   }) async {
     if (files.isEmpty) return;
-    final named = [
-      for (final f in files) (f, safeName(f.name)),
-    ];
     if (kIsWeb) {
-      await Share.shareXFiles(
-        [
-          for (final (f, name) in named)
-            XFile.fromData(_bytes(f.bytes), name: name, mimeType: f.mimeType),
-        ],
-        subject: subject,
-        text: text,
-        fileNameOverrides: [for (final (_, name) in named) name],
+      final download = forBrowser(files, zipName: zipName);
+      await downloadFile(
+        _bytes(download.bytes),
+        name: download.name,
+        mimeType: download.mimeType,
       );
       return;
     }
+    final named = [
+      for (final f in files) (f, safeName(f.name)),
+    ];
     final tmp = await getTemporaryDirectory();
     final xfiles = <XFile>[];
     for (final (f, name) in named) {
@@ -63,6 +68,28 @@ abstract final class ShareFile {
   static String safeName(String name) {
     final cleaned = name.replaceAll(RegExp(r'[\\/:*?"<>|\x00-\x1F]'), '_');
     return cleaned.trim().isEmpty ? 'FlashLearn' : cleaned.trim();
+  }
+
+  /// What a browser downloads for [files]: the file itself, or a zip of
+  /// them all. Pure, for its tests.
+  @visibleForTesting
+  static ShareableFile forBrowser(
+    List<ShareableFile> files, {
+    String zipName = 'FlashLearn',
+  }) {
+    if (files.length == 1) {
+      final f = files.single;
+      return (name: safeName(f.name), bytes: f.bytes, mimeType: f.mimeType);
+    }
+    final archive = Archive();
+    for (final f in files) {
+      archive.addFile(ArchiveFile.bytes(safeName(f.name), f.bytes));
+    }
+    return (
+      name: safeName('$zipName.zip'),
+      bytes: ZipEncoder().encodeBytes(archive),
+      mimeType: 'application/zip',
+    );
   }
 
   static Uint8List _bytes(List<int> bytes) =>

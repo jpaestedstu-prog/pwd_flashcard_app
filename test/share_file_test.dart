@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pwdpwdpwd/core/utils/share_file.dart';
 
@@ -41,5 +42,31 @@ void main() {
     expect(f.name, 'x.csv');
     expect(f.mimeType, 'text/csv');
     expect(utf8.decode(f.bytes), 'Salitâ,Niño\n');
+  });
+
+  group('what a browser downloads', () {
+    test('one file downloads as itself, safely named', () {
+      final got = ShareFile.forBrowser([
+        ShareFile.text('a,b\n', name: 'Data_Cognitive/Learning.csv',
+            mimeType: 'text/csv'),
+      ]);
+      expect(got.name, 'Data_Cognitive_Learning.csv');
+      expect(got.mimeType, 'text/csv');
+      expect(utf8.decode(got.bytes), 'a,b\n');
+    });
+
+    test('several download as one zip holding each of them (a browser asks '
+        'before a page downloads more than one file)', () {
+      final got = ShareFile.forBrowser([
+        ShareFile.text('Niño\n', name: 'learners.csv', mimeType: 'text/csv'),
+        ShareFile.text('{}', name: 'a/b.json', mimeType: 'application/json'),
+      ], zipName: 'FlashLearn_Research_2026-10-17');
+      expect(got.name, 'FlashLearn_Research_2026-10-17.zip');
+      expect(got.mimeType, 'application/zip');
+      final zip = ZipDecoder().decodeBytes(got.bytes);
+      expect([for (final f in zip.files) f.name], ['learners.csv', 'a_b.json']);
+      expect(utf8.decode(zip.findFile('learners.csv')!.content), 'Niño\n');
+      expect(utf8.decode(zip.findFile('a_b.json')!.content), '{}');
+    });
   });
 }
