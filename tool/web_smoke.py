@@ -393,6 +393,10 @@ class Smoke:
                 # tab bar from the accessibility tree.
                 self.shot("daily_reward")
                 self.click("Collect")
+                # A press while the dialog is still opening can miss, and
+                # without a pause every retry fell inside that same moment
+                # (Mobile Safari on GitHub, once in four runs).
+                time.sleep(2)
             elif self.find("Skip"):
                 self.shot(f"setup_{i}")
                 self.click("Skip")
