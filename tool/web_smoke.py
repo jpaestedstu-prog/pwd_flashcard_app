@@ -53,9 +53,10 @@ ROUTES = [
 BAD_TEXT = ("Something went wrong",)
 
 # What only the Android app can do says so where it is offered, instead of a
-# button that fails in a browser: these screens must show their notice.
+# button that fails in a browser: these screens must show their notice. (The
+# walk is a learner's, and TV Cast is a teacher's tool, so a learner is sent
+# Home from /tv-cast; test/browser_limits_test.dart checks its notice.)
 EXPECTED_TEXT = {
-    "/tv-cast": "TV Cast works in the Android app",
     "/backup": "Backup files work in the Android app",
     "/gamepad-settings": "Game controllers work in the Android app",
 }
