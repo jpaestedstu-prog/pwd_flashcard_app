@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -14,6 +15,7 @@ import '../models/learner_portfolio.dart';
 import '../models/question_prompt.dart';
 import 'assessment_media_cache.dart';
 import 'assessment_service.dart';
+import '../../../core/services/shared_media_service.dart';
 
 /// A learner's portfolio as a PDF a parent can keep: the summary, every test
 /// with its score, and the educator's feedback with its pictures.
@@ -316,10 +318,13 @@ class PortfolioPdf {
     return '${e.titleOf(l10n)}\n${l10n.portfolioSupports(supports.map((s) => s.labelOf(l10n)).join(', '))}';
   }
 
-  /// "80%", "80% · 1 answer to review", or "Waiting for review".
+  /// "80%", "80% · 1 answer to review", "Waiting for review", or
+  /// "Skipped" when every question was a video question skipped in a
+  /// browser (it was an empty cell).
   static String _scoreLine(PortfolioEntry e, AppLocalizations l10n) {
     final s = e.score!;
     final fraction = e.fraction;
+    if (fraction == null && s.pending == 0) return l10n.assessSkipped;
     return [
       if (fraction != null) '${(fraction * 100).round()}%',
       if (s.pending > 0)
@@ -432,6 +437,10 @@ class PortfolioPdf {
     if (isAssetMedia(value)) {
       final data = await rootBundle.load(value);
       return data.buffer.asUint8List();
+    }
+    // A browser keeps no files: a shared picture's bytes come from memory.
+    if (kIsWeb && SharedMediaService.isShared(value)) {
+      return (await const SharedMediaService().resolveBytes(value))?.bytes;
     }
     final file = await AssessmentMediaCache.fileFor(value);
     return file?.readAsBytes();

@@ -10,6 +10,8 @@ import '../../routine/services/routine_media_store.dart';
 import '../../routine/widgets/routine_media.dart';
 import '../models/assessment_media_presentation.dart';
 import '../models/assessment_models.dart';
+import '../../../core/services/web_media.dart';
+import '../../../core/utils/platform_caps.dart';
 
 /// Where an attached media value can be played from right now.
 enum MediaAvailability {
@@ -105,6 +107,21 @@ class AssessmentMediaCache {
   static Future<MediaAvailability> availabilityOf(String value) async {
     final v = value.trim();
     if (isAssetMedia(v)) return MediaAvailability.ready;
+    if (PlatformCaps.isWeb && _isRemote(v)) {
+      // A browser keeps no files: a link is shown from its address, a shared
+      // file from its bytes in memory (fetched here, so the test does not
+      // wait on it later). Without this every shared file read "missing"
+      // and the test would not start.
+      if (!SharedMediaService.isShared(v)) return MediaAvailability.ready;
+      try {
+        final url = await WebMedia.urlFor(v).timeout(perSharedItem);
+        return url != null
+            ? MediaAvailability.ready
+            : MediaAvailability.unreachable;
+      } catch (_) {
+        return MediaAvailability.unreachable;
+      }
+    }
     if (RoutineMediaStore.isDeviceFile(v)) {
       return await File(RoutineMediaStore.pathOf(v)).exists()
           ? MediaAvailability.ready
@@ -160,6 +177,9 @@ class AssessmentMediaCache {
   /// tablet is online. Failures are ignored: the check before a test starts
   /// catches them, and a sheet shows its own "could not load".
   static Future<void> prefetchValues(Iterable<String> values) async {
+    // A browser fetches as it shows (it keeps no files); a shared file's
+    // bytes are fetched by the check before the test.
+    if (PlatformCaps.isWeb) return;
     for (final v in values.where(_isRemote).toSet()) {
       try {
         await fileFor(v).timeout(

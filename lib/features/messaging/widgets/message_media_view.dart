@@ -4,11 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../core/services/shared_media_service.dart';
+import '../../../core/services/web_media.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/platform_caps.dart';
-import '../../../l10n/app_localizations.dart';
-import '../../../l10n/app_localizations_en.dart';
 import '../models/messaging_models.dart';
 import '../services/message_media.dart';
 
@@ -17,7 +16,8 @@ import '../services/message_media.dart';
 /// The file is fetched through [SharedMediaService.resolve] the first time
 /// the bubble is shown (the sender already has it cached), then opened full
 /// screen on tap: a photo to look at closely, a sign video to watch — and
-/// replay, which is how a signed message is actually read.
+/// replay, which is how a signed message is actually read. A browser keeps
+/// no files: it shows the bytes, held in memory, by address ([WebMedia]).
 class MessageMediaBody extends StatefulWidget {
   final LocalMessage message;
   final bool isFilipino;
@@ -36,24 +36,28 @@ class MessageMediaBody extends StatefulWidget {
 }
 
 class _MessageMediaBodyState extends State<MessageMediaBody> {
-  late Future<File?> _file;
+  late Future<MessageMediaSource?> _source;
 
   bool get _isVideo => widget.message.type == MessageType.video;
 
   @override
   void initState() {
     super.initState();
-    _file = PlatformCaps.isWeb ? Future.value() : _resolve();
+    _source = _resolve();
   }
 
-  Future<File?> _resolve() {
+  Future<MessageMediaSource?> _resolve() async {
     final value = widget.message.content;
-    return (MessageMediaBody.debugResolve ?? const SharedMediaService().resolve)(
-      value,
-    );
+    if (PlatformCaps.isWeb) {
+      final url = await WebMedia.urlFor(value, video: _isVideo);
+      return url == null ? null : MessageMediaSource.url(url);
+    }
+    final file = await (MessageMediaBody.debugResolve ??
+        const SharedMediaService().resolve)(value);
+    return file == null ? null : MessageMediaSource.file(file);
   }
 
-  void _retry() => setState(() => _file = _resolve());
+  void _retry() => setState(() => _source = _resolve());
 
   @override
   Widget build(BuildContext context) {
@@ -93,15 +97,7 @@ class _MessageMediaBodyState extends State<MessageMediaBody> {
     );
 
     final Widget media;
-    // A browser has nowhere to keep the downloaded file, so this never
-    // loads there: say where it can be seen, instead of "try again".
-    if (PlatformCaps.isWeb) {
-      media = note(
-        Icons.phone_android_rounded,
-        (AppLocalizations.of(context) ?? AppLocalizationsEn())
-            .webMediaOpensInApp,
-      );
-    } else if (MessageMedia.isExpired(widget.message)) {
+    if (MessageMedia.isExpired(widget.message)) {
       media = note(
         Icons.hourglass_bottom_rounded,
         _isVideo
@@ -113,8 +109,8 @@ class _MessageMediaBodyState extends State<MessageMediaBody> {
                   : 'This photo expired after a week.'),
       );
     } else {
-      media = FutureBuilder<File?>(
-        future: _file,
+      media = FutureBuilder<MessageMediaSource?>(
+        future: _source,
         builder: (context, snap) {
           if (snap.connectionState != ConnectionState.done) {
             return frame(
@@ -124,8 +120,8 @@ class _MessageMediaBodyState extends State<MessageMediaBody> {
               ),
             );
           }
-          final file = snap.data;
-          if (file == null) {
+          final source = snap.data;
+          if (source == null) {
             return Semantics(
               button: true,
               onTap: _retry,
@@ -141,7 +137,7 @@ class _MessageMediaBodyState extends State<MessageMediaBody> {
           if (_isVideo) {
             void play() => showMessageVideoPlayer(
               context,
-              file: file,
+              source: source,
               isFilipino: fil,
               caption: caption,
             );
@@ -181,7 +177,7 @@ class _MessageMediaBodyState extends State<MessageMediaBody> {
             );
           }
           void look() =>
-              showMessagePhotoViewer(context, file: file, isFilipino: fil);
+              showMessagePhotoViewer(context, source: source, isFilipino: fil);
           return Semantics(
             button: true,
             label: fil ? 'Tingnan ang larawan' : 'Look at the photo',
@@ -190,8 +186,7 @@ class _MessageMediaBodyState extends State<MessageMediaBody> {
             child: GestureDetector(
               onTap: look,
               child: frame(
-                Image.file(
-                  file,
+                source.image(
                   fit: BoxFit.cover,
                   errorBuilder: (_, _, _) => ColoredBox(
                     color: hc.surface,
@@ -225,10 +220,29 @@ class _MessageMediaBodyState extends State<MessageMediaBody> {
   }
 }
 
+/// Where a photo or video is shown from: the file on this device, or (in a
+/// browser, which keeps no files) an address.
+class MessageMediaSource {
+  const MessageMediaSource.file(File this.file) : url = null;
+  const MessageMediaSource.url(String this.url) : file = null;
+
+  final File? file;
+  final String? url;
+
+  Widget image({BoxFit? fit, ImageErrorWidgetBuilder? errorBuilder}) =>
+      file != null
+      ? Image.file(file!, fit: fit, errorBuilder: errorBuilder)
+      : Image.network(url!, fit: fit, errorBuilder: errorBuilder);
+
+  VideoPlayerController video() => file != null
+      ? VideoPlayerController.file(file!)
+      : VideoPlayerController.networkUrl(Uri.parse(url!));
+}
+
 /// A photo, full screen, pinch-to-zoom.
 Future<void> showMessagePhotoViewer(
   BuildContext context, {
-  required File file,
+  required MessageMediaSource source,
   required bool isFilipino,
 }) {
   return showDialog<void>(
@@ -241,7 +255,7 @@ Future<void> showMessagePhotoViewer(
             Positioned.fill(
               child: InteractiveViewer(
                 maxScale: 5,
-                child: Center(child: Image.file(file)),
+                child: Center(child: source.image()),
               ),
             ),
             Positioned(
@@ -263,24 +277,27 @@ Future<void> showMessagePhotoViewer(
 /// A sign video, playing on a loop, with Replay and Close as big buttons.
 Future<void> showMessageVideoPlayer(
   BuildContext context, {
-  required File file,
+  required MessageMediaSource source,
   required bool isFilipino,
   String caption = '',
 }) {
   return showDialog<void>(
     context: context,
-    builder: (_) =>
-        _VideoPlayerDialog(file: file, isFilipino: isFilipino, caption: caption),
+    builder: (_) => _VideoPlayerDialog(
+      source: source,
+      isFilipino: isFilipino,
+      caption: caption,
+    ),
   );
 }
 
 class _VideoPlayerDialog extends StatefulWidget {
-  final File file;
+  final MessageMediaSource source;
   final bool isFilipino;
   final String caption;
 
   const _VideoPlayerDialog({
-    required this.file,
+    required this.source,
     required this.isFilipino,
     required this.caption,
   });
@@ -296,7 +313,7 @@ class _VideoPlayerDialogState extends State<_VideoPlayerDialog> {
   @override
   void initState() {
     super.initState();
-    _controller = VideoPlayerController.file(widget.file);
+    _controller = widget.source.video();
     _start();
   }
 

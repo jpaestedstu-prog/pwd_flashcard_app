@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:pwdpwdpwd/core/accessibility/haptic_service.dart';
 import 'package:pwdpwdpwd/core/accessibility/tts_service.dart';
 import 'package:pwdpwdpwd/core/services/shared_media_service.dart';
+import 'package:pwdpwdpwd/core/utils/platform_caps.dart';
 import 'package:pwdpwdpwd/data/models/enums.dart';
 import 'package:pwdpwdpwd/data/models/models.dart';
 import 'package:pwdpwdpwd/features/assessment/models/assessment_media.dart';
@@ -258,6 +259,33 @@ void main() {
       await tester.pump(const Duration(milliseconds: 800));
       await tester.pump();
       expect(starts, 4, reason: 'Try Again starts it afresh');
+    });
+
+    testWidgets('in a browser, a linked video plays from its own address: a '
+        'browser\'s player cannot play a downloaded file', (tester) async {
+      PlatformCaps.debugWeb = true;
+      addTearDown(() => PlatformCaps.debugWeb = null);
+      AssessmentMediaPanel.debugVideoBuilder = null;
+      var fetched = false;
+      AssessmentMediaCache.debugFetch = (_) async {
+        fetched = true;
+        return File('clip.mp4');
+      };
+      final sources = <String>[];
+      AssessmentMediaPanel.debugVideoInitialize = (c) async {
+        sources.add(c.dataSource);
+        // Stops here: the test VM has no video decoder.
+        throw StateError('no decoder in a test');
+      };
+      addTearDown(() => AssessmentMediaPanel.debugVideoInitialize = null);
+
+      await pumpTest(tester, _test(const AssessmentMedia(sign: _sign)));
+      await tester.pump(const Duration(milliseconds: 800));
+      await tester.pump();
+
+      expect(sources, isNotEmpty);
+      expect(sources.toSet(), {_sign}, reason: 'the link itself, not a file');
+      expect(fetched, isFalse, reason: 'no download into a file in a browser');
     });
 
     testWidgets('a clip that never arrived still says to go online', (

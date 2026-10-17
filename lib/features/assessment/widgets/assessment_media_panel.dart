@@ -16,6 +16,8 @@ import '../../routine/widgets/routine_media.dart';
 import '../models/assessment_media.dart';
 import '../models/assessment_media_presentation.dart';
 import '../services/assessment_media_cache.dart';
+import '../../../core/services/web_media.dart';
+import '../../../core/utils/platform_caps.dart';
 
 /// Builds a video in place of the plugin, which no test binding provides.
 typedef AssessmentVideoBuilder =
@@ -404,6 +406,9 @@ class _MediaImage extends StatefulWidget {
 class _MediaImageState extends State<_MediaImage> {
   Future<File?>? _download;
 
+  /// In a browser: the address to show it from (see [WebMedia]).
+  Future<String?>? _webUrl;
+
   /// A GIF under Reduced Motion starts still and plays on request.
   late bool _animating = !widget.pauseAnimation;
 
@@ -419,14 +424,23 @@ class _MediaImageState extends State<_MediaImage> {
   @override
   void initState() {
     super.initState();
-    if (_remote) _download = AssessmentMediaCache.fileFor(_v);
+    _fetch();
   }
 
   @override
   void didUpdateWidget(covariant _MediaImage old) {
     super.didUpdateWidget(old);
-    if (old.value != widget.value) {
-      _download = _remote ? AssessmentMediaCache.fileFor(_v) : null;
+    if (old.value != widget.value) _fetch();
+  }
+
+  void _fetch() {
+    _download = null;
+    _webUrl = null;
+    if (!_remote) return;
+    if (PlatformCaps.isWeb) {
+      _webUrl = WebMedia.urlFor(_v);
+    } else {
+      _download = AssessmentMediaCache.fileFor(_v);
     }
   }
 
@@ -446,6 +460,32 @@ class _MediaImageState extends State<_MediaImage> {
         assetPathOf(_v),
         fit: fit,
         errorBuilder: (_, _, _) => _unavailable(MediaAvailability.unreachable),
+      );
+    }
+    final webUrl = _webUrl;
+    if (webUrl != null) {
+      // A browser: from the link's own address, or a shared file's bytes.
+      return FutureBuilder<String?>(
+        future: webUrl,
+        builder: (context, snap) {
+          if (snap.connectionState != ConnectionState.done) {
+            return const SizedBox(
+              height: 160,
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+          final url = snap.data;
+          if (url == null) return _unavailable(MediaAvailability.unreachable);
+          return Image.network(
+            url,
+            fit: fit,
+            // A host that does not allow the app to read the picture still
+            // lets the browser show it.
+            webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
+            errorBuilder: (_, _, _) =>
+                _unavailable(MediaAvailability.unreachable),
+          );
+        },
       );
     }
     return FutureBuilder<File?>(
@@ -649,6 +689,17 @@ class _MediaAudioState extends State<_MediaAudio> {
   Future<(MediaAvailability, String)> _resolve() async {
     final v = widget.value.trim();
     if (isAssetMedia(v)) return (MediaAvailability.ready, v);
+    if (PlatformCaps.isWeb) {
+      // A browser plays the link, or a shared file's bytes, by address.
+      final url = await WebMedia.urlFor(v);
+      if (url != null) return (MediaAvailability.ready, url);
+      return (
+        RoutineMediaStore.isDeviceFile(v)
+            ? MediaAvailability.otherDevice
+            : MediaAvailability.unreachable,
+        v,
+      );
+    }
     final file = await AssessmentMediaCache.fileFor(v);
     if (file != null) {
       return (
@@ -769,6 +820,16 @@ class _MediaVideoState extends State<_MediaVideo> {
         controller = VideoPlayerController.file(f);
       } else if (isAssetMedia(v)) {
         controller = VideoPlayerController.asset(assetPathOf(v));
+      } else if (PlatformCaps.isWeb) {
+        // A browser's player plays addresses, never files (a downloaded
+        // file failed: linked videos said they could not play).
+        final url = await WebMedia.urlFor(v, video: true);
+        if (url == null) {
+          if (mounted) setState(() => _failed = MediaAvailability.unreachable);
+          return;
+        }
+        local = false;
+        controller = VideoPlayerController.networkUrl(Uri.parse(url));
       } else {
         final file = await AssessmentMediaCache.fileFor(v);
         if (file == null && SharedMediaService.isShared(v)) {

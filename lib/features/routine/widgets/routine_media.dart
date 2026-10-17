@@ -11,6 +11,8 @@ import '../../../core/theme/app_typography.dart';
 import '../models/routine_catalog.dart';
 import '../models/routine_models.dart';
 import '../services/routine_media_store.dart';
+import '../../../core/services/web_media.dart';
+import '../../../core/utils/platform_caps.dart';
 
 /// Everything about showing a routine step's media — and about showing its
 /// *absence* well, which is most of the work.
@@ -336,30 +338,59 @@ class _SharedRoutineImage extends StatefulWidget {
 }
 
 class _SharedRoutineImageState extends State<_SharedRoutineImage> {
-  late Future<File?> _file = const SharedMediaService().resolve(widget.value);
+  late Future<File?> _file = _resolve();
+
+  /// A browser keeps no files: it shows the bytes, held in memory.
+  late Future<SharedBytes?> _bytes = _resolveBytes();
+
+  Future<File?> _resolve() => PlatformCaps.isWeb
+      ? Future<File?>.value()
+      : const SharedMediaService().resolve(widget.value);
+
+  Future<SharedBytes?> _resolveBytes() => PlatformCaps.isWeb
+      ? const SharedMediaService().resolveBytes(widget.value)
+      : Future<SharedBytes?>.value();
 
   @override
   void didUpdateWidget(covariant _SharedRoutineImage old) {
     super.didUpdateWidget(old);
     if (old.value != widget.value) {
-      _file = const SharedMediaService().resolve(widget.value);
+      _file = _resolve();
+      _bytes = _resolveBytes();
     }
   }
 
   @override
-  Widget build(BuildContext context) => FutureBuilder<File?>(
-    future: _file,
-    builder: (context, snap) {
-      final file = snap.data;
-      if (file == null) return widget.placeholder();
-      return Image.file(
-        file,
-        height: widget.height,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => widget.placeholder(),
+  Widget build(BuildContext context) {
+    if (PlatformCaps.isWeb) {
+      return FutureBuilder<SharedBytes?>(
+        future: _bytes,
+        builder: (context, snap) {
+          final got = snap.data;
+          if (got == null) return widget.placeholder();
+          return Image.memory(
+            got.bytes,
+            height: widget.height,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => widget.placeholder(),
+          );
+        },
       );
-    },
-  );
+    }
+    return FutureBuilder<File?>(
+      future: _file,
+      builder: (context, snap) {
+        final file = snap.data;
+        if (file == null) return widget.placeholder();
+        return Image.file(
+          file,
+          height: widget.height,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => widget.placeholder(),
+        );
+      },
+    );
+  }
 }
 
 /// Plays a routine step's audio cue.
@@ -405,7 +436,12 @@ class _RoutineAudioButtonState extends State<RoutineAudioButton> {
     });
     try {
       var u = widget.url.trim();
-      if (SharedMediaService.isShared(u)) {
+      if (SharedMediaService.isShared(u) && PlatformCaps.isWeb) {
+        // A browser plays the bytes, held in memory, by address.
+        final url = await WebMedia.urlFor(u);
+        if (url == null) throw StateError('shared sound unavailable');
+        u = url;
+      } else if (SharedMediaService.isShared(u)) {
         final file = await const SharedMediaService().resolve(u);
         if (file == null) throw StateError('shared sound unavailable');
         u = '${RoutineMediaStore.filePrefix}${file.path}';
@@ -506,7 +542,12 @@ class _RoutineVideoSheetState extends State<_RoutineVideoSheet> {
     final raw = widget.url.trim();
     VideoPlayerController? controller;
     try {
-      if (SharedMediaService.isShared(raw)) {
+      if (SharedMediaService.isShared(raw) && PlatformCaps.isWeb) {
+        // A browser's player plays addresses, never files.
+        final url = await WebMedia.urlFor(raw, video: true);
+        if (url == null) throw StateError('shared video unavailable');
+        controller = VideoPlayerController.networkUrl(Uri.parse(url));
+      } else if (SharedMediaService.isShared(raw)) {
         final file = await const SharedMediaService().resolve(raw);
         if (file == null) throw StateError('shared video unavailable');
         controller = VideoPlayerController.file(file);

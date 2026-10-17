@@ -11,6 +11,33 @@ import 'package:uuid/uuid.dart';
 import 'cloud_sync_outcome.dart';
 import 'firebase_service.dart';
 
+/// A shared file held in memory (the browser version): its bytes, and what
+/// they are.
+class SharedBytes {
+  const SharedBytes(this.bytes, this.ext);
+
+  final Uint8List bytes;
+
+  /// The file's extension, as it was shared ("jpg", "mp4"…).
+  final String ext;
+
+  /// For a browser's player: what kind of media the bytes are.
+  String get mimeType => switch (ext) {
+    'jpg' || 'jpeg' => 'image/jpeg',
+    'png' => 'image/png',
+    'gif' => 'image/gif',
+    'webp' => 'image/webp',
+    'mp4' || 'm4v' => 'video/mp4',
+    'webm' => 'video/webm',
+    'mov' => 'video/quicktime',
+    'm4a' || 'aac' => 'audio/mp4',
+    'mp3' => 'audio/mpeg',
+    'wav' => 'audio/wav',
+    'ogg' => 'audio/ogg',
+    _ => 'application/octet-stream',
+  };
+}
+
 /// Files shared between tablets — a teacher's photo or FSL clip reaching a
 /// learner's tablet, a learner's signed answer reaching their teacher's —
 /// kept in Firestore itself, in pieces.
@@ -74,6 +101,20 @@ class SharedMediaService {
   /// Downloads already running, so two widgets asking for one file share one
   /// download instead of racing to write the same path.
   static final Map<String, Future<File?>> _inFlight = {};
+
+  /// The browser version's copies, newest last: it has no folder to keep a
+  /// file in, so what it has fetched stays in memory for the session.
+  static final Map<String, SharedBytes> _memory = {};
+  static final Map<String, Future<SharedBytes?>> _bytesInFlight = {};
+
+  /// How much [_memory] holds before the least recently shown file goes.
+  static const int memoryBudget = 48 * 1024 * 1024;
+
+  @visibleForTesting
+  static void debugClearMemory() {
+    _memory.clear();
+    _bytesInFlight.clear();
+  }
 
   Future<Directory> _dir() async {
     final base = debugDirectory != null
@@ -177,6 +218,68 @@ class SharedMediaService {
     });
   }
 
+  /// [value]'s bytes and type, for the browser version (see [_memory]): a
+  /// picture or clip shown twice is fetched once. Null when it is not shared,
+  /// or could not be fetched whole.
+  ///
+  /// On a device prefer [resolve], which keeps the file for offline use.
+  Future<SharedBytes?> resolveBytes(String value) {
+    if (!isShared(value)) return Future<SharedBytes?>.value();
+    final id = idOf(value);
+    final hit = _memory.remove(id);
+    if (hit != null) {
+      _memory[id] = hit; // now the most recently shown
+      return Future<SharedBytes?>.value(hit);
+    }
+    // A block body, as in [resolve].
+    return _bytesInFlight[id] ??= _fetchBytes(id).whenComplete(() {
+      _bytesInFlight.remove(id);
+    });
+  }
+
+  Future<SharedBytes?> _fetchBytes(String id) async {
+    try {
+      final got = await _download(id);
+      if (got == null) return null;
+      _memory[id] = got;
+      var total = 0;
+      for (final e in _memory.values) {
+        total += e.bytes.length;
+      }
+      while (total > memoryBudget && _memory.length > 1) {
+        final oldest = _memory.keys.first;
+        total -= _memory.remove(oldest)!.bytes.length;
+      }
+      return got;
+    } on Object catch (e) {
+      if (kDebugMode) debugPrint('SharedMediaService.resolveBytes failed: $e');
+      return null;
+    }
+  }
+
+  /// [id]'s pieces put back together and checked against the size and hash
+  /// it was shared with, or null. Throws what the backend throws.
+  Future<SharedBytes?> _download(String id) async {
+    final backend = _backend;
+    if (backend == null) return null;
+    final meta = await backend.readMeta(id).timeout(chunkTimeout);
+    if (meta == null || !meta.ready) return null;
+    final builder = BytesBuilder(copy: false);
+    for (var i = 0; i < meta.chunkCount; i++) {
+      final chunk = await backend.readChunk(id, i).timeout(chunkTimeout);
+      if (chunk == null) return null;
+      builder.add(chunk);
+    }
+    final bytes = builder.takeBytes();
+    // A piece missing or out of order would play as noise, or not at all;
+    // better to report it missing and let the test screen say so.
+    if (bytes.length != meta.size ||
+        sha256.convert(bytes).toString() != meta.sha256) {
+      return null;
+    }
+    return SharedBytes(bytes, _safeExt(meta.ext));
+  }
+
   Future<File?> _resolve(String id) async {
     final Directory dir;
     try {
@@ -196,27 +299,12 @@ class SharedMediaService {
       // An unreadable folder is a cache miss.
     }
 
-    final backend = _backend;
-    if (backend == null) return null;
     try {
-      final meta = await backend.readMeta(id).timeout(chunkTimeout);
-      if (meta == null || !meta.ready) return null;
-      final builder = BytesBuilder(copy: false);
-      for (var i = 0; i < meta.chunkCount; i++) {
-        final chunk = await backend.readChunk(id, i).timeout(chunkTimeout);
-        if (chunk == null) return null;
-        builder.add(chunk);
-      }
-      final bytes = builder.takeBytes();
-      // A piece missing or out of order would play as noise, or not at all;
-      // better to report it missing and let the test screen say so.
-      if (bytes.length != meta.size ||
-          sha256.convert(bytes).toString() != meta.sha256) {
-        return null;
-      }
-      final dest = await _cacheFile(id, meta.ext);
+      final got = await _download(id);
+      if (got == null) return null;
+      final dest = await _cacheFile(id, got.ext);
       final part = File('${dest.path}.part');
-      await part.writeAsBytes(bytes, flush: true);
+      await part.writeAsBytes(got.bytes, flush: true);
       return await part.rename(dest.path);
     } on Object catch (e) {
       if (kDebugMode) debugPrint('SharedMediaService.resolve failed: $e');
