@@ -139,6 +139,14 @@
             </intent-filter>
         </receiver>
 
+        <!-- assetsPaths: an overlay switched on or off (on the Honor, turning
+             TalkBack on or off swaps the navigation-bar overlay) rebuilt this
+             activity, and Flutter with it: the app started over at "Choose
+             your profile", mid-lesson or mid-test. navigation: so does a game
+             controller with a D-pad connecting or going (Game Controller).
+             Flutter draws its own UI, so it keeps running instead.
+             fontWeightAdjustment is left out on purpose: Flutter reads Bold
+             text only when the activity starts. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -146,7 +154,7 @@
             android:taskAffinity=""
             android:resizeableActivity="true"
             android:theme="@style/LaunchTheme"
-            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode|navigation|assetsPaths"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
             <!-- Specifies an Android theme to apply to this Activity as soon as
