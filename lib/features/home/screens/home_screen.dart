@@ -281,13 +281,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 children: [
                                   Semantics(
                                         header: true,
-                                        child: Text(
+                                        // FitText: "Kamusta," broke in two
+                                        // at 2x beside the buttons.
+                                        child: FitText(
                                           AppLocalizations.of(
                                                 context,
                                               )?.greeting(
                                                 profile?.name ?? 'Learner',
                                               ) ??
                                               'Hi, ${profile?.name ?? 'Learner'}! 👋',
+                                          maxLines: 3,
                                           style: AppTypography.headlineLarge
                                               .copyWith(color: hc.textPrimary),
                                         ),
@@ -583,11 +586,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       : 2;
 
   /// Columns for the compact "More" tiles.
-  int _moreColumns(BuildContext context) => context.screenWidth >= 1200
-      ? 5
-      : context.screenWidth >= 600
-      ? 4
-      : 3;
+  int _moreColumns(BuildContext context) {
+    if (context.screenWidth >= 1200) return 5;
+    if (context.screenWidth >= 600) return 4;
+    // At large text a phone's third column is narrower than a whole word
+    // ("Assessme / nts" at 1.4x, even at FitText's floor): bigger text gets
+    // wider tiles instead of a smaller font.
+    return MediaQuery.textScalerOf(context).scale(1.0) >= 1.3 ? 2 : 3;
+  }
 
   /// A [SectionHeader] wrapped as a sliver.
   Widget _sectionHeaderSliver(
@@ -1492,8 +1498,14 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header row
-          Row(
+          // Header row. A Wrap, not a Row: at large text on a phone the
+          // chip and "View All" were wider than the card together, so the
+          // actions move under the chip instead of off the card's edge.
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 4,
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(
@@ -1512,7 +1524,9 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
                   ),
                 ),
               ),
-              const Spacer(),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
               if (_streak > 0) ...[
                 Icon(
                   Icons.local_fire_department_rounded,
@@ -1529,13 +1543,20 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
                 ),
                 const SizedBox(width: 8),
               ],
-              // Navigate to full daily challenge screen
+              // Navigate to full daily challenge screen. A 48 dp target
+              // around the small pill (it was 23 dp tall).
               Semantics(
+                container: true,
                 button: true,
                 label: t.homeOpenDailyChallenge,
                 child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
                   onTap: () => context.push('/daily-challenge'),
-                  child: Container(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 48),
+                    child: Center(
+                      widthFactor: 1,
+                      child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
                       vertical: 6,
@@ -1563,7 +1584,11 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
                       ],
                     ),
                   ),
+                    ),
+                  ),
                 ),
+              ),
+                ],
               ),
             ],
           ),

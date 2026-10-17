@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/fit_text.dart';
 import '../../../widgets/depth_3d.dart';
 import '../../../widgets/shared_widgets.dart';
 import '../../../core/theme/accessible_theme.dart';
@@ -157,7 +158,10 @@ class HomeTile extends StatelessWidget {
             ),
             SizedBox(height: compact ? 6 : 10),
             Flexible(
-              child: Text(
+              // FitText: in a two-column grid on a phone at large text a
+              // long word was wider than the tile and broke ("Advent /
+              // ure", "Messag / es"); it shrinks a little to stay whole.
+              child: FitText(
                 label,
                 style:
                     (compact
@@ -168,21 +172,19 @@ class HomeTile extends StatelessWidget {
                           fontWeight: FontWeight.w800,
                         ),
                 textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
               ),
             ),
             if (!compact && subtitle != null) ...[
               const SizedBox(height: 2),
               Flexible(
-                child: Text(
+                // Shrinks like the label: "Flashcards" broke as
+                // "Flashcar / ds" under the Words tile at 2x on a phone.
+                child: FitText(
                   subtitle!,
                   style: AppTypography.bodySmall.copyWith(
                     color: Colors.white.withValues(alpha: 0.92),
                   ),
                   textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],

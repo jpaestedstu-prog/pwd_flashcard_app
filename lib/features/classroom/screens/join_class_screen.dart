@@ -64,6 +64,7 @@ class _JoinClassScreenState extends ConsumerState<JoinClassScreen> {
       appBar: AppBar(
         title: Text(_t(context).joinClassTitle),
         leading: IconButton(
+          tooltip: _t(context).back,
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
             if (Navigator.of(context).canPop()) {

@@ -182,44 +182,71 @@ class _GuideRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final chip = Container(
+      constraints: const BoxConstraints(minWidth: 74),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(
+          color: AppColors.primary.withValues(alpha: 0.35),
+        ),
+      ),
+      child: Text(
+        control,
+        style: TextStyle(
+          fontSize: 12.5,
+          fontWeight: FontWeight.bold,
+          color: HCColor.of(context).readable(AppColors.primaryDark),
+        ),
+      ),
+    );
+    const meaningStyle = TextStyle(fontSize: 13, height: 1.35);
     return Semantics(
       label: '$control. $meaning',
       excludeSemantics: true,
       child: Padding(
         padding: const EdgeInsets.only(bottom: 10),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              constraints: const BoxConstraints(minWidth: 74),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(9),
-                border: Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.35),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Side by side while the meaning keeps ~14 characters a line
+            // beside the chip; else the chip goes above it. A long control
+            // name ("A and B while a question is asked") at large text on a
+            // phone squeezed the meaning to one letter a line, or past the
+            // edge. 0.58 em a character, as FitText estimates.
+            final scaler = MediaQuery.textScalerOf(context);
+            final chipWidth =
+                (control.length * 0.58 * scaler.scale(12.5) + 22)
+                    .clamp(74.0, constraints.maxWidth * 0.45);
+            final meaningRoom = constraints.maxWidth - chipWidth - 12;
+            if (meaningRoom < 14 * 0.58 * scaler.scale(13)) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  chip,
+                  const SizedBox(height: 4),
+                  Text(meaning, style: meaningStyle),
+                ],
+              );
+            }
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ConstrainedBox(
+                  constraints:
+                      BoxConstraints(maxWidth: constraints.maxWidth * 0.45),
+                  child: chip,
                 ),
-              ),
-              child: Text(
-                control,
-                style: TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.bold,
-                  color: HCColor.of(context).readable(AppColors.primaryDark),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 5),
+                    child: Text(meaning, style: meaningStyle),
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.only(top: 5),
-                child: Text(
-                  meaning,
-                  style: const TextStyle(fontSize: 13, height: 1.35),
-                ),
-              ),
-            ),
-          ],
+              ],
+            );
+          },
         ),
       ),
     );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/localized_date.dart';
+import '../../../core/widgets/fit_text.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 
@@ -50,20 +51,28 @@ class _StudyCalendarWidgetState extends State<StudyCalendarWidget> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             IconButton(
+              tooltip: _t(context).dcPrevMonth,
               onPressed: () => setState(() {
                 _currentMonth = DateTime(
                     _currentMonth.year, _currentMonth.month - 1);
               }),
               icon: Icon(Icons.chevron_left_rounded, color: hc.textPrimary),
             ),
-            Text(
-              LocalizedDate.monthYear(_currentMonth, _t(context)),
-              style: AppTypography.titleSmall.copyWith(
-                fontWeight: FontWeight.w700,
-                color: hc.textPrimary,
+            // Between the arrows, and smaller rather than past them at large
+            // text ("October 2026" overflowed a phone at 2.0x).
+            Expanded(
+              child: FitText(
+                LocalizedDate.monthYear(_currentMonth, _t(context)),
+                maxLines: 1,
+                textAlign: TextAlign.center,
+                style: AppTypography.titleSmall.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: hc.textPrimary,
+                ),
               ),
             ),
             IconButton(
+              tooltip: _t(context).dcNextMonth,
               onPressed: _currentMonth.year == now.year &&
                       _currentMonth.month == now.month
                   ? null
@@ -181,21 +190,27 @@ class _DayCell extends StatelessWidget {
               ? Border.all(color: hc.primary, width: 2)
               : null,
         ),
+        // Scales down inside its square at large text: the day and its 🔥
+        // were taller than a phone's ~39 dp cell at 2.0x.
         child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (isCompleted)
-                const Text('🔥', style: TextStyle(fontSize: 10)),
-              Text(
-                '$day',
-                style: AppTypography.labelSmall.copyWith(
-                  color: textColor,
-                  fontWeight:
-                      isToday || isCompleted ? FontWeight.w700 : FontWeight.w500,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (isCompleted)
+                  const Text('🔥', style: TextStyle(fontSize: 10)),
+                Text(
+                  '$day',
+                  style: AppTypography.labelSmall.copyWith(
+                    color: textColor,
+                    fontWeight: isToday || isCompleted
+                        ? FontWeight.w700
+                        : FontWeight.w500,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

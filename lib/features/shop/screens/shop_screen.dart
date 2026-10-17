@@ -190,7 +190,11 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
                     ),
                     tabs: [
                       for (final type in _types)
-                        Padding(
+                        // The bar's full height (46 + the 2 dp indicator):
+                        // each tab's tap area was only its 32 dp content.
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(minHeight: 46),
+                          child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 4),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -207,6 +211,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
                               ),
                             ],
                           ),
+                        ),
                         ),
                     ],
                   );

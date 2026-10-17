@@ -21991,6 +21991,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open {url} in a browser to get the new version.'**
   String updateOpenFailed(String url);
+
+  /// No description provided for @webGetAndroidApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Get the Android app'**
+  String get webGetAndroidApp;
+
+  /// No description provided for @webTvCastNeedsApp.
+  ///
+  /// In en, this message translates to:
+  /// **'TV Cast works in the Android app: the tablet itself sends the lesson to the TV, which a browser cannot do.'**
+  String get webTvCastNeedsApp;
+
+  /// No description provided for @webRemindersNeedApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders work in the Android app: a browser cannot send them while FlashLearn is closed.'**
+  String get webRemindersNeedApp;
+
+  /// No description provided for @webMyDayNote.
+  ///
+  /// In en, this message translates to:
+  /// **'In a browser, My Day shows the plan, but it cannot ring or lock the screen when a step starts. The Android app can.'**
+  String get webMyDayNote;
+
+  /// No description provided for @webBackupNeedsApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup files work in the Android app. Here, this browser keeps your data on this device. To be able to bring a profile back, use the Cloud Recovery Code.'**
+  String get webBackupNeedsApp;
+
+  /// No description provided for @webControllerNeedsApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Game controllers work in the Android app.'**
+  String get webControllerNeedsApp;
+
+  /// No description provided for @webMediaNeedsApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Photos and videos can be added in the Android app.'**
+  String get webMediaNeedsApp;
+
+  /// No description provided for @webMediaOpensInApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Open this in the Android app to see the photo or video.'**
+  String get webMediaOpensInApp;
+
+  /// No description provided for @webRecordNeedsApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording your own sign works in the Android app. Here, watch the sign and practise it.'**
+  String get webRecordNeedsApp;
+
+  /// No description provided for @sfSortBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort by {field}'**
+  String sfSortBy(String field);
+
+  /// No description provided for @webVideoAnswerNeedsApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Video answers are recorded in the Android app. Here, you can skip this question.'**
+  String get webVideoAnswerNeedsApp;
+
+  /// No description provided for @webVideoAnswerSkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped: this question has no video answer.'**
+  String get webVideoAnswerSkipped;
 }
 
 class _AppLocalizationsDelegate

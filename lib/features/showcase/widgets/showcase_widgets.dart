@@ -591,7 +591,8 @@ class ShowcaseFilterChips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 42,
+      // 48 dp: a shorter strip capped each chip's tap target.
+      height: 48 * MediaQuery.textScalerOf(context).scale(1.0),
       child: ListView(
         scrollDirection: Axis.horizontal,
         children: [

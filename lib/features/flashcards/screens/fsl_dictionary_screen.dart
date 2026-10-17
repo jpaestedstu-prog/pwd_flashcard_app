@@ -262,9 +262,10 @@ class _FslDictionaryScreenState extends ConsumerState<FslDictionaryScreen> {
                 const SizedBox(height: 8),
 
                 // Category filter chips — height grows with text scale so the
-                // chip labels never get clipped at Extra Large font size.
+                // chip labels never get clipped at Extra Large font size. 48,
+                // not 42: the strip's height capped each chip's tap target.
                 SizedBox(
-                  height: 42 * MediaQuery.textScalerOf(context).scale(1.0),
+                  height: 48 * MediaQuery.textScalerOf(context).scale(1.0),
                   child: ListView(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -667,16 +668,23 @@ class _FslWordCard extends StatelessWidget {
                             child: InkResponse(
                               onTap: onToggleFavourite,
                               radius: context.scaleIcon(20),
-                              child: Padding(
-                                padding: const EdgeInsets.only(left: 4),
-                                child: Icon(
-                                  favourite
-                                      ? Icons.star_rounded
-                                      : Icons.star_outline_rounded,
-                                  color: favourite
-                                      ? HCColor.of(context).readable(AppColors.warningDark)
-                                      : hc.textHint,
-                                  size: context.scaleIcon(20),
+                              // A 48 dp target, not the 24 x 20 of the star
+                              // alone: a near miss opened the sign instead.
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  minWidth: 48,
+                                  minHeight: 48,
+                                ),
+                                child: Center(
+                                  child: Icon(
+                                    favourite
+                                        ? Icons.star_rounded
+                                        : Icons.star_outline_rounded,
+                                    color: favourite
+                                        ? HCColor.of(context).readable(AppColors.warningDark)
+                                        : hc.textHint,
+                                    size: context.scaleIcon(20),
+                                  ),
                                 ),
                               ),
                             ),

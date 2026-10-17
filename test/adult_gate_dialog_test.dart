@@ -143,8 +143,9 @@ Future<void> _unmount(WidgetTester tester) async {
 
 /// Taps the app-bar button that opens the builder.
 Future<void> _tapBuilderButton(WidgetTester tester) async {
-  final build = find.bySemanticsLabel('Build my board');
-  final edit = find.bySemanticsLabel('Edit my board');
+  // Named by its tooltip, which a screen reader reads as the name.
+  final build = find.byTooltip('Build my board');
+  final edit = find.byTooltip('Edit my board');
   await tester.tap(build.evaluate().isNotEmpty ? build : edit);
   await tester.pumpAndSettle();
 }

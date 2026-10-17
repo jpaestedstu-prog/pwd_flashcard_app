@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/fit_text.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../core/widgets/pro_surface.dart';
 import '../../../data/local/seed_data.dart';
@@ -210,7 +211,12 @@ class EducatorHomeScreen extends ConsumerWidget {
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: EdgeInsets.fromLTRB(padding, 24, padding, 8),
-                        child: Row(
+                        // A Wrap: at 2x in Filipino "Mga Kard" and "Tingnan
+                        // Lahat" were 101 px wider than a phone together, so
+                        // the button moves under the title instead.
+                        child: Wrap(
+                          alignment: WrapAlignment.spaceBetween,
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             Text(
                               _t(context).eduCards,
@@ -219,7 +225,6 @@ class EducatorHomeScreen extends ConsumerWidget {
                                 color: hc.textPrimary,
                               ),
                             ),
-                            const Spacer(),
                             TextButton(
                               onPressed: () => context.push('/flashcards'),
                               child: Text(
@@ -235,7 +240,13 @@ class EducatorHomeScreen extends ConsumerWidget {
                     ),
                     SliverToBoxAdapter(
                       child: SizedBox(
-                        height: 132,
+                        // Taller as the text grows: the deck's name and
+                        // count overflowed a fixed 132 by 51 px at 2.0x.
+                        height: 132 +
+                            56 *
+                                (MediaQuery.textScalerOf(context).scale(1.0) -
+                                        1)
+                                    .clamp(0.0, 1.0),
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           padding: EdgeInsets.symmetric(horizontal: padding),
@@ -635,10 +646,16 @@ class _EducatorDashboardCta extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 2),
+                // One size down at large text, so "recommendations" stays
+                // whole beside the icon and the arrow.
                 Text(
                   _t(context).eduDashboardCtaSub,
-                  style: AppTypography.bodySmall.copyWith(
-                    color: hc.textSecondary,
+                  style: fittedStyle(
+                    context,
+                    _t(context).eduDashboardCtaSub,
+                    AppTypography.bodySmall.copyWith(
+                      color: hc.textSecondary,
+                    ),
                   ),
                 ),
               ],
@@ -779,7 +796,10 @@ class _QuickFilterChip extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
-        child: Padding(
+        child: Container(
+          // 48 dp, a finger's minimum (these were 34).
+          constraints: const BoxConstraints(minHeight: 48),
+          alignment: Alignment.center,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Row(
             mainAxisSize: MainAxisSize.min,

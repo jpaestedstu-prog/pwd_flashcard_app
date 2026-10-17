@@ -230,8 +230,11 @@ class _Section extends StatelessWidget {
           _SectionHeader(icon: icon, color: color, title: title),
           if (body != null) ...[
             const SizedBox(height: AppSpacing.sm),
-            Text(
+            // A paragraph, but with words like "nangangahulugang" that broke
+            // in two at 2x: shrinks only as far as its longest word needs.
+            FitText(
               body!,
+              maxLines: null,
               style: AppTypography.bodyMedium.copyWith(
                 color: hc.textSecondary,
                 height: 1.5,
@@ -303,11 +306,17 @@ class _SectionHeader extends StatelessWidget {
           ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
+            // One size down at large text when a long word would break
+            // ("Communicatin / g" at 2.0x on a phone).
             child: Text(
               title,
-              style: AppTypography.titleMedium.copyWith(
-                color: HCColor.of(context).textPrimary,
-                fontWeight: FontWeight.w800,
+              style: fittedStyle(
+                context,
+                title,
+                AppTypography.titleMedium.copyWith(
+                  color: HCColor.of(context).textPrimary,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
           ),
@@ -347,15 +356,18 @@ class _TypeRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                // "pangangailangan" broke in two at 2x.
+                FitText(
                   type.labelOf(AppLocalizations.of(context)),
+                  maxLines: 4,
                   style: AppTypography.labelLarge.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
+                FitText(
                   type.descriptionOf(AppLocalizations.of(context)),
+                  maxLines: null,
                   style: AppTypography.bodySmall.copyWith(
                     color: hc.textSecondary,
                   ),

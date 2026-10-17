@@ -230,6 +230,7 @@ class _RoleSetupScreenState extends ConsumerState<RoleSetupScreen> {
       appBar: AppBar(
         title: Text(l10n.setUpProfileTitle),
         leading: IconButton(
+          tooltip: l10n.back,
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
             if (Navigator.of(context).canPop()) {

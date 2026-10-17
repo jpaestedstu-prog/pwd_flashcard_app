@@ -13110,4 +13110,52 @@ class AppLocalizationsFil extends AppLocalizations {
   String updateOpenFailed(String url) {
     return 'Buksan ang $url sa browser para makuha ang bagong bersyon.';
   }
+
+  @override
+  String get webGetAndroidApp => 'Kunin ang Android app';
+
+  @override
+  String get webTvCastNeedsApp =>
+      'Gumagana ang TV Cast sa Android app: ang tablet mismo ang nagpapadala ng aralin sa TV, na hindi kaya ng browser.';
+
+  @override
+  String get webRemindersNeedApp =>
+      'Gumagana ang mga paalala sa Android app: hindi ito maipapadala ng browser habang nakasara ang FlashLearn.';
+
+  @override
+  String get webMyDayNote =>
+      'Sa browser, ipinapakita ng My Day ang plano, pero hindi ito makakatunog o makakapag-lock ng screen kapag nagsimula ang isang hakbang. Kaya ito ng Android app.';
+
+  @override
+  String get webBackupNeedsApp =>
+      'Gumagana ang mga backup file sa Android app. Dito, ang browser na ito ang nagtatago ng iyong data sa device na ito. Para maibalik ang isang profile, gamitin ang Cloud Recovery Code.';
+
+  @override
+  String get webControllerNeedsApp =>
+      'Gumagana ang mga game controller sa Android app.';
+
+  @override
+  String get webMediaNeedsApp =>
+      'Maaaring magdagdag ng mga larawan at video sa Android app.';
+
+  @override
+  String get webMediaOpensInApp =>
+      'Buksan ito sa Android app para makita ang larawan o video.';
+
+  @override
+  String get webRecordNeedsApp =>
+      'Gumagana ang pag-record ng sarili mong senyas sa Android app. Dito, panoorin ang senyas at sanayin ito.';
+
+  @override
+  String sfSortBy(String field) {
+    return 'Ayusin ayon sa $field';
+  }
+
+  @override
+  String get webVideoAnswerNeedsApp =>
+      'Sa Android app nire-record ang mga sagot na video. Dito, maaari mong laktawan ang tanong na ito.';
+
+  @override
+  String get webVideoAnswerSkipped =>
+      'Nilaktawan: walang sagot na video ang tanong na ito.';
 }

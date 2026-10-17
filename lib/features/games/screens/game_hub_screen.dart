@@ -6,6 +6,7 @@ import '../../../core/accessibility/game_catalog.dart';
 import '../../../core/services/game_session_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/fit_text.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../data/models/enums.dart';
 import '../../../l10n/app_localizations.dart';
@@ -539,13 +540,12 @@ class _PlayTogetherBanner extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
-                  Text(
+                  // "Makipagkarera" broke in two at 2x.
+                  FitText(
                     AppLocalizations.of(context)!.playTogetherSubtitle,
                     style: AppTypography.bodySmall.copyWith(
                       color: Colors.white.withValues(alpha: 0.9),
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
@@ -787,7 +787,10 @@ class _GameCardState extends State<_GameCard> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    // FitText on top of [_titleStyle]: that steps down for
+                    // long words, and this catches what is left at 2.0x on a
+                    // phone ("Memor / y").
+                    FitText(
                       widget.game.labelOf(l10n),
                       style: _titleStyle(
                         context,
@@ -796,12 +799,11 @@ class _GameCardState extends State<_GameCard> {
                         color: Colors.white,
                         fontWeight: FontWeight.w800,
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
                     Flexible(
-                      child: Text(
+                      // FitText: "magkatugmang" broke in two at 2x.
+                      child: FitText(
                         widget.game.descriptionOf(l10n),
                         style: AppTypography.bodySmall.copyWith(
                           color: Colors.white.withValues(alpha: 0.85),
@@ -815,7 +817,6 @@ class _GameCardState extends State<_GameCard> {
                             MediaQuery.textScalerOf(context).scale(1.0) >= 1.3
                                 ? 3
                                 : 2,
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],

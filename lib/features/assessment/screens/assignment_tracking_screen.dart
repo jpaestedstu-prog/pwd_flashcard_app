@@ -517,8 +517,12 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Scrolls when it must: at 2x in Filipino it was 68 px taller than a
+    // phone and ran off the bottom.
     return Center(
-      child: Column(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           const Text('📋', style: TextStyle(fontSize: 64)),
@@ -527,6 +531,7 @@ class _EmptyState extends StatelessWidget {
             _tr(context).trkEmpty,
             style:
                 AppTypography.titleMedium.copyWith(color: hc.textSecondary),
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
           Text(
@@ -542,6 +547,7 @@ class _EmptyState extends StatelessWidget {
             label: Text(_tr(context).asgTitle),
           ),
         ],
+      ),
       ),
     );
   }

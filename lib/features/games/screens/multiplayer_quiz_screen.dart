@@ -218,6 +218,7 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
             Row(
               children: [
                 IconButton(
+                  tooltip: _t(context).close,
                   icon: const Icon(Icons.close_rounded),
                   onPressed: () => context.pop(),
                 ),
@@ -1086,8 +1087,12 @@ class _PlayerSetupCard extends StatelessWidget {
             ),
             decoration: InputDecoration(
               isDense: true,
+              // Names the field when it is cleared (a screen reader said
+              // only "edit box"), and holds it at a finger's 48 dp.
+              hintText: _t(context).mqPlayerN(playerNum),
+              constraints: const BoxConstraints(minHeight: 48),
               contentPadding: const EdgeInsets.symmetric(
-                vertical: 8,
+                vertical: 12,
                 horizontal: 8,
               ),
               border: OutlineInputBorder(

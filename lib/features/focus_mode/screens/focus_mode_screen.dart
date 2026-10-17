@@ -381,6 +381,7 @@ class _FocusModeScreenState extends ConsumerState<FocusModeScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               IconButton(
+                tooltip: isFilipino ? 'Bawasan ng 5 minuto' : '5 minutes less',
                 onPressed: _customMinutes > 5
                     ? () => setState(() => _customMinutes -= 5)
                     : null,
@@ -398,6 +399,7 @@ class _FocusModeScreenState extends ConsumerState<FocusModeScreen> {
                 ),
               ),
               IconButton(
+                tooltip: isFilipino ? 'Dagdagan ng 5 minuto' : '5 minutes more',
                 onPressed: _customMinutes < 60
                     ? () => setState(() => _customMinutes += 5)
                     : null,

@@ -8,6 +8,7 @@ import '../../../core/constants/avatar_data.dart';
 import '../../../core/security/pin_credential_helper.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/fit_text.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/shop_data.dart';
@@ -766,7 +767,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 children: [
                   Icon(Icons.calendar_today_rounded, color: hc.textSecondary),
                   const SizedBox(width: 12),
-                  Flexible(child: Text(
+                  // Expanded, not Flexible + Spacer: the Spacer took half
+                  // the row, and "nakatakda" broke in two at 2x.
+                  Expanded(child: Text(
                     _selectedBirthDate != null
                         ? '${_selectedBirthDate!.month}/${_selectedBirthDate!.day}/${_selectedBirthDate!.year}'
                           '  ${_t(context).epAge(_ageFrom(_selectedBirthDate!))}'
@@ -779,7 +782,6 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   maxLines: 2,
   overflow: TextOverflow.ellipsis,
 )),
-                  const Spacer(),
                   if (_selectedBirthDate != null)
                     GestureDetector(
                       onTap: () {
@@ -825,6 +827,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               ),
               const SizedBox(width: 8),
               IconButton.filled(
+                tooltip: _t(context).scAdd,
                 onPressed: _addTag,
                 icon: const Icon(Icons.add_rounded),
               ),
@@ -887,6 +890,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     button: true,
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
+                      // 48 dp, a finger's minimum (these were 46).
+                      constraints: const BoxConstraints(minHeight: 48),
+                      alignment: Alignment.center,
                       padding: const EdgeInsets.symmetric(
                           horizontal: 14, vertical: 10),
                       decoration: BoxDecoration(
@@ -903,18 +909,19 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Flexible(child: Text(cat.emoji,
-                              style: const TextStyle(fontSize: 16),
-  maxLines: 2,
-  overflow: TextOverflow.ellipsis,
-)),
+                          Text(cat.emoji,
+                              style: const TextStyle(fontSize: 16)),
                           const SizedBox(width: 6),
-                          Text(cat.labelOf(_t(context)),
-                              style: AppTypography.bodySmall.copyWith(
-                                fontWeight: selected
-                                    ? FontWeight.w700
-                                    : FontWeight.w500,
-                              )),
+                          // The name wraps inside the chip: at 2x "Mga
+                          // Bahagi ng Katawan" ran 50 px past its edge.
+                          Flexible(
+                            child: Text(cat.labelOf(_t(context)),
+                                style: AppTypography.bodySmall.copyWith(
+                                  fontWeight: selected
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                )),
+                          ),
                         ],
                       ),
                     ),
@@ -1107,9 +1114,15 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     ],
                   ),
                 ),
-                Text(_t(context).epCannotChange,
-                    style: AppTypography.labelSmall
-                        .copyWith(color: hc.textSecondary)),
+                // Flexible: at its own width the note squeezed the role
+                // name until "Student" broke ("Stude / nt" at 1.4x).
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(_t(context).epCannotChange,
+                      textAlign: TextAlign.end,
+                      style: AppTypography.labelSmall
+                          .copyWith(color: hc.textSecondary)),
+                ),
               ],
             ),
           ),
@@ -1162,7 +1175,9 @@ class _DisabilityTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(type.labelOf(AppLocalizations.of(context)),
+                    // "Pangangailangan" broke in two at 2x.
+                    FitText(type.labelOf(AppLocalizations.of(context)),
+                        maxLines: 4,
                         style: AppTypography.bodyMedium
                             .copyWith(fontWeight: FontWeight.w600)),
                     Text(type.descriptionOf(AppLocalizations.of(context)),

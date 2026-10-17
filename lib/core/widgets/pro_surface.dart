@@ -662,9 +662,15 @@ class ProActionTile extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               // Secondary, not hint: a caption on a tinted tile in the dark
-              // theme was 3:1 in the hint grey.
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: hc.readableOver(hc.textSecondary, fillStrong),
+              // theme was 3:1 in the hint grey. Stepped down like the label:
+              // "Lingguhang buod" broke as "Lingguhan / g" at 1.4x.
+              style: fittedStyle(
+                context,
+                caption!,
+                theme.textTheme.bodySmall?.copyWith(
+                  color: hc.readableOver(hc.textSecondary, fillStrong),
+                ),
+                factor: 0.78,
               ),
             ),
           ],

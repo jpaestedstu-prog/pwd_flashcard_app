@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
+import '../core/widgets/fit_text.dart';
 import 'tilt_3d.dart';
 import '../core/utils/reduced_motion.dart';
 
@@ -118,8 +119,11 @@ class RichEmptyState extends StatelessWidget {
             SizedBox(height: compact ? 16 : 24),
 
             // ─── Title ───────────────────────────
-            Text(
+            // FitText, here and below: every empty state's words stay whole
+            // at large text ("pinakamagagandang" broke in two at 2x).
+            FitText(
               title,
+              maxLines: 3,
               style: (compact ? AppTypography.titleSmall : AppTypography.titleLarge).copyWith(
                 color: hc.textPrimary,
                 fontWeight: FontWeight.w700,
@@ -133,8 +137,9 @@ class RichEmptyState extends StatelessWidget {
             SizedBox(height: compact ? 6 : 12),
 
             // ─── Description ─────────────────────
-            Text(
+            FitText(
               description,
+              maxLines: null,
               style: (compact ? AppTypography.bodySmall : AppTypography.bodyMedium).copyWith(
                 color: hc.textSecondary,
               ),

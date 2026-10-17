@@ -308,21 +308,20 @@ class _WarningBanner extends StatelessWidget {
                             minWidth: presentation.minTouchTarget,
                             minHeight: presentation.minTouchTarget,
                           ),
-                          // Labelled through `Semantics`, not `tooltip`, and
-                          // this one cannot change: the warning renders in
-                          // `MaterialApp.builder`, above the Navigator, so
-                          // there is no `Overlay` for a Tooltip to mount into
-                          // and one throws on build. The duplicate unlabelled
-                          // node this leaves is the lesser problem.
-                          child: Semantics(
-                            button: true,
-                            label: _t(context).lwDismiss,
-                            child: IconButton(
-                              onPressed: onDismiss,
-                              iconSize: 24 * scale,
-                              icon: const Icon(Icons.close_rounded),
-                              color: scheme.onSecondaryContainer,
+                          // Labelled through the icon, not `tooltip`: the
+                          // warning renders in `MaterialApp.builder`, above
+                          // the Navigator, so there is no `Overlay` for a
+                          // Tooltip to mount into and one throws on build.
+                          // The icon's label names the button node itself
+                          // (a wrapping Semantics left that node unlabelled).
+                          child: IconButton(
+                            onPressed: onDismiss,
+                            iconSize: 24 * scale,
+                            icon: Icon(
+                              Icons.close_rounded,
+                              semanticLabel: _t(context).lwDismiss,
                             ),
+                            color: scheme.onSecondaryContainer,
                           ),
                         ),
                       ],

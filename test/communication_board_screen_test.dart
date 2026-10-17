@@ -533,7 +533,8 @@ void main() {
 
     testWidgets('there is a way in to build one', (tester) async {
       await _pumpBoard(tester);
-      expect(find.bySemanticsLabel('Build my board'), findsOneWidget);
+      // Named by its tooltip, which a screen reader reads as the name.
+      expect(find.byTooltip('Build my board'), findsOneWidget);
       await _unmount(tester);
     });
 
@@ -543,7 +544,7 @@ void main() {
         tester,
         customStore: FakeCustomBoardStore(sampleCustomBoard()),
       );
-      expect(find.bySemanticsLabel('Edit my board'), findsOneWidget);
+      expect(find.byTooltip('Edit my board'), findsOneWidget);
       await _unmount(tester);
     });
   });

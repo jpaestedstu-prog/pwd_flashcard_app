@@ -128,12 +128,17 @@ class EnhancedStreakHero extends StatelessWidget {
               children: [
                 Text(tier.emoji, style: const TextStyle(fontSize: 16)),
                 const SizedBox(width: 6),
-                Text(
-                  tier.labelOf(_t(context)),
-                  style: AppTypography.labelMedium.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5,
+                // Flexible: at 2x "Nagsisimula Pa Lang" ran 91 px past the
+                // card; now it wraps inside the badge.
+                Flexible(
+                  child: Text(
+                    tier.labelOf(_t(context)),
+                    textAlign: TextAlign.center,
+                    style: AppTypography.labelMedium.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                    ),
                   ),
                 ),
               ],

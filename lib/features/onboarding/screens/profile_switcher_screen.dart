@@ -18,6 +18,7 @@ import '../../../features/gaze_control/providers/gaze_settings_provider.dart';
 import '../../../features/gaze_control/widgets/gaze_dpad_scope.dart';
 import '../../../providers/app_providers.dart';
 import '../../../core/utils/accessible_sizing.dart';
+import '../../../core/widgets/fit_text.dart';
 import '../../../l10n/app_localizations_en.dart';
 
 /// Screen shown when multiple profiles exist on the device.
@@ -137,11 +138,13 @@ class _ProfileSwitcherScreenState extends ConsumerState<ProfileSwitcherScreen> {
           child: Column(
             children: [
               const SizedBox(height: 40),
-              Text(
+              FitText(
                 // The wave is part of the localised string ("Welcome Back! 👋"),
                 // so appending another rendered "Welcome Back! 👋 👋". Leaving it
                 // inside the string also lets a translation move or drop it.
+                // FitText: "Maligayang Pagbabalik!" broke in two at 2x.
                 AppLocalizations.of(context)!.welcomeBack,
+                maxLines: 3,
                 style: AppTypography.displayMedium.copyWith(color: hc.primary),
               ).animate().fadeIn(duration: 500.ms).slideY(begin: -0.2, end: 0),
               const SizedBox(height: 8),

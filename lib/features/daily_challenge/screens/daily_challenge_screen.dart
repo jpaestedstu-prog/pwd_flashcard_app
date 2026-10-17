@@ -725,11 +725,16 @@ class _FiftyFiftyButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
     return Semantics(
+      container: true,
       button: true,
       label: _t(context).dcFiftySemantics(remaining),
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: Container(
+          // 48 dp, a finger's minimum (it was 32).
+          constraints: const BoxConstraints(minHeight: 48),
+          alignment: Alignment.center,
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
             color: hc.primary.withValues(alpha: 0.12),

@@ -404,24 +404,18 @@ class _CommunicationBoardScreenState
           centerTitle: true,
           leading: const AppBackButton(),
           actions: [
-            // Build / edit this profile's own board.
-            Semantics(
-              button: true,
-              label: vocabulary.hasCustomTab
+            // Build / edit this profile's own board. The name goes on the
+            // button itself: a label on a wrapper around it left the
+            // tappable node a bare "button" to a screen reader.
+            IconButton(
+              tooltip: vocabulary.hasCustomTab
                   ? _t(context).tbEditBoard
                   : _t(context).tbBuildBoard,
-              child: Tooltip(
-                message: vocabulary.hasCustomTab
-                    ? _t(context).tbEditBoard
-                    : _t(context).tbBuildBoard,
-                child: IconButton(
-                  onPressed: _openBuilder,
-                  icon: Icon(
-                    Icons.dashboard_customize_rounded,
-                    size: 22,
-                    color: hc.primary,
-                  ),
-                ),
+              onPressed: _openBuilder,
+              icon: Icon(
+                Icons.dashboard_customize_rounded,
+                size: 22,
+                color: hc.primary,
               ),
             ),
             // Language toggle
@@ -660,7 +654,8 @@ class _PhraseStrip extends StatelessWidget {
     if (entries.isEmpty) return const SizedBox.shrink();
 
     return SizedBox(
-      height: 46 * textScale.clamp(1.0, 1.6),
+      // 48 dp: a shorter strip capped each chip's tap target.
+      height: 48 * textScale.clamp(1.0, 1.6),
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: EdgeInsets.symmetric(horizontal: padding),

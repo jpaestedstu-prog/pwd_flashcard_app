@@ -159,6 +159,7 @@ class _AssessmentBuilderScreenState
               child: Row(
                 children: [
                   IconButton(
+                    tooltip: _t(context).close,
                     onPressed: () => _confirmDiscard(),
                     icon: Icon(Icons.close_rounded, color: hc.textPrimary),
                   ),
@@ -170,18 +171,35 @@ class _AssessmentBuilderScreenState
                       _isEditing
                           ? _t(context).assessEditTitle
                           : _t(context).abCreate,
+                      // Down to half size: beside Close and Save on a phone
+                      // at 1.4x, 0.7 still broke "As / sessment".
+                      minScale: 0.5,
                       style: AppTypography.headlineLarge
                           .copyWith(color: hc.textPrimary),
                     ),
                   ),
-                  FilledButton.icon(
-                    onPressed: _questions.isEmpty ? null : _saveAssessment,
-                    icon: const Icon(Icons.save_rounded, size: 18),
-                    label: Text(_t(context).gmSave),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: HCColor.of(context).primary,
+                  // At large text on a phone, Save is its icon (named for a
+                  // screen reader): beside it the title still broke in two,
+                  // "Guma / wa", even at half size.
+                  if (MediaQuery.textScalerOf(context).scale(1.0) >= 1.3 &&
+                      MediaQuery.sizeOf(context).width < 600)
+                    IconButton.filled(
+                      onPressed: _questions.isEmpty ? null : _saveAssessment,
+                      tooltip: _t(context).gmSave,
+                      icon: const Icon(Icons.save_rounded),
+                      style: IconButton.styleFrom(
+                        backgroundColor: HCColor.of(context).primary,
+                      ),
+                    )
+                  else
+                    FilledButton.icon(
+                      onPressed: _questions.isEmpty ? null : _saveAssessment,
+                      icon: const Icon(Icons.save_rounded, size: 18),
+                      label: Text(_t(context).gmSave),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: HCColor.of(context).primary,
+                      ),
                     ),
-                  ),
                 ],
               ).animate().fadeIn(duration: 400.ms),
             ),
@@ -1021,6 +1039,7 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
                           if (_format == QuestionFormat.multipleChoice &&
                               _choiceControllers.length > 2)
                             IconButton(
+                              tooltip: _t(context).gmRemove,
                               icon: Icon(Icons.remove_circle_outline,
                                   color: HCColor.of(context).graphic(AppColors.error), size: 20),
                               onPressed: () {

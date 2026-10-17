@@ -306,6 +306,7 @@ class _CodeField extends StatelessWidget {
         prefixIcon: const Icon(Icons.vpn_key_rounded),
         suffixIcon: controller.text.isNotEmpty
             ? IconButton(
+                tooltip: _t(context).clear,
                 icon: const Icon(Icons.clear_rounded),
                 onPressed: enabled ? controller.clear : null,
               )

@@ -112,19 +112,28 @@ class _WordOfDayScreenState extends ConsumerState<WordOfDayScreen> {
               const SizedBox(height: 24),
 
               // ─── Word Card ────────────────────────
-              GestureDetector(
-                onTap: () {
-                  setState(() => _flipped = !_flipped);
-                  ref.read(hapticServiceProvider).lightTap();
-                },
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 400),
-                  transitionBuilder: (child, animation) {
-                    return FadeTransition(opacity: animation, child: child);
-                  },
-                  child: _flipped
-                      ? _buildBackCard(hc, isFilipino)
-                      : _buildFrontCard(hc, isFilipino),
+              // One node for a screen reader: the card's words, and what a
+              // tap does. The tap used to sit on a node with no name, the
+              // words on others.
+              MergeSemantics(
+                child: Semantics(
+                  button: true,
+                  hint: isFilipino ? 'I-tap para i-flip' : 'Tap to flip',
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() => _flipped = !_flipped);
+                      ref.read(hapticServiceProvider).lightTap();
+                    },
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 400),
+                      transitionBuilder: (child, animation) {
+                        return FadeTransition(opacity: animation, child: child);
+                      },
+                      child: _flipped
+                          ? _buildBackCard(hc, isFilipino)
+                          : _buildFrontCard(hc, isFilipino),
+                    ),
+                  ),
                 ),
               ).animate().scale(
                 begin: const Offset(0.9, 0.9),
@@ -192,10 +201,12 @@ class _WordOfDayScreenState extends ConsumerState<WordOfDayScreen> {
               const SizedBox(height: 24),
 
               // ─── Actions ──────────────────────────
-              Row(
-                children: [
-                  Expanded(
-                    child: Semantics(
+              // Side by side, or one above the other at large text on a
+              // phone, where half the row broke "Pakinggan" and "Natutunan"
+              // in two.
+              Builder(
+                builder: (context) {
+                  final listen = Semantics(
                       button: true,
                       label: isFilipino ? 'Basahin nang malakas' : 'Read aloud',
                       child: OutlinedButton.icon(
@@ -206,11 +217,8 @@ class _WordOfDayScreenState extends ConsumerState<WordOfDayScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Semantics(
+                    );
+                  final learn = Semantics(
                       button: true,
                       label: _learned
                           ? (isFilipino ? 'Natutunan na' : 'Already learned')
@@ -233,9 +241,24 @@ class _WordOfDayScreenState extends ConsumerState<WordOfDayScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                       ),
-                    ),
-                  ),
-                ],
+                    );
+                  final stacked =
+                      MediaQuery.textScalerOf(context).scale(1.0) >= 1.3 &&
+                          MediaQuery.sizeOf(context).width < 600;
+                  if (stacked) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [listen, const SizedBox(height: 12), learn],
+                    );
+                  }
+                  return Row(
+                    children: [
+                      Expanded(child: listen),
+                      const SizedBox(width: 12),
+                      Expanded(child: learn),
+                    ],
+                  );
+                },
               ).animate().fadeIn(delay: 300.ms, duration: 400.ms),
 
               const SizedBox(height: 32),

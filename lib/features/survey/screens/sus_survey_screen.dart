@@ -283,9 +283,12 @@ class _SusSurveyScreenState extends ConsumerState<SusSurveyScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
+                // FitText: "kinakailangang" and "magkakaugnay" broke in two
+                // at 2x in Filipino.
                 Expanded(
-                  child: Text(
+                  child: FitText(
                     question,
+                    maxLines: null,
                     style: AppTypography.bodyLarge.copyWith(
                       fontWeight: FontWeight.w500,
                     ),
@@ -410,8 +413,9 @@ class _SusSurveyScreenState extends ConsumerState<SusSurveyScreen> {
                     ),
                   ),
                   Expanded(
-                    child: Text(
+                    child: FitText(
                       questions[i],
+                      maxLines: null,
                       style: AppTypography.bodySmall,
                     ),
                   ),

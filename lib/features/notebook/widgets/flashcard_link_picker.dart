@@ -157,7 +157,8 @@ class _FlashcardLinkPickerState extends ConsumerState<_FlashcardLinkPicker> {
             ),
             const SizedBox(height: 10),
             SizedBox(
-              height: 44,
+              // 48 dp: a shorter strip capped each chip's tap target.
+              height: 48 * MediaQuery.textScalerOf(context).scale(1.0),
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 20),

@@ -524,17 +524,20 @@ class _LinkedWordsField extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
+        // A Wrap: at 2x the button left the label so little room that
+        // every word broke ("kau / gnay", "op / syonal"); the button now
+        // moves under the label when both do not fit.
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            Expanded(
-              child: Text(
-                isFilipino
-                    ? 'Mga kaugnay na salita (opsyonal)'
-                    : 'Linked words (optional)',
-                style: AppTypography.labelMedium.copyWith(
-                  color: hc.textSecondary,
-                  fontWeight: FontWeight.w600,
-                ),
+            Text(
+              isFilipino
+                  ? 'Mga kaugnay na salita (opsyonal)'
+                  : 'Linked words (optional)',
+              style: AppTypography.labelMedium.copyWith(
+                color: hc.textSecondary,
+                fontWeight: FontWeight.w600,
               ),
             ),
             TextButton.icon(

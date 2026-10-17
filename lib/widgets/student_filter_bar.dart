@@ -60,6 +60,7 @@ class _StudentFilterBarState extends ConsumerState<StudentFilterBar> {
             prefixIcon: const Icon(Icons.search_rounded),
             suffixIcon: filter.searchQuery.isNotEmpty
                 ? IconButton(
+                    tooltip: _t(context).clear,
                     icon: const Icon(Icons.clear_rounded),
                     onPressed: () {
                       _searchController.clear();
@@ -236,7 +237,12 @@ class _SortButton extends ConsumerWidget {
                 ),
               ))
           .toList(),
+      // "Name" alone did not say what the button does.
+      tooltip: _t(context).sfSortBy(_sortLabel(_t(context), filter.sortField)),
       child: Container(
+        // 48 dp, like the filter chips beside it (this was 34).
+        constraints: const BoxConstraints(minHeight: 48),
+        alignment: Alignment.center,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: AppColors.primary.withValues(alpha: 0.08),
@@ -299,6 +305,9 @@ class _FilterChipDropdown<T> extends StatelessWidget {
               ))
           .toList(),
       child: Container(
+        // 48 dp, a finger's minimum (these were 32).
+        constraints: const BoxConstraints(minHeight: 48),
+        alignment: Alignment.center,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: isActive
@@ -366,6 +375,9 @@ class _TagFilterChip extends ConsumerWidget {
               ))
           .toList(),
       child: Container(
+        // 48 dp, a finger's minimum (these were 32).
+        constraints: const BoxConstraints(minHeight: 48),
+        alignment: Alignment.center,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: isActive

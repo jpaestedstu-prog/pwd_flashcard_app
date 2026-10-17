@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../core/utils/reduced_motion.dart';
+import '../../../core/widgets/fit_text.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 
@@ -209,10 +210,9 @@ class _TrailNodeView extends StatelessWidget {
           );
     }
 
-    final label = Text(
+    // FitText: "Nararamdaman" broke in two under its node at 2x.
+    final label = FitText(
       node.label,
-      maxLines: 2,
-      overflow: TextOverflow.ellipsis,
       textAlign: TextAlign.center,
       style: AppTypography.labelSmall.copyWith(
         fontWeight: isCurrent ? FontWeight.w800 : FontWeight.w600,

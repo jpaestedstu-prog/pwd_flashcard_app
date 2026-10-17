@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/fit_text.dart';
 import '../../../core/widgets/pro_surface.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
@@ -207,11 +208,15 @@ class _EducatorDashboardScreenState
                           Icon(Icons.lightbulb_rounded,
                               color: HCColor.of(context).graphic(AppColors.warning), size: 22),
                           const SizedBox(width: 8),
-                          Text(
-                            l ? 'Mga Rekomendasyon' : 'Recommendations',
-                            style: AppTypography.titleSmall.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: hc.textPrimary,
+                          // Flexible + FitText: at 2x "Mga Rekomendasyon"
+                          // ran 24 px past the screen's edge.
+                          Flexible(
+                            child: FitText(
+                              l ? 'Mga Rekomendasyon' : 'Recommendations',
+                              style: AppTypography.titleSmall.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: hc.textPrimary,
+                              ),
                             ),
                           ),
                         ],

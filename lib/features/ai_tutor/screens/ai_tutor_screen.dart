@@ -840,16 +840,15 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Semantics(
-                        button: true,
-                        label: isFilipino ? 'Ipadala' : 'Send',
-                        child: IconButton.filled(
-                          onPressed: _sendMessage,
-                          icon: const Icon(Icons.send_rounded),
-                          style: IconButton.styleFrom(
-                            backgroundColor: HCColor.of(context).primary,
-                            foregroundColor: HCColor.of(context).textOnPrimary,
-                          ),
+                      // Named on the button itself: a wrapper's label left
+                      // the tappable node a bare "button".
+                      IconButton.filled(
+                        tooltip: isFilipino ? 'Ipadala' : 'Send',
+                        onPressed: _sendMessage,
+                        icon: const Icon(Icons.send_rounded),
+                        style: IconButton.styleFrom(
+                          backgroundColor: HCColor.of(context).primary,
+                          foregroundColor: HCColor.of(context).textOnPrimary,
                         ),
                       ),
                     ],

@@ -1350,6 +1350,7 @@ class _SetBuilderSheetState extends State<_SetBuilderSheet> {
                   leading: CircleAvatar(radius: 12, child: Text('${i + 1}')),
                   title: Text(_describe(_activities[i])),
                   trailing: IconButton(
+                    tooltip: _t(context).gmRemove,
                     icon: const Icon(Icons.delete_outline_rounded),
                     onPressed: () => setState(() => _activities.removeAt(i)),
                   ),
@@ -1494,7 +1495,8 @@ class _CardPickerState extends ConsumerState<_CardPicker> {
           )
         else
           SizedBox(
-            height: 46,
+            // 48 dp: a shorter strip capped each chip's tap target.
+            height: 48 * MediaQuery.textScalerOf(context).scale(1.0),
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: cards.length,

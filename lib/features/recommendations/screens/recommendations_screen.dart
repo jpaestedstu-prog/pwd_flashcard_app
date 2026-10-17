@@ -8,6 +8,7 @@ import '../../../core/accessibility/tts_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
+import '../../../core/widgets/fit_text.dart';
 import '../../../providers/app_providers.dart';
 import '../models/recommendation_models.dart';
 import '../providers/recommendation_provider.dart';
@@ -48,10 +49,12 @@ class _RecommendationsScreenState extends ConsumerState<RecommendationsScreen> {
                     Expanded(
                       child: Semantics(
                         header: true,
-                        child: Text(
+                        // "Rekomendasyon" broke in two from 1.4x.
+                        child: FitText(
                           isFilipino
                               ? 'Mga Rekomendasyon'
                               : 'What to Study Next',
+                          maxLines: 3,
                           style: AppTypography.headlineLarge.copyWith(
                             color: hc.textPrimary,
                           ),
@@ -295,8 +298,11 @@ class _RecommendationCard extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Priority badge + title row
-                      Row(
+                      // Priority badge + title row. A Wrap: at 2x the badge
+                      // and icon ran a fraction of a pixel past the column.
+                      Wrap(
+                        spacing: 6,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -318,13 +324,14 @@ class _RecommendationCard extends ConsumerWidget {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 6),
                           Icon(rec.typeIcon, size: 14, color: hc.textSecondary),
                         ],
                       ),
                       const SizedBox(height: 6),
-                      Text(
+                      // "Ipagpatuloy" broke in two at 2x.
+                      FitText(
                         isFilipino ? rec.titleFilipino : rec.title,
+                        maxLines: 3,
                         style: AppTypography.bodyLarge.copyWith(
                           color: hc.textPrimary,
                           fontWeight: FontWeight.w600,

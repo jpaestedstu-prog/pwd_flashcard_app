@@ -287,11 +287,21 @@ class _FslVideoSheetState extends State<FslVideoSheet> {
                                     size: context.scaleIcon(36),
                                   ),
                                 ),
-                              // Fullscreen button
+                              // Fullscreen button. Named for a screen reader
+                              // (it was a bare "button"), and a 48 dp target
+                              // around the 36 dp chip for motor-impaired
+                              // learners; the chip itself sits where it did.
                               Positioned(
-                                right: 8,
-                                bottom: 8,
-                                child: GestureDetector(
+                                right: 2,
+                                bottom: 2,
+                                child: Semantics(
+                                  button: true,
+                                  label: AppLocalizations.of(context)
+                                          ?.tuFullScreen ??
+                                      'Watch in full screen',
+                                  excludeSemantics: true,
+                                  child: GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
                                   onTap: () async {
                                     final wasPlaying =
                                         _controller.value.isPlaying;
@@ -312,21 +322,29 @@ class _FslVideoSheetState extends State<FslVideoSheet> {
                                       _controller.play();
                                     }
                                   },
-                                  child: Container(
-                                    width: 36,
-                                    height: 36,
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withValues(
-                                        alpha: 0.5,
+                                  child: SizedBox(
+                                    width: 48,
+                                    height: 48,
+                                    child: Center(
+                                      child: Container(
+                                        width: 36,
+                                        height: 36,
+                                        decoration: BoxDecoration(
+                                          color: Colors.black.withValues(
+                                            alpha: 0.5,
+                                          ),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        child: Icon(
+                                          Icons.fullscreen_rounded,
+                                          color: Colors.white,
+                                          size: context.scaleIcon(22),
+                                        ),
                                       ),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Icon(
-                                      Icons.fullscreen_rounded,
-                                      color: Colors.white,
-                                      size: context.scaleIcon(22),
                                     ),
                                   ),
+                                ),
                                 ),
                               ),
                             ],

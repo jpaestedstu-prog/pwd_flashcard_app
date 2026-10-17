@@ -240,7 +240,10 @@ class _AccessibilitySetupScreenState
                         );
                       }),
                     ),
-                    TextButton(
+                    // Flexible + FitText: "Laktawan" at 2x ran 2 px past
+                    // the screen's edge beside the step dots.
+                    Flexible(
+                      child: TextButton(
                       onPressed: () async {
                         if (_isEducatorSetup) {
                           ref.invalidate(allProfilesWithProgressProvider);
@@ -253,12 +256,14 @@ class _AccessibilitySetupScreenState
                         final seen = HiveService.hasSeenTutorial(pid);
                         context.go(seen ? '/home' : '/onboarding-tutorial');
                       },
-                      child: Text(
+                      child: FitText(
                         AppLocalizations.of(context)!.skip,
+                        maxLines: 1,
                         style: AppTypography.labelLarge.copyWith(
                           color: HCColor.of(context).textSecondary,
                         ),
                       ),
+                    ),
                     ),
                   ],
                 ),
@@ -813,8 +818,10 @@ class _DisabilityCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    // FitText: "Pangangailangan" broke in two at 2x.
+                    FitText(
                       type.labelOf(AppLocalizations.of(context)),
+                      maxLines: 4,
                       style: AppTypography.titleSmall.copyWith(
                         color: isSelected
                             ? Colors.white
@@ -823,8 +830,9 @@ class _DisabilityCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 3),
-                    Text(
+                    FitText(
                       type.descriptionOf(AppLocalizations.of(context)),
+                      maxLines: null,
                       style: AppTypography.bodySmall.copyWith(
                         color: isSelected
                             ? Colors.white.withValues(alpha: 0.85)

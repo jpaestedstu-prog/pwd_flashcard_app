@@ -13203,4 +13203,52 @@ class AppLocalizationsEn extends AppLocalizations {
   String updateOpenFailed(String url) {
     return 'Open $url in a browser to get the new version.';
   }
+
+  @override
+  String get webGetAndroidApp => 'Get the Android app';
+
+  @override
+  String get webTvCastNeedsApp =>
+      'TV Cast works in the Android app: the tablet itself sends the lesson to the TV, which a browser cannot do.';
+
+  @override
+  String get webRemindersNeedApp =>
+      'Reminders work in the Android app: a browser cannot send them while FlashLearn is closed.';
+
+  @override
+  String get webMyDayNote =>
+      'In a browser, My Day shows the plan, but it cannot ring or lock the screen when a step starts. The Android app can.';
+
+  @override
+  String get webBackupNeedsApp =>
+      'Backup files work in the Android app. Here, this browser keeps your data on this device. To be able to bring a profile back, use the Cloud Recovery Code.';
+
+  @override
+  String get webControllerNeedsApp =>
+      'Game controllers work in the Android app.';
+
+  @override
+  String get webMediaNeedsApp =>
+      'Photos and videos can be added in the Android app.';
+
+  @override
+  String get webMediaOpensInApp =>
+      'Open this in the Android app to see the photo or video.';
+
+  @override
+  String get webRecordNeedsApp =>
+      'Recording your own sign works in the Android app. Here, watch the sign and practise it.';
+
+  @override
+  String sfSortBy(String field) {
+    return 'Sort by $field';
+  }
+
+  @override
+  String get webVideoAnswerNeedsApp =>
+      'Video answers are recorded in the Android app. Here, you can skip this question.';
+
+  @override
+  String get webVideoAnswerSkipped =>
+      'Skipped: this question has no video answer.';
 }

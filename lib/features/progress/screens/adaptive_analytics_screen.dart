@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/fit_text.dart';
 import '../../../core/services/session_tracker.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../widgets/rich_empty_states.dart';
@@ -372,8 +373,12 @@ class _SummaryBar extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+          // A Wrap: in one row the three ran 69 px past a phone's edge at
+          // 2.0x.
+          Wrap(
+            alignment: WrapAlignment.spaceAround,
+            spacing: 12,
+            runSpacing: 6,
             children: [
               _catLabel('🏆', _t(context).aaMastered(masteredCats), hc.success),
               _catLabel('📖', _t(context).aaLearning(inProgressCats), hc.warning),
@@ -435,11 +440,15 @@ class _SessionStatsCard extends StatelessWidget {
             children: [
               Icon(Icons.insights_rounded, color: hc.info, size: 22),
               const SizedBox(width: 8),
-              Text(
-                _t(context).aaSessionInsights,
-                style: AppTypography.labelMedium.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: hc.textPrimary,
+              // Expanded + FitText: at 2x "Tungkol sa mga Sesyon" ran 90 px
+              // past the card's edge.
+              Expanded(
+                child: FitText(
+                  _t(context).aaSessionInsights,
+                  style: AppTypography.labelMedium.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: hc.textPrimary,
+                  ),
                 ),
               ),
             ],
@@ -493,8 +502,10 @@ class _SessionStatsCard extends StatelessWidget {
                 color: hc.readableOver(color, color.withValues(alpha: 0.1)),
               ),
             ),
-            Text(
+            // A third of the row each: "Sessio / n" at 2.0x.
+            FitText(
               label,
+              textAlign: TextAlign.center,
               style: AppTypography.labelSmall.copyWith(
                 fontSize: 9,
                 color: hc.textSecondary,

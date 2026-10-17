@@ -128,6 +128,9 @@ class TutorQuickChip extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
         child: Container(
+          // 48 dp, a finger's minimum (these were 39).
+          constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
+          alignment: Alignment.center,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
             color: hc.surface,
@@ -318,6 +321,9 @@ class TutorMessageBubble extends StatelessWidget {
                                   : () => onQuizAnswer?.call(option),
                               borderRadius: BorderRadius.circular(12),
                               child: Container(
+                                // 48 dp, like every other answer button.
+                                constraints:
+                                    const BoxConstraints(minHeight: 48),
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 14, vertical: 8),
                                 decoration: BoxDecoration(
@@ -329,10 +335,14 @@ class TutorMessageBubble extends StatelessWidget {
                                         .withValues(alpha: 0.3),
                                   ),
                                 ),
-                                child: Text(
-                                  option,
-                                  style: AppTypography.labelMedium
-                                      .copyWith(color: hc.textPrimary),
+                                child: Center(
+                                  widthFactor: 1,
+                                  heightFactor: 1,
+                                  child: Text(
+                                    option,
+                                    style: AppTypography.labelMedium
+                                        .copyWith(color: hc.textPrimary),
+                                  ),
                                 ),
                               ),
                             ),
@@ -477,7 +487,10 @@ class _BubbleAction extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
-        child: Padding(
+        // 48 dp tall: "Listen" was a 22 dp strip of text.
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
+          child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -490,6 +503,7 @@ class _BubbleAction extends StatelessWidget {
                     AppTypography.labelSmall.copyWith(color: HCColor.of(context).primary),
               ),
             ],
+          ),
           ),
         ),
       ),
@@ -521,6 +535,8 @@ class _InterestChip extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Container(
+          // 48 dp: a topic chip is a learner's answer, not a decoration.
+          constraints: const BoxConstraints(minHeight: 48),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             color: AppColors.primary.withValues(alpha: 0.08),

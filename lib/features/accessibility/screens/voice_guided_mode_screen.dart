@@ -391,14 +391,17 @@ class _VoiceGuidedModeScreenState
                   children: [
                     Icon(Icons.tour_rounded, color: hc.accent, size: 22),
                     const SizedBox(width: 8),
-                    Text(
-                      _t(context).vgTour,
-                      style: AppTypography.labelMedium.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: hc.textPrimary,
+                    // Expanded + FitText: at 2x "Gabay na Paglilibot" ran
+                    // 33 px past the card's edge.
+                    Expanded(
+                      child: FitText(
+                        _t(context).vgTour,
+                        style: AppTypography.labelMedium.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: hc.textPrimary,
+                        ),
                       ),
                     ),
-                    const Spacer(),
                     if (_tourStep >= 0)
                       Text(
                         '${_tourStep + 1}/${_tourSteps.length}',
@@ -505,11 +508,15 @@ class _VoiceGuidedModeScreenState
                   children: [
                     Icon(Icons.navigation_rounded, color: hc.info, size: 22),
                     const SizedBox(width: 8),
-                    Text(
-                      _t(context).vgQuick,
-                      style: AppTypography.labelMedium.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: hc.textPrimary,
+                    // Wraps at large text (it ran 52 px past a phone's edge
+                    // at the Visual Impairment size).
+                    Expanded(
+                      child: Text(
+                        _t(context).vgQuick,
+                        style: AppTypography.labelMedium.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: hc.textPrimary,
+                        ),
                       ),
                     ),
                   ],

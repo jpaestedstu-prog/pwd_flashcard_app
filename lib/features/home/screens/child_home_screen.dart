@@ -51,11 +51,15 @@ class ChildHomeScreen extends ConsumerWidget {
     final pad = context.pagePadding;
     final t = _t(context);
     // Two big tiles per row on phones/small tablets; three or four on
-    // large tablets where there's room.
+    // large tablets where there's room. One on a phone at large text: half a
+    // phone is narrower than "Pakikipagsapalaran" at 1.4x, even shrunk, so
+    // bigger text gets wider tiles.
     final columns = context.screenWidth >= 900
         ? 4
         : context.screenWidth >= 600
         ? 3
+        : MediaQuery.textScalerOf(context).scale(1.0) >= 1.3
+        ? 1
         : 2;
 
     // Content gating by the child's accessibility category (same policy the

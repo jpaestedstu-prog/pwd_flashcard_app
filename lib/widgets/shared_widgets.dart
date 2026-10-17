@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
+import '../core/widgets/fit_text.dart';
 import '../l10n/app_localizations.dart';
 import '../l10n/app_localizations_en.dart';
 import 'animated_dialogs.dart';
@@ -265,47 +266,68 @@ class SectionHeader extends StatelessWidget {
         color ??
         Theme.of(context).textTheme.bodyLarge?.color ??
         AppColors.textPrimary;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          // Expanded + Flexible so a long title (or a large accessibility font
-          // scale) wraps/ellipsizes instead of overflowing the row next to the
-          // optional "See All" action.
-          Expanded(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (icon != null) ...[
-                  Icon(icon, size: 20, color: textColor),
-                  const SizedBox(width: 8),
-                ],
-                Flexible(
-                  child: Text(
-                    title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      color: textColor,
-                    ),
-                  ),
-                ),
-              ],
+    final label = actionLabel ??
+        (AppLocalizations.of(context) ?? AppLocalizationsEn()).assessSeeAll;
+    final heading = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (icon != null) ...[
+          Icon(icon, size: 20, color: textColor),
+          const SizedBox(width: 8),
+        ],
+        // FitText: at 2x on a phone "Communication" and "Vocabulary" were
+        // wider than the row and broke mid-word.
+        Flexible(
+          child: FitText(
+            title,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: textColor,
             ),
           ),
-          if (onSeeAll != null)
-            TextButton(
-              onPressed: onSeeAll,
-              child: Text(
-                actionLabel ??
-                    (AppLocalizations.of(context) ?? AppLocalizationsEn())
-                        .assessSeeAll,
-              ),
-            ),
-        ],
+        ),
+      ],
+    );
+    final action = onSeeAll == null
+        ? null
+        : TextButton(onPressed: onSeeAll, child: Text(label));
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (action == null) return heading;
+          // Side by side while the title's longest word fits beside the
+          // action at full size; otherwise the action goes under the title.
+          // At 1.4x in Filipino "Tingnan Lahat" left "Kategorya" 144 dp and
+          // it broke in two even at FitText's floor. (0.6 em a character:
+          // these are bold.)
+          final scale = MediaQuery.textScalerOf(context).scale(1.0);
+          final longest = title
+              .split(RegExp(r'\s+'))
+              .fold<int>(0, (m, w) => w.length > m ? w.length : m);
+          // The theme's text button: 16 px bold, 0.5 letter spacing, 24
+          // padding a side.
+          final actionWidth = label.length * (0.6 * 16 * scale + 0.5) + 48;
+          final room = constraints.maxWidth -
+              actionWidth -
+              (icon == null ? 0 : 28);
+          if (longest * 0.6 * 22 * scale <= room) {
+            return Row(
+              children: [
+                Expanded(child: heading),
+                action,
+              ],
+            );
+          }
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              heading,
+              Align(alignment: AlignmentDirectional.centerEnd, child: action),
+            ],
+          );
+        },
       ),
     );
   }

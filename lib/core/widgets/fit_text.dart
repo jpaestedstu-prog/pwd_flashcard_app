@@ -37,7 +37,9 @@ class FitText extends StatelessWidget {
 
   final String text;
   final TextStyle? style;
-  final int maxLines;
+
+  /// Null for a paragraph: as many lines as it takes, never cut short.
+  final int? maxLines;
   final TextAlign? textAlign;
 
   /// Smallest fraction of the original size this will use.
@@ -57,7 +59,13 @@ class FitText extends StatelessWidget {
               .split(RegExp(r'\s+'))
               .fold<int>(0, (max, w) => w.length > max ? w.length : max);
           if (longest > 0) {
-            final needed = longest * 0.58 * scale;
+            // Bold runs wider: at 0.58 em a bold "Kategorya" (1.4x) and
+            // "Pagkasensitibo" (2x) still came out a few pixels too wide.
+            final perChar =
+                (base.fontWeight ?? FontWeight.normal).value >= 600
+                    ? 0.62
+                    : 0.58;
+            final needed = longest * perChar * scale;
             if (needed > 0) {
               // Letter spacing is a flat number of logical pixels per
               // character and does *not* scale with the font, so it cannot be
@@ -87,7 +95,7 @@ class FitText extends StatelessWidget {
           text,
           style: base.copyWith(fontSize: size),
           maxLines: maxLines,
-          overflow: TextOverflow.ellipsis,
+          overflow: maxLines == null ? null : TextOverflow.ellipsis,
           textAlign: textAlign,
         );
       },

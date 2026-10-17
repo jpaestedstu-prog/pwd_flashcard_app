@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/avatar_data.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/fit_text.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
@@ -270,6 +271,15 @@ class _StudentProfileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // At large text the date goes under the name: beside it, it left the
+    // name's column so narrow that "Walang" broke in two at 2x.
+    final dateBelow = MediaQuery.textScalerOf(context).scale(1.0) >= 1.3;
+    final created = Text(
+      LocalizedDate.monthDayYear(profile.createdAt, _t(context)),
+      style: AppTypography.bodySmall.copyWith(
+        color: HCColor.of(context).textHint,
+      ),
+    );
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -329,13 +339,18 @@ class _StudentProfileCard extends StatelessWidget {
                   ],
                 ),
                 if (profile.age == null && profile.gradeLevel == null)
-                  Text(
+                  FitText(
                     _t(context).splNoAge,
+                    maxLines: null,
                     style: AppTypography.bodySmall.copyWith(
                       color: HCColor.of(context).textHint,
                       fontStyle: FontStyle.italic,
                     ),
                   ),
+                if (dateBelow) ...[
+                  const SizedBox(height: 4),
+                  created,
+                ],
               ],
             ),
           ),
@@ -343,13 +358,10 @@ class _StudentProfileCard extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                LocalizedDate.monthDayYear(profile.createdAt, _t(context)),
-                style: AppTypography.bodySmall.copyWith(
-                  color: HCColor.of(context).textHint,
-                ),
-              ),
-              const SizedBox(height: 6),
+              if (!dateBelow) ...[
+                created,
+                const SizedBox(height: 6),
+              ],
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [

@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/fit_text.dart';
 import '../../../providers/app_providers.dart' show profileProvider;
 import '../../gamepad/providers/gamepad_settings_provider.dart';
 import '../models/gaze_settings.dart';
@@ -189,7 +190,17 @@ class GazeSettingsScreen extends ConsumerWidget {
               activeTrackColor: AppColors.primary,
               contentPadding: EdgeInsets.zero,
               secondary: const Icon(Icons.visibility_off_rounded),
-              title: Text(t.gzsBlink),
+              // "kumpirmahin" broke in two at 2x in Filipino.
+              title: Text(
+                t.gzsBlink,
+                style: TextStyle(
+                  fontSize: fittedStyle(
+                    context,
+                    t.gzsBlink,
+                    Theme.of(context).textTheme.bodyLarge,
+                  )?.fontSize,
+                ),
+              ),
               subtitle: Text(
                 settings.scanMode ? t.gzsBlinkScanOn : t.gzsBlinkSub,
               ),
@@ -966,24 +977,43 @@ class _SliderTile extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(icon, color: HCColor.of(context).readable(AppColors.primaryDark), size: 22),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(title,
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.w600)),
-              ),
-              const SizedBox(width: 8),
-              Text(valueLabel,
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: HCColor.of(context).readable(
-                        AppColors.primaryDark,
-                      ))),
-            ],
-          ),
+          Builder(builder: (context) {
+            final titleText = FitText(title,
+                style: const TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.w600));
+            final value = Text(valueLabel,
+                style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: HCColor.of(context).readable(
+                      AppColors.primaryDark,
+                    )));
+            // At large text the value goes under the name: beside it, a
+            // long value ("Katamtaman") left "Pagkasensitibo" too little
+            // room even shrunk, and it broke in two at 2x.
+            final stacked =
+                MediaQuery.textScalerOf(context).scale(1.0) >= 1.3;
+            return Row(
+              crossAxisAlignment: stacked
+                  ? CrossAxisAlignment.start
+                  : CrossAxisAlignment.center,
+              children: [
+                Icon(icon, color: HCColor.of(context).readable(AppColors.primaryDark), size: 22),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: stacked
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [titleText, value],
+                        )
+                      : titleText,
+                ),
+                if (!stacked) ...[
+                  const SizedBox(width: 8),
+                  value,
+                ],
+              ],
+            );
+          }),
           // − / + beside the slider: a hands-free learner reaches these by
           // gaze (a slider can be focused but not moved by a head gesture),
           // and they are easier than a drag for anyone with limited hand

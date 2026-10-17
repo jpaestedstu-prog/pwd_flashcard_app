@@ -15,6 +15,7 @@ import '../../../widgets/app_back_button.dart';
 import '../../../core/utils/accessible_sizing.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/fit_text.dart';
 
 class GoalsScreen extends ConsumerStatefulWidget {
   const GoalsScreen({super.key});
@@ -290,8 +291,10 @@ class _SummaryCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                // FitText: "Tagasubaybay" broke in two at 2x.
+                FitText(
                   _t(context).goalsTracker,
+                  maxLines: 3,
                   style: AppTypography.titleLarge.copyWith(
                     color: hc.textOnPrimary,
                     fontWeight: FontWeight.w800,

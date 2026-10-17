@@ -273,10 +273,18 @@ class _StudentSelector extends StatelessWidget {
               final selected = selectedIds.contains(student.profileId);
               final avatar = AvatarData.getAvatar(student.avatarIndex);
               final chipColor = _colorForIndex(idx);
-              return GestureDetector(
+              // A toggle a screen reader can name ("Test User, selected"),
+              // not "dog emoji, Test User"; 48 dp tall (it was 42).
+              return Semantics(
+                button: true,
+                selected: selected,
+                label: student.name,
+                excludeSemantics: true,
+                child: GestureDetector(
                 onTap: () => onToggle(student.profileId),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
+                  constraints: const BoxConstraints(minHeight: 48),
                   padding: const EdgeInsets.symmetric(
                       horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
@@ -331,6 +339,7 @@ class _StudentSelector extends StatelessWidget {
                     ],
                   ),
                 ),
+              ),
               )
                   .animate()
                   .fadeIn(duration: 250.ms, delay: (60 + idx * 40).ms)

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
+import '../../../core/widgets/fit_text.dart';
 import '../../../core/accessibility/haptic_service.dart'
     show hapticServiceProvider;
 import '../../../widgets/app_snack_bar.dart';
@@ -186,7 +187,8 @@ class _QuestionBlock extends StatelessWidget {
                               style: TextStyle(fontSize: isSelected ? 44 : 38),
                             ),
                             const SizedBox(height: 4),
-                            Text(
+                            // "masyado" broke in two at 2x.
+                            FitText(
                               faceLabels[i],
                               textAlign: TextAlign.center,
                               style: AppTypography.labelSmall.copyWith(

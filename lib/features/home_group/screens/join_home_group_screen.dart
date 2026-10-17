@@ -62,6 +62,7 @@ class _JoinHomeGroupScreenState extends ConsumerState<JoinHomeGroupScreen> {
       appBar: AppBar(
         title: Text(_t(context).joinGroupTitle),
         leading: IconButton(
+          tooltip: _t(context).back,
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
             if (Navigator.of(context).canPop()) {

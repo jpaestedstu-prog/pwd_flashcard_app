@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/fit_text.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/learning_path.dart';
 import '../../../l10n/app_localizations.dart';
@@ -89,8 +90,10 @@ class PathCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    // FitText: "Nararamdaman" broke in two at 2x.
+                    FitText(
                       path.titleOf(filipino: _t(context).localeName.startsWith('fil')),
+                      maxLines: 3,
                       style: AppTypography.titleSmall.copyWith(
                         fontWeight: FontWeight.w700,
                         color: isUnlocked

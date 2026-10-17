@@ -553,23 +553,31 @@ class _MasterySection extends StatelessWidget {
               radius: 56,
               lineWidth: 10,
               percent: masteryPct.clamp(0.0, 1.0),
-              center: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    '${(masteryPct * 100).round()}%',
-                    style: AppTypography.titleLarge.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: HCColor.of(context).primary,
-                    ),
+              // Scaled to fit inside the ring: at 2x "Kahusayan" broke in two
+              // and the pair ran 16 px out of the circle.
+              center: Padding(
+                padding: const EdgeInsets.all(14),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '${(masteryPct * 100).round()}%',
+                        style: AppTypography.titleLarge.copyWith(
+                          fontWeight: FontWeight.w900,
+                          color: HCColor.of(context).primary,
+                        ),
+                      ),
+                      Text(
+                        _t(context).dbMastery,
+                        style: AppTypography.labelSmall.copyWith(
+                          color: HCColor.of(context).textSecondary,
+                        ),
+                      ),
+                    ],
                   ),
-                  Text(
-                    _t(context).dbMastery,
-                    style: AppTypography.labelSmall.copyWith(
-                      color: HCColor.of(context).textSecondary,
-                    ),
-                  ),
-                ],
+                ),
               ),
               progressColor: AppColors.primary,
               backgroundColor: AppColors.primaryLight,
@@ -630,24 +638,29 @@ class _MiniMetric extends StatelessWidget {
       children: [
         Icon(icon, color: color, size: 20),
         const SizedBox(width: 8),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              value,
-              style: AppTypography.labelLarge.copyWith(
-                fontWeight: FontWeight.w700,
-                color: color,
+        // Expanded, so the label has a width to fit: unbounded beside the
+        // ring, FitText never shrank and "Daily Challenge Streak" ran 31 px
+        // past a phone's edge even at the default text size.
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                style: AppTypography.labelLarge.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
               ),
-            ),
-            // Three metric cards share the row, so each label gets a third
-            // of it: "Word / s" and "Badg / es".
-            FitText(
-              label,
-              maxLines: 1,
-              style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
-            ),
-          ],
+              // Three metric cards share the row, so each label gets a third
+              // of it: "Word / s" and "Badg / es".
+              FitText(
+                label,
+                style:
+                    AppTypography.labelSmall.copyWith(color: hc.textSecondary),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -707,12 +720,23 @@ class _CategoryBar extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      category.labelOf(_t(context)),
-                      style: AppTypography.labelLarge.copyWith(
-                        fontWeight: FontWeight.w600,
+                    // Wraps beside the percent at large text ("Family &
+                    // Greetings" ran past a phone's edge at 1.4x).
+                    Flexible(
+                      child: Text(
+                        category.labelOf(_t(context)),
+                        // One size down when a long word would break:
+                        // "Transporta / tion" at 2.0x.
+                        style: fittedStyle(
+                          context,
+                          category.labelOf(_t(context)),
+                          AppTypography.labelLarge.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ),
+                    const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 8,
@@ -972,26 +996,35 @@ class _StudyTimeSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Stat row
+          // A third each: side by side at their own widths, the three ran
+          // past a phone's edge at large text.
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _StudyMetric(
-                icon: Icons.timer_rounded,
-                value: '${totalMin}m',
-                label: _t(context).dbTotalTime,
-                color: AppColors.info,
+              Expanded(
+                child: _StudyMetric(
+                  icon: Icons.timer_rounded,
+                  value: '${totalMin}m',
+                  label: _t(context).dbTotalTime,
+                  color: AppColors.info,
+                ),
               ),
-              _StudyMetric(
-                icon: Icons.timelapse_rounded,
-                value: '${avgMin.toStringAsFixed(1)}m',
-                label: _t(context).dbAvgSession,
-                color: AppColors.secondary,
+              Expanded(
+                child: _StudyMetric(
+                  icon: Icons.timelapse_rounded,
+                  value: '${avgMin.toStringAsFixed(1)}m',
+                  label: _t(context).dbAvgSession,
+                  color: AppColors.secondary,
+                ),
               ),
-              _StudyMetric(
-                icon: Icons.repeat_rounded,
-                value: '$totalSess',
-                label: _t(context).dbSessions,
-                color: AppColors.accent,
+              Expanded(
+                child: _StudyMetric(
+                  icon: Icons.repeat_rounded,
+                  value: '$totalSess',
+                  label: _t(context).dbSessions,
+                  color: AppColors.accent,
+                ),
               ),
             ],
           ),
@@ -1099,15 +1132,18 @@ class _StudyMetric extends StatelessWidget {
       children: [
         Icon(icon, color: color, size: 24),
         const SizedBox(height: 6),
-        Text(
+        FitText(
           value,
+          maxLines: 1,
+          textAlign: TextAlign.center,
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w800,
             color: color,
           ),
         ),
-        Text(
+        FitText(
           label,
+          textAlign: TextAlign.center,
           style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
         ),
       ],

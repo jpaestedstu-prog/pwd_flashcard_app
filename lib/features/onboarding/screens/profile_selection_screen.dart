@@ -7,6 +7,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/theme/role_theme.dart';
 import '../../../core/utils/responsive_utils.dart';
+import '../../../core/widgets/fit_text.dart';
 import '../../../data/models/enums.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../widgets/app_button.dart';
@@ -121,8 +122,11 @@ class ProfileSelectionScreen extends StatelessWidget {
                     AppSpacing.gapLg,
 
                     // ─── Title ──────────────────────────────
-                    Text(
+                    // FitText: "Maligayang Pagdating!" broke as
+                    // "Maligaya / ng Pagda / ting" at 2x on a phone.
+                    FitText(
                           l10n.welcome,
+                          maxLines: 3,
                           style: AppTypography.displayMedium.copyWith(
                             color: isDark
                                 ? colorScheme.primary
@@ -338,8 +342,10 @@ class _ChoiceCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  // "Manlalaro" and "Magulang" broke in two at 2x.
+                  FitText(
                     label,
+                    maxLines: 3,
                     style: AppTypography.titleLarge.copyWith(
                       color: HCColor.of(context).textPrimary,
                       fontWeight: FontWeight.w800,

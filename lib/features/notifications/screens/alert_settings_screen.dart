@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/fit_text.dart';
 import '../../../core/utils/localized_date.dart';
 import '../models/alert_models.dart';
 import '../services/alert_service.dart';
@@ -219,11 +220,15 @@ class _AlertSettingsScreenState extends State<AlertSettingsScreen> {
                           Text(type.emoji,
                               style: const TextStyle(fontSize: 16)),
                           const SizedBox(width: 8),
-                          Text(
-                            _alertTypeLabel(_t(context), type),
-                            style: AppTypography.bodySmall.copyWith(
-                              color: hc.textPrimary,
-                              fontWeight: FontWeight.w600,
+                          // Wraps at large text ("Assessment Completed" ran
+                          // past the checkbox on a phone at 1.4x).
+                          Expanded(
+                            child: Text(
+                              _alertTypeLabel(_t(context), type),
+                              style: AppTypography.bodySmall.copyWith(
+                                color: hc.textPrimary,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ],
@@ -257,14 +262,17 @@ class _AlertSettingsScreenState extends State<AlertSettingsScreen> {
                 Icon(Icons.history_rounded,
                     color: hc.textSecondary, size: 20),
                 const SizedBox(width: 8),
-                Text(
-                  _t(context).asRecent(_alerts.length),
-                  style: AppTypography.titleSmall.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: hc.textPrimary,
+                // Expanded + FitText: at 2x "Mga Kamakailang Alerto" ran
+                // 122 px past the screen's edge.
+                Expanded(
+                  child: FitText(
+                    _t(context).asRecent(_alerts.length),
+                    style: AppTypography.titleSmall.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: hc.textPrimary,
+                    ),
                   ),
                 ),
-                const Spacer(),
                 if (_alerts.isNotEmpty)
                   TextButton(
                     onPressed: () async {

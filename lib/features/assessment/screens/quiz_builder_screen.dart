@@ -198,8 +198,10 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
               ),
             ),
             const SizedBox(height: 8),
+            // 48 dp and growing with the text: a 40 dp strip capped each
+            // chip's tap target, and clipped the labels at large text.
             SizedBox(
-              height: 40,
+              height: 48 * MediaQuery.textScalerOf(context).scale(1.0),
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 children: [
@@ -301,6 +303,8 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
                       ? hc.primary.withValues(alpha: 0.06)
                       : hc.surface,
                   dense: true,
+                  // Compact, but never under a finger's 48 dp (it was 38).
+                  minTileHeight: 48,
                   controlAffinity: ListTileControlAffinity.leading,
                 ),
               );

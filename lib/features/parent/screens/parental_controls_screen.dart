@@ -134,7 +134,9 @@ class _ParentalControlsScreenState
           const SizedBox(height: 8),
 
           SwitchListTile.adaptive(
-            title: Text(_t(context).pcEnableLimit),
+            // Stepped down like the rows below: "Limitasyon" broke in two
+            // at 2x in Filipino.
+            title: _fitted(context, _t(context).pcEnableLimit),
             subtitle: Builder(
               builder: (context) {
                 final text = _controls.timeLimitEnabled
@@ -264,8 +266,8 @@ class _ParentalControlsScreenState
           const SizedBox(height: 8),
 
           SwitchListTile.adaptive(
-            title: Text(_t(context).pcBlockShop),
-            subtitle: Text(_t(context).pcBlockShopSub),
+            title: _fitted(context, _t(context).pcBlockShop),
+            subtitle: _fitted(context, _t(context).pcBlockShopSub, subtitle: true),
             secondary:
                 Icon(Icons.store_rounded, color: hc.textSecondary),
             value: _controls.shopBlocked,
@@ -275,8 +277,8 @@ class _ParentalControlsScreenState
           ),
 
           SwitchListTile.adaptive(
-            title: Text(_t(context).pcBlockMulti),
-            subtitle: Text(_t(context).pcBlockMultiSub),
+            title: _fitted(context, _t(context).pcBlockMulti),
+            subtitle: _fitted(context, _t(context).pcBlockMultiSub, subtitle: true),
             secondary: Icon(Icons.people_rounded, color: hc.textSecondary),
             value: _controls.multiplayerBlocked,
             activeTrackColor: AppColors.error,
@@ -285,8 +287,8 @@ class _ParentalControlsScreenState
           ),
 
           SwitchListTile.adaptive(
-            title: Text(_t(context).pcBlockMsg),
-            subtitle: Text(_t(context).pcBlockMsgSub),
+            title: _fitted(context, _t(context).pcBlockMsg),
+            subtitle: _fitted(context, _t(context).pcBlockMsgSub, subtitle: true),
             secondary:
                 Icon(Icons.message_rounded, color: hc.textSecondary),
             value: _controls.messagingBlocked,
@@ -308,7 +310,7 @@ class _ParentalControlsScreenState
           ),
           const SizedBox(height: 8),
           ...GameType.values.map((gt) => CheckboxListTile.adaptive(
-                title: Text(gt.labelOf(_t(context))),
+                title: _fitted(context, gt.labelOf(_t(context))),
                 secondary: Icon(gt.icon, color: gt.color),
                 value: _controls.blockedGames.contains(gt),
                 activeColor: AppColors.error,
@@ -337,7 +339,7 @@ class _ParentalControlsScreenState
           ),
           const SizedBox(height: 8),
           ...FlashcardCategory.values.map((fc) => CheckboxListTile.adaptive(
-                title: Text(fc.labelOf(_t(context))),
+                title: _fitted(context, fc.labelOf(_t(context))),
                 secondary: Icon(fc.icon, color: fc.color),
                 value: _controls.blockedCategories.contains(fc),
                 activeColor: AppColors.error,
@@ -391,6 +393,21 @@ class _ParentalControlsScreenState
   }
 }
 
+/// A list row's title (or subtitle) that shares its row with a switch or a
+/// checkbox: one size smaller at large text when it holds a long word, so
+/// "Multiplayer" and "Pronunciation" stay whole ("Mu / ltiplayer" at 2.0x).
+Text _fitted(BuildContext context, String text, {bool subtitle = false}) {
+  final theme = Theme.of(context).textTheme;
+  return Text(
+    text,
+    style: fittedStyle(
+      context,
+      text,
+      subtitle ? theme.bodyMedium : theme.bodyLarge,
+    ),
+  );
+}
+
 class _SectionHeader extends StatelessWidget {
   final String title;
   final IconData icon;
@@ -409,11 +426,15 @@ class _SectionHeader extends StatelessWidget {
           child: Icon(icon, size: 18, color: HCColor.of(context).primary),
         ),
         const SizedBox(width: 10),
-        Text(
-          title,
-          style: AppTypography.titleSmall.copyWith(
-            fontWeight: FontWeight.w700,
-            color: HCColor.of(context).textPrimary,
+        // Wraps at large text ("Feature Restrictions" ran past a phone's
+        // edge at 2.0x).
+        Expanded(
+          child: Text(
+            title,
+            style: AppTypography.titleSmall.copyWith(
+              fontWeight: FontWeight.w700,
+              color: HCColor.of(context).textPrimary,
+            ),
           ),
         ),
       ],

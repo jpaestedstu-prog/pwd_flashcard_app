@@ -44,11 +44,14 @@ class SurveyResultsScreen extends ConsumerWidget {
         elevation: 0,
         backgroundColor: Colors.transparent,
         actions: [
+          // An icon with its name: as a labelled button it ran 13 px past
+          // the app bar at 2x in Filipino (the page's own big button says
+          // the same thing in words).
           if (results.isEmpty)
-            TextButton.icon(
+            IconButton(
               onPressed: () => context.push('/sus-survey'),
               icon: const Icon(Icons.add_rounded),
-              label: Text(isFilipino ? 'Kumuha ng Sarbey' : 'Take Survey'),
+              tooltip: isFilipino ? 'Kumuha ng Sarbey' : 'Take Survey',
             ),
         ],
       ),
@@ -82,8 +85,10 @@ class SurveyResultsScreen extends ConsumerWidget {
   }
 
   Widget _buildEmpty(BuildContext context, bool isFilipino, double padding) {
+    // Scrolls when it must: at 2x in Filipino it was 26 px taller than a
+    // phone.
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: EdgeInsets.all(padding),
         child: Column(
           mainAxisSize: MainAxisSize.min,
