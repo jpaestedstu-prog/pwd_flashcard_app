@@ -268,6 +268,18 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
       List<CameraDescription> cameras;
       try {
         cameras = await widget.camerasLoader();
+      } on CameraException catch (e) {
+        // A browser asks for the camera before it will even list one: a
+        // refusal (by the person, or by Android for the browser itself) is
+        // "permission off", not "no camera" — found in Chrome on the
+        // tablet, which had never been given Android's camera permission.
+        if (_isPermissionRefusal(e.code)) {
+          if (mounted) {
+            setState(() => _camStatus = _CamStatus.permissionDenied);
+          }
+          return;
+        }
+        cameras = const [];
       } catch (_) {
         // Not only CameraException: on a device without a camera, Android's
         // CameraX fails to start at all and the plugin reports that as a
@@ -302,7 +314,7 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
         controller.dispose();
         if (!mounted) return;
         setState(
-          () => _camStatus = e.code.startsWith('CameraAccess')
+          () => _camStatus = _isPermissionRefusal(e.code)
               ? _CamStatus.permissionDenied
               : _CamStatus.failed,
         );
@@ -317,6 +329,13 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
       _camInitInFlight = false;
     }
   }
+
+  /// A camera refused, rather than missing: the plugin's code on Android
+  /// ("CameraAccessDenied" and its kin) and a browser's ("NotAllowedError").
+  static bool _isPermissionRefusal(String code) =>
+      code.startsWith('CameraAccess') ||
+      code == 'NotAllowedError' ||
+      code == 'PermissionDeniedError';
 
   // ─── Record + replay (optional self-review) ────────────
 

@@ -161,13 +161,31 @@ void main() {
       await _pumpSignIt(
         tester,
         camerasLoader: () async =>
-            throw CameraException('CameraAccessDenied', 'denied in test'),
+            throw CameraException('CameraError', 'broken in test'),
       );
 
       expect(find.textContaining('No camera found'), findsOneWidget);
       expect(find.text('I got it!'), findsOneWidget);
     },
   );
+
+  // A browser asks for the camera before it lists one, so a refusal comes
+  // from the enumerator: it said "No camera found" (Chrome on the tablet,
+  // which Android had never given its camera permission).
+  for (final code in const ['CameraAccessDenied', 'NotAllowedError']) {
+    testWidgets('a refused camera ($code) says the permission is off, not '
+        'that there is no camera', (tester) async {
+      await _pumpSignIt(
+        tester,
+        camerasLoader: () async => throw CameraException(code, 'refused'),
+      );
+
+      expect(find.textContaining('Camera permission off'), findsOneWidget);
+      expect(find.textContaining('No camera found'), findsNothing);
+      expect(find.text('I got it!'), findsOneWidget,
+          reason: 'still watch-and-practise');
+    });
+  }
 
   testWidgets(
     "CameraX's PlatformException on a device with no camera degrades to "
