@@ -8966,5 +8966,11 @@
   "sfSortBy": "Sort by {field}",
   "@sfSortBy": {"placeholders": {"field": {"type": "String"}}},
   "webVideoAnswerNeedsApp": "Video answers are recorded in the Android app. Here, you can skip this question.",
-  "webVideoAnswerSkipped": "Skipped: this question has no video answer."
+  "webVideoAnswerSkipped": "Skipped: this question has no video answer.",
+  "assessSkipped": "Skipped",
+  "assessAllSkippedTitle": "Questions skipped",
+  "assessAllSkippedBody": "Nothing was sent: video answers are recorded in the Android app, and these were skipped.",
+  "deckNoCustomCards": "No cards of your own to export yet. Make one with Create Card.",
+  "deckExportedCards": "{count, plural, =1{1 card exported} other{{count} cards exported}}",
+  "@deckExportedCards": {"placeholders": {"count": {"type": "int"}}}
 }

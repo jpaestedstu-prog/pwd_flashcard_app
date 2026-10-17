@@ -13251,4 +13251,29 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get webVideoAnswerSkipped =>
       'Skipped: this question has no video answer.';
+
+  @override
+  String get assessSkipped => 'Skipped';
+
+  @override
+  String get assessAllSkippedTitle => 'Questions skipped';
+
+  @override
+  String get assessAllSkippedBody =>
+      'Nothing was sent: video answers are recorded in the Android app, and these were skipped.';
+
+  @override
+  String get deckNoCustomCards =>
+      'No cards of your own to export yet. Make one with Create Card.';
+
+  @override
+  String deckExportedCards(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count cards exported',
+      one: '1 card exported',
+    );
+    return '$_temp0';
+  }
 }

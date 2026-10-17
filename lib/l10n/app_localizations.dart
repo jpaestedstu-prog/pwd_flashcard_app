@@ -22063,6 +22063,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Skipped: this question has no video answer.'**
   String get webVideoAnswerSkipped;
+
+  /// No description provided for @assessSkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped'**
+  String get assessSkipped;
+
+  /// No description provided for @assessAllSkippedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Questions skipped'**
+  String get assessAllSkippedTitle;
+
+  /// No description provided for @assessAllSkippedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing was sent: video answers are recorded in the Android app, and these were skipped.'**
+  String get assessAllSkippedBody;
+
+  /// No description provided for @deckNoCustomCards.
+  ///
+  /// In en, this message translates to:
+  /// **'No cards of your own to export yet. Make one with Create Card.'**
+  String get deckNoCustomCards;
+
+  /// No description provided for @deckExportedCards.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 card exported} other{{count} cards exported}}'**
+  String deckExportedCards(int count);
 }
 
 class _AppLocalizationsDelegate

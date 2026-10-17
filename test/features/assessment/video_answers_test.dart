@@ -223,6 +223,67 @@ void main() {
       expect(rows, hasLength(1));
       expect(rows.single, contains(',m1,'));
     });
+
+    // A video question skipped in a browser: no answer at all.
+    const skipped = QuestionAnswer(
+      questionId: 'v1',
+      givenAnswer: '',
+      isCorrect: false,
+      responseTimeMs: 1,
+    );
+
+    test('a skipped question is neither right, wrong nor sent', () {
+      expect(skipped.isSkipped, isTrue);
+      const video = QuestionAnswer(questionId: 'v1', givenAnswer: 'shared://x', isCorrect: false, responseTimeMs: 1, needsReview: true);
+      expect(video.isSkipped, isFalse);
+      const wrong = QuestionAnswer(questionId: 'm1', givenAnswer: 'Dog', isCorrect: false, responseTimeMs: 1);
+      expect(wrong.isSkipped, isFalse);
+      final allSkipped = _result(score: 0, total: 0, answers: const [skipped]);
+      expect(allSkipped.hasAutoScore, isFalse);
+      expect(allSkipped.awaitsReview, isFalse,
+          reason: 'nothing was sent for a person to watch');
+      final some = _result(answers: const [
+        skipped,
+        QuestionAnswer(questionId: 'v2', givenAnswer: 'shared://y', isCorrect: false, responseTimeMs: 1, needsReview: true),
+      ]);
+      expect(some.awaitsReview, isTrue);
+    });
+
+    test('the class report does not count a skipped question as missed', () {
+      final results = [
+        for (var i = 0; i < 4; i++)
+          AssessmentResult(
+            id: 'r$i',
+            assessmentId: 'a',
+            profileId: 'l$i',
+            type: AssessmentType.custom,
+            score: 1,
+            totalQuestions: 1,
+            answers: const [
+              QuestionAnswer(questionId: 'm1', givenAnswer: 'Cat', isCorrect: true, responseTimeMs: 1),
+              skipped,
+            ],
+            completedAt: DateTime(2026),
+            durationSeconds: 1,
+          ),
+      ];
+      // It was an item every learner "attempted" and nobody got right.
+      expect(ClassAnalysis.itemStats(results).map((s) => s.questionId), ['m1']);
+    });
+
+    test('the research export leaves a skipped question out', () {
+      final rows = ResearchExportRows.itemResponseRows(
+        studentId: 's',
+        groupLabel: 'g',
+        results: [
+          _result(answers: const [
+            QuestionAnswer(questionId: 'm1', givenAnswer: 'Cat', isCorrect: true, responseTimeMs: 1),
+            skipped,
+          ]),
+        ],
+      );
+      expect(rows, hasLength(1), reason: 'a 0 for v1 would read as wrong');
+    });
   });
 
   group('shared once the learner is back online', () {
@@ -490,6 +551,35 @@ void main() {
       expect(result.reviewAnswers.single.givenAnswer,
           'file:///d/assessment_media/take2.mp4');
       expect(find.text('1 answer to review'), findsOneWidget);
+      await settleAndUnmount(tester);
+    });
+
+    testWidgets('in a browser, a test of video questions only, all skipped, '
+        'says so — not "sent", not "0%"', (tester) async {
+      PlatformCaps.debugWeb = true;
+      addTearDown(() => PlatformCaps.debugWeb = null);
+      await pumpTest(tester, const [_video]);
+      await tester.tap(find.text('Skip'));
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.text('Finish Assessment'));
+      for (var i = 0; i < 10; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+
+      final result = _FakeResults.saved.single;
+      expect(result.awaitsReview, isFalse);
+      expect(find.text('Questions skipped'), findsOneWidget);
+      expect(
+        find.text('Nothing was sent: video answers are recorded in the '
+            'Android app, and these were skipped.'),
+        findsOneWidget,
+      );
+      expect(find.text('Sent to your teacher or parent'), findsNothing);
+      expect(find.text('0%'), findsNothing);
+      // The question's own row says Skipped, not a wrong blank answer.
+      await tester.scrollUntilVisible(find.text('Skipped'), 200,
+          scrollable: find.byType(Scrollable).first);
+      expect(find.text('Skipped'), findsOneWidget);
       await settleAndUnmount(tester);
     });
 

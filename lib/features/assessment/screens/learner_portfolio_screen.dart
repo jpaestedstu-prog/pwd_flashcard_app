@@ -466,9 +466,13 @@ class _ResultCard extends StatelessWidget {
                             color: hc.textSecondary,
                           ),
                         ),
+                      // No mark yet: sent for review, unless nothing was
+                      // sent (every video question skipped in a browser).
                       if (fraction == null)
                         Text(
-                          t.assessSentForReview,
+                          score.pending > 0
+                              ? t.assessSentForReview
+                              : t.assessSkipped,
                           style: AppTypography.bodySmall.copyWith(
                             color: HCColor.of(context).infoText,
                             fontWeight: FontWeight.w700,

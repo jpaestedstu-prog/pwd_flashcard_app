@@ -94,8 +94,9 @@ class ResearchExportRows {
       final assessmentType = r.type.name;
       for (final a in r.answers) {
         // Video answers are marked by a person, not scored: a 0 in the
-        // correctness column would read as "wrong" in the analysis.
-        if (a.needsReview) continue;
+        // correctness column would read as "wrong" in the analysis. Nor is a
+        // skipped one (browser version), which was never answered.
+        if (a.needsReview || a.isSkipped) continue;
         rows.add(
           '$studentId,'
           '$groupCell,'

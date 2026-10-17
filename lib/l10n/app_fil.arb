@@ -3660,5 +3660,10 @@
   "webRecordNeedsApp": "Gumagana ang pag-record ng sarili mong senyas sa Android app. Dito, panoorin ang senyas at sanayin ito.",
   "sfSortBy": "Ayusin ayon sa {field}",
   "webVideoAnswerNeedsApp": "Sa Android app nire-record ang mga sagot na video. Dito, maaari mong laktawan ang tanong na ito.",
-  "webVideoAnswerSkipped": "Nilaktawan: walang sagot na video ang tanong na ito."
+  "webVideoAnswerSkipped": "Nilaktawan: walang sagot na video ang tanong na ito.",
+  "assessSkipped": "Nilaktawan",
+  "assessAllSkippedTitle": "Nilaktawan ang mga tanong",
+  "assessAllSkippedBody": "Walang naipadala: sa Android app nire-record ang mga sagot na video, at nilaktawan ang mga ito.",
+  "deckNoCustomCards": "Wala ka pang sariling card na mai-export. Gumawa muna sa Gumawa ng Card.",
+  "deckExportedCards": "{count, plural, =1{1 card ang na-export} other{{count} card ang na-export}}"
 }

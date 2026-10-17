@@ -354,6 +354,12 @@ class QuestionAnswer {
     this.needsReview = false,
   });
 
+  /// A question passed over with no answer: the browser version's Skip on
+  /// a video question it cannot record. Neither right nor wrong, and nothing
+  /// for a person to watch — so no count includes it, and nothing says it
+  /// was sent.
+  bool get isSkipped => !needsReview && givenAnswer.trim().isEmpty;
+
   QuestionAnswer withGivenAnswer(String value) => QuestionAnswer(
     questionId: questionId,
     givenAnswer: value,
@@ -431,6 +437,11 @@ class AssessmentResult {
   /// of video answers has none until a person marks it, and must not be
   /// shown as 0%.
   bool get hasAutoScore => totalQuestions > 0;
+
+  /// Whether anything in this sitting waits for a person. False for a test
+  /// whose video questions were all skipped in a browser: with no score
+  /// either, it was neither marked nor sent.
+  bool get awaitsReview => reviewAnswers.isNotEmpty;
 
   /// The score once a person's marks on the video answers are counted in:
   /// the automatic part plus every video answer [feedback] has marked.

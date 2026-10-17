@@ -869,11 +869,17 @@ class _HistoryTile extends StatelessWidget {
             Column(
               children: [
                 if (!result.hasAutoScore)
+                  // Every video question skipped (browser): nothing sent.
                   Semantics(
-                    label: (AppLocalizations.of(context) ?? AppLocalizationsEn())
-                        .assessSentForReview,
+                    label: result.awaitsReview
+                        ? (AppLocalizations.of(context) ?? AppLocalizationsEn())
+                            .assessSentForReview
+                        : (AppLocalizations.of(context) ?? AppLocalizationsEn())
+                            .assessSkipped,
                     child: Icon(
-                      Icons.videocam_rounded,
+                      result.awaitsReview
+                          ? Icons.videocam_rounded
+                          : Icons.skip_next_rounded,
                       color: HCColor.of(context).graphic(AppColors.info),
                     ),
                   )

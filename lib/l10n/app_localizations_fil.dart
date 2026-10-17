@@ -13158,4 +13158,29 @@ class AppLocalizationsFil extends AppLocalizations {
   @override
   String get webVideoAnswerSkipped =>
       'Nilaktawan: walang sagot na video ang tanong na ito.';
+
+  @override
+  String get assessSkipped => 'Nilaktawan';
+
+  @override
+  String get assessAllSkippedTitle => 'Nilaktawan ang mga tanong';
+
+  @override
+  String get assessAllSkippedBody =>
+      'Walang naipadala: sa Android app nire-record ang mga sagot na video, at nilaktawan ang mga ito.';
+
+  @override
+  String get deckNoCustomCards =>
+      'Wala ka pang sariling card na mai-export. Gumawa muna sa Gumawa ng Card.';
+
+  @override
+  String deckExportedCards(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count card ang na-export',
+      one: '1 card ang na-export',
+    );
+    return '$_temp0';
+  }
 }

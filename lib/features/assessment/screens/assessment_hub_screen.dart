@@ -1691,10 +1691,15 @@ class _RecentResultTile extends StatelessWidget {
                         ),
                       )
                     // Answered only on video: waiting for a person, not 0%.
+                    // Every video question skipped (browser): nothing sent.
                     : Semantics(
-                        label: _tr(context).assessSentForReview,
+                        label: result.awaitsReview
+                            ? _tr(context).assessSentForReview
+                            : _tr(context).assessSkipped,
                         child: Icon(
-                          Icons.videocam_rounded,
+                          result.awaitsReview
+                              ? Icons.videocam_rounded
+                              : Icons.skip_next_rounded,
                           color: HCColor.of(context).graphic(AppColors.info),
                           size: 20,
                         ),

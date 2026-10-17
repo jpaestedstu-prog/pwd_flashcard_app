@@ -149,9 +149,10 @@ class ClassAnalysis {
         score: result.percentage,
         // A video answer waiting for a person has no right or wrong yet;
         // counting it as wrong would make every such item look impossible.
+        // A skipped one (browser version) was never answered at all.
         answers: {
           for (final a in result.answers)
-            if (!a.needsReview) a.questionId: a,
+            if (!a.needsReview && !a.isSkipped) a.questionId: a,
         },
       ));
     }

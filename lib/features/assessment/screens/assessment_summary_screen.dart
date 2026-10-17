@@ -31,6 +31,9 @@ class AssessmentSummaryScreen extends ConsumerWidget {
     // "0% — Keep Practicing" would tell a child they got it all wrong.
     final scored = result.hasAutoScore;
     final toReview = result.reviewAnswers.length;
+    // No score and nothing sent: every question was a video question, and
+    // each was skipped in a browser. It must not say "Sent to your teacher".
+    final allSkipped = !scored && !result.awaitsReview;
 
     return Scaffold(
       body: SafeArea(
@@ -42,7 +45,11 @@ class AssessmentSummaryScreen extends ConsumerWidget {
 
               // ─── Grade emoji + title ───────────────────
               Text(
-                scored ? result.gradeEmoji : '🎥',
+                scored
+                    ? result.gradeEmoji
+                    : allSkipped
+                    ? '⏭️'
+                    : '🎥',
                 style: const TextStyle(fontSize: 64),
               )
                   .animate()
@@ -59,6 +66,8 @@ class AssessmentSummaryScreen extends ConsumerWidget {
                 child: Text(
                   scored
                       ? result.gradeOf(AppLocalizations.of(context))
+                      : allSkipped
+                      ? _t(context).assessAllSkippedTitle
                       : _t(context).assessSentForReview,
                   textAlign: TextAlign.center,
                   style: AppTypography.displaySmall.copyWith(
@@ -88,7 +97,9 @@ class AssessmentSummaryScreen extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Text(
-                    _t(context).assessAllForReview,
+                    allSkipped
+                        ? _t(context).assessAllSkippedBody
+                        : _t(context).assessAllForReview,
                     textAlign: TextAlign.center,
                     style: AppTypography.bodyLarge.copyWith(
                       color: hc.textPrimary,
@@ -458,6 +469,7 @@ class _QuestionReviewTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
     if (answer.needsReview) return _sentForReview(context, hc);
+    if (answer.isSkipped) return _skipped(context, hc);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
@@ -513,6 +525,52 @@ class _QuestionReviewTile extends StatelessWidget {
               color: answer.isCorrect ? HCColor.of(context).graphic(AppColors.success) : HCColor.of(context).graphic(AppColors.error),
               size: 20,
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// A question skipped in a browser: neither right nor wrong (it was a
+  /// red "wrong" row with a blank answer).
+  Widget _skipped(BuildContext context, HCColor hc) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: hc.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: hc.border),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: hc.textSecondary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Center(
+                child: Text(
+                  '$index',
+                  style: AppTypography.labelSmall.copyWith(
+                    color: hc.textSecondary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                (AppLocalizations.of(context) ?? AppLocalizationsEn())
+                    .assessSkipped,
+                style: AppTypography.bodySmall.copyWith(color: hc.textPrimary),
+              ),
+            ),
+            Icon(Icons.skip_next_rounded, color: hc.textSecondary, size: 20),
           ],
         ),
       ),
