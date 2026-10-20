@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../core/accessibility/assigned_accessibility.dart';
 import '../core/services/cloud_sync_exceptions.dart';
 import '../core/services/educator_policy_cascade.dart';
 import '../core/services/firebase_service.dart';
@@ -152,13 +153,33 @@ class ClassroomManagementNotifier
     await HiveService.cacheClassroom(updated);
   }
 
+  /// Set the accessibility of [profileIds] — students already in
+  /// [classroom] — to [assigned]. Written on their membership rows, which
+  /// each student's own device reads and applies (the rules let a teacher
+  /// update their students' rows, never their profiles).
+  Future<void> setStudentsAccessibility(
+    Classroom classroom,
+    List<String> profileIds,
+    AssignedAccessibility assigned,
+  ) async {
+    if (!FirebaseService.isConfigured) {
+      throw Exception(
+          'Cloud sync not connected. Restart the app or check Firebase setup.');
+    }
+    await const FirestoreRepository().setMembersAccessibility(
+      family: false,
+      groupId: classroom.id,
+      profileIds: profileIds,
+      fields: assigned.toFields(),
+    );
+  }
+
   /// Change the accessibility audience for [classroom].
   ///
-  /// Affects **future** joiners only — students already enrolled keep the
-  /// accessibility profile they were assigned when they joined (changing it
-  /// would mean writing to other learners' profile docs, which the security
-  /// rules don't allow). Sparse-merges just the changed fields so any
-  /// forward-compat fields on the doc survive.
+  /// The class document only: it is what **future** joiners get. Students
+  /// already enrolled change only when the teacher also chooses to change
+  /// theirs ([setStudentsAccessibility]) — the class card asks. Sparse-merges
+  /// just the changed fields so any forward-compat fields on the doc survive.
   Future<void> setClassAccessibility(
       Classroom classroom, DisabilityType accessibility) async {
     if (!FirebaseService.isConfigured) {

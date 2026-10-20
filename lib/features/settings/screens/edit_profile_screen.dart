@@ -10,6 +10,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../data/models/enums.dart';
+import '../../../data/models/models.dart';
 import '../../../data/models/shop_data.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../widgets/rich_empty_states.dart';
@@ -18,6 +19,7 @@ import '../../../widgets/app_snack_bar.dart';
 import '../../gamepad/providers/gamepad_settings_provider.dart';
 import '../../gaze_control/providers/gaze_settings_provider.dart';
 import '../../onboarding/widgets/learner_support_picker.dart';
+import '../models/settings_presentation.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../core/utils/keyboard.dart';
 import '../../../navigation/nav_extensions.dart';
@@ -177,14 +179,23 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       }
     }
 
-    final disabilityChanged = _selectedDisability != profile.disabilityType;
+    // Only a guest or a Player picks their own category here. A Student's or
+    // a Child's is their Teacher's or Parent's to set (shown, not offered),
+    // so it is saved as it stands; an educator has none of their own.
+    final show = SettingsPresentation.of(profile);
+    final disability = show.selfClassifiesDisability
+        ? _selectedDisability
+        : show.accessibilityManagedByEducator
+        ? profile.disabilityType
+        : DisabilityType.none;
+    final disabilityChanged = disability != profile.disabilityType;
 
     // Update non-PIN fields first.
     final sectionText = _sectionController.text.trim();
     var updated = profile.copyWith(
       name: name,
       avatarIndex: _selectedAvatar,
-      disabilityType: _selectedDisability,
+      disabilityType: disability,
       gradeLevel: () => _selectedGradeLevel,
       section: () => sectionText.isNotEmpty ? sectionText : null,
       birthDate: () => _selectedBirthDate,
@@ -192,14 +203,17 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       interests: _selectedInterests,
       // Re-scoped to whatever category is being saved, so switching a learner
       // from (say) Hearing to Motor can never leave a sign system behind on a
-      // profile that no longer offers one. Educators carry none: the picker is
-      // not shown to them, and writing defaults they never saw would put a
-      // sign system on a teacher's profile.
-      supportOptions: profile.role.isLearner
+      // profile that no longer offers one. A Student's or a Child's stay as
+      // their educator set them. Educators carry none: the picker is not
+      // shown to them, and writing defaults they never saw would put a sign
+      // system on a teacher's profile.
+      supportOptions: show.selfClassifiesDisability
           ? LearnerSupportCatalog.normalize(
               _selectedDisability,
               _selectedSupports,
             )
+          : show.accessibilityManagedByEducator
+          ? profile.supportOptions
           : const {},
     );
 
@@ -237,7 +251,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     // picking "Large print" and then being asked whether you meant it is a
     // strange way to treat an accessibility choice.
     final newSupports = updated.supports;
-    if (profile.role.isLearner &&
+    if (show.selfClassifiesDisability &&
         !_supportsEqual(newSupports, profile.supports)) {
       ref
           .read(settingsProvider.notifier)
@@ -265,13 +279,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
     // If disability type changed, offer to re-apply presets
     if (disabilityChanged &&
-        _selectedDisability != DisabilityType.none &&
+        disability != DisabilityType.none &&
         mounted) {
       final apply = await _showPresetDialog();
       if (apply == true) {
         final current = ref.read(settingsProvider);
         final preset =
-            AccessibilityPresets.presetFor(_selectedDisability, current: current);
+            AccessibilityPresets.presetFor(disability, current: current);
         ref.read(settingsProvider.notifier).update(preset);
       }
     }
@@ -932,7 +946,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             const SizedBox(height: 20),
           ],
 
-          // ─── Disability Type ──────────────
+          // ─── Disability Type (a guest's or a Player's own) ───
+          // A Teacher or Parent never self-classifies a disability: setup
+          // never asks them, and a category here only ever *hid* content
+          // (signs, audio games) from the person who has to support every
+          // learner. Their own display needs live in Settings.
+          if (SettingsPresentation.of(profile).selfClassifiesDisability) ...[
           Text(_t(context).epAccessProfile,
               style: AppTypography.titleSmall
                   .copyWith(fontWeight: FontWeight.w700)),
@@ -965,9 +984,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               )),
 
           const SizedBox(height: 20),
+          ],
 
-          // ─── Learner Support (learners only) ───
-          if (isLearner) ...[
+          // ─── Learner Support (a guest's or a Player's own) ───
+          if (SettingsPresentation.of(profile).selfClassifiesDisability) ...[
             LearnerSupportPicker(
               disabilityType: _selectedDisability,
               selected: _selectedSupports,
@@ -977,6 +997,16 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               },
             ),
             const SizedBox(height: 4),
+          ],
+
+          // ─── A Student's or a Child's needs, set by their educator ───
+          // Shown so the learner (and whoever helps them) can see them, and
+          // where they are changed: their Teacher's Manage Classes or their
+          // Parent's Home Groups.
+          if (SettingsPresentation.of(profile)
+              .accessibilityManagedByEducator) ...[
+            _ManagedAccessibilitySummary(profile: profile),
+            const SizedBox(height: 20),
           ],
 
           // ─── PIN Protection ───────────────
@@ -1101,6 +1131,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   color: hc.textSecondary,
                 ),
                 const SizedBox(width: 12),
+                // The note goes under the role, not beside it: sharing the
+                // row squeezed the role name until it broke — "Stude / nt" at
+                // 1.4x, then "Manlala / ro" (a Filipino Player) at 2x.
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1111,17 +1144,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       Text(profile.role.labelOf(AppLocalizations.of(context)),
                           style: AppTypography.bodyMedium
                               .copyWith(fontWeight: FontWeight.w600)),
+                      Text(_t(context).epCannotChange,
+                          style: AppTypography.labelSmall
+                              .copyWith(color: hc.textSecondary)),
                     ],
                   ),
-                ),
-                // Flexible: at its own width the note squeezed the role
-                // name until "Student" broke ("Stude / nt" at 1.4x).
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(_t(context).epCannotChange,
-                      textAlign: TextAlign.end,
-                      style: AppTypography.labelSmall
-                          .copyWith(color: hc.textSecondary)),
                 ),
               ],
             ),
@@ -1192,6 +1219,81 @@ class _DisabilityTile extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// A Student's or a Child's accessibility needs, read-only: their category,
+/// their supports, and who sets them — their Teacher in Manage Classes, or
+/// their Parent in Home Groups. One label for the whole card, so a screen
+/// reader reads it in one go.
+class _ManagedAccessibilitySummary extends StatelessWidget {
+  const _ManagedAccessibilitySummary({required this.profile});
+
+  final UserProfile profile;
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    final l10n = AppLocalizations.of(context);
+    final type = profile.disabilityType;
+    final managedBy = _t(context).epAccessManaged(
+      profile.role == UserRole.child ? 'parent' : 'teacher',
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          _t(context).epAccessProfile,
+          style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          managedBy,
+          style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: type.color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: type.color.withValues(alpha: 0.5)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  ExcludeSemantics(
+                    child: Text(
+                      type.emoji,
+                      style: const TextStyle(fontSize: 24),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FitText(
+                      type.labelOf(l10n),
+                      maxLines: 4,
+                      style: AppTypography.bodyMedium.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              // On their own full-width line: squeezed beside a label the
+              // chips broke mid-word at a large text size.
+              if (profile.supports.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                LearnerSupportChips(options: profile.supports),
+              ],
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

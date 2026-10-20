@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/fit_text.dart';
-import '../../../providers/app_providers.dart' show settingsProvider;
+import '../../../data/models/models.dart' show AppSettings;
+import '../../../providers/app_providers.dart'
+    show appSettingsForProfileProvider, settingsProvider;
 import '../logic/gamepad_speech.dart';
 import '../models/gamepad_settings.dart';
 import '../providers/gamepad_settings_provider.dart';
@@ -24,15 +26,46 @@ import '../../../core/utils/platform_caps.dart';
 /// blind learner needs — but a teacher setting the tablet up for that learner
 /// needs to *read* it, and asking them to press buttons on a paired controller
 /// to discover the mapping would be a poor substitute for a page they can scan.
+///
+/// With a [profileId] it edits **that learner's** settings instead of the
+/// signed-in profile's — a Teacher or Parent setting a learner up from the
+/// learner's card, as Gaze Control does. It used to edit only the signed-in
+/// profile's, so a teacher "tuning the controller for a learner" changed their
+/// own settings, which never reached the learner.
 class GamepadSettingsScreen extends ConsumerWidget {
-  const GamepadSettingsScreen({super.key});
+  const GamepadSettingsScreen({super.key, this.profileId, this.learnerName});
+
+  /// The learner being set up by their teacher or parent; null edits the
+  /// signed-in profile.
+  final String? profileId;
+
+  /// That learner's name, for the heading.
+  final String? learnerName;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final settings = ref.watch(gamepadSettingsProvider);
-    final notifier = ref.read(gamepadSettingsProvider.notifier);
+    final id = profileId;
+    final GamepadSettings settings;
+    final GamepadSettingsEditing notifier;
+    final AppSettings appSettings;
+    final void Function(double) setSpeed;
+    if (id == null) {
+      settings = ref.watch(gamepadSettingsProvider);
+      notifier = ref.read(gamepadSettingsProvider.notifier);
+      appSettings = ref.watch(settingsProvider);
+      setSpeed = ref.read(settingsProvider.notifier).updateTtsSpeed;
+    } else {
+      settings = ref.watch(gamepadSettingsForProfileProvider(id));
+      notifier = ref.read(gamepadSettingsForProfileProvider(id).notifier);
+      appSettings = ref.watch(appSettingsForProfileProvider(id));
+      setSpeed = (v) => ref
+          .read(appSettingsForProfileProvider(id).notifier)
+          .update(
+            ref.read(appSettingsForProfileProvider(id)).copyWith(ttsSpeed: v),
+          );
+    }
+    final name = learnerName ?? '';
     final status = ref.watch(gamepadStatusProvider);
-    final appSettings = ref.watch(settingsProvider);
 
     // No controller bridge here (a browser): only voice navigation can open
     // this screen, and it should say why nothing on it would work.
@@ -53,30 +86,46 @@ class GamepadSettingsScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
         children: [
+          if (id != null) ...[
+            _LearnerBanner(name: name),
+            const SizedBox(height: 12),
+          ],
           _StatusCard(connected: status.connected, name: status.name),
           const SizedBox(height: 12),
-          const GazeUsesControllerNotice(),
-          Semantics(
-            button: true,
-            label: _t(context).gpPractise,
-            child: FilledButton.icon(
-              onPressed: () => context.push('/gamepad-practice'),
-              icon: const Icon(Icons.school_rounded),
-              label: Text(_t(context).gpPractiseButtons),
-              style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(52),
-                
+          GazeUsesControllerNotice(profileId: id),
+          // Practising drives the pad with the settings of whoever is at the
+          // tablet — the Teacher or Parent here, whose own profile has no
+          // controller input. So a grown-up setting a learner up is told how
+          // the learner practises instead of being sent to a dead screen.
+          if (id == null) ...[
+            Semantics(
+              button: true,
+              label: _t(context).gpPractise,
+              child: FilledButton.icon(
+                onPressed: () => context.push('/gamepad-practice'),
+                icon: const Icon(Icons.school_rounded),
+                label: Text(_t(context).gpPractiseButtons),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(52),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            _t(context).gpPractiseHelp,
-            style: TextStyle(
-              fontSize: 12.5,
-              color: Theme.of(context).hintColor,
+            const SizedBox(height: 6),
+            Text(
+              _t(context).gpPractiseHelp,
+              style: TextStyle(
+                fontSize: 12.5,
+                color: Theme.of(context).hintColor,
+              ),
             ),
-          ),
+          ] else
+            Text(
+              _t(context).gpPractiseAsLearner(name),
+              style: TextStyle(
+                fontSize: 12.5,
+                color: Theme.of(context).hintColor,
+              ),
+            ),
           const SizedBox(height: 16),
 
           SwitchListTile.adaptive(
@@ -120,8 +169,7 @@ class GamepadSettingsScreen extends ConsumerWidget {
             // meant three presses in a row could all announce "Slow", which
             // to a learner driving by ear reads as a dead control.
             divisions: 4,
-            onChanged: (v) =>
-                ref.read(settingsProvider.notifier).updateTtsSpeed(v),
+            onChanged: setSpeed,
             help: _t(context).gpSpeedHelp,
           ),
           SwitchListTile.adaptive(
@@ -264,6 +312,56 @@ String _speedLabel(AppLocalizations t, double v) {
   if (v <= 0.7) return t.vgNormal;
   if (v <= 0.9) return t.vgFast;
   return t.gpVeryFast;
+}
+
+/// "Game Controller for Ana" — says whose settings a Teacher or Parent is
+/// changing, as Gaze Control's learner page does.
+class _LearnerBanner extends StatelessWidget {
+  const _LearnerBanner({required this.name});
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = _t(context);
+    final hc = HCColor.of(context);
+    return Semantics(
+      container: true,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: hc.primary.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: hc.primary.withValues(alpha: 0.35)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.person_rounded, color: hc.primary),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    t.gpForLearner(name),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    t.gpForLearnerNote(name),
+                    style: TextStyle(color: hc.textSecondary, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _StatusCard extends StatelessWidget {

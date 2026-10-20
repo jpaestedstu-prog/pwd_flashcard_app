@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/accessibility/assigned_accessibility.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/home_group.dart';
 import '../../../providers/app_providers.dart';
@@ -117,6 +118,7 @@ class _HomeGroupDelegate extends GroupManagementDelegate {
                   profileId: m.profileId,
                   displayName: m.displayName,
                   joinedAt: m.joinedAt,
+                  assigned: m.assigned,
                 ),
               )
               .toList(),
@@ -150,6 +152,16 @@ class _HomeGroupDelegate extends GroupManagementDelegate {
     ManagedGroup group,
     DisabilityType accessibility,
   ) => _notifier(ref).setGroupAccessibility(_group(group), accessibility);
+
+  @override
+  Future<void> setMembersAccessibility(
+    WidgetRef ref,
+    ManagedGroup group,
+    List<String> profileIds,
+    AssignedAccessibility assigned,
+  ) => _notifier(
+    ref,
+  ).setChildrenAccessibility(_group(group), profileIds, assigned);
 
   @override
   Future<void> setAllowRetakes(

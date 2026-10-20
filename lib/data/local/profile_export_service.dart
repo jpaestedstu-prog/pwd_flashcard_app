@@ -226,7 +226,7 @@ class ProfileExportService {
                     when i >= 0 && i < FlashcardCategory.values.length)
                   FlashcardCategory.values[i],
             ],
-    );
+    ).normalizedForRole();
   }
 
   static Map<String, dynamic> _progressToMap(LearningProgress p) => {

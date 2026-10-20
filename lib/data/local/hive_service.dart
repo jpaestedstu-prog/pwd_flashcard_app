@@ -264,7 +264,7 @@ class HiveService {
       username: data['username'] as String?,
       supportOptions:
           LearnerSupportCatalog.decode(data['supportOptions'] as List?),
-    );
+    ).normalizedForRole();
   }
 
   static String? getActiveProfileId() {
@@ -301,14 +301,20 @@ class HiveService {
     await removeMembershipsLocal(profileId);
     await removeCachedDirectoryEntry(profileId);
     await removeMessagingCachesLocal(profileId);
-    // The learner's Gaze Control settings and usage measurements. A deleted
-    // gaze learner's settings used to stay behind, and the profile picker —
-    // which runs on the first profile that has gaze switched on — kept
-    // turning the camera on for a learner who was no longer there.
+    // Everything saved under the profile's id in the settings box: its app
+    // settings, Gaze Control settings and usage measurements, controller
+    // settings, and any other per-profile setting. A deleted gaze learner's
+    // settings used to stay behind, and the profile picker — which runs on
+    // the first profile that has gaze switched on — kept turning the camera
+    // on for a learner who was no longer there; the controller's and the
+    // app settings were still left after that was fixed.
     if (Hive.isBoxOpen(_settingsBox)) {
-      for (final key in const ['gazeSettings', 'gazeMetrics']) {
-        await _settBox.delete(_settKey(key, profileId));
-      }
+      final prefix = _settKey('', profileId);
+      final keys = [
+        for (final key in _settBox.keys)
+          if (key is String && key.startsWith(prefix)) key,
+      ];
+      await _settBox.deleteAll(keys);
     }
   }
 
@@ -491,7 +497,8 @@ class HiveService {
   }
 
   /// The first profile-scoped value of [key] for which [isEnabled] is true, or
-  /// null if no profile has one.
+  /// null if no profile has one. [profile], when given, must also accept the
+  /// id of the profile the value belongs to.
   ///
   /// This exists for the bootstrap case: before anyone has signed in there is
   /// no active profile, so a per-profile setting has nothing to read. Gaze
@@ -500,13 +507,19 @@ class HiveService {
   /// known.
   static Map? firstProfileSettingWhere(
     String key,
-    bool Function(Map value) isEnabled,
-  ) {
+    bool Function(Map value) isEnabled, {
+    bool Function(String profileId)? profile,
+  }) {
     final suffix = '::$key';
     for (final boxKey in _settBox.keys) {
       if (boxKey is! String || !boxKey.endsWith(suffix)) continue;
       final value = _settBox.get(boxKey);
-      if (value is Map && isEnabled(value)) return value;
+      if (value is! Map || !isEnabled(value)) continue;
+      if (profile != null &&
+          !profile(boxKey.substring(0, boxKey.length - suffix.length))) {
+        continue;
+      }
+      return value;
     }
     return null;
   }

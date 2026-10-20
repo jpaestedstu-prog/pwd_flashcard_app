@@ -10,9 +10,9 @@ import '../../../l10n/app_localizations_en.dart';
 /// category for an existing class or home group.
 ///
 /// Returns the newly-chosen [DisabilityType], or `null` if the educator
-/// cancelled or kept the same value. Affects future joiners only — already
-/// enrolled learners keep the profile they were assigned (called out in the
-/// dialog copy).
+/// cancelled or kept the same value. The group's own category is what future
+/// joiners get; the group card then asks whether learners already in it
+/// change too (called out in the dialog copy).
 Future<DisabilityType?> showAccessibilityCategoryDialog(
   BuildContext context, {
   required DisabilityType current,
@@ -121,11 +121,16 @@ class AccessibilityCategoryPicker extends StatelessWidget {
   /// When false the chips render disabled (e.g. while a save is in flight).
   final bool enabled;
 
+  /// The line under the heading. Defaults to what a class's or home group's
+  /// joiners get; one learner's own needs say something else.
+  final String? caption;
+
   const AccessibilityCategoryPicker({
     super.key,
     required this.selected,
     required this.onChanged,
     this.enabled = true,
+    this.caption,
   });
 
   @override
@@ -147,7 +152,7 @@ class AccessibilityCategoryPicker extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          _tr(context).acpJoinersGet,
+          caption ?? _tr(context).acpJoinersGet,
           style: AppTypography.bodySmall.copyWith(
             color: Colors.grey.shade700,
           ),

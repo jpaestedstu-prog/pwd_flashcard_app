@@ -218,6 +218,22 @@ class NotificationService {
     await _plugin.cancel(_dailyReminderId);
   }
 
+  /// Whether the daily reminder is actually scheduled on this device, or null
+  /// where the plugin cannot say (a browser, a test, a desktop build).
+  ///
+  /// Settings asks this rather than trusting the saved switch alone: the
+  /// switch's default is on, but only turning it on ever scheduled a
+  /// reminder, so a new profile read "Daily Reminder: 9:00 AM" while none
+  /// would ever arrive.
+  static Future<bool?> isDailyReminderScheduled() async {
+    try {
+      final pending = await _plugin.pendingNotificationRequests();
+      return pending.any((p) => p.id == _dailyReminderId);
+    } catch (_) {
+      return null;
+    }
+  }
+
   // ────────────────────────────────────────
   // Vocabulary Review Reminder
   // ────────────────────────────────────────

@@ -173,6 +173,39 @@ final settingsProvider = NotifierProvider<SettingsNotifier, AppSettings>(
   SettingsNotifier.new,
 );
 
+/// One profile's [AppSettings] by id, for a Teacher or Parent changing a
+/// learner's settings from their own profile — the learner's Game Controller
+/// page reads and writes the learner's speech speed through it. The same
+/// storage as [settingsProvider]; when that profile is the active one, the
+/// live copy is refreshed too.
+class ProfileAppSettingsNotifier extends FamilyNotifier<AppSettings, String> {
+  @override
+  AppSettings build(String profileId) {
+    try {
+      return HiveService.getSettings(profileId: profileId);
+    } catch (_) {
+      return const AppSettings(); // Hive not ready (widget tests).
+    }
+  }
+
+  void update(AppSettings settings) {
+    state = settings;
+    try {
+      HiveService.saveSettings(settings, profileId: arg).ignore();
+    } catch (_) {
+      // Box not open (tests) — state still updates in memory.
+    }
+    try {
+      if (ref.read(profileProvider)?.id == arg) ref.invalidate(settingsProvider);
+    } catch (_) {}
+  }
+}
+
+final appSettingsForProfileProvider = NotifierProvider.family<
+    ProfileAppSettingsNotifier, AppSettings, String>(
+  ProfileAppSettingsNotifier.new,
+);
+
 // ─── Active Profile Provider ───────────────────────────
 
 class ProfileNotifier extends Notifier<UserProfile?> {
@@ -186,13 +219,19 @@ class ProfileNotifier extends Notifier<UserProfile?> {
     // rename visible on the learner's device without a relaunch.
     ref.listen(profileRemoteChangesProvider, (_, next) {
       final updatedId = next.value;
-      if (updatedId == null) return;
-      final current = state;
-      if (current == null || current.id != updatedId) return;
-      final fresh = HiveService.getProfileById(updatedId);
-      if (fresh != null) state = fresh;
+      if (updatedId != null) refreshFromStore(updatedId);
     });
     return _loadActiveProfile();
+  }
+
+  /// Re-reads the active profile from storage when it is [profileId] — after
+  /// something other than this notifier saved it (an educator's rename, the
+  /// accessibility their Teacher or Parent set).
+  void refreshFromStore(String profileId) {
+    final current = state;
+    if (current == null || current.id != profileId) return;
+    final fresh = HiveService.getProfileById(profileId);
+    if (fresh != null) state = fresh;
   }
 
   UserProfile? _loadActiveProfile() {

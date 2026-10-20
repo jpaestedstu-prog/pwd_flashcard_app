@@ -86,6 +86,7 @@ import 'package:pwdpwdpwd/features/settings/screens/profile_import_export_screen
 import 'package:pwdpwdpwd/features/gaze_control/screens/gaze_settings_screen.dart';
 import 'package:pwdpwdpwd/features/gamepad/screens/gamepad_settings_screen.dart';
 import 'package:pwdpwdpwd/features/settings/screens/edit_profile_screen.dart';
+import 'package:pwdpwdpwd/core/accessibility/assigned_accessibility.dart';
 
 /// Every screen of the study, built in Filipino, must show no English.
 ///
@@ -891,6 +892,13 @@ class _Delegate extends GroupManagementDelegate {
     WidgetRef r,
     ManagedGroup g,
     DisabilityType a,
+  ) async {}
+  @override
+  Future<void> setMembersAccessibility(
+    WidgetRef r,
+    ManagedGroup g,
+    List<String> ids,
+    AssignedAccessibility a,
   ) async {}
   @override
   Future<void> setAllowRetakes(WidgetRef r, ManagedGroup g, bool a) async {}

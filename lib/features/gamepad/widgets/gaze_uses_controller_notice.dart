@@ -16,14 +16,26 @@ import '../../gaze_control/providers/gaze_settings_provider.dart';
 /// could not tell why. [practising]: the practice screen's wording — there a
 /// press picks what is lit instead of being practised.
 class GazeUsesControllerNotice extends ConsumerWidget {
-  const GazeUsesControllerNotice({super.key, this.practising = false});
+  const GazeUsesControllerNotice({
+    super.key,
+    this.practising = false,
+    this.profileId,
+  });
 
   final bool practising;
 
+  /// The learner a Teacher or Parent is setting up; null is the person at the
+  /// tablet.
+  final String? profileId;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final id = profileId;
     final inUse = ref.watch(
-      gazeSettingsProvider.select((s) => s.enabled && s.switchSelects),
+      (id == null
+              ? gazeSettingsProvider
+              : gazeSettingsForProfileProvider(id))
+          .select((s) => s.enabled && s.switchSelects),
     );
     if (!inUse) return const SizedBox.shrink();
     final t = AppLocalizations.of(context) ?? AppLocalizationsEn();

@@ -37,6 +37,7 @@ import '../features/games/screens/yes_or_no_screen.dart';
 import '../features/games/screens/odd_one_out_screen.dart';
 import '../features/games/screens/first_letter_screen.dart';
 import '../features/progress/screens/progress_screen.dart';
+import '../features/settings/models/settings_presentation.dart';
 import '../features/settings/screens/settings_screen.dart';
 import '../features/settings/screens/dashboard_screen.dart';
 import '../features/settings/screens/multi_student_dashboard_screen.dart';
@@ -211,6 +212,38 @@ const _educatorOnlyRoutes = [
 /// separately through [_playerBlockedRoutes] since they have no entry point
 /// and no persisted star economy.
 const _studentOnlyRoutes = ['/shop', '/sticker-album'];
+
+/// Whether [uri] opens a hands-free input screen for **the person at the
+/// tablet themselves** rather than for a learner they look after.
+///
+/// A Teacher's or Parent's own profile runs neither Gaze Control nor the game
+/// controller (see `SettingsPresentation.handsFreeInput`), so these are turned
+/// away for them — a voice command, a stale link or the back stack must not
+/// open a page whose switches do nothing. Setting a *learner* up stays open:
+/// the learner's card opens the same screens with `?profile=<id>`, and
+/// "Try it now" there hands the practice screen the learner's settings.
+/// The learner accessibility wizard is here too: educators never
+/// self-classify a disability.
+bool isOwnHandsFreeInputRoute(Uri uri, {Object? extra}) {
+  final forLearner = (uri.queryParameters['profile'] ?? '').isNotEmpty;
+  return switch (uri.path) {
+    '/gaze-settings' || '/gaze-calibrate' || '/gamepad-settings' =>
+      !forLearner,
+    '/gaze-control' => extra is! GazeSettings,
+    '/gamepad-practice' || '/accessibility-setup' => true,
+    _ => false,
+  };
+}
+
+/// Whether [uri] is the accessibility setup wizard and [profile] is a
+/// Student or a Child — whose accessibility needs their Teacher or Parent
+/// manages in Manage Classes / Home Groups
+/// (`SettingsPresentation.accessibilityManagedByEducator`). Their Settings no
+/// longer offer the wizard, so the redirect turns them away from it too. A
+/// guest and a Player still set themselves up.
+bool isManagedLearnerSetupRoute(UserProfile profile, Uri uri) =>
+    uri.path == '/accessibility-setup' &&
+    SettingsPresentation.of(profile).accessibilityManagedByEducator;
 
 /// Routes a locked learner may still reach.
 ///
@@ -389,6 +422,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         return '/home';
       }
 
+      // ── Accessibility setup ──────────────────────────────
+      // A Student's or a Child's accessibility needs are their Teacher's or
+      // Parent's to manage, in Manage Classes / Home Groups. Their Settings
+      // no longer offer the setup wizard, and a stale link, the back stack or
+      // a voice command must not open it either. A guest and a Player still
+      // set themselves up; educators are turned away below.
+      if (!isViewingAsStudent && isManagedLearnerSetupRoute(profile, state.uri)) {
+        return '/home';
+      }
+
       // Guest-player guard: hard block on anything that needs Firestore reads
       // beyond the player's own session. Applies to GUEST players only —
       // "Player (With Progress)" profiles sync to Firestore and have a public
@@ -414,7 +457,6 @@ final routerProvider = Provider<GoRouter>((ref) {
             !location.startsWith('/post-join-setup') &&
             !location.startsWith('/splash') &&
             !location.startsWith('/profile') &&
-            !location.startsWith('/accessibility-setup') &&
             !location.startsWith('/onboarding-tutorial')) {
           return '/join-home-group';
         }
@@ -453,6 +495,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         // Block educators from student-only routes
         for (final route in _studentOnlyRoutes) {
           if (location.startsWith(route)) return '/home';
+        }
+        // ...and from their own hands-free input. This branch is a Teacher
+        // or a Parent at the tablet: their own profile, or a learner's they
+        // are viewing — whose input the learner's card sets up instead.
+        if (isOwnHandsFreeInputRoute(state.uri, extra: state.extra)) {
+          return '/home';
         }
       }
       return null;
@@ -1855,12 +1903,17 @@ final routerProvider = Provider<GoRouter>((ref) {
       // ─── Bluetooth game controller ──────────────────
       // Settings → Accessibility opens this. The controller itself works
       // app-wide without ever visiting the screen (see GamepadHost); this is
-      // where a teacher tunes it and reads the button guide.
+      // where it is tuned and the button guide is read.
+      // `?profile=<id>&name=<name>` opens a learner's settings for their
+      // teacher or parent (from the learner's card), as Gaze Control does.
       GoRoute(
         path: '/gamepad-settings',
         pageBuilder: (context, state) => AppPageTransitions.slideRight(
           key: state.pageKey,
-          child: const GamepadSettingsScreen(),
+          child: GamepadSettingsScreen(
+            profileId: state.uri.queryParameters['profile'],
+            learnerName: state.uri.queryParameters['name'],
+          ),
         ),
       ),
       // A safe place to learn the pad: every press is named, nothing moves.

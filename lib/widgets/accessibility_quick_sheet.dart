@@ -1,7 +1,10 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/gamepad/services/gamepad_service.dart';
+import '../features/settings/models/settings_presentation.dart';
 import '../providers/app_providers.dart';
 import '../l10n/app_localizations.dart';
 import '../l10n/app_localizations_en.dart';
@@ -60,6 +63,11 @@ class _AccessibilityQuickSheet extends ConsumerWidget {
     final colors = theme.colorScheme;
     final settings = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);
+    // The Child and guest homes are learners' — but the rule lives in one
+    // place, so this sheet asks it too.
+    final handsFree = SettingsPresentation.of(
+      ref.watch(profileProvider),
+    ).handsFreeInput;
 
     return SafeArea(
       top: false,
@@ -162,6 +170,48 @@ class _AccessibilityQuickSheet extends ConsumerWidget {
               value: settings.reducedMotion,
               onChanged: (_) => notifier.toggleReducedMotion(),
             ),
+            // Spoken screen and button announcements. A visually impaired
+            // child got it from their preset but could never switch it — it
+            // lived only in the Settings these homes leave out.
+            _ToggleTile(
+              icon: Icons.record_voice_over_rounded,
+              title: _t(context).voiceNavigation,
+              subtitle: settings.voiceNavigation
+                  ? _t(context).settingVoiceNavOnDesc
+                  : _t(context).settingVoiceNavOffDesc,
+              value: settings.voiceNavigation,
+              onChanged: (v) =>
+                  notifier.update(settings.copyWith(voiceNavigation: v)),
+            ),
+            const SizedBox(height: 12),
+
+            // ── Language ──
+            // English or Filipino. Settings was the only place to choose,
+            // so a Child or a guest was held to English with nobody able to
+            // change it.
+            Text(
+              _t(context).language,
+              style: theme.textTheme.titleSmall
+                  ?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                for (final (code, name) in const [
+                  ('en', 'English'),
+                  ('fil', 'Filipino'),
+                ]) ...[
+                  if (code != 'en') const SizedBox(width: 8),
+                  _ChoicePreset(
+                    label: name,
+                    semanticsLabel: _t(context).aqLanguageChoice(name),
+                    isActive: settings.locale == code,
+                    onTap: () => notifier.updateLocale(code),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 8),
 
             // ── Hands-free ──
             // Gaze Control used to open only from Settings, which these homes
@@ -169,17 +219,26 @@ class _AccessibilityQuickSheet extends ConsumerWidget {
             // at setup, nobody could ever change its sensitivity, hold time,
             // scanning, voice commands or calibration. It is an accessibility
             // essential like the switches above, so it opens from here too.
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(Icons.remove_red_eye_rounded, color: colors.primary),
-              title: Text(
-                _t(context).settingGazeControlTitle,
-                style: const TextStyle(fontWeight: FontWeight.w600),
+            // Not in a browser, which cannot run the face tracker (Settings
+            // leaves it out there too).
+            if (handsFree && !kIsWeb)
+              _LinkTile(
+                icon: Icons.remove_red_eye_rounded,
+                title: _t(context).settingGazeControlTitle,
+                subtitle: _t(context).settingGazeControlDesc,
+                onTap: () => context.push('/gaze-settings'),
               ),
-              subtitle: Text(_t(context).settingGazeControlDesc),
-              trailing: const Icon(Icons.chevron_right_rounded),
-              onTap: () => context.push('/gaze-settings'),
-            ),
+            // The game controller had the same gap: a blind child driving the
+            // app with one could never swap the A/B buttons, slow the presses
+            // down or hear the button guide, because its page opened only
+            // from the Settings these homes leave out.
+            if (handsFree && GamepadService.isSupported)
+              _LinkTile(
+                icon: Icons.sports_esports_rounded,
+                title: _t(context).settingGamepadTitle,
+                subtitle: _t(context).settingGamepadDesc,
+                onTap: () => context.push('/gamepad-settings'),
+              ),
           ],
         ),
       ),
@@ -201,27 +260,64 @@ class _SizePreset extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  Widget build(BuildContext context) => _ChoicePreset(
+        label: label,
+        semanticsLabel: _t(context).aqTextSizeLabel(label),
+        isActive: isActive,
+        onTap: onTap,
+      );
+}
+
+/// One of a row of choices (a text size, a language) that highlights when it
+/// is the active one.
+class _ChoicePreset extends StatelessWidget {
+  const _ChoicePreset({
+    required this.label,
+    required this.semanticsLabel,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  final String label;
+  final String semanticsLabel;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     return Expanded(
       child: Semantics(
         button: true,
         selected: isActive,
-        label: _t(context).aqTextSizeLabel(label),
+        label: semanticsLabel,
         child: Material(
           color: isActive ? colors.primary : colors.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(14),
+          // An outline on the choices not picked: in the high-contrast and
+          // dark themes their fill is the sheet's own colour, so "S", "M"
+          // and "English" read as loose words rather than buttons.
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+            side: isActive
+                ? BorderSide.none
+                : BorderSide(color: colors.outline, width: 1.5),
+          ),
           child: InkWell(
             onTap: onTap,
             borderRadius: BorderRadius.circular(14),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 14),
               child: Center(
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: isActive ? colors.onPrimary : colors.onSurface,
+                // The button's own label says it in full ("Text size L",
+                // "Use the app in Filipino"); read the short text as well
+                // and it is said twice.
+                child: ExcludeSemantics(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: isActive ? colors.onPrimary : colors.onSurface,
+                    ),
                   ),
                 ),
               ),
@@ -229,6 +325,33 @@ class _SizePreset extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// A row that opens a fuller settings page.
+class _LinkTile extends StatelessWidget {
+  const _LinkTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(icon, color: Theme.of(context).colorScheme.primary),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+      subtitle: Text(subtitle),
+      trailing: const Icon(Icons.chevron_right_rounded),
+      onTap: onTap,
     );
   }
 }

@@ -117,7 +117,9 @@ class SweepProfile extends ProfileNotifier {
 
 /// Every screen the layout matrices know, with the role that sees it.
 final Map<String, (Widget Function(), UserRole)> kAllScreens = {
-    'AccessibilitySetupScreen': (() => const AccessibilitySetupScreen(), UserRole.student),
+    // Only a guest or a Player re-runs it: a Student's or a Child's needs are
+    // set by their Teacher or Parent.
+    'AccessibilitySetupScreen': (() => const AccessibilitySetupScreen(), UserRole.player),
     'BackupAccountScreen': (() => const BackupAccountScreen(), UserRole.student),
     'AssessmentAssignScreen': (() => const AssessmentAssignScreen(), UserRole.teacher),
     'AssignmentTrackingScreen': (() => const AssignmentTrackingScreen(), UserRole.teacher),
@@ -137,7 +139,9 @@ final Map<String, (Widget Function(), UserRole)> kAllScreens = {
     'ClassroomDashboardScreen': (() => const ClassroomDashboardScreen(), UserRole.teacher),
     'DailyChallengeScreen': (() => const DailyChallengeScreen(), UserRole.student),
     'DashboardScreen': (() => const DashboardScreen(), UserRole.student),
+    // A Student sees their needs read-only; a Player picks their own.
     'EditProfileScreen': (() => const EditProfileScreen(), UserRole.student),
+    'EditProfileScreen (player)': (() => const EditProfileScreen(), UserRole.player),
     'ExperimentSetupScreen': (() => const ExperimentSetupScreen(), UserRole.teacher),
     'ExportReportScreen': (() => const ExportReportScreen(), UserRole.teacher),
     'FocusModeScreen': (() => const FocusModeScreen(), UserRole.student),
@@ -145,6 +149,8 @@ final Map<String, (Widget Function(), UserRole)> kAllScreens = {
     'FslWordToSignScreen': (() => const FslWordToSignScreen(), UserRole.student),
     'GamepadPracticeScreen': (() => const GamepadPracticeScreen(), UserRole.student),
     'GamepadSettingsScreen': (() => const GamepadSettingsScreen(), UserRole.student),
+    // A Teacher or Parent setting a learner's controller up from the card.
+    'GamepadSettingsScreen (for a learner)': (() => const GamepadSettingsScreen(profileId: 'sweep-learner', learnerName: 'Ana Maria'), UserRole.teacher),
     'JoinClassScreen': (() => const JoinClassScreen(), UserRole.student),
     'JoinHomeGroupScreen': (() => const JoinHomeGroupScreen(), UserRole.student),
     'LeaderboardScreen': (() => const LeaderboardScreen(), UserRole.student),
@@ -183,6 +189,10 @@ final Map<String, (Widget Function(), UserRole)> kAllScreens = {
     'StreakCalendarScreen': (() => const StreakCalendarScreen(), UserRole.student),
     'CertificateScreen': (() => const CertificateScreen(), UserRole.student),
     'SettingsScreen': (() => const SettingsScreen(), UserRole.student),
+    // Each role's Settings holds different rows (SettingsPresentation).
+    'SettingsScreen (teacher)': (() => const SettingsScreen(), UserRole.teacher),
+    'SettingsScreen (parent)': (() => const SettingsScreen(), UserRole.parent),
+    'SettingsScreen (player)': (() => const SettingsScreen(), UserRole.player),
     'GoalsScreen': (() => const GoalsScreen(), UserRole.student),
     'NotebookScreen': (() => const NotebookScreen(), UserRole.student),
     'MoodCheckInScreen': (() => const MoodCheckInScreen(), UserRole.student),
@@ -203,6 +213,7 @@ final Map<String, (Widget Function(), UserRole)> kAllScreens = {
     'StoryListScreen': (() => const StoryListScreen(), UserRole.student),
     'CommunicationBoardScreen': (() => const CommunicationBoardScreen(), UserRole.student),
     'GazeSettingsScreen': (() => const GazeSettingsScreen(), UserRole.student),
+    'GazeSettingsScreen (for a learner)': (() => const GazeSettingsScreen(profileId: 'sweep-learner', learnerName: 'Ana Maria'), UserRole.teacher),
     'ParentDashboardScreen': (() => const ParentDashboardScreen(), UserRole.parent),
     'ParentalControlsScreen': (() => const ParentalControlsScreen(), UserRole.parent),
     'TeacherDashboardScreen': (() => const TeacherDashboardScreen(), UserRole.teacher),

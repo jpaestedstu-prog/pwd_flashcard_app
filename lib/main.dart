@@ -33,6 +33,7 @@ import 'data/models/alarm_action.dart';
 import 'data/models/enums.dart';
 import 'data/models/models.dart';
 import 'core/services/lock_enforcer.dart';
+import 'features/classroom/widgets/assigned_accessibility_gate.dart';
 import 'features/classroom/widgets/lock_enforcer_gate.dart';
 import 'providers/lock_state_provider.dart';
 import 'providers/wall_clock_provider.dart';
@@ -629,6 +630,8 @@ class FlashLearnApp extends ConsumerWidget {
               // ErrorBoundary (global error snackbars), ConnectivityBanner (offline
               // indicator), then MembershipEvictionGate above LockEnforcerGate so an
               // educator-driven removal wins over a time-driven lock.
+              // AssignedAccessibilityGate between them applies the accessibility a
+              // learner's Teacher or Parent set in Manage Classes / Home Groups.
               // LockWarningGate sits just *inside* LockEnforcerGate: its "nearly
               // time" banner belongs over normal learner screens but never over a
               // lock or eviction screen.
@@ -648,20 +651,22 @@ class FlashLearnApp extends ConsumerWidget {
               child: ErrorBoundary(
                 child: ConnectivityBanner(
                   child: MembershipEvictionGate(
-                    child: LockEnforcerGate(
-                      child: LockWarningGate(
-                        // The gaze focus ring floats above every route and
-                        // dialog, so it can never end up under the scrim of the
-                        // very dialog it is pointing into.
-                        child: GazeFocusRingLayer(
-                          child: GamepadHost(
-                            child: CompanionHost(
-                              child: CastStatusHost(
-                                // "Your device sound is off", for learners
-                                // who listen to the words: over the screens,
-                                // never over a lock.
-                                child: SoundOffHintHost(
-                                  child: child ?? const SizedBox.shrink(),
+                    child: AssignedAccessibilityGate(
+                      child: LockEnforcerGate(
+                        child: LockWarningGate(
+                          // The gaze focus ring floats above every route and
+                          // dialog, so it can never end up under the scrim of the
+                          // very dialog it is pointing into.
+                          child: GazeFocusRingLayer(
+                            child: GamepadHost(
+                              child: CompanionHost(
+                                child: CastStatusHost(
+                                  // "Your device sound is off", for learners
+                                  // who listen to the words: over the screens,
+                                  // never over a lock.
+                                  child: SoundOffHintHost(
+                                    child: child ?? const SizedBox.shrink(),
+                                  ),
                                 ),
                               ),
                             ),

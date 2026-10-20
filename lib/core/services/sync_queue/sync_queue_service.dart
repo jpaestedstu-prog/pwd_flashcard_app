@@ -267,7 +267,7 @@ class SyncQueueService {
       isGuestPlayer: p['isGuestPlayer'] as bool? ?? false,
       supportOptions:
           LearnerSupportCatalog.decode(p['supportOptions'] as List?),
-    );
+    ).normalizedForRole();
   }
 
   LearningProgress _progressFromPayload(

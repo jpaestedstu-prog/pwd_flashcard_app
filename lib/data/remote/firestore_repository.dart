@@ -308,7 +308,7 @@ class FirestoreRepository implements DataRepository {
       equippedAvatarId: r['equipped_avatar_id'] as String?,
       equippedBorderId: r['equipped_border_id'] as String?,
       equippedTitleId: r['equipped_title_id'] as String?,
-    );
+    ).normalizedForRole();
   }
 
   /// Fetch a single profile by id. Returns null if it doesn't exist.
@@ -1116,6 +1116,41 @@ class FirestoreRepository implements DataRepository {
       }, SetOptions(merge: true));
     } catch (_) {
       // Roster rename already landed.
+    }
+  }
+
+  /// Writes the accessibility a Teacher or Parent chose
+  /// ([AssignedAccessibility.toFields]) onto the membership rows of
+  /// [profileIds] in a class, or a home group when [family] — one learner,
+  /// or everyone already in the group, in one batch.
+  ///
+  /// The educator may update their learners' rows but never write a
+  /// learner's profile, so the learner's own device reads the row and
+  /// applies it. `update`, not a merge: a learner removed a moment ago must
+  /// not be written back in as a member (the rules would refuse that anyway).
+  Future<void> setMembersAccessibility({
+    required bool family,
+    required String groupId,
+    required List<String> profileIds,
+    required Map<String, dynamic> fields,
+  }) async {
+    if (profileIds.isEmpty) return;
+    final collection = family ? 'home_group_members' : 'classroom_members';
+    final nowIso = DateTime.now().toIso8601String();
+    final batch = _db.batch();
+    for (final id in profileIds) {
+      batch.update(_db.collection(collection).doc('${groupId}_$id'), {
+        ...fields,
+        'updated_at': nowIso,
+      });
+    }
+    await batch.commit();
+    // Classes keep an audit log; home groups have none the rules accept.
+    if (!family) {
+      await _writeClassroomAudit(groupId, 'member_accessibility_set', {
+        'profile_ids': profileIds,
+        'accessibility': fields['accessibility'],
+      });
     }
   }
 

@@ -5,12 +5,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../core/accessibility/assigned_accessibility.dart';
+import '../../../core/accessibility/learner_support.dart';
 import '../../../core/services/firebase_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/pro_surface.dart';
+import '../../../data/local/hive_service.dart';
 import '../../../data/models/enums.dart';
+import '../../../data/models/models.dart';
 import '../../../providers/app_providers.dart';
+import '../../../providers/assigned_accessibility_provider.dart';
+import '../../../providers/student_list_provider.dart';
 import '../../../widgets/animated_gradient_background.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../widgets/app_card.dart';
@@ -20,6 +26,7 @@ import 'accessibility_category_picker.dart';
 import 'cloud_aware_text_dialog.dart';
 import 'cloud_retry_banner.dart';
 import 'cloud_sync_error_view.dart';
+import 'learner_accessibility_dialog.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 
@@ -54,10 +61,15 @@ class ManagedMember {
   final String displayName;
   final DateTime joinedAt;
 
+  /// The accessibility the educator set for this learner since they joined,
+  /// or null — see [AssignedAccessibility].
+  final AssignedAccessibility? assigned;
+
   const ManagedMember({
     required this.profileId,
     required this.displayName,
     required this.joinedAt,
+    this.assigned,
   });
 }
 
@@ -125,6 +137,16 @@ abstract class GroupManagementDelegate {
     WidgetRef ref,
     ManagedGroup group,
     DisabilityType accessibility,
+  );
+
+  /// Set the accessibility of [profileIds], already in [group], to
+  /// [assigned]: written where each learner's own device picks it up (see
+  /// [AssignedAccessibility]).
+  Future<void> setMembersAccessibility(
+    WidgetRef ref,
+    ManagedGroup group,
+    List<String> profileIds,
+    AssignedAccessibility assigned,
   );
   Future<void> setAllowRetakes(
     WidgetRef ref,
@@ -669,6 +691,7 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
                 onLongPress: () => _toggle(m.profileId),
                 onTapInSelection: () => _toggle(m.profileId),
                 onRename: () => _renameMember(m),
+                onAccessibility: () => _setMemberAccessibility(m),
                 onUnlock: () => _unlockMember(m),
                 onRemove: () => _removeOne(m),
               ),
@@ -797,21 +820,53 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
     }
   }
 
+  /// The group's own category is what learners who join from now on get.
+  /// Learners already in it keep their own setup unless the educator says
+  /// to change theirs too — asked here, because a Student's or a Child's
+  /// accessibility is the educator's to manage and there is no other place
+  /// to change it for everyone at once.
   Future<void> _setAccessibility() async {
     final picked = await showAccessibilityCategoryDialog(
       context,
       current: _group.accessibility,
     );
     if (picked == null || !mounted) return;
+    final memberIds = [
+      for (final m
+          in _delegate.watchMembers(ref, _group.id).valueOrNull ??
+              const <ManagedMember>[])
+        m.profileId,
+    ];
+    var everyone = false;
+    if (memberIds.isNotEmpty) {
+      final choice = await _askChangeForMembers(picked, memberIds.length);
+      if (choice == null || !mounted) return;
+      everyone = choice;
+    }
+    final label = picked.labelOf(AppLocalizations.of(context));
     try {
       await _delegate.setAccessibility(ref, _group, picked);
+      if (everyone) {
+        await _assign(
+          memberIds,
+          AssignedAccessibility.chosen(
+            picked,
+            LearnerSupportCatalog.defaultsFor(picked),
+            setBy: ref.read(profileProvider)?.id,
+          ),
+        );
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            _tr(
-              context,
-            ).gmAccessibilitySet(picked.labelOf(AppLocalizations.of(context))),
+            everyone
+                ? _tr(context).gmAccessibilitySetAll(
+                    _delegate.audience,
+                    label,
+                    memberIds.length,
+                  )
+                : _tr(context).gmAccessibilitySet(label),
           ),
         ),
       );
@@ -820,6 +875,121 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(_tr(context).gmCouldNotUpdate(_reason(context, e)))));
+    }
+  }
+
+  /// "New ones only" (false), "Everyone" (true), or null to cancel the
+  /// whole change.
+  Future<bool?> _askChangeForMembers(DisabilityType type, int count) {
+    final label = type.labelOf(AppLocalizations.of(context));
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          _tr(context).gmApplyMembersTitle(_delegate.audience, count),
+        ),
+        content: Text(
+          _tr(context).gmApplyMembersBody(_delegate.audience, label),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(_tr(context).hubCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(_tr(context).gmApplyMembersNewOnly),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(_tr(context).gmApplyMembersEveryone),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Sets [assigned] for [profileIds]: on their membership rows, which their
+  /// own devices read, and straight away for anyone whose profile is on this
+  /// tablet (a shared classroom or family tablet), so it is in place before
+  /// they next sign in.
+  Future<void> _assign(
+    List<String> profileIds,
+    AssignedAccessibility assigned,
+  ) async {
+    await _delegate.setMembersAccessibility(ref, _group, profileIds, assigned);
+    for (final id in profileIds) {
+      await applyAssignedAccessibility(
+        read: ref.read,
+        invalidate: ref.invalidate,
+        profileId: id,
+        assigned: assigned,
+      );
+    }
+  }
+
+  /// One learner's needs as they stand: what the educator last set, else
+  /// the learner's own profile (the roster's copy, or this tablet's), else
+  /// what the group gives a new joiner.
+  LearnerAccessibilityChoice _currentNeedsOf(ManagedMember m) {
+    final assigned = m.assigned;
+    if (assigned != null) {
+      return (type: assigned.type, supports: assigned.supports);
+    }
+    UserProfile? profile;
+    try {
+      for (final (learner, _) in ref.read(educatorLearnerRosterProvider)) {
+        if (learner.id == m.profileId) profile = learner;
+      }
+      profile ??= HiveService.getProfileById(m.profileId);
+    } catch (_) {
+      // No roster or store to ask (offline, or boxes not open): the group's
+      // own category below is the honest starting point.
+    }
+    if (profile != null) {
+      return (type: profile.disabilityType, supports: profile.supports);
+    }
+    return (
+      type: _group.accessibility,
+      supports: LearnerSupportCatalog.defaultsFor(_group.accessibility),
+    );
+  }
+
+  Future<void> _setMemberAccessibility(ManagedMember m) async {
+    final current = _currentNeedsOf(m);
+    final picked = await showLearnerAccessibilityDialog(
+      context,
+      learnerName: m.displayName,
+      type: current.type,
+      supports: current.supports,
+    );
+    if (picked == null || !mounted) return;
+    final label = picked.type.labelOf(AppLocalizations.of(context));
+    try {
+      await _assign(
+        [m.profileId],
+        AssignedAccessibility.chosen(
+          picked.type,
+          picked.supports,
+          setBy: ref.read(profileProvider)?.id,
+        ),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_tr(context).gmMemberAccessibilitySet(
+            m.displayName,
+            label,
+          )),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_tr(context).gmCouldNotUpdate(_reason(context, e))),
+        ),
+      );
     }
   }
 
@@ -1033,6 +1203,9 @@ class _MemberRow extends StatelessWidget {
   final VoidCallback onLongPress;
   final VoidCallback onTapInSelection;
   final VoidCallback onRename;
+
+  /// This learner's accessibility needs, which their educator manages.
+  final VoidCallback onAccessibility;
   final VoidCallback onUnlock;
   final VoidCallback onRemove;
 
@@ -1049,6 +1222,7 @@ class _MemberRow extends StatelessWidget {
     required this.onLongPress,
     required this.onTapInSelection,
     required this.onRename,
+    required this.onAccessibility,
     required this.onUnlock,
     required this.onRemove,
   });
@@ -1104,6 +1278,8 @@ class _MemberRow extends StatelessWidget {
                 switch (action) {
                   case 'rename':
                     onRename();
+                  case 'accessibility':
+                    onAccessibility();
                   case 'progress':
                     GoRouter.of(context).push(
                       '/progress-timeline/${member.profileId}'
@@ -1138,6 +1314,13 @@ class _MemberRow extends StatelessWidget {
               },
               itemBuilder: (_) => [
                 _menuItem('rename', Icons.edit_rounded, _tr(context).gmRename),
+                // Their accessibility needs: a Student's or a Child's are set
+                // here, by the educator, not by the learner.
+                _menuItem(
+                  'accessibility',
+                  Icons.accessibility_new_rounded,
+                  _tr(context).gmMemberAccessibility,
+                ),
                 _menuItem(
                   'progress',
                   Icons.timeline_rounded,

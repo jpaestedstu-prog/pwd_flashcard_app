@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/models/classroom.dart';
+import '../../../core/accessibility/assigned_accessibility.dart';
 import '../../../data/models/enums.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/classroom_management_provider.dart';
@@ -126,6 +127,7 @@ class _ClassroomDelegate extends GroupManagementDelegate {
                   profileId: m.profileId,
                   displayName: m.displayName,
                   joinedAt: m.joinedAt,
+                  assigned: m.assigned,
                 ),
               )
               .toList(),
@@ -159,6 +161,16 @@ class _ClassroomDelegate extends GroupManagementDelegate {
     ManagedGroup group,
     DisabilityType accessibility,
   ) => _notifier(ref).setClassAccessibility(_classroom(group), accessibility);
+
+  @override
+  Future<void> setMembersAccessibility(
+    WidgetRef ref,
+    ManagedGroup group,
+    List<String> profileIds,
+    AssignedAccessibility assigned,
+  ) => _notifier(
+    ref,
+  ).setStudentsAccessibility(_classroom(group), profileIds, assigned);
 
   @override
   Future<void> setAllowRetakes(

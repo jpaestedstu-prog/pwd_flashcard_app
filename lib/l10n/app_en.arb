@@ -1813,6 +1813,9 @@
   "settingGazeControlTitle": "Gaze Control (Preview)",
   "settingGamepadTitle": "Game Controller",
   "settingSectionPresentation": "Presentation",
+  "settingSectionManage": "Manage",
+  "settingLearnerInputTitle": "Learners’ Gaze Control & controller",
+  "settingLearnerInputDesc": "Set them up for each learner from their card on your dashboard",
   "settingSectionLearningModes": "Learning Modes",
   "settingSlowMotionTitle": "Slow-Motion Mode",
   "settingLearningAssistTitle": "Learning Assist",
@@ -3324,7 +3327,7 @@
       }
     }
   },
-  "acpApplies": "Applies to learners who join from now on. Anyone already enrolled keeps their current setup.",
+  "acpApplies": "Learners who join from now on get this. If some have joined already, you can change theirs too.",
   "acpJoinersGet": "Students who join this code get this version of the app automatically — no setup needed on their side.",
   "clipFailedSemantics": "This sign could not be loaded. Answer from what you know, or skip the question.",
   "clipSemantics": "A sign-language clip. It repeats on its own; double tap to play it again.",
@@ -6468,6 +6471,14 @@
       }
     }
   },
+  "aqLanguageChoice": "Use the app in {language}",
+  "@aqLanguageChoice": {
+    "placeholders": {
+      "language": {
+        "type": "String"
+      }
+    }
+  },
   "btTitle": "Take a Break",
   "btBack": "Back to lesson",
   "btPick": "Pick what feels good. You can go back to your lesson anytime.",
@@ -8407,6 +8418,38 @@
     }
   },
   "cdsGazeControl": "Gaze Control",
+  "gpForLearner": "Game Controller for {name}",
+  "@gpForLearner": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gpForLearnerNote": "You are changing {name}’s controller settings. They are saved on this tablet and used the next time {name} signs in here.",
+  "@gpForLearnerNote": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gpPractiseAsLearner": "To practise the buttons with the controller, sign in as {name} and open Game Controller.",
+  "@gpPractiseAsLearner": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gpNotOnTablet": "{name}’s profile is on another tablet. Set up the controller there.",
+  "@gpNotOnTablet": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "gzmTitle": "Gaze use this week",
   "gzmNone": "No gaze use in the last 7 days.",
   "gzmActive": "Time used",
@@ -8972,5 +9015,30 @@
   "assessAllSkippedBody": "Nothing was sent: video answers are recorded in the Android app, and these were skipped.",
   "deckNoCustomCards": "No cards of your own to export yet. Make one with Create Card.",
   "deckExportedCards": "{count, plural, =1{1 card exported} other{{count} cards exported}}",
-  "@deckExportedCards": {"placeholders": {"count": {"type": "int"}}}
+  "@deckExportedCards": {"placeholders": {"count": {"type": "int"}}},
+  "gmMemberAccessibility": "Accessibility needs",
+  "lamTitle": "{name}’s accessibility needs",
+  "lamCaption": "What {name} needs. Their app follows it: signs or speech, text size, colours, and how they use the screen.",
+  "lamApplyNote": "{name} gets this the next time they open the app, on any tablet. Their text size, colours and sounds change to the ones recommended for it.",
+  "gmMemberAccessibilitySet": "{name}: {type}. They get it the next time they open the app.",
+  "gmApplyMembersTitle": "{audience, select, parent{{count, plural, =1{Change it for the child already here too?} other{Change it for the {count} children already here too?}}} other{{count, plural, =1{Change it for the student already here too?} other{Change it for the {count} students already here too?}}}}",
+  "gmApplyMembersBody": "{audience, select, parent{Children who join from now on get {type}. Changing it for the children already in this home group too sets each one’s own choices (sign system, how they use the screen, test supports) back to the {type} defaults.} other{Students who join from now on get {type}. Changing it for the students already in this class too sets each one’s own choices (sign system, how they use the screen, test supports) back to the {type} defaults.}}",
+  "gmApplyMembersNewOnly": "New ones only",
+  "gmApplyMembersEveryone": "Everyone",
+  "gmAccessibilitySetAll": "{audience, select, parent{Accessibility set to {type} for new children and the {count} already here.} other{Accessibility set to {type} for new students and the {count} already here.}}",
+  "settingManagedAccessibilityTitle": "Accessibility needs: {type}",
+  "settingManagedAccessibilityDesc": "{audience, select, parent{Your parent sets these for you} other{Your teacher sets these for you}}",
+  "epAccessManaged": "{audience, select, parent{Set by your parent in Home Groups. Ask them if something needs to change.} other{Set by your teacher in Manage Classes. Ask them if something needs to change.}}",
+  "assignedAccessibilityNotice": "{audience, select, parent{Your parent updated your accessibility settings.} other{Your teacher updated your accessibility settings.}}",
+  "@lamTitle": {"placeholders": {"name": {"type": "String"}}},
+  "@lamCaption": {"placeholders": {"name": {"type": "String"}}},
+  "@lamApplyNote": {"placeholders": {"name": {"type": "String"}}},
+  "@gmMemberAccessibilitySet": {"placeholders": {"name": {"type": "String"}, "type": {"type": "String"}}},
+  "@gmApplyMembersTitle": {"placeholders": {"audience": {"type": "String"}, "count": {"type": "int"}}},
+  "@gmApplyMembersBody": {"placeholders": {"audience": {"type": "String"}, "type": {"type": "String"}}},
+  "@gmAccessibilitySetAll": {"placeholders": {"audience": {"type": "String"}, "type": {"type": "String"}, "count": {"type": "int"}}},
+  "@settingManagedAccessibilityTitle": {"placeholders": {"type": {"type": "String"}}},
+  "@settingManagedAccessibilityDesc": {"placeholders": {"audience": {"type": "String"}}},
+  "@epAccessManaged": {"placeholders": {"audience": {"type": "String"}}},
+  "@assignedAccessibilityNotice": {"placeholders": {"audience": {"type": "String"}}}
 }

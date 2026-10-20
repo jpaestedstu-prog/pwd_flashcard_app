@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../core/accessibility/assigned_accessibility.dart';
 import '../core/services/cloud_sync_exceptions.dart';
 import '../core/services/educator_policy_cascade.dart';
 import '../core/services/firebase_service.dart';
@@ -143,11 +144,32 @@ class HomeGroupManagementNotifier
     await HiveService.cacheHomeGroup(updated);
   }
 
+  /// Set the accessibility of [profileIds] — children already in [group] —
+  /// to [assigned]. Mirror of
+  /// [ClassroomManagementNotifier.setStudentsAccessibility].
+  Future<void> setChildrenAccessibility(
+    HomeGroup group,
+    List<String> profileIds,
+    AssignedAccessibility assigned,
+  ) async {
+    if (!FirebaseService.isConfigured) {
+      throw Exception(
+          'Cloud sync not connected. Restart the app or check Firebase setup.');
+    }
+    await const FirestoreRepository().setMembersAccessibility(
+      family: true,
+      groupId: group.id,
+      profileIds: profileIds,
+      fields: assigned.toFields(),
+    );
+  }
+
   /// Change the accessibility audience for [group].
   ///
-  /// Affects **future** joiners only — children already enrolled keep the
-  /// accessibility profile assigned when they joined. Sparse-merges just the
-  /// changed fields. Mirror of [ClassroomManagementNotifier.setClassAccessibility].
+  /// The group document only: it is what **future** joiners get; children
+  /// already in it change only through [setChildrenAccessibility]. Sparse-
+  /// merges just the changed fields. Mirror of
+  /// [ClassroomManagementNotifier.setClassAccessibility].
   Future<void> setGroupAccessibility(
       HomeGroup group, DisabilityType accessibility) async {
     if (!FirebaseService.isConfigured) {

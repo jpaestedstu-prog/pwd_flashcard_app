@@ -313,6 +313,22 @@ class UserProfile {
   LearnerSupportOption? get inputMode =>
       LearnerSupportCatalog.inputModeIn(supports);
 
+  /// This profile as its role allows it to be stored and read.
+  ///
+  /// A Teacher or a Parent has no accessibility category or learner supports
+  /// of their own: setup never asks them, and Edit Profile no longer offers
+  /// it. Every place a saved profile is read passes through here, so one
+  /// saved before that rule (Edit Profile used to show the picker to
+  /// everyone) cannot keep hiding sign videos — or switching any other
+  /// learner presentation — on the educator's own screens. The educator's
+  /// own display needs (text size, contrast, …) are their settings, not a
+  /// category.
+  UserProfile normalizedForRole() =>
+      role.isEducator &&
+          (disabilityType != DisabilityType.none || supportOptions.isNotEmpty)
+      ? copyWith(disabilityType: DisabilityType.none, supportOptions: const {})
+      : this;
+
   /// Computed age from birthDate, or null if not set.
   int? get age {
     if (birthDate == null) return null;

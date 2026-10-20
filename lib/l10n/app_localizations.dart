@@ -4869,6 +4869,24 @@ abstract class AppLocalizations {
   /// **'Presentation'**
   String get settingSectionPresentation;
 
+  /// No description provided for @settingSectionManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage'**
+  String get settingSectionManage;
+
+  /// No description provided for @settingLearnerInputTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Learners’ Gaze Control & controller'**
+  String get settingLearnerInputTitle;
+
+  /// No description provided for @settingLearnerInputDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Set them up for each learner from their card on your dashboard'**
+  String get settingLearnerInputDesc;
+
   /// No description provided for @settingSectionLearningModes.
   ///
   /// In en, this message translates to:
@@ -8165,7 +8183,7 @@ abstract class AppLocalizations {
   /// No description provided for @acpApplies.
   ///
   /// In en, this message translates to:
-  /// **'Applies to learners who join from now on. Anyone already enrolled keeps their current setup.'**
+  /// **'Learners who join from now on get this. If some have joined already, you can change theirs too.'**
   String get acpApplies;
 
   /// No description provided for @acpJoinersGet.
@@ -15782,6 +15800,12 @@ abstract class AppLocalizations {
   /// **'Text size {label}'**
   String aqTextSizeLabel(String label);
 
+  /// No description provided for @aqLanguageChoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the app in {language}'**
+  String aqLanguageChoice(String language);
+
   /// No description provided for @btTitle.
   ///
   /// In en, this message translates to:
@@ -20612,6 +20636,30 @@ abstract class AppLocalizations {
   /// **'Gaze Control'**
   String get cdsGazeControl;
 
+  /// No description provided for @gpForLearner.
+  ///
+  /// In en, this message translates to:
+  /// **'Game Controller for {name}'**
+  String gpForLearner(String name);
+
+  /// No description provided for @gpForLearnerNote.
+  ///
+  /// In en, this message translates to:
+  /// **'You are changing {name}’s controller settings. They are saved on this tablet and used the next time {name} signs in here.'**
+  String gpForLearnerNote(String name);
+
+  /// No description provided for @gpPractiseAsLearner.
+  ///
+  /// In en, this message translates to:
+  /// **'To practise the buttons with the controller, sign in as {name} and open Game Controller.'**
+  String gpPractiseAsLearner(String name);
+
+  /// No description provided for @gpNotOnTablet.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}’s profile is on another tablet. Set up the controller there.'**
+  String gpNotOnTablet(String name);
+
   /// No description provided for @gzmTitle.
   ///
   /// In en, this message translates to:
@@ -22093,6 +22141,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 card exported} other{{count} cards exported}}'**
   String deckExportedCards(int count);
+
+  /// No description provided for @gmMemberAccessibility.
+  ///
+  /// In en, this message translates to:
+  /// **'Accessibility needs'**
+  String get gmMemberAccessibility;
+
+  /// No description provided for @lamTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}’s accessibility needs'**
+  String lamTitle(String name);
+
+  /// No description provided for @lamCaption.
+  ///
+  /// In en, this message translates to:
+  /// **'What {name} needs. Their app follows it: signs or speech, text size, colours, and how they use the screen.'**
+  String lamCaption(String name);
+
+  /// No description provided for @lamApplyNote.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} gets this the next time they open the app, on any tablet. Their text size, colours and sounds change to the ones recommended for it.'**
+  String lamApplyNote(String name);
+
+  /// No description provided for @gmMemberAccessibilitySet.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}: {type}. They get it the next time they open the app.'**
+  String gmMemberAccessibilitySet(String name, String type);
+
+  /// No description provided for @gmApplyMembersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{audience, select, parent{{count, plural, =1{Change it for the child already here too?} other{Change it for the {count} children already here too?}}} other{{count, plural, =1{Change it for the student already here too?} other{Change it for the {count} students already here too?}}}}'**
+  String gmApplyMembersTitle(String audience, int count);
+
+  /// No description provided for @gmApplyMembersBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{audience, select, parent{Children who join from now on get {type}. Changing it for the children already in this home group too sets each one’s own choices (sign system, how they use the screen, test supports) back to the {type} defaults.} other{Students who join from now on get {type}. Changing it for the students already in this class too sets each one’s own choices (sign system, how they use the screen, test supports) back to the {type} defaults.}}'**
+  String gmApplyMembersBody(String audience, String type);
+
+  /// No description provided for @gmApplyMembersNewOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'New ones only'**
+  String get gmApplyMembersNewOnly;
+
+  /// No description provided for @gmApplyMembersEveryone.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone'**
+  String get gmApplyMembersEveryone;
+
+  /// No description provided for @gmAccessibilitySetAll.
+  ///
+  /// In en, this message translates to:
+  /// **'{audience, select, parent{Accessibility set to {type} for new children and the {count} already here.} other{Accessibility set to {type} for new students and the {count} already here.}}'**
+  String gmAccessibilitySetAll(String audience, String type, int count);
+
+  /// No description provided for @settingManagedAccessibilityTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Accessibility needs: {type}'**
+  String settingManagedAccessibilityTitle(String type);
+
+  /// No description provided for @settingManagedAccessibilityDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'{audience, select, parent{Your parent sets these for you} other{Your teacher sets these for you}}'**
+  String settingManagedAccessibilityDesc(String audience);
+
+  /// No description provided for @epAccessManaged.
+  ///
+  /// In en, this message translates to:
+  /// **'{audience, select, parent{Set by your parent in Home Groups. Ask them if something needs to change.} other{Set by your teacher in Manage Classes. Ask them if something needs to change.}}'**
+  String epAccessManaged(String audience);
+
+  /// No description provided for @assignedAccessibilityNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'{audience, select, parent{Your parent updated your accessibility settings.} other{Your teacher updated your accessibility settings.}}'**
+  String assignedAccessibilityNotice(String audience);
 }
 
 class _AppLocalizationsDelegate

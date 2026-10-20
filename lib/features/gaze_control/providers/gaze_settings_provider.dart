@@ -2,8 +2,11 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/local/hive_service.dart';
+import '../../../data/models/models.dart' show UserProfile;
 import '../../../providers/app_providers.dart'
     show profileAtTablet, profileProvider;
+import '../../settings/models/settings_presentation.dart'
+    show ownsHandsFreeInput;
 import '../models/gaze_settings.dart';
 import '../services/gaze_switch_input.dart';
 
@@ -30,16 +33,26 @@ class GazeSettingsNotifier extends Notifier<GazeSettings>
   GazeSettings get current => state;
 
   @override
-  GazeSettings build() => _effective(_stored());
+  GazeSettings build() {
+    final atTablet = _watchProfileAtTablet();
+    return _effective(_stored(atTablet?.id), atTablet);
+  }
 
   /// In a browser head control stays off: it needs the device's own face
   /// tracker (Google ML Kit), which has no web version. The learner's choice
   /// is still saved, so the same profile has it in the Android app.
-  static GazeSettings _effective(GazeSettings s) =>
-      kIsWeb && s.enabled ? s.copyWith(enabled: false) : s;
+  ///
+  /// It stays off for a Teacher or a Parent at the tablet too
+  /// ([ownsHandsFreeInput]): gaze is a learner's way of using the app, and an
+  /// educator's Settings no longer offer it — so a camera switched on for
+  /// their profile by an older version must not keep running with no switch
+  /// left to turn it off. They set a learner's up from the learner's card.
+  static GazeSettings _effective(GazeSettings s, UserProfile? atTablet) =>
+      s.enabled && (kIsWeb || !ownsHandsFreeInput(atTablet))
+          ? s.copyWith(enabled: false)
+          : s;
 
-  GazeSettings _stored() {
-    final profileId = _watchProfileId();
+  GazeSettings _stored(String? profileId) {
     try {
       final raw = HiveService.getProfileSetting(
         kGazeSettingsKey,
@@ -53,11 +66,8 @@ class GazeSettingsNotifier extends Notifier<GazeSettings>
       // its tuning is also the closest guess we have for whoever is sitting
       // in front of the camera.
       if (profileId == null) {
-        final anyEnabled = HiveService.firstProfileSettingWhere(
-          kGazeSettingsKey,
-          (value) => value['enabled'] == true,
-        );
-        if (anyEnabled != null) return GazeSettings.fromMap(anyEnabled);
+        final anyEnabled = firstLearnerGazeSettings();
+        if (anyEnabled != null) return anyEnabled;
       }
     } catch (_) {
       // Hive not ready → fall through to defaults.
@@ -65,8 +75,8 @@ class GazeSettingsNotifier extends Notifier<GazeSettings>
     return const GazeSettings();
   }
 
-  /// The id of the profile at the tablet, **watched** so switching learners
-  /// reloads that learner's own gaze config. Null before a profile is chosen
+  /// The profile at the tablet, **watched** so switching learners reloads
+  /// that learner's own gaze config. Null before a profile is chosen
   /// (splash / profile picker), which reads the device-level key. Guarded
   /// because the profile store reads Hive too, and this provider is expected
   /// to yield defaults rather than throw when Hive isn't up (widget tests).
@@ -77,10 +87,10 @@ class GazeSettingsNotifier extends Notifier<GazeSettings>
   /// the active profile ran the camera on the learner's settings for the
   /// teacher — and counted the teacher's gaze use as the learner's in the
   /// study's measurements (see [profileAtTablet]).
-  String? _watchProfileId() {
+  UserProfile? _watchProfileAtTablet() {
     try {
       ref.watch(profileProvider.select((p) => p?.id));
-      return gazeProfileIdAtTablet(ref.read);
+      return gazeProfileAtTablet(ref.read);
     } catch (_) {
       return null;
     }
@@ -89,9 +99,9 @@ class GazeSettingsNotifier extends Notifier<GazeSettings>
   /// The same profile read fresh (not watched) at write time, so a save
   /// landing right after a profile switch always targets the correct profile —
   /// mirroring `SettingsNotifier._save`.
-  String? _readProfileId() {
+  UserProfile? _readProfileAtTablet() {
     try {
-      return gazeProfileIdAtTablet(ref.read);
+      return gazeProfileAtTablet(ref.read);
     } catch (_) {
       return null;
     }
@@ -99,7 +109,7 @@ class GazeSettingsNotifier extends Notifier<GazeSettings>
 
   @override
   void update(GazeSettings settings) {
-    state = _effective(settings);
+    state = _effective(settings, _readProfileAtTablet());
     _persist(settings);
   }
 
@@ -109,7 +119,7 @@ class GazeSettingsNotifier extends Notifier<GazeSettings>
       HiveService.saveProfileSetting(
         kGazeSettingsKey,
         s.toMap(),
-        profileId: _readProfileId(),
+        profileId: _readProfileAtTablet()?.id,
       ).ignore();
     } catch (_) {
       // Box not open (tests) — state still updates in memory.
@@ -122,12 +132,41 @@ final gazeSettingsProvider =
       GazeSettingsNotifier.new,
     );
 
-/// The id of the profile whose gaze is in use: the person at the tablet —
-/// the educator, while they view a learner's dashboard ([profileAtTablet]).
+/// The profile whose gaze is in use: the person at the tablet — the
+/// educator, while they view a learner's dashboard ([profileAtTablet]).
 /// [read] is a `ref.read` (a `Ref`'s or a `WidgetRef`'s). May throw when the
 /// profile store is not up; callers guard it.
+UserProfile? gazeProfileAtTablet(T Function<T>(ProviderListenable<T>) read) =>
+    profileAtTablet(read(profileProvider), read(profileProvider.notifier));
+
+/// The id of [gazeProfileAtTablet].
 String? gazeProfileIdAtTablet(T Function<T>(ProviderListenable<T>) read) =>
-    profileAtTablet(read(profileProvider), read(profileProvider.notifier))?.id;
+    gazeProfileAtTablet(read)?.id;
+
+/// The gaze settings of the first **learner** on this device with gaze
+/// switched on, or null — what drives the screens before anyone has signed
+/// in (the profile picker), so a hands-free learner can reach their own
+/// profile.
+///
+/// A Teacher's or Parent's saved settings are skipped: their own profile
+/// never runs gaze ([ownsHandsFreeInput]), so their tuning must not switch
+/// the camera on at the front door either. A setting whose profile cannot be
+/// read is kept, as before — locking a learner out is the worse mistake.
+GazeSettings? firstLearnerGazeSettings() {
+  final map = HiveService.firstProfileSettingWhere(
+    kGazeSettingsKey,
+    (value) => value['enabled'] == true,
+    profile: (id) {
+      try {
+        final owner = HiveService.getProfileById(id);
+        return owner == null || ownsHandsFreeInput(owner);
+      } catch (_) {
+        return true;
+      }
+    },
+  );
+  return map == null ? null : GazeSettings.fromMap(map);
+}
 
 /// Every change the Gaze Control screen can make, shared by the signed-in
 /// learner's settings and a learner's settings opened by their teacher or
@@ -253,11 +292,8 @@ final gazeSettingsForProfileProvider = NotifierProvider.family<
 /// settings when nobody has. Read-only — the picker configures nothing.
 final gazePickerSettingsProvider = Provider<GazeSettings>((ref) {
   try {
-    final anyEnabled = HiveService.firstProfileSettingWhere(
-      kGazeSettingsKey,
-      (value) => value['enabled'] == true,
-    );
-    if (anyEnabled != null) return GazeSettings.fromMap(anyEnabled);
+    final anyEnabled = firstLearnerGazeSettings();
+    if (anyEnabled != null) return anyEnabled;
   } catch (_) {
     // Hive not ready → fall through.
   }

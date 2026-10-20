@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:pwdpwdpwd/core/accessibility/assigned_accessibility.dart';
+import 'package:pwdpwdpwd/core/accessibility/learner_support.dart';
 import 'package:pwdpwdpwd/core/services/sync_queue/sync_queue_storage.dart';
 import 'package:pwdpwdpwd/core/theme/app_colors.dart';
 import 'package:pwdpwdpwd/data/models/enums.dart';
@@ -114,6 +116,20 @@ class _FakeDelegate extends GroupManagementDelegate {
     ManagedGroup group,
     DisabilityType accessibility,
   ) async => calls.add('accessibility:${group.id}');
+
+  @override
+  Future<void> setMembersAccessibility(
+    WidgetRef ref,
+    ManagedGroup group,
+    List<String> profileIds,
+    AssignedAccessibility assigned,
+  ) async {
+    calls.add('membersAccessibility:${profileIds.join(",")}:${assigned.type.name}');
+    lastAssigned = assigned;
+  }
+
+  /// What [setMembersAccessibility] was last given.
+  AssignedAccessibility? lastAssigned;
 
   @override
   Future<void> setAllowRetakes(
@@ -316,6 +332,9 @@ void main() {
 
       for (final label in const [
         'Rename',
+        // Their accessibility needs: a Student's or a Child's are set here,
+        // by the educator, rather than by the learner.
+        'Accessibility needs',
         'View progress',
         'Notes',
         'Time limits',
@@ -381,6 +400,148 @@ void main() {
       expect(find.text('Create ${delegate.groupNoun}'), findsOneWidget);
     });
   }
+
+  // ─── Accessibility needs, managed by the educator ──────────────
+
+  for (final isParent in const [true, false]) {
+    final label = isParent ? 'parent / home groups' : 'teacher / classes';
+
+    testWidgets('$label sets one learner’s accessibility needs', (
+      tester,
+    ) async {
+      final delegate = _FakeDelegate(
+        isParent: isParent,
+        groups: [_group()],
+        members: _members(),
+      );
+      await _pumpView(
+        tester,
+        delegate,
+        role: isParent ? UserRole.parent : UserRole.teacher,
+      );
+
+      await tester.tap(find.byIcon(Icons.more_horiz_rounded).first);
+      await _advance(tester);
+      await tester.tap(find.text('Accessibility needs'));
+      await _advance(tester);
+
+      final dialog = find.byType(AlertDialog);
+      expect(
+        find.descendant(
+          of: dialog,
+          matching: find.text('Ana Reyes’s accessibility needs'),
+        ),
+        findsOneWidget,
+      );
+      // Opens on what the learner has now — here, the group's category.
+      final hearing = find.descendant(
+        of: dialog,
+        matching: find.widgetWithText(
+          ChoiceChip,
+          '${DisabilityType.hearing.emoji}  ${DisabilityType.hearing.label}',
+        ),
+      );
+      expect(tester.widget<ChoiceChip>(hearing).selected, isTrue);
+
+      await tester.tap(
+        find.descendant(
+          of: dialog,
+          matching: find.textContaining(DisabilityType.visual.label),
+        ),
+      );
+      await _advance(tester);
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await _advance(tester);
+
+      expect(delegate.calls, contains('membersAccessibility:p1:visual'));
+      expect(delegate.calls, isNot(contains('accessibility:g1')));
+      // The supports the category starts with, and who set it.
+      expect(delegate.lastAssigned!.supports, {LearnerSupportOption.audioFirst});
+      expect(delegate.lastAssigned!.setBy, 'test-profile');
+      expect(find.textContaining('Ana Reyes: Visual Impairment'), findsOneWidget);
+    });
+
+    testWidgets('$label: a new category can reach learners already in it', (
+      tester,
+    ) async {
+      final delegate = _FakeDelegate(
+        isParent: isParent,
+        groups: [_group()],
+        members: _members(),
+      );
+      await _pumpView(
+        tester,
+        delegate,
+        role: isParent ? UserRole.parent : UserRole.teacher,
+      );
+
+      Future<void> pickMotor() async {
+        await tester.tap(find.byIcon(Icons.more_vert_rounded));
+        await _advance(tester);
+        await tester.tap(find.text('Accessibility'));
+        await _advance(tester);
+        // In the dialog: the last change's snackbar names Motor too.
+        await tester.tap(
+          find.descendant(
+            of: find.byType(AlertDialog),
+            matching: find.textContaining(DisabilityType.motor.label),
+          ),
+        );
+        await _advance(tester);
+        await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+        await _advance(tester);
+      }
+
+      final noun = isParent ? 'children' : 'students';
+      // Asked, by count — and Cancel changes nothing at all.
+      await pickMotor();
+      expect(
+        find.text('Change it for the 2 $noun already here too?'),
+        findsOneWidget,
+      );
+      await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+      await _advance(tester);
+      expect(delegate.calls, isEmpty);
+
+      // New ones only: the group's own category, nobody's profile.
+      await pickMotor();
+      await tester.tap(find.text('New ones only'));
+      await _advance(tester);
+      expect(delegate.calls, ['accessibility:g1']);
+
+      // Everyone: the group, then every learner already in it.
+      delegate.calls.clear();
+      await pickMotor();
+      await tester.tap(find.text('Everyone'));
+      await _advance(tester);
+      expect(delegate.calls, [
+        'accessibility:g1',
+        'membersAccessibility:p1,p2:motor',
+      ]);
+      expect(delegate.lastAssigned!.supports, {LearnerSupportOption.inputGaze});
+    });
+  }
+
+  testWidgets('an empty group just changes its category', (tester) async {
+    final delegate = _FakeDelegate(
+      isParent: false,
+      groups: [_group()],
+      members: const [],
+    );
+    await _pumpView(tester, delegate);
+
+    await tester.tap(find.byIcon(Icons.more_vert_rounded));
+    await _advance(tester);
+    await tester.tap(find.text('Accessibility'));
+    await _advance(tester);
+    await tester.tap(find.textContaining(DisabilityType.cognitive.label));
+    await _advance(tester);
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await _advance(tester);
+
+    expect(find.textContaining('already here too?'), findsNothing);
+    expect(delegate.calls, ['accessibility:g1']);
+  });
 
   testWidgets('the roster collapses and expands', (tester) async {
     final delegate = _FakeDelegate(

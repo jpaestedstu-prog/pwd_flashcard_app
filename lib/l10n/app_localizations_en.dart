@@ -2753,6 +2753,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingSectionPresentation => 'Presentation';
 
   @override
+  String get settingSectionManage => 'Manage';
+
+  @override
+  String get settingLearnerInputTitle => 'Learners’ Gaze Control & controller';
+
+  @override
+  String get settingLearnerInputDesc =>
+      'Set them up for each learner from their card on your dashboard';
+
+  @override
   String get settingSectionLearningModes => 'Learning Modes';
 
   @override
@@ -4971,7 +4981,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get acpApplies =>
-      'Applies to learners who join from now on. Anyone already enrolled keeps their current setup.';
+      'Learners who join from now on get this. If some have joined already, you can change theirs too.';
 
   @override
   String get acpJoinersGet =>
@@ -9485,6 +9495,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String aqLanguageChoice(String language) {
+    return 'Use the app in $language';
+  }
+
+  @override
   String get btTitle => 'Take a Break';
 
   @override
@@ -12370,6 +12385,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cdsGazeControl => 'Gaze Control';
 
   @override
+  String gpForLearner(String name) {
+    return 'Game Controller for $name';
+  }
+
+  @override
+  String gpForLearnerNote(String name) {
+    return 'You are changing $name’s controller settings. They are saved on this tablet and used the next time $name signs in here.';
+  }
+
+  @override
+  String gpPractiseAsLearner(String name) {
+    return 'To practise the buttons with the controller, sign in as $name and open Game Controller.';
+  }
+
+  @override
+  String gpNotOnTablet(String name) {
+    return '$name’s profile is on another tablet. Set up the controller there.';
+  }
+
+  @override
   String get gzmTitle => 'Gaze use this week';
 
   @override
@@ -13274,6 +13309,112 @@ class AppLocalizationsEn extends AppLocalizations {
       other: '$count cards exported',
       one: '1 card exported',
     );
+    return '$_temp0';
+  }
+
+  @override
+  String get gmMemberAccessibility => 'Accessibility needs';
+
+  @override
+  String lamTitle(String name) {
+    return '$name’s accessibility needs';
+  }
+
+  @override
+  String lamCaption(String name) {
+    return 'What $name needs. Their app follows it: signs or speech, text size, colours, and how they use the screen.';
+  }
+
+  @override
+  String lamApplyNote(String name) {
+    return '$name gets this the next time they open the app, on any tablet. Their text size, colours and sounds change to the ones recommended for it.';
+  }
+
+  @override
+  String gmMemberAccessibilitySet(String name, String type) {
+    return '$name: $type. They get it the next time they open the app.';
+  }
+
+  @override
+  String gmApplyMembersTitle(String audience, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Change it for the $count children already here too?',
+      one: 'Change it for the child already here too?',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Change it for the $count students already here too?',
+      one: 'Change it for the student already here too?',
+    );
+    String _temp2 = intl.Intl.selectLogic(audience, {
+      'parent': '$_temp0',
+      'other': '$_temp1',
+    });
+    return '$_temp2';
+  }
+
+  @override
+  String gmApplyMembersBody(String audience, String type) {
+    String _temp0 = intl.Intl.selectLogic(audience, {
+      'parent':
+          'Children who join from now on get $type. Changing it for the children already in this home group too sets each one’s own choices (sign system, how they use the screen, test supports) back to the $type defaults.',
+      'other':
+          'Students who join from now on get $type. Changing it for the students already in this class too sets each one’s own choices (sign system, how they use the screen, test supports) back to the $type defaults.',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get gmApplyMembersNewOnly => 'New ones only';
+
+  @override
+  String get gmApplyMembersEveryone => 'Everyone';
+
+  @override
+  String gmAccessibilitySetAll(String audience, String type, int count) {
+    String _temp0 = intl.Intl.selectLogic(audience, {
+      'parent':
+          'Accessibility set to $type for new children and the $count already here.',
+      'other':
+          'Accessibility set to $type for new students and the $count already here.',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String settingManagedAccessibilityTitle(String type) {
+    return 'Accessibility needs: $type';
+  }
+
+  @override
+  String settingManagedAccessibilityDesc(String audience) {
+    String _temp0 = intl.Intl.selectLogic(audience, {
+      'parent': 'Your parent sets these for you',
+      'other': 'Your teacher sets these for you',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String epAccessManaged(String audience) {
+    String _temp0 = intl.Intl.selectLogic(audience, {
+      'parent':
+          'Set by your parent in Home Groups. Ask them if something needs to change.',
+      'other':
+          'Set by your teacher in Manage Classes. Ask them if something needs to change.',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String assignedAccessibilityNotice(String audience) {
+    String _temp0 = intl.Intl.selectLogic(audience, {
+      'parent': 'Your parent updated your accessibility settings.',
+      'other': 'Your teacher updated your accessibility settings.',
+    });
     return '$_temp0';
   }
 }

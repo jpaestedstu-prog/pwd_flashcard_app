@@ -150,6 +150,10 @@ class ErrorHandler {
     // and a retry in the background is nothing a learner can act on.
     'LocalRepository.deleteProfile:silent',
     'SyncQueueService:silent',
+    // Applying the accessibility a learner's Teacher or Parent set for them:
+    // background work the learner did not start. A failure leaves the
+    // version unapplied, so it is tried again on the next snapshot or start.
+    'AssignedAccessibilityGate:silent',
   };
 
   /// Whether [source] is suppressed from the global snackbar.

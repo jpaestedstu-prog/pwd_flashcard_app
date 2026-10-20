@@ -25,6 +25,7 @@ import '../../../data/local/hive_service.dart';
 import '../../../data/local/local_repository.dart';
 import '../../../navigation/app_router.dart' show rootNavigatorKey;
 import '../../../widgets/adult_gate_dialog.dart' show requireAdult;
+import '../../../core/accessibility/accessibility_content_policy.dart';
 import '../../../core/accessibility/device_sound.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
@@ -37,6 +38,14 @@ import '../../../widgets/profile_avatar.dart';
 import '../../../widgets/animated_dialogs.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../core/utils/platform_caps.dart';
+import '../models/settings_presentation.dart';
+
+/// Whether the daily study reminder is actually waiting on this device, or
+/// null where that cannot be asked (a browser, a test without the plugin).
+/// Re-read each time Settings opens, and invalidated when the switch moves.
+final dailyReminderScheduledProvider = FutureProvider.autoDispose<bool?>(
+  (ref) => NotificationService.isDailyReminderScheduled(),
+);
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -48,24 +57,53 @@ class SettingsScreen extends ConsumerWidget {
     final settingsNotifier = ref.read(settingsProvider.notifier);
     final fslChoice = ref.watch(fslQualityChoiceProvider);
 
-    // Teacher / Parent are monitoring-only roles: they review student progress
-    // via the Dashboard, Analytics, and Reports rather than using the learning
-    // features themselves. So the learner-focused settings (Learning Modes,
-    // game/flashcard Audio, study Reminders, Adaptive Difficulty, Gaze Control,
-    // the accessibility setup wizard, and tutorial replays) are hidden for them.
-    // Display accessibility (contrast, font size, etc.), language, data/backup,
-    // and the monitoring tools below remain available.
-    final isMonitor =
-        profile?.role == UserRole.teacher || profile?.role == UserRole.parent;
+    // Which rows this profile is offered: one decision per kind of profile
+    // (guest Player, Player, Student, Child, Teacher, Parent), made in
+    // [SettingsPresentation] and pinned by its test. In short, a Teacher or a
+    // Parent keeps what any adult reading a screen needs (contrast, text
+    // size, motion, language, spoken navigation) plus their own tools; the
+    // learning, audio, reminder and hands-free settings are a learner's.
+    final show = SettingsPresentation.of(profile);
 
-    // Player profiles own their My Day; Students and Children do not, because
-    // theirs is set by a Teacher or Parent and can hold the device at each
-    // step. A switch that let a supervised learner turn that off would be a
-    // switch that unlocks their own lock — see [routineFeatureProvider].
-    // A guest Player is excluded: nothing they do is kept past the session,
-    // so there is no day for them to plan and no switch worth offering.
-    final isPlayer =
-        profile?.role == UserRole.player && !(profile?.isGuestPlayer ?? false);
+    // While a Teacher or Parent views a learner, the learner is the active
+    // profile but the educator is at the tablet — so the hands-free rows set
+    // the *learner's* input up, the way the learner's card does.
+    final viewingAsStudent =
+        ref.read(profileProvider.notifier).isViewingAsStudent;
+    String forLearner(String route) => !viewingAsStudent || profile == null
+        ? route
+        : '$route?profile=${Uri.encodeQueryComponent(profile.id)}'
+            '&name=${Uri.encodeQueryComponent(profile.name)}';
+
+    // What the switch shows is what this device will actually do. A new
+    // profile used to read "Daily Reminder: 9:00 AM" switched on while no
+    // reminder had ever been scheduled — the setting's default is on, and
+    // only flipping the switch scheduled one. Null (unknown, e.g. in a
+    // browser) falls back to the setting.
+    final reminderScheduled =
+        ref.watch(dailyReminderScheduledProvider).valueOrNull;
+    final reminderOn =
+        settings.notificationsEnabled && (reminderScheduled ?? true);
+    Future<void> setDailyReminder(bool on) async {
+      if (on) {
+        final granted = await NotificationService.requestPermission();
+        if (!granted) return;
+        settingsNotifier.update(
+          settings.copyWith(notificationsEnabled: true),
+        );
+        await NotificationService.scheduleDailyReminder(
+          hour: settings.reminderHour,
+          minute: settings.reminderMinute,
+          filipino: settings.locale == 'fil',
+        );
+      } else {
+        settingsNotifier.update(
+          settings.copyWith(notificationsEnabled: false),
+        );
+        await NotificationService.cancelDailyReminder();
+      }
+      ref.invalidate(dailyReminderScheduledProvider);
+    }
 
     // Watched (not read) so the switch below tracks the mode even when it is
     // turned off from a collapsed app bar elsewhere in the app.
@@ -467,8 +505,9 @@ class SettingsScreen extends ConsumerWidget {
               // The Voice-Guided Mode screen — its own settings plus a spoken
               // tour of the app — had no entry point anywhere, so the people it
               // was built for could not reach it. Shown only once the feature
-              // is on, so it does not clutter the list for everyone else.
-              if (settings.voiceNavigation)
+              // is on, so it does not clutter the list for everyone else. The
+              // tour walks the learner tabs, so it is a learner's.
+              if (settings.voiceNavigation && show.voiceTour)
                 _SettingsTile(
                   icon: Icons.headset_mic_rounded,
                   title: _t(context).setVoiceTour,
@@ -476,55 +515,78 @@ class SettingsScreen extends ConsumerWidget {
                   onTap: () => context.push('/voice-guided'),
                 ),
 
-              if (!isMonitor)
-                _SettingsTile(
-                  icon: Icons.auto_awesome_rounded,
-                  title: l10n?.adaptiveDifficulty ?? 'Adaptive Difficulty',
-                  subtitle: settings.adaptiveDifficulty
-                      ? l10n?.settingAdaptiveOnDesc ??
-                      'Auto-suggests difficulty based on progress'
-                      : l10n?.settingAdaptiveOffDesc ??
-                      'Manual difficulty selection only',
-                  onTap: () => ((v) => settingsNotifier.update(
-                      settings.copyWith(adaptiveDifficulty: v),
-                    ))(!(settings.adaptiveDifficulty)),
-                  toggled: settings.adaptiveDifficulty,
-                  trailing: Switch.adaptive(
-                    value: settings.adaptiveDifficulty,
-                    activeTrackColor: AppColors.primary,
-                    onChanged: (v) => settingsNotifier.update(
-                      settings.copyWith(adaptiveDifficulty: v),
-                    ),
-                  ),
-                ),
-
               // Hands-free control belongs with the other accessibility settings.
               // It used to sit at the bottom of "Data", below Cloud Sync and
               // Backup & Restore — the learners who most need it were the least
               // likely to scroll that far, and nothing about it is a data setting.
               // Not in a browser: the face tracker runs on the device itself
-              // (see GazeSettingsNotifier, which keeps it off there).
-              if (!kIsWeb)
+              // (see GazeSettingsNotifier, which keeps it off there). A
+              // learner's own input: a Teacher or Parent sets a learner's up
+              // from the learner's card, and their own profile runs neither.
+              if (show.handsFreeInput && !kIsWeb)
                 _SettingsTile(
                   icon: Icons.remove_red_eye_rounded,
                   title:
                       l10n?.settingGazeControlTitle ?? 'Gaze Control (Preview)',
                   subtitle: l10n?.settingGazeControlDesc ??
                       'Hands-free: move your head or blink to select',
-                  onTap: () => context.push('/gaze-settings'),
+                  onTap: () => context.push(forLearner('/gaze-settings')),
                 ),
 
               // Bluetooth game controller. Sits next to Gaze Control because
               // it answers the same question — how does a learner who cannot
               // use the touchscreen drive the app — with different hardware.
               // Android and iOS (GamepadBridge.kt / GamepadBridge.swift).
-              if (GamepadService.isSupported)
+              if (show.handsFreeInput && GamepadService.isSupported)
                 _SettingsTile(
                   icon: Icons.sports_esports_rounded,
                   title: l10n?.settingGamepadTitle ?? 'Game Controller',
                   subtitle: l10n?.settingGamepadDesc ??
                         'Navigate by Bluetooth gamepad, with spoken feedback',
-                  onTap: () => context.push('/gamepad-settings'),
+                  onTap: () => context.push(forLearner('/gamepad-settings')),
+                ),
+
+              // A Teacher or Parent looking here for Gaze Control finds where
+              // it went: each learner's own, from the learner's card on the
+              // dashboard. Not in a browser, which can run neither.
+              if (show.setsUpLearnerInput && !kIsWeb)
+                _SettingsTile(
+                  icon: Icons.settings_accessibility_rounded,
+                  title: _t(context).settingLearnerInputTitle,
+                  subtitle: _t(context).settingLearnerInputDesc,
+                  onTap: () => context.push(
+                    show.kind == ProfileKind.parent
+                        ? '/parent-dashboard'
+                        : '/teacher-dashboard',
+                  ),
+                ),
+
+              // The learner accessibility wizard, for a guest or a Player, who
+              // set themselves up. It used to sit under "Data", where nobody
+              // looking for accessibility would find it.
+              if (show.accessibilitySetup)
+                _SettingsTile(
+                  icon: Icons.accessibility_new_rounded,
+                  title: l10n?.settingAccessibilitySetupTitle ??
+                      'Re-run Accessibility Setup',
+                  subtitle: l10n?.settingAccessibilitySetupDesc ??
+                      'Restart the accessibility wizard',
+                  onTap: () => context.push('/accessibility-setup'),
+                ),
+
+              // A Student's or a Child's accessibility needs are set by their
+              // Teacher (Manage Classes) or Parent (Home Groups), not here.
+              // Where re-running setup used to be, the row says what they are
+              // and who looks after them.
+              if (show.accessibilityManagedByEducator && profile != null)
+                _SettingsTile.info(
+                  icon: Icons.accessibility_new_rounded,
+                  title: _t(context).settingManagedAccessibilityTitle(
+                    profile.disabilityType.labelOf(l10n),
+                  ),
+                  subtitle: _t(context).settingManagedAccessibilityDesc(
+                    profile.role == UserRole.child ? 'parent' : 'teacher',
+                  ),
                 ),
 
               const SizedBox(height: 28),
@@ -536,7 +598,7 @@ class SettingsScreen extends ConsumerWidget {
               // not the learner. Unlike everything else on this screen it is not
               // persisted: see [fullscreenModeProvider] for why a presentation
               // mode that survived a restart would be a bug, not a feature.
-              if (isMonitor) ...[
+              if (show.presentation) ...[
                 _SectionHeader(
                   title: l10n?.settingSectionPresentation ??
                       'Presentation',
@@ -568,13 +630,36 @@ class SettingsScreen extends ConsumerWidget {
               ],
 
               // ─── Learning Modes Section ────────
-              // Learner-only — hidden for Teacher / Parent monitoring profiles.
-              if (!isMonitor) ...[
+              // Learner-only — hidden for Teacher / Parent profiles.
+              if (show.learningModes) ...[
                 _SectionHeader(
                   title: l10n?.settingSectionLearningModes ??
                       'Learning Modes',
                 ),
                 const SizedBox(height: 8),
+
+                // How hard the games are is a learning setting; it used to
+                // sit among the display options under Accessibility.
+                _SettingsTile(
+                  icon: Icons.auto_awesome_rounded,
+                  title: l10n?.adaptiveDifficulty ?? 'Adaptive Difficulty',
+                  subtitle: settings.adaptiveDifficulty
+                      ? l10n?.settingAdaptiveOnDesc ??
+                      'Auto-suggests difficulty based on progress'
+                      : l10n?.settingAdaptiveOffDesc ??
+                      'Manual difficulty selection only',
+                  onTap: () => ((v) => settingsNotifier.update(
+                      settings.copyWith(adaptiveDifficulty: v),
+                    ))(!(settings.adaptiveDifficulty)),
+                  toggled: settings.adaptiveDifficulty,
+                  trailing: Switch.adaptive(
+                    value: settings.adaptiveDifficulty,
+                    activeTrackColor: AppColors.primary,
+                    onChanged: (v) => settingsNotifier.update(
+                      settings.copyWith(adaptiveDifficulty: v),
+                    ),
+                  ),
+                ),
 
                 _SettingsTile(
                   icon: Icons.slow_motion_video_rounded,
@@ -641,8 +726,8 @@ class SettingsScreen extends ConsumerWidget {
               ],
 
               // ─── Audio Section ─────────────────
-              // Game / flashcard audio — learner-only, hidden for monitoring roles.
-              if (!isMonitor) ...[
+              // Game / flashcard audio — learner-only, hidden for educators.
+              if (show.learnerAudio) ...[
                 _SectionHeader(
                   title: AppLocalizations.of(context)?.audio ?? 'Audio',
                 ),
@@ -759,7 +844,11 @@ class SettingsScreen extends ConsumerWidget {
               ],
 
               // ─── My Day Section (Player profiles only) ──
-              if (isPlayer) ...[
+              // A Player owns their My Day. A Student's or Child's is set by a
+              // Teacher or Parent and can hold the device at each step — a
+              // switch here would unlock their own lock (see
+              // [routineFeatureProvider]) — and a guest keeps nothing.
+              if (show.myDay) ...[
                 _SectionHeader(title: l10n?.settingSectionMyDay ?? 'My Day'),
                 const SizedBox(height: 8),
 
@@ -817,8 +906,8 @@ class SettingsScreen extends ConsumerWidget {
               const SizedBox(height: 28),
 
               // ─── Reminders Section ─────────────
-              // Study reminders are learner-only — hidden for monitoring roles.
-              if (!isMonitor) ...[
+              // Study reminders are learner-only — hidden for educators.
+              if (show.reminders) ...[
                 _SectionHeader(
                   title: AppLocalizations.of(context)?.reminders ?? 'Reminders',
                 ),
@@ -834,60 +923,22 @@ class SettingsScreen extends ConsumerWidget {
                   title:
                       AppLocalizations.of(context)?.dailyReminder ??
                       'Daily Reminder',
-                  subtitle: settings.notificationsEnabled
+                  subtitle: reminderOn
                       ? _formatTime(
                           settings.reminderHour,
                           settings.reminderMinute,
                         )
                       : _t(context).apOff,
-                  onTap: () => ((v) async {
-                      if (v) {
-                        final granted =
-                            await NotificationService.requestPermission();
-                        if (!granted) return;
-                        settingsNotifier.update(
-                          settings.copyWith(notificationsEnabled: true),
-                        );
-                        await NotificationService.scheduleDailyReminder(
-                          hour: settings.reminderHour,
-                          minute: settings.reminderMinute,
-                          filipino: settings.locale == 'fil',
-                        );
-                      } else {
-                        settingsNotifier.update(
-                          settings.copyWith(notificationsEnabled: false),
-                        );
-                        await NotificationService.cancelDailyReminder();
-                      }
-                    })(!(settings.notificationsEnabled)),
-                  toggled: settings.notificationsEnabled,
+                  onTap: () => setDailyReminder(!reminderOn),
+                  toggled: reminderOn,
                   trailing: Switch.adaptive(
-                    value: settings.notificationsEnabled,
+                    value: reminderOn,
                     activeTrackColor: AppColors.primary,
-                    onChanged: (v) async {
-                      if (v) {
-                        final granted =
-                            await NotificationService.requestPermission();
-                        if (!granted) return;
-                        settingsNotifier.update(
-                          settings.copyWith(notificationsEnabled: true),
-                        );
-                        await NotificationService.scheduleDailyReminder(
-                          hour: settings.reminderHour,
-                          minute: settings.reminderMinute,
-                          filipino: settings.locale == 'fil',
-                        );
-                      } else {
-                        settingsNotifier.update(
-                          settings.copyWith(notificationsEnabled: false),
-                        );
-                        await NotificationService.cancelDailyReminder();
-                      }
-                    },
+                    onChanged: setDailyReminder,
                   ),
                 ),
 
-                if (settings.notificationsEnabled)
+                if (reminderOn)
                   _SettingsTile(
                     icon: Icons.access_time_rounded,
                     title:
@@ -916,6 +967,7 @@ class SettingsScreen extends ConsumerWidget {
                             minute: picked.minute,
                             filipino: settings.locale == 'fil',
                           );
+                          ref.invalidate(dailyReminderScheduledProvider);
                         }
                       },
                       child: Text(l10n?.changeLabel ?? 'Change'),
@@ -923,7 +975,7 @@ class SettingsScreen extends ConsumerWidget {
                   ),
 
                 // Vocabulary Review Reminder
-                if (settings.notificationsEnabled)
+                if (reminderOn)
                   _SettingsTile(
                     icon: Icons.psychology_rounded,
                     title: l10n?.settingVocabReviewTitle ?? 'Vocab Review Reminder',
@@ -973,7 +1025,52 @@ class SettingsScreen extends ConsumerWidget {
                 const SizedBox(height: 28),
               ],
 
-              // ─── Backup & Restore Section ──────
+              // ─── Manage Section (Teacher / Parent) ──
+              // The educator's own tools, together — they used to be scattered
+              // through "Data", where Students also found "Classroom Mode —
+              // Monitor all students" (a route that turned them away) and
+              // Parents found the Teacher's live class view.
+              if (show.isEducator) ...[
+                _SectionHeader(
+                  title: _t(context).settingSectionManage,
+                ),
+                const SizedBox(height: 8),
+
+                if (show.classroomMode)
+                  _SettingsTile(
+                    icon: Icons.cast_for_education_rounded,
+                    title: l10n?.classroomMode ?? 'Classroom Mode',
+                    subtitle: l10n?.settingClassroomModeDesc ??
+                        'Monitor all students in real time',
+                    onTap: () => context.push('/classroom'),
+                  ),
+
+                if (show.parentalControls)
+                  _SettingsTile(
+                    icon: Icons.family_restroom_rounded,
+                    title:
+                        l10n?.settingChildControlsTitle ?? 'Parental Controls',
+                    subtitle: l10n?.settingChildControlsDesc ??
+                        'Set time limits & content restrictions',
+                    onTap: () => context.push('/parental-controls'),
+                  ),
+
+                // Profile clean-up: it can delete any other profile on this
+                // device, so learners never see it.
+                if (show.manageProfiles)
+                  _SettingsTile(
+                    icon: Icons.manage_accounts_rounded,
+                    title:
+                        l10n?.settingManageProfilesTitle ?? 'Manage Profiles',
+                    subtitle: l10n?.settingManageProfilesDesc ??
+                        'Delete profiles saved on this device',
+                    onTap: () => context.push('/manage-profiles'),
+                  ),
+
+                const SizedBox(height: 28),
+              ],
+
+              // ─── Data Section ──────────────────
               _SectionHeader(title: l10n?.settingSectionData ?? 'Data'),
               const SizedBox(height: 8),
 
@@ -981,23 +1078,30 @@ class SettingsScreen extends ConsumerWidget {
               const SyncStatusWidget(),
               const SizedBox(height: 4),
 
-              _SettingsTile(
-                icon: Icons.backup_rounded,
-                title: l10n?.settingBackupRestoreTitle ?? 'Backup & Restore',
-                subtitle: l10n?.settingBackupRestoreDesc ??
-                      'Save or restore all app data',
-                onTap: () => context.push('/backup'),
-              ),
+              // A restore replaces every profile on the device and a backup
+              // carries every profile's data: the device's grown-up's job, or
+              // a Player's on their own phone (see
+              // [SettingsPresentation.deviceBackup]).
+              if (show.deviceBackup)
+                _SettingsTile(
+                  icon: Icons.backup_rounded,
+                  title: l10n?.settingBackupRestoreTitle ?? 'Backup & Restore',
+                  subtitle: l10n?.settingBackupRestoreDesc ??
+                        'Save or restore all app data',
+                  onTap: () => context.push('/backup'),
+                ),
 
-              _SettingsTile(
-                icon: Icons.vpn_key_rounded,
-                title: l10n?.settingRecoveryCodeTitle ?? 'Cloud Recovery Code',
-                subtitle: l10n?.settingRecoveryCodeDesc ??
-                      'Restore this profile on a new device',
-                onTap: () => context.push('/recovery/show'),
-              ),
+              if (show.recoveryCode)
+                _SettingsTile(
+                  icon: Icons.vpn_key_rounded,
+                  title:
+                      l10n?.settingRecoveryCodeTitle ?? 'Cloud Recovery Code',
+                  subtitle: l10n?.settingRecoveryCodeDesc ??
+                        'Restore this profile on a new device',
+                  onTap: () => context.push('/recovery/show'),
+                ),
 
-              if (isMonitor)
+              if (show.linkAccount)
                 _SettingsTile(
                   icon: Icons.cloud_sync_rounded,
                   title: l10n?.settingCloudAccountTitle ?? 'Backup & Link Account',
@@ -1010,7 +1114,11 @@ class SettingsScreen extends ConsumerWidget {
               // Which copy of each FSL sign this device downloads (see
               // FslClipQuality). Automatic gives phones the smaller copy: a
               // friend's phone froze on the full-HD ones or never started
-              // them. Kept for the device, whoever is signed in.
+              // them. Kept for the device, whoever is signed in — and shown
+              // to whoever is shown signs: not to a learner whose
+              // accessibility needs leave sign videos out (low vision,
+              // cognitive, or a Deaf learner who reads written words only).
+              if (AccessibilityContentPolicy.forProfile(profile).showFsl) ...[
               _SettingsTile(
                 icon: Icons.sign_language_rounded,
                 title: _t(context).signVideoQuality,
@@ -1043,42 +1151,9 @@ class SettingsScreen extends ConsumerWidget {
                   ],
                 ),
               ),
-
-              // "Classroom Mode" (real-time student monitoring + casting) is a
-              // teacher/parent tool — hidden for player profiles, which focus on
-              // gameplay + PWD-awareness learning.
-              if (profile?.isPlayerMode != true)
-                _SettingsTile(
-                  icon: Icons.cast_for_education_rounded,
-                  title: l10n?.classroomMode ?? 'Classroom Mode',
-                  subtitle: l10n?.settingClassroomModeDesc ??
-                      'Monitor all students in real time',
-                  onTap: () => context.push('/classroom'),
-                ),
-
-              // Accessibility wizard & gaze input are learner-facing onboarding /
-              // input aids — hidden for Teacher / Parent monitoring profiles.
-              if (!isMonitor) ...[
-                _SettingsTile(
-                  icon: Icons.accessibility_new_rounded,
-                  title: l10n?.settingAccessibilitySetupTitle ??
-                      'Re-run Accessibility Setup',
-                  subtitle: l10n?.settingAccessibilitySetupDesc ??
-                      'Restart the accessibility wizard',
-                  onTap: () => context.push('/accessibility-setup'),
-                ),
               ],
 
-              // Profile clean-up is a teacher/parent tool: it can delete any
-              // other profile on this device, so learners never see it.
-              if (isMonitor)
-                _SettingsTile(
-                  icon: Icons.manage_accounts_rounded,
-                  title: l10n?.settingManageProfilesTitle ?? 'Manage Profiles',
-                  subtitle: l10n?.settingManageProfilesDesc ??
-                      'Delete profiles saved on this device',
-                  onTap: () => context.push('/manage-profiles'),
-                ),
+              if (show.telemetry) const _TelemetryToggle(),
 
               // Every profile saved online can be deleted by its owner, right
               // here: both app stores require it (Apple 5.1.1(v), Google
@@ -1086,8 +1161,7 @@ class SettingsScreen extends ConsumerWidget {
               // OTHER profiles, so a lone teacher or a player had no way.
               if (canDeleteOwnProfile(
                 profile,
-                viewingAsStudent:
-                    ref.read(profileProvider.notifier).isViewingAsStudent,
+                viewingAsStudent: viewingAsStudent,
               ))
                 _SettingsTile(
                   icon: Icons.person_remove_rounded,
@@ -1097,42 +1171,6 @@ class SettingsScreen extends ConsumerWidget {
                   onTap: () => _deleteOwnProfile(context, ref),
                 ),
 
-              if (isMonitor)
-                _SettingsTile(
-                  icon: Icons.family_restroom_rounded,
-                  title: l10n?.settingChildControlsTitle ?? 'Parental Controls',
-                  subtitle: l10n?.settingChildControlsDesc ??
-                      'Set time limits & content restrictions',
-                  onTap: () => context.push('/parental-controls'),
-                ),
-
-              if (isMonitor) const _TelemetryToggle(),
-
-              // Tutorial replays are learner-facing — hidden for monitoring roles.
-              if (!isMonitor)
-                _SettingsTile(
-                  icon: Icons.replay_rounded,
-                  title: l10n?.settingReplayTutorialsTitle ?? 'Replay Tutorials',
-                  subtitle: l10n?.settingReplayTutorialsDesc ??
-                      'Show tutorial guides again on all screens',
-                  trailing: IconButton(
-                    icon: const Icon(Icons.refresh_rounded, size: 20),
-                    onPressed: () async {
-                      final profile = ref.read(profileProvider);
-                      if (profile != null) {
-                        await HiveService.resetAllTutorials(profile.id);
-                        if (context.mounted) {
-                          AppSnackBar.success(
-                            context,
-                            message:
-                                _t(context).setTutorialsReset,
-                          );
-                        }
-                      }
-                    },
-                  ),
-                ),
-
               const SizedBox(height: 28),
 
               // ─── About Section ─────────────────
@@ -1140,6 +1178,19 @@ class SettingsScreen extends ConsumerWidget {
                 title: AppLocalizations.of(context)?.about ?? 'About',
               ),
               const SizedBox(height: 8),
+
+              // Tutorial replays: the learner screens' guides, so a
+              // learner's. The whole row replays them — only the small
+              // refresh icon at its end used to.
+              if (show.tutorialReplay)
+                _SettingsTile(
+                  icon: Icons.replay_rounded,
+                  title: l10n?.settingReplayTutorialsTitle ?? 'Replay Tutorials',
+                  subtitle: l10n?.settingReplayTutorialsDesc ??
+                      'Show tutorial guides again on all screens',
+                  onTap: () => _replayTutorials(context, ref),
+                  trailing: const Icon(Icons.refresh_rounded, size: 20),
+                ),
 
               _SettingsTile(
                 icon: Icons.info_outline_rounded,
@@ -1245,6 +1296,16 @@ class SettingsScreen extends ConsumerWidget {
     final period = hour >= 12 ? 'PM' : 'AM';
     final h = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
     return '$h:${minute.toString().padLeft(2, '0')} $period';
+  }
+
+  /// Shows every screen's tutorial guide again for the signed-in profile.
+  Future<void> _replayTutorials(BuildContext context, WidgetRef ref) async {
+    final profile = ref.read(profileProvider);
+    if (profile == null) return;
+    await HiveService.resetAllTutorials(profile.id);
+    if (context.mounted) {
+      AppSnackBar.success(context, message: _t(context).setTutorialsReset);
+    }
   }
 
   /// Opens the privacy page in the browser. Leaving the app is a grown-up's
@@ -1369,7 +1430,7 @@ class SettingsScreen extends ConsumerWidget {
 /// on a shared study tablet a learner — one mis-tap, or a gaze dwell — must
 /// never reach it. (It used to show for every profile.)
 bool canResetAllData(UserProfile? profile) =>
-    profile?.role == UserRole.teacher || profile?.role == UserRole.parent;
+    SettingsPresentation.of(profile).resetAllData;
 
 /// Whether "Delete this profile" is offered: to every profile that exists
 /// online — a Guest Player never did — and never to an educator who is only
@@ -1724,10 +1785,28 @@ class _SettingsTile extends StatelessWidget {
     this.trailing,
     this.semanticsValue,
     this.toggled,
-  }) : assert(
+  }) : _fitTitle = false,
+       assert(
           onTap != null || trailing != null,
           'a settings row needs either an action or a control',
         );
+
+  /// A row that only tells: no action, no control, no chevron — and so no
+  /// stop for a controller or for gaze to land on and find nothing to do.
+  /// Its title may carry a name the app does not choose (an accessibility
+  /// category: "Walang Pangangailangan sa Aksesibilidad"), so it keeps its
+  /// words whole rather than breaking one at a large text size.
+  const _SettingsTile.info({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  }) : onTap = null,
+       trailing = null,
+       semanticsValue = null,
+       toggled = null,
+       _fitTitle = true;
+
+  final bool _fitTitle;
 
   @override
   Widget build(BuildContext context) {
@@ -1819,7 +1898,10 @@ class _SettingsTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: _titleStyle),
+                    if (_fitTitle)
+                      FitText(title, maxLines: null, style: _titleStyle)
+                    else
+                      Text(title, style: _titleStyle),
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
@@ -1830,13 +1912,14 @@ class _SettingsTile extends StatelessWidget {
                   ],
                 ),
               ),
-              if (control == null)
-                Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  size: 18,
-                  color: HCColor.of(context).textSecondary,
-                )
-              else if (!below)
+              if (control == null) ...[
+                if (onTap != null)
+                  Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 18,
+                    color: HCColor.of(context).textSecondary,
+                  ),
+              ] else if (!below)
                 control,
             ],
           );

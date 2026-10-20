@@ -2793,6 +2793,17 @@ class AppLocalizationsFil extends AppLocalizations {
   String get settingSectionPresentation => 'Presentasyon';
 
   @override
+  String get settingSectionManage => 'Pamamahala';
+
+  @override
+  String get settingLearnerInputTitle =>
+      'Gaze Control at controller ng mga mag-aaral';
+
+  @override
+  String get settingLearnerInputDesc =>
+      'Ayusin ang mga ito para sa bawat mag-aaral mula sa kanilang card sa iyong dashboard';
+
+  @override
   String get settingSectionLearningModes => 'Mga Mode ng Pagkatuto';
 
   @override
@@ -4913,7 +4924,7 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String get acpApplies =>
-      'Para ito sa mga mag-aaral na sasali mula ngayon. Mananatili ang kasalukuyang setup ng mga naka-enroll na.';
+      'Makukuha ito ng mga sasali mula ngayon. Kung may nakasali na, mababago mo rin ang sa kanila.';
 
   @override
   String get acpJoinersGet =>
@@ -9416,6 +9427,11 @@ class AppLocalizationsFil extends AppLocalizations {
   }
 
   @override
+  String aqLanguageChoice(String language) {
+    return 'Gamitin ang app sa $language';
+  }
+
+  @override
   String get btTitle => 'Magpahinga Muna';
 
   @override
@@ -12277,6 +12293,26 @@ class AppLocalizationsFil extends AppLocalizations {
   String get cdsGazeControl => 'Gaze Control';
 
   @override
+  String gpForLearner(String name) {
+    return 'Game Controller ni $name';
+  }
+
+  @override
+  String gpForLearnerNote(String name) {
+    return 'Binabago mo ang mga setting ng controller ni $name. Nai-save ito sa tablet na ito at gagamitin sa susunod na pag-sign in ni $name dito.';
+  }
+
+  @override
+  String gpPractiseAsLearner(String name) {
+    return 'Para sanayin ang mga button gamit ang controller, mag-sign in bilang $name at buksan ang Game Controller.';
+  }
+
+  @override
+  String gpNotOnTablet(String name) {
+    return 'Nasa ibang tablet ang profile ni $name. Doon i-set up ang controller.';
+  }
+
+  @override
   String get gzmTitle => 'Paggamit ng gaze ngayong linggo';
 
   @override
@@ -13181,6 +13217,101 @@ class AppLocalizationsFil extends AppLocalizations {
       other: '$count card ang na-export',
       one: '1 card ang na-export',
     );
+    return '$_temp0';
+  }
+
+  @override
+  String get gmMemberAccessibility => 'Pangangailangan sa aksesibilidad';
+
+  @override
+  String lamTitle(String name) {
+    return 'Pangangailangan ni $name sa aksesibilidad';
+  }
+
+  @override
+  String lamCaption(String name) {
+    return 'Ang kailangan ni $name. Susundin ito ng kanyang app: senyas o boses, laki ng teksto, kulay, at kung paano niya ginagamit ang screen.';
+  }
+
+  @override
+  String lamApplyNote(String name) {
+    return 'Makukuha ito ni $name sa susunod niyang pagbukas ng app, sa anumang tablet. Magbabago ang laki ng teksto, kulay at tunog niya ayon sa inirerekomenda para rito.';
+  }
+
+  @override
+  String gmMemberAccessibilitySet(String name, String type) {
+    return '$name: $type. Makukuha niya ito sa susunod niyang pagbukas ng app.';
+  }
+
+  @override
+  String gmApplyMembersTitle(String audience, int count) {
+    String _temp0 = intl.Intl.selectLogic(audience, {
+      'parent': 'Baguhin din ba para sa $count anak na narito na?',
+      'other': 'Baguhin din ba para sa $count mag-aaral na narito na?',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String gmApplyMembersBody(String audience, String type) {
+    String _temp0 = intl.Intl.selectLogic(audience, {
+      'parent':
+          'Makukuha ng mga anak na sasali mula ngayon ang $type. Kapag binago rin para sa mga anak na nasa home group na ito, babalik sa default ng $type ang sariling piniling suporta ng bawat isa (sign system, paraan ng paggamit ng screen, suporta sa pagsusulit).',
+      'other':
+          'Makukuha ng mga mag-aaral na sasali mula ngayon ang $type. Kapag binago rin para sa mga mag-aaral na nasa klaseng ito, babalik sa default ng $type ang sariling piniling suporta ng bawat isa (sign system, paraan ng paggamit ng screen, suporta sa pagsusulit).',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get gmApplyMembersNewOnly => 'Sa mga bago lang';
+
+  @override
+  String get gmApplyMembersEveryone => 'Sa lahat';
+
+  @override
+  String gmAccessibilitySetAll(String audience, String type, int count) {
+    String _temp0 = intl.Intl.selectLogic(audience, {
+      'parent':
+          'Itinakda sa $type para sa mga bagong anak at sa $count na narito na.',
+      'other':
+          'Itinakda sa $type para sa mga bagong mag-aaral at sa $count na narito na.',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String settingManagedAccessibilityTitle(String type) {
+    return 'Aksesibilidad: $type';
+  }
+
+  @override
+  String settingManagedAccessibilityDesc(String audience) {
+    String _temp0 = intl.Intl.selectLogic(audience, {
+      'parent': 'Ang iyong magulang ang nagtatakda nito para sa iyo',
+      'other': 'Ang iyong guro ang nagtatakda nito para sa iyo',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String epAccessManaged(String audience) {
+    String _temp0 = intl.Intl.selectLogic(audience, {
+      'parent':
+          'Itinakda ng iyong magulang sa Mga Home Group. Sabihan sila kung may kailangang baguhin.',
+      'other':
+          'Itinakda ng iyong guro sa Pamahalaan ang mga Klase. Sabihan sila kung may kailangang baguhin.',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String assignedAccessibilityNotice(String audience) {
+    String _temp0 = intl.Intl.selectLogic(audience, {
+      'parent':
+          'Binago ng iyong magulang ang iyong mga setting sa aksesibilidad.',
+      'other': 'Binago ng iyong guro ang iyong mga setting sa aksesibilidad.',
+    });
     return '$_temp0';
   }
 }

@@ -1,3 +1,5 @@
+import '../../core/accessibility/assigned_accessibility.dart';
+
 /// Membership row linking a child profile to a home group.
 ///
 /// Composite primary key on (homeGroupId, profileId). [displayName] is the
@@ -10,11 +12,16 @@ class HomeGroupMember {
   final String displayName;
   final DateTime joinedAt;
 
+  /// The accessibility the parent set for this learner since they joined, or
+  /// null — see [AssignedAccessibility].
+  final AssignedAccessibility? assigned;
+
   const HomeGroupMember({
     required this.homeGroupId,
     required this.profileId,
     required this.displayName,
     required this.joinedAt,
+    this.assigned,
   });
 
   HomeGroupMember copyWith({
@@ -28,6 +35,7 @@ class HomeGroupMember {
       profileId: profileId ?? this.profileId,
       displayName: displayName ?? this.displayName,
       joinedAt: joinedAt ?? this.joinedAt,
+      assigned: assigned,
     );
   }
 
@@ -37,6 +45,7 @@ class HomeGroupMember {
         'profile_id': profileId,
         'display_name': displayName,
         'joined_at': joinedAt.toIso8601String(),
+        ...?assigned?.toFields(),
       };
 
   factory HomeGroupMember.fromJson(Map<String, dynamic> json) {
@@ -45,6 +54,7 @@ class HomeGroupMember {
       profileId: json['profile_id'] as String,
       displayName: json['display_name'] as String,
       joinedAt: DateTime.parse(json['joined_at'] as String),
+      assigned: AssignedAccessibility.fromRow(json),
     );
   }
 }

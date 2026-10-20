@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,6 +15,7 @@ import '../../../providers/app_providers.dart';
 import '../../../data/local/hive_service.dart';
 import '../../../providers/parent_provider.dart';
 import '../screens/sign_check_screen.dart';
+import '../../gamepad/services/gamepad_service.dart';
 import '../../../features/progress/theme/progress_theme_provider.dart';
 import '../../../features/progress/theme/progress_layout_provider.dart';
 import '../../../features/progress/theme/progress_theme_picker.dart';
@@ -414,13 +416,15 @@ class ChildDetailSheet extends ConsumerWidget {
                 ),
               ).animate().fadeIn(duration: 400.ms, delay: 520.ms),
 
-              // ─── Gaze Control ─────────────────────
-              // The learner who needs gaze is the one least able to set it
-              // up, and a Child has no Settings at all — so their grown-up
-              // sets it here. Gaze settings live on the tablet the learner
-              // uses, so a learner whose profile is on another tablet gets a
-              // note saying where, not a screen whose changes go nowhere.
-              _GazeControlButton(child: child)
+              // ─── Gaze Control & Game Controller ───
+              // The learner who needs gaze or a controller is the one least
+              // able to set it up, and a Child has no Settings at all — so
+              // their grown-up sets it here (a Teacher's or Parent's own
+              // profile runs neither). These settings live on the tablet the
+              // learner uses, so a learner whose profile is on another tablet
+              // gets a note saying where, not a screen whose changes go
+              // nowhere.
+              _LearnerInputButtons(child: child)
                   .animate()
                   .fadeIn(duration: 400.ms, delay: 535.ms),
 
@@ -458,12 +462,16 @@ class ChildDetailSheet extends ConsumerWidget {
   }
 }
 
-// ─── Gaze Control ────────────────────────────────────
+// ─── Gaze Control & Game Controller ──────────────────
 
-class _GazeControlButton extends StatelessWidget {
+/// The learner's hands-free input, set up by their Teacher or Parent: Gaze
+/// Control (not in a browser, which cannot run the face tracker) and the
+/// Bluetooth game controller (Android and iOS). Stacked rather than side by
+/// side, so a controller's or gaze's ▼ reaches both in order.
+class _LearnerInputButtons extends StatelessWidget {
   final ChildSummary child;
 
-  const _GazeControlButton({required this.child});
+  const _LearnerInputButtons({required this.child});
 
   bool get _onThisTablet {
     try {
@@ -477,30 +485,70 @@ class _GazeControlButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = _t(context);
     final here = _onThisTablet;
+    final query = '?profile=${Uri.encodeQueryComponent(child.profileId)}'
+        '&name=${Uri.encodeQueryComponent(child.name)}';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (!kIsWeb)
+          _LearnerInputButton(
+            icon: Icons.visibility_rounded,
+            label: t.cdsGazeControl,
+            route: here ? '/gaze-settings$query' : null,
+            notHere: t.gzsNotOnTablet(child.name),
+          ),
+        if (GamepadService.isSupported)
+          _LearnerInputButton(
+            icon: Icons.sports_esports_rounded,
+            label: t.settingGamepadTitle,
+            route: here ? '/gamepad-settings$query' : null,
+            notHere: t.gpNotOnTablet(child.name),
+          ),
+      ],
+    );
+  }
+}
+
+class _LearnerInputButton extends StatelessWidget {
+  const _LearnerInputButton({
+    required this.icon,
+    required this.label,
+    required this.route,
+    required this.notHere,
+  });
+
+  final IconData icon;
+  final String label;
+
+  /// Null when the learner's profile is not on this tablet.
+  final String? route;
+
+  /// Said instead of opening a screen whose changes would go nowhere.
+  final String notHere;
+
+  @override
+  Widget build(BuildContext context) {
+    final target = route;
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           OutlinedButton.icon(
-            onPressed: !here
+            onPressed: target == null
                 ? null
                 : () {
                     Navigator.of(context).pop();
-                    GoRouter.of(context).push(
-                      '/gaze-settings?profile='
-                      '${Uri.encodeQueryComponent(child.profileId)}'
-                      '&name=${Uri.encodeQueryComponent(child.name)}',
-                    );
+                    GoRouter.of(context).push(target);
                   },
-            icon: const Icon(Icons.visibility_rounded),
-            label: Text(t.cdsGazeControl),
+            icon: Icon(icon),
+            label: Text(label),
           ),
-          if (!here)
+          if (target == null)
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(
-                t.gzsNotOnTablet(child.name),
+                notHere,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 12,

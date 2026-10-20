@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
+import '../../gamepad/services/gamepad_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart';
@@ -34,6 +36,12 @@ class DashboardScreen extends ConsumerWidget {
       return false;
     }
   }
+
+  /// `?profile=<id>&name=<name>`: opens a hands-free settings page on the
+  /// learner's own settings rather than the educator's.
+  static String _learnerQuery(UserProfile learner) =>
+      '?profile=${Uri.encodeQueryComponent(learner.id)}'
+      '&name=${Uri.encodeQueryComponent(learner.name)}';
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -166,24 +174,35 @@ class DashboardScreen extends ConsumerWidget {
             ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1, end: 0),
 
             // A teacher or parent looking at a learner can set up the
-            // learner's Gaze Control from here too, as from the learner's card
-            // on their dashboard — only for a learner whose profile is on this
-            // tablet, where gaze settings live.
+            // learner's Gaze Control and game controller from here too, as
+            // from the learner's card on their dashboard — only for a learner
+            // whose profile is on this tablet, where those settings live.
+            // Stacked, not side by side, so ▼ reaches both in order.
             if (isViewingAsStudent &&
                 profile != null &&
-                _onThisTablet(profile.id)) ...[
+                _onThisTablet(profile.id) &&
+                (!kIsWeb || GamepadService.isSupported)) ...[
               const SizedBox(height: 12),
-              Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: OutlinedButton.icon(
-                  onPressed: () => context.push(
-                    '/gaze-settings?profile='
-                    '${Uri.encodeQueryComponent(profile.id)}'
-                    '&name=${Uri.encodeQueryComponent(profile.name)}',
-                  ),
-                  icon: const Icon(Icons.visibility_rounded),
-                  label: Text(_t(context).cdsGazeControl),
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (!kIsWeb)
+                    OutlinedButton.icon(
+                      onPressed: () => context.push(
+                        '/gaze-settings${_learnerQuery(profile)}',
+                      ),
+                      icon: const Icon(Icons.visibility_rounded),
+                      label: Text(_t(context).cdsGazeControl),
+                    ),
+                  if (GamepadService.isSupported)
+                    OutlinedButton.icon(
+                      onPressed: () => context.push(
+                        '/gamepad-settings${_learnerQuery(profile)}',
+                      ),
+                      icon: const Icon(Icons.sports_esports_rounded),
+                      label: Text(_t(context).settingGamepadTitle),
+                    ),
+                ],
               ),
             ],
 
