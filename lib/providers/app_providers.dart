@@ -647,8 +647,8 @@ class ProgressNotifier extends Notifier<LearningProgress> {
     );
     HiveService.saveProgress(state);
 
-    // Cloud sync: only for classroom-linked students. Player Mode and
-    // unlinked students stay 100% local.
+    // Cloud sync: only for a Student in a class or a Child in a home group.
+    // Player Mode and unlinked learners stay 100% local.
     final activeProfile = ref.read(profileProvider);
     // One predicate for both legs of sync, so the pull side can never be
     // open where the push side is shut — see
@@ -673,7 +673,8 @@ class ProgressNotifier extends Notifier<LearningProgress> {
     }
   }
 
-  /// Persists [state] to Hive and, for classroom-linked students, to cloud.
+  /// Persists [state] to Hive and, for a Student in a class or a Child in a
+  /// home group, to cloud.
   /// Mirrors the offline-first sync rule used by [recordGameResult].
   void _persistProgress() {
     HiveService.saveProgress(state);
@@ -921,6 +922,40 @@ final allProfilesWithProgressProvider =
 // The parameter is named `educatorProfileId` because it now feeds both
 // teachers and parents; the legacy `teacherId` callsites still work since
 // the binding is positional.
+/// [roster] with each learner whose profile this tablet owns shown with this
+/// tablet's own progress instead of the cloud copy.
+///
+/// Everything such a learner does lands here first, so this copy is the
+/// freshest there is — and until 2026-10-19 a home-group Child's progress
+/// never reached the cloud at all, so a Parent's dashboard showed every child
+/// at 0 words, 0 stars and 0% accuracy even with the child on the same
+/// tablet. A learner who uses another device (or whose profile was restored
+/// elsewhere) keeps the cloud copy: that device is the one that knows.
+/// [ownedHere] and [localProgress] are seams for tests.
+List<(UserProfile, LearningProgress)> withThisTabletsProgress(
+  List<(UserProfile, LearningProgress)> roster, {
+  bool Function(String profileId)? ownedHere,
+  LearningProgress Function(String profileId)? localProgress,
+}) {
+  bool owned(String id) {
+    try {
+      final stored = HiveService.getProfileById(id);
+      if (stored == null) return false;
+      final uid = FirebaseService.currentUid;
+      return uid == null || stored.ownerUid == null || stored.ownerUid == uid;
+    } catch (_) {
+      return false; // Store not open: keep the cloud copy.
+    }
+  }
+
+  final isOwned = ownedHere ?? owned;
+  final local = localProgress ?? HiveService.getProgress;
+  return [
+    for (final (learner, cloud) in roster)
+      (learner, isOwned(learner.id) ? local(learner.id) : cloud),
+  ];
+}
+
 /// The roster an educator can prove *locally*: the members of the classrooms
 /// and home groups this profile owns, resolved against on-device profiles.
 ///
@@ -1066,7 +1101,8 @@ final educatorRosterProvider =
         }
       }
 
-      return aggregated;
+      // A learner who uses this very tablet: its own copy is the freshest.
+      return withThisTabletsProgress(aggregated);
     });
 
 // ─── Session Tracker Provider ──────────────────────────

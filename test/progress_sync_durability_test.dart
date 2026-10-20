@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pwdpwdpwd/data/models/enums.dart';
 import 'package:pwdpwdpwd/data/models/models.dart';
+import 'package:pwdpwdpwd/core/services/progress_sync_listener.dart';
+import 'package:pwdpwdpwd/providers/app_providers.dart';
 
 /// Guards the rule that a cloud pull can never take away what a learner has
 /// already earned, and that the two legs of progress sync stay gated on the
@@ -52,6 +54,7 @@ UserProfile _profile({
   required UserRole role,
   bool isGuestPlayer = false,
   String? classroomId,
+  String? homeGroupId,
 }) {
   return UserProfile(
     id: 'p1',
@@ -59,6 +62,7 @@ UserProfile _profile({
     role: role,
     isGuestPlayer: isGuestPlayer,
     classroomId: classroomId,
+    homeGroupId: homeGroupId,
     createdAt: DateTime(2026),
   );
 }
@@ -71,6 +75,20 @@ void main() {
             .syncsProgressToCloud,
         isTrue,
       );
+    });
+
+    test('a home-group child syncs, so their parent can follow it', () {
+      // Left out until 2026-10-19: the Parent Dashboard showed every child
+      // at 0 words, 0 stars and 0% accuracy.
+      expect(
+        _profile(role: UserRole.child, homeGroupId: 'family-1')
+            .syncsProgressToCloud,
+        isTrue,
+      );
+    });
+
+    test('a child in no home group does not', () {
+      expect(_profile(role: UserRole.child).syncsProgressToCloud, isFalse);
     });
 
     test('an unlinked student does not', () {
@@ -97,6 +115,66 @@ void main() {
             .syncsProgressToCloud,
         isFalse,
       );
+    });
+  });
+
+  group('the pull leg opens exactly where the push leg does', () {
+    test('the listener reads a stored profile the way the profile does', () {
+      for (final role in UserRole.values) {
+        for (final guest in const [false, true]) {
+          for (final classroomId in const [null, 'class-1']) {
+            for (final homeGroupId in const [null, 'family-1']) {
+              final profile = UserProfile(
+                id: 'p1',
+                name: 'Test',
+                role: role,
+                isGuestPlayer: guest,
+                classroomId: classroomId,
+                homeGroupId: homeGroupId,
+                createdAt: DateTime(2026),
+              );
+              // The row as HiveService.saveProfile stores it.
+              final row = <String, dynamic>{
+                'id': 'p1',
+                'role': role.index,
+                'isGuestPlayer': guest,
+                'classroomId': classroomId,
+                'homeGroupId': homeGroupId,
+              };
+              expect(
+                ProgressSyncListener.syncsProgress(row),
+                profile.syncsProgressToCloud,
+                reason: '${role.name} guest=$guest class=$classroomId '
+                    'home=$homeGroupId',
+              );
+            }
+          }
+        }
+      }
+    });
+  });
+
+  group('educator rosters show a learner on this tablet with its own copy', () {
+    final ana = _profile(role: UserRole.child, homeGroupId: 'family-1');
+    final ben = UserProfile(
+      id: 'p2',
+      name: 'Ben',
+      role: UserRole.child,
+      homeGroupId: 'family-1',
+      createdAt: DateTime(2026),
+    );
+
+    test('here: this tablet’s progress; elsewhere: the cloud’s', () {
+      final cloudAna = _progress();
+      final cloudBen = _progress(profileId: 'p2', wordsLearned: 7);
+      final shown = withThisTabletsProgress(
+        [(ana, cloudAna), (ben, cloudBen)],
+        ownedHere: (id) => id == 'p1',
+        localProgress: (id) => _progress(profileId: id, wordsLearned: 4),
+      );
+      expect(shown[0].$2.wordsLearned, 4, reason: 'Ana uses this tablet');
+      expect(shown[1].$2.wordsLearned, 7, reason: 'Ben uses another device');
+      expect(shown.map((p) => p.$1.id), ['p1', 'p2'], reason: 'order kept');
     });
   });
 

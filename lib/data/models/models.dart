@@ -268,10 +268,17 @@ class UserProfile {
   /// keep working.
   bool get isPlayerMode => isGuestPlayer || role == UserRole.player;
 
-  /// Whether this profile's learning progress belongs in the cloud at all.
+  /// Whether this profile's learning progress belongs in the cloud at all:
+  /// a Student in a class or a Child in a home group, whose Teacher or Parent
+  /// follows it on their dashboard.
   ///
   /// Player Mode and unlinked learners stay 100% local — that is a deliberate
   /// product decision, not an accident of plumbing.
+  ///
+  /// A Child in a home group was left out until 2026-10-19 (the rule was
+  /// written before home groups had children), so a Parent's dashboard showed
+  /// every child at 0 words, 0 stars and 0% accuracy. The security rules
+  /// already let the child's own device write it and their parent read it.
   ///
   /// This exists because the two legs of progress sync used to be gated on
   /// *different* conditions: `recordGameResult` pushed only when
@@ -281,7 +288,8 @@ class UserProfile {
   /// cloud document would land on launch and silently roll back progress the
   /// learner had just earned. Both legs read this one getter now, so they
   /// cannot drift apart again.
-  bool get syncsProgressToCloud => !isPlayerMode && classroomId != null;
+  bool get syncsProgressToCloud =>
+      !isPlayerMode && (classroomId != null || homeGroupId != null);
 
   /// Effective learning level for UI display. Defaults to beginner when
   /// the field is null on legacy profiles.

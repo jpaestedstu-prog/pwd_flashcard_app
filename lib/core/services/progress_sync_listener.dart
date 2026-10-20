@@ -49,7 +49,7 @@ class ProgressSyncListener {
     for (final raw in HiveService.getProfiles()) {
       final id = raw['id'] as String?;
       if (id == null) continue;
-      if (!_syncsProgress(raw)) continue;
+      if (!syncsProgress(raw)) continue;
       _subscribe(id);
     }
   }
@@ -62,7 +62,8 @@ class ProgressSyncListener {
   /// subscribing to a document this device never writes means a stale
   /// snapshot can roll local progress backwards, which is exactly what
   /// happened to Player-with-Progress and unlinked Student profiles.
-  static bool _syncsProgress(Map<String, dynamic> raw) {
+  @visibleForTesting
+  static bool syncsProgress(Map<String, dynamic> raw) {
     if ((raw['isGuestPlayer'] as bool?) ?? false) return false;
     final roleIndex = raw['role'] as int?;
     if (roleIndex != null &&
@@ -71,8 +72,12 @@ class ProgressSyncListener {
         UserRole.values[roleIndex] == UserRole.player) {
       return false;
     }
-    final classroomId = raw['classroomId'] as String?;
-    return classroomId != null && classroomId.isNotEmpty;
+    bool linked(String key) {
+      final groupId = raw[key] as String?;
+      return groupId != null && groupId.isNotEmpty;
+    }
+
+    return linked('classroomId') || linked('homeGroupId');
   }
 
   void _subscribe(String profileId) {
