@@ -6,8 +6,12 @@
 One source of truth instead of ~12 hand edits per release:
 
   * version + build   <- pubspec.yaml
-  * sizes + SHA-256s  <- the built APKs in build/release-v<version>/
+  * sizes + SHA-256s  <- the built APKs in build/release-<tag>/
   * changelog         <- tools/release_notes.json (newest first)
+
+The tag is v<version>, or an entry's own "tag" when one version is released
+more than once: 1.4.2 build 16 kept the version people see and was tagged
+v1.4.2-build16 (build/release-v1.4.2-build16/), leaving v1.4.2 as published.
 
 It rewrites only what sits between <!--gen:NAME--> ... <!--/gen:NAME--> markers
 in website/index.html, website/download.html and website/teachers-guide.html, writes
@@ -51,6 +55,17 @@ def mb(size):
     return f"{round(size / 1048576)} MB"
 
 
+def release_tag(entry):
+    """The Git tag (and GitHub release) of a changelog entry."""
+    return entry.get("tag") or f"v{entry['version']}"
+
+
+def release_label(entry, releases):
+    """v1.4.2, or v1.4.2 (build 16) when the version was released twice."""
+    twice = sum(r["version"] == entry["version"] for r in releases) > 1
+    return f"v{entry['version']}" + (f" (build {entry['build']})" if twice else "")
+
+
 def load_release(version, build):
     notes = json.load(open(os.path.join(ROOT, "tools", "release_notes.json"), encoding="utf-8"))
     releases = notes["releases"]
@@ -58,7 +73,8 @@ def load_release(version, build):
     if (top["version"], top["build"]) != (version, build):
         fail(f"newest release_notes.json entry is {top['version']}+{top['build']}, "
              f"pubspec says {version}+{build}")
-    folder = os.path.join(ROOT, "build", f"release-v{version}")
+    tag = release_tag(top)
+    folder = os.path.join(ROOT, "build", f"release-{tag}")
     apks = []
     for key, en, fil in VARIANTS:
         name = f"FlashLearnPWD-v{version}-{key}.apk"
@@ -70,7 +86,7 @@ def load_release(version, build):
             "key": key, "name": name, "label_en": en, "label_fil": fil,
             "bytes": len(data), "size": mb(len(data)),
             "sha256": hashlib.sha256(data).hexdigest(),
-            "url": f"https://github.com/{REPO}/releases/download/v{version}/{name}",
+            "url": f"https://github.com/{REPO}/releases/download/{tag}/{name}",
         })
     return releases, apks, folder
 
@@ -94,18 +110,19 @@ def render_download(version, releases, apks):
     """The download card on download.html: button, facts, checksums, changelog."""
     std = apks[0]
     d_en, d_fil = long_date(releases[0]["date"])
+    shown = release_label(releases[0], releases)[1:]  # "1.4.2 (build 16)"
     rows = "\n".join(
         f'                  <tr><td><a href="{a["url"]}">{a["label_en"]}</a></td><td>{a["size"]}</td>'
         f'<td><code>{a["sha256"]}</code></td></tr>' for a in apks)
     changes = "\n".join(
-        f'                <p><strong>v{r["version"]}</strong> — {r["date"]}<br>\n'
+        f'                <p><strong>{release_label(r, releases)}</strong> — {r["date"]}<br>\n'
         f'                {bi(r["summary_en"], r["summary_fil"])}</p>' for r in releases)
     return f"""
           <div class="dl-app">
             <img src="assets/logo.webp" width="72" height="72" alt="">
             <div>
               <h2>FlashLearn PWD {bi("for Android", "para sa Android")}</h2>
-              <p>{bi(f"Version {version} · {d_en}", f"Bersyon {version} · {d_fil}")}</p>
+              <p>{bi(f"Version {shown} · {d_en}", f"Bersyon {shown} · {d_fil}")}</p>
             </div>
           </div>
           <a class="btn btn-primary btn-lg" href="{std["url"]}"><span aria-hidden="true">⬇️</span> {bi(f"Download APK (v{version})", f"I-download ang APK (v{version})")}</a>
@@ -231,7 +248,7 @@ def render_release_notes(version, releases, apks):
     top = releases[0]
     lines = ["Public release of FlashLearn PWD — the free bilingual (English/Filipino) flashcard learning app for students with disabilities.", ""]
     if top.get("bullets_en"):
-        lines += [f"**What's new since v{releases[1]['version']}**" if len(releases) > 1 else "**What's new**"]
+        lines += [f"**What's new since {release_label(releases[1], releases)}**" if len(releases) > 1 else "**What's new**"]
         lines += [f"- {b}" for b in top["bullets_en"]] + [""]
     lines += ["Installs over earlier versions and keeps your profiles.", "", "**Which file do I download?**",
               f"- `{apks[0]['name']}` ({apks[0]['size']}) — standard, works on almost all Android 10+ devices",

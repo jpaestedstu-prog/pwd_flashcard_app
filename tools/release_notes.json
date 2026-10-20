@@ -3,6 +3,24 @@
   "releases": [
     {
       "version": "1.4.2",
+      "build": 16,
+      "tag": "v1.4.2-build16",
+      "date": "2026-10-20",
+      "summary_en": "Build 16 of 1.4.2: who sets what. A student’s or child’s accessibility needs are now set by their teacher or parent: in Manage Classes or Home Groups each learner’s needs can be changed, and changing a class’s or home group’s type can reach the learners already in it, on whatever device they use. The learner’s own Settings no longer re-run the accessibility setup. Parents now see their children’s progress (words, stars and accuracy) on the Parent Dashboard, and Settings show each kind of profile what it is for.",
+      "summary_fil": "Build 16 ng 1.4.2: kung sino ang nagtatakda ng ano. Ang guro o magulang na ang nagtatakda ng mga pangangailangan sa aksesibilidad ng mag-aaral o anak: sa Pamahalaan ang mga Klase o Mga Home Group, mababago ang pangangailangan ng bawat mag-aaral, at ang pagbago ng uri ng klase o home group ay maaaring umabot sa mga nakasali na, sa anumang device na gamit nila. Hindi na inuulit ng sariling Settings ng mag-aaral ang pag-setup ng aksesibilidad. Nakikita na ng mga magulang ang progreso ng kanilang mga anak (mga salita, bituin at katumpakan) sa Parent Dashboard, at ipinapakita ng Settings sa bawat uri ng profile kung ano ang para sa kanila.",
+      "notes_en": "Teachers and parents now set each learner’s accessibility needs, parents see their children’s progress, and Settings fit each kind of profile.",
+      "notes_fil": "Ang mga guro at magulang na ang nagtatakda ng pangangailangan sa aksesibilidad ng bawat mag-aaral, nakikita na ng mga magulang ang progreso ng kanilang mga anak, at angkop na ang Settings sa bawat uri ng profile.",
+      "bullets_en": [
+        "Students and children: their accessibility needs are set by their teacher (Manage Classes) or parent (Home Groups). Their Settings show them and no longer offer Re-run Accessibility Setup; Edit Profile shows them without changing them. A guest or a Player still sets up their own.",
+        "Teachers and parents: each learner’s row has Accessibility needs (the category and the supports within it: sign system, how they use the screen, test supports). Changing a class’s or home group’s type now asks whether to change it for the learners already in it too. The change reaches the learner on any device within seconds, and the learner is told.",
+        "Parents see their children’s progress on the Parent Dashboard: it showed 0 words, 0 stars and 0% for every child, because a child’s progress never reached the cloud.",
+        "Settings show each kind of profile what it is for: a teacher’s or parent’s own profile runs no Gaze Control or game controller (they set a learner’s up from the learner’s card); Classroom Mode is the teacher’s; the child and guest quick panel gains Language and Voice-Guided Navigation; Daily Reminder shows whether a reminder is really set.",
+        "Edit Profile’s role card keeps the role’s name whole at large text.",
+        "The version stays 1.4.2. This is build 16, so the app’s Check for updates offers it to devices with 1.4.2 (build 15)."
+      ]
+    },
+    {
+      "version": "1.4.2",
       "build": 15,
       "date": "2026-10-17",
       "summary_en": "A release for phones and web browsers. On phones the sign videos start in about two seconds (a light copy of the same recording) instead of up to 17, and play on phones that could not play the original; the Break button no longer covers a game’s buttons; and every screen reads well at large text, in English and Filipino. About 20 buttons a screen reader could not name have names, and every button is big enough for a finger. The same app also runs in a web browser: what needs an Android device says so there, and exports download as files. The app to install is for Android phones and tablets, from this website.",
