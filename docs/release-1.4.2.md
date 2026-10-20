@@ -20,6 +20,46 @@ Test phone: **Villaon V671N**, Android 16 (Go edition, 3.5 GB of memory),
 Unisoc UMS9621S, a 720 x 1600 screen (423 dp wide at its display-size setting,
 360 dp at the default), gesture navigation. Tablet: the Honor NDL-W09.
 
+## Build 16 (20 October 2026): who sets what
+
+Build 16 keeps the version people see, 1.4.2; only the build number changes,
+so the app's Check for updates offers it to devices with build 15 (it compares
+the build). It is its own GitHub release, **v1.4.2-build16**, built from
+ab4cdb0; the build-15 release v1.4.2 stays as it was published. It follows a
+review of every kind of profile (guest Player, Player, Student, Child,
+Teacher, Parent) at the owner's request.
+
+| Problem | Severity | Who it hit | Fix | Checked by |
+|---|---|---|---|---|
+| A Student or a Child could re-run the accessibility setup from Settings and pick their own category in Edit Profile, although their Teacher or Parent looks after their needs; and an educator had **no way to change an enrolled learner's needs at all**: changing a class's or home group's type reached only learners who joined later | High | students, children and their educators | the learner's Settings say what their needs are and who sets them; Edit Profile shows them read-only; the wizard is turned away for them. Each learner's row in Manage Classes / Home Groups has **Accessibility needs** (category and supports); changing a group's type asks whether to change it for the learners already in it too. The choice travels on the learner's membership row (the rules already allowed it; no rules change) and the learner's own device applies it once, and says so | tests per kind of profile, the dialog at every size and text scale, the Manage Classes / Home Groups flows; on the Honor a teacher and a parent each changed a learner's needs and changed them back; on the FL_Second_Phone emulator, as a student's own phone, a teacher's change arrived in about 3 seconds, and a whole-class change too |
+| The **Parent Dashboard showed every child at 0 words, 0 stars and 0%**: it reads progress from the cloud, and a Child's progress never went there (the rule predated home groups) | High | parents | a Child in a home group syncs progress like a Student in a class, both legs on one rule; a learner whose profile is on the parent's own tablet is shown with the tablet's copy | a test that the two legs agree for every kind of profile; on the Honor the dashboard went from zeros to each child's numbers, and a child's round reached their progress document in the cloud |
+| Settings offered every kind of profile much the same rows: a Teacher's or Parent's own profile ran Gaze Control and the game controller, a Student saw Classroom Mode, a Child or guest could not change the language, and Daily Reminder read "on" with nothing scheduled | Medium | everyone | one policy decides each kind of profile's rows; educators set a learner's gaze or controller up from the learner's card | tests per kind of profile; walked on the Honor |
+| Edit Profile's role card broke "Manlalaro" in two at 2x on a phone | Low | Filipino Players at large text | "Cannot be changed" sits under the role | the screen sweeps (English and Filipino, 1.0x, 1.4x, 2.0x) |
+| The update check would have said "Version 1.4.2 is ready" to a tablet that has 1.4.2, and a dismissed 1.4.2 card would have hidden build 16 | Low | anyone on build 15 | version.json names the build: "1.4.2 (build 16)" | the app's own update code on the live file: every build-15 variant (arm64, arm32, x86_64, universal) is offered the update, every build-16 one is told it is up to date |
+
+Found while checking, and fixed: the tap-target sweep failed one run in
+three on 20 October, because a run whose teardown gave up left its store
+behind; the next run's AI Tutor restored that conversation and added a
+day-later welcome that scrolled the chat as the sweep did. The sweeps now
+start from an empty store (a conversation seeded from the day before failed
+the old setup 3 of 3, passes the new one 3 of 3).
+
+Checks for build 16: the full suite (**6,373 tests**) passes on the release
+code; GitHub's Android workflow (tests, release builds, phone and tablet
+walks) and Web workflow (six browsers) pass on it (one walk re-run after the
+runner's NDK download was corrupt). The release files (`bash
+tool/build_release.sh` into `build/release-v1.4.2-build16`): arm64
+`e9f7cf4d…`, arm32 `d7b49273…`, universal `9bd2748e…`, signed with the
+original key; manifests, signers and the release-file scan all ok. The
+release arm64 APK installed over build 15 on the Honor, keeping every profile:
+Student, Teacher, Parent, Player and guest walked, no crashes or errors in the
+device log. The deployment rehearsal (the site and the web app served the way
+GitHub Pages serves them): 6 of 6. GitHub's own SHA-256 of each upload matched
+before the release was published. Live after publishing: the three APKs
+download (size and both ends match), every deployed file is byte-identical,
+version.json is 1.4.2+16; the live web app reaches its first screen with no
+console errors in desktop Chrome and as a Pixel 7, and reports build 16.
+
 ## Fixed
 
 | Problem | Severity | Who it hit | Fix | Checked by |
