@@ -100,11 +100,19 @@ FITS = """(function(){
 def run(p, kind):
     day = f"daily/{h.manila_day()}"
     p.goto(f"{h.SITE}/index.html")
+    # A fresh visitor: Chrome on Android keeps an open page's storage through
+    # Storage.clearDataForOrigin, so the test copy's own notes are cleared here.
+    p.js("localStorage.clear(); sessionStorage.clear()")
     p.js("localStorage.setItem('flp-stats-test', JSON.stringify({base: 'http://127.0.0.1:8080/v1', project: '%s'}))" % h.PROJECT)
+    # The page just opened may still send a count left switched on by an earlier run:
+    # let it land, then start from an empty database.
+    time.sleep(1.5)
+    h.rest("DELETE", f"http://127.0.0.1:8080/emulator/v1/projects/{h.PROJECT}/databases/(default)/documents")
     p.goto(f"{h.SITE}/index.html")
     t = h.wait_for(lambda: (h.fields(day) or {}).get("v") == 1 and h.fields(day), 20)
     check(f"a visit on this {kind} is counted as a {kind} (real touch screen and size)",
           t and t.get(f"d_{kind}") == 1 and t.get("u") == 1, t)
+    p.shot(f"device-{kind}-home")
 
     wide, errors = [], []
     for page in PAGES:
@@ -116,7 +124,6 @@ def run(p, kind):
         errors += [f"{page}: {e}" for e in p.errors]
     check(f"every page fits the {kind}'s screen (no sideways scrolling, header inside)", not wide, wide)
     check("no script errors on any page", not errors, errors[:3])
-    p.shot(f"device-{kind}-home")
 
     p.goto(f"{h.SITE}/faq.html")
     shown = "(id => getComputedStyle(document.getElementById(id)).display !== 'none')"
@@ -152,6 +159,11 @@ def run(p, kind):
     layout = p.js("getComputedStyle(document.getElementById('app')).display")
     check(f"the dashboard layout suits a {kind} ({'sidebar' if layout == 'grid' else 'top bar with tabs'})",
           (layout == "block") if kind == "phone" else True, layout)
+    if layout == "grid":
+        fill = p.js("(function(){var s=document.getElementById('side').getBoundingClientRect(), y=innerHeight-4;"
+                    "var e=document.elementFromPoint(20, y);"
+                    "return {sideBottom: Math.round(s.bottom), viewport: innerHeight, atBottom: e ? (e.closest('#side') ? 'sidebar' : e.tagName) : null};})()")
+        check("the sidebar reaches the bottom of the screen", fill["sideBottom"] >= fill["viewport"] - 1 and fill["atBottom"] == "sidebar", fill)
     check("no dashboard section scrolls sideways on the device", not wide, wide)
     check("accessibility: no axe violations in any section on the device", not found, found[:4])
     check("no script errors on the dashboard", not p.errors, p.errors[:3])

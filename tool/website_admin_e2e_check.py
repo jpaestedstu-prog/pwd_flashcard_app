@@ -81,7 +81,10 @@ def admin_headers():
     for h in hs:
         v = h["value"]
         if h["key"] == "Content-Security-Policy":
+            # The emulators stand in for Google's servers: the Auth emulator also serves the
+            # sign-in helper frame, which mobile Chrome loads ahead of time.
             v = v.replace("connect-src 'self'", "connect-src 'self' http://127.0.0.1:8080 http://127.0.0.1:9099")
+            v = v.replace("frame-src ", "frame-src http://127.0.0.1:9099 ")
         out.append((h["key"], v))
     return out
 
