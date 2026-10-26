@@ -105,6 +105,12 @@ def main():
             p.call(d)
         for origin in ("http://127.0.0.1:8899", "http://127.0.0.1:8898"):
             p.call("Storage.clearDataForOrigin", origin=origin, storageTypes="all")
+        # Always the files on disk. The website's test server sends no Cache-Control, so Chrome
+        # hands back a page fetched minutes earlier, with the stylesheet it named then (seen on
+        # the Honor: a fixed contents list "failed" at its old height).
+        p.call("Network.enable")
+        p.call("Network.setCacheDisabled", cacheDisabled=True)
+        p.call("Network.setBypassServiceWorker", bypass=True)
         if SIDEWAYS_RUN:
             rotation = turn_sideways(p)
         run(p, kind)
@@ -140,6 +146,22 @@ SIDEWAYS = """(function(){
 })()"""
 
 
+# The pinned contents list (Teacher's Guide, Privacy; wide screens only): stuck under the header
+# and scrolled to its end, its last link must be on the screen. Only a real browser shows this:
+# its toolbar takes height that 100vh does not leave out.
+CONTENTS_REACH = """(function(){
+  var t = document.querySelector('.toc');
+  if (!t || getComputedStyle(t).position !== 'sticky') return '';
+  var y = scrollY;
+  scrollTo({top: document.documentElement.scrollHeight / 2, behavior: 'instant'});
+  t.scrollTop = t.scrollHeight;
+  var links = t.querySelectorAll('a'), bottom = links[links.length - 1].getBoundingClientRect().bottom;
+  t.scrollTop = 0;
+  scrollTo({top: y, behavior: 'instant'});
+  return bottom > innerHeight + 0.5 ? 'its last link ends at ' + Math.round(bottom) + ' px on a ' + innerHeight + ' px screen' : '';
+})()"""
+
+
 def run(p, kind):
     day = f"daily/{h.manila_day()}"
     p.goto(f"{h.SITE}/index.html")
@@ -157,7 +179,7 @@ def run(p, kind):
           t and t.get(f"d_{kind}") == 1 and t.get("u") == 1, t)
     p.shot(f"device-{kind}-home")
 
-    wide, errors = [], []
+    wide, errors, cut = [], [], []
     for page in PAGES:
         p.errors.clear()
         p.goto(f"{h.SITE}/{page}")
@@ -165,8 +187,12 @@ def run(p, kind):
         why = p.js(SIDEWAYS)
         if why:
             wide.append(f"{page}: {why}")
+        short = p.js(CONTENTS_REACH)
+        if short:
+            cut.append(f"{page}: {short}")
         errors += [f"{page}: {e}" for e in p.errors]
     check(f"every page fits the {kind}'s screen (no sideways scrolling, header inside)", not wide, wide)
+    check("the pinned contents list's last link can be scrolled onto the screen", not cut, cut)
     check("no script errors on any page", not errors, errors[:3])
 
     p.goto(f"{h.SITE}/faq.html")
