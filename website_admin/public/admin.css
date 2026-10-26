@@ -79,7 +79,9 @@ main{ min-width:0; outline:none; }
 .app.with-side main{ padding:1.75rem 2rem 3rem; }
 #viewDash{ max-width:1180px; margin:0 auto; }
 
-.side{ position:sticky; top:0; height:100vh; display:flex; flex-direction:column; gap:1.25rem; padding:1.25rem .9rem 1rem; background:var(--surface); border-right:1px solid var(--border); overflow-y:auto; }
+/* 100dvh is the height the browser really shows. 100vh assumes its toolbar is hidden, which
+   it never is on a tablet: the sidebar's last 96 px, Sign out included, sat under the edge. */
+.side{ position:sticky; top:0; height:100vh; height:100dvh; display:flex; flex-direction:column; gap:1.25rem; padding:1.25rem .9rem 1rem; background:var(--surface); border-right:1px solid var(--border); overflow-y:auto; }
 .side-top{ display:flex; flex-direction:column; align-items:flex-start; gap:.5rem; padding:0 .35rem; }
 .brand{ display:flex; align-items:center; gap:.65rem; color:var(--ink); }
 .brand img{ border-radius:10px; }
