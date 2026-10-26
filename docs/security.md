@@ -320,6 +320,52 @@ ownership, and keeping everything else local.
   learner's device. The rules stop one device writing another's, but cannot
   check a score itself without server code.
 
+## The website: visit counts, feedback and the admin dashboard
+
+The public website counts visits and takes ratings and messages; the team
+reads them on a private dashboard ([`website_admin/`](../website_admin/README.md)).
+
+- **A separate Firebase project.** The counts, messages and administrator list
+  live in the website's own project (`flashlearn-pwd-site`, Spark plan, billing
+  not enabled, Firestore in Singapore), not in `pwd-flashcard`. No learner data
+  is copied there, so a mistake or a stolen administrator sign-in on the
+  website side cannot expose learners. A flood of fake counts can only use up
+  the website project's own free quota, never stall the app's syncing.
+- **Public writes, pinned down.** The website writes without signing in.
+  `website_admin/firestore.rules` lets it add exactly one to known tallies for
+  today (at most 16 per write, nothing renamed, removed or back-dated) or create
+  one rating/message of a fixed shape: limited lengths, server time, status
+  "new", no extra fields such as an email address. Nothing can be read back.
+- **Administrators.** Reads need a Google or email sign-in whose uid has a
+  document in `admins/`, a list only the Firebase console can change. An
+  anonymous sign-in never counts, even if listed. Administrators can mark,
+  star and delete messages but never edit what a visitor sent.
+- **The dashboard page.** Its own origin (`<project>.web.app`), not linked
+  from the public site, `noindex`; a strict Content-Security-Policy (no inline
+  script, scripts only from itself, gstatic and Google sign-in),
+  `frame-ancestors 'none'`, no referrer; visitors' words are inserted as text
+  only; CSV exports neutralise formula-like cells; sign-ins end with the tab
+  or after 30 idle minutes unless the administrator chooses otherwise, and
+  signing out reloads the page so no statistics stay in it.
+- **Privacy.** No cookies, IDs or IP addresses are kept: only daily totals.
+  The browser keeps one note that never leaves it (the day it was last
+  counted, that it was counted before, the reading aids counted that day). Do
+  Not Track and Global Privacy Control turn counting off, and `?nocount=on`
+  turns it off for any browser. Ratings and messages are deleted after 12
+  months by the dashboard each time an administrator opens it: Firestore's
+  automatic expiry (TTL) would need billing. Privacy page section 8.
+- **Trade-offs.** Without server code there is no rate limit per visitor: a
+  script can inflate the tallies or send spam messages (a hidden form field,
+  a minimum fill-in time and five sends a day per browser stop casual bots;
+  the inbox deletes the rest). The counts are a measure of interest, not an
+  audited figure. The web API key is public by design, like the app's.
+- **Tests.** `tool/website_admin_rules_emulator_test.py` (75 checks; an
+  allow-everything ruleset fails 53 of them); `tool/website_admin_e2e_check.py`
+  (53 checks in headless Chrome against the emulators, including CSP
+  violations and axe-core on the dashboard); `tool/website_responsive_check.py`
+  and `tool/website_a11y_check.py` for the public pages; and, once deployed,
+  `tool/website_admin_live_check.py` (billing off, headers, the live rules).
+
 ## On the device
 
 - Local data lives in the app's private storage. Android backup is off

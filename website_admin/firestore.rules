@@ -1,0 +1,195 @@
+rules_version = '2';
+
+// Security rules for the FlashLearn PWD WEBSITE's own Firebase project: the
+// visit tallies, the ratings and messages people send from the website, and
+// the private admin dashboard that reads them (website_admin/public/).
+//
+// This is NOT the app's database. The app's learners live in the
+// pwd-flashcard project (../firestore.rules). Nothing of theirs is copied
+// here, so neither the website nor its dashboard can reach a learner's data.
+//
+// The public website writes here without signing in. What it may write is
+// pinned down below, and it can never read anything back. Only an
+// administrator (isAdmin) reads.
+//
+// Tested by tool/website_admin_rules_emulator_test.py.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // An administrator: a Google or email-and-password sign-in whose uid has
+    // a document in admins/. That list is edited only in the Firebase
+    // console, never from a page. An anonymous sign-in never counts.
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.firebase.sign_in_provider in ['google.com', 'password']
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    match /admins/{uid} {
+      // The dashboard asks "am I on the list?" right after a sign-in.
+      allow get: if request.auth != null && request.auth.uid == uid;
+      allow list, write: if false;
+    }
+
+    // `day` is a Philippine calendar day as the website names it
+    // ("2026-10-25", UTC+8), and that day is now, give or take two hours for
+    // a device whose clock is a little off.
+    function isToday(day) {
+      let p = day.split('-');
+      let start = timestamp.date(int(p[0]), int(p[1]), int(p[2])) - duration.value(8, 'h');
+      return day.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')
+        && request.time > start - duration.value(2, 'h')
+        && request.time < start + duration.value(26, 'h');
+    }
+
+    // ---- Visit tallies: daily/{day} -----------------------------------------
+    // One document per day of named counters. Each page view adds one to a
+    // few of them (website/assets/site.js, "Visit counts"). Nothing else is
+    // allowed: no new names, no jumps, nothing taken away.
+    function tallies() {
+      return [
+        'v', 'u', 'n',
+        'p_index', 'p_try', 'p_download', 'p_how_to_use', 'p_games', 'p_fsl_dictionary',
+        'p_teachers_guide', 'p_faq', 'p_awareness', 'p_about', 'p_privacy', 'p_gaze_control', 'p_other',
+        'l_en', 'l_fil',
+        'd_phone', 'd_tablet', 'd_computer',
+        's_direct', 's_search', 's_social', 's_github', 's_qr', 's_other',
+        'a_text', 'a_dys', 'a_hc', 'a_still',
+        'o_motion', 'o_dark', 'o_contrast',
+        'e_apk_arm64', 'e_apk_arm32', 'e_apk_universal', 'e_webapp',
+        'e_try_card', 'e_try_game', 'e_film', 'e_demo'
+      ];
+    }
+
+    // Counter `k` is untouched, or exactly one more than before.
+    function bumped(before, after, changed, k) {
+      return !(k in changed) || after[k] == before.get(k, 0) + 1;
+    }
+
+    function bumpsOnly() {
+      let before = resource == null ? {} : resource.data;
+      let after = request.resource.data;
+      let diff = after.diff(before);
+      let changed = diff.affectedKeys();
+      return diff.removedKeys().size() == 0
+        && changed.size() > 0 && changed.size() <= 16
+        && changed.hasOnly(tallies())
+        && bumped(before, after, changed, 'v')
+        && bumped(before, after, changed, 'u')
+        && bumped(before, after, changed, 'n')
+        && bumped(before, after, changed, 'p_index')
+        && bumped(before, after, changed, 'p_try')
+        && bumped(before, after, changed, 'p_download')
+        && bumped(before, after, changed, 'p_how_to_use')
+        && bumped(before, after, changed, 'p_games')
+        && bumped(before, after, changed, 'p_fsl_dictionary')
+        && bumped(before, after, changed, 'p_teachers_guide')
+        && bumped(before, after, changed, 'p_faq')
+        && bumped(before, after, changed, 'p_awareness')
+        && bumped(before, after, changed, 'p_about')
+        && bumped(before, after, changed, 'p_privacy')
+        && bumped(before, after, changed, 'p_gaze_control')
+        && bumped(before, after, changed, 'p_other')
+        && bumped(before, after, changed, 'l_en')
+        && bumped(before, after, changed, 'l_fil')
+        && bumped(before, after, changed, 'd_phone')
+        && bumped(before, after, changed, 'd_tablet')
+        && bumped(before, after, changed, 'd_computer')
+        && bumped(before, after, changed, 's_direct')
+        && bumped(before, after, changed, 's_search')
+        && bumped(before, after, changed, 's_social')
+        && bumped(before, after, changed, 's_github')
+        && bumped(before, after, changed, 's_qr')
+        && bumped(before, after, changed, 's_other')
+        && bumped(before, after, changed, 'a_text')
+        && bumped(before, after, changed, 'a_dys')
+        && bumped(before, after, changed, 'a_hc')
+        && bumped(before, after, changed, 'a_still')
+        && bumped(before, after, changed, 'o_motion')
+        && bumped(before, after, changed, 'o_dark')
+        && bumped(before, after, changed, 'o_contrast')
+        && bumped(before, after, changed, 'e_apk_arm64')
+        && bumped(before, after, changed, 'e_apk_arm32')
+        && bumped(before, after, changed, 'e_apk_universal')
+        && bumped(before, after, changed, 'e_webapp')
+        && bumped(before, after, changed, 'e_try_card')
+        && bumped(before, after, changed, 'e_try_game')
+        && bumped(before, after, changed, 'e_film')
+        && bumped(before, after, changed, 'e_demo');
+    }
+
+    match /daily/{day} {
+      allow read: if isAdmin();
+      allow create, update: if isToday(day) && bumpsOnly();
+    }
+
+    // ---- FSL sign plays: signs/{day} ----------------------------------------
+    // One counter per sign video ("w_thank_you"), one sign per write. The
+    // write names its sign in `last`, so the rules can check that exactly
+    // that counter went up by one.
+    function oneSign() {
+      let before = resource == null ? {} : resource.data;
+      let after = request.resource.data;
+      let diff = after.diff(before);
+      let k = after.last;
+      return diff.removedKeys().size() == 0
+        && k is string && k.matches('w_[a-z0-9_]{1,40}')
+        && diff.affectedKeys().hasOnly(['last', k])
+        && after[k] == before.get(k, 0) + 1
+        && after.size() <= 400;
+    }
+
+    match /signs/{day} {
+      allow read: if isAdmin();
+      allow create, update: if isToday(day) && oneSign();
+    }
+
+    // ---- Ratings and messages: feedback/{id} --------------------------------
+    // Sent from the feedback form on faq.html. A rating on its own is a
+    // message of type 'rating'.
+    function pages() {
+      return ['index', 'try', 'download', 'how_to_use', 'games', 'fsl_dictionary',
+              'teachers_guide', 'faq', 'awareness', 'about', 'privacy', 'gaze_control', 'other'];
+    }
+
+    function newFeedback(d) {
+      return d.keys().hasAll(['type', 'role', 'message', 'page', 'lang', 'created', 'status'])
+        && d.keys().hasOnly(['type', 'role', 'message', 'page', 'lang', 'created', 'status',
+                             'rating', 'device'])
+        && d.type in ['problem', 'idea', 'praise', 'rating']
+        && d.role in ['teacher', 'parent', 'student', 'other']
+        && d.message is string && d.message.size() <= 2000
+        && (d.type == 'rating') == (d.message.size() == 0)
+        && (!('rating' in d) || (d.rating is int && d.rating >= 1 && d.rating <= 5))
+        && (d.type != 'rating' || 'rating' in d)
+        && (!('device' in d) || (d.device is string && d.device.size() <= 120))
+        && d.page in pages()
+        && d.lang in ['en', 'fil']
+        && d.created == request.time
+        && d.status == 'new';
+    }
+
+    match /feedback/{id} {
+      allow create: if id.matches('[A-Za-z0-9]{20}') && newFeedback(request.resource.data);
+      allow read, delete: if isAdmin();
+      // The inbox marks messages seen / done and stars them; the words a
+      // visitor sent are never edited.
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'starred'])
+        && request.resource.data.status in ['new', 'seen', 'done']
+        && request.resource.data.get('starred', false) is bool;
+    }
+
+    // ---- Download totals: downloads/{day} -----------------------------------
+    // GitHub counts every APK download but keeps only the running total. The
+    // dashboard saves it once a day, so downloads can be drawn over time.
+    match /downloads/{day} {
+      allow read: if isAdmin();
+      allow create, update: if isAdmin() && isToday(day)
+        && request.resource.data.keys().hasOnly(['total', 'releases', 'at'])
+        && request.resource.data.total is int && request.resource.data.total >= 0
+        && request.resource.data.releases is map
+        && request.resource.data.at == request.time;
+    }
+  }
+}

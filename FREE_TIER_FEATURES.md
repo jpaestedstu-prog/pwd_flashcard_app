@@ -94,3 +94,16 @@ short FSL clips recorded in the app at 480p (about 1 MB per 10 seconds). On Spar
 of quota never costs anything: uploads fail until the quota resets, and the app keeps the file
 on the tablet and says "not shared yet". If a deployment ever outgrows the quota, the upgrade path is enabling Blaze for higher
 Firestore quotas — still without needing Cloud Functions.
+
+## The website's own project (visit counts, feedback, admin dashboard)
+
+The public website's statistics, ratings and messages, and the private admin dashboard that
+reads them, use a **second Firebase project on its own Spark plan** (`flashlearn-pwd-site`; billing not enabled, checked by `tool/website_admin_live_check.py`) (see
+[`website_admin/README.md`](website_admin/README.md)), so they never share the app's quota.
+
+| Feature | Backend used | Runs on free Spark plan? | Notes |
+|---|---|:---:|---|
+| **Website visit counts** | Firestore REST writes from `website/assets/site.js` (`daily/`, `signs/`) | ✅ Yes | 1 write per page view or counted press. 20,000 writes/day ≈ 15,000 page views/day; past that, counting pauses until the daily reset, never billed. |
+| **Ratings and messages** | Firestore REST create (`feedback/`) | ✅ Yes | 1 write each; at most 5 per browser per day. Deleted after 12 months by the dashboard (1 delete each, free quota 20,000/day). Firestore TTL would do it automatically but **needs billing**, so it is not used. |
+| **Admin dashboard** | Firebase Hosting (`<project>.web.app`) + Firebase Auth (Google / email) + Firestore reads | ✅ Yes | Hosting free tier: 10 GB stored, 360 MB/day sent (the dashboard is ~0.4 MB). Reads per load ≈ 2 × days shown + up to 500 messages. |
+| **Download numbers** | GitHub Releases API (public, no key) + 1 Firestore write a day (`downloads/`) | ✅ Yes | GitHub allows 60 unauthenticated calls an hour per network; the dashboard keeps its answer for 10 minutes. |
