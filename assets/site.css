@@ -256,11 +256,16 @@ html.hc.js .site-nav.open a{ border:2px solid #000; }
 html:not(.js) .header-inner{ flex-wrap:wrap; }
 html:not(.js) .site-nav ul{ flex-wrap:wrap; }
 
-/* Phones: the wordmark gives way first (still read by screen readers). */
+/* Phones: the wordmark and the Menu label give way first (still read by screen
+   readers). Below 420px always; above that, site.js adds .head-tight whenever
+   the controls would run past the screen (large phones, a phone set to a small
+   display size, the larger text). */
 @media (max-width:420px){
   .site-header .brand-name,
   .header-tools .tool-label{ position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
 }
+html.head-tight .site-header .brand-name,
+html.head-tight .header-tools .tool-label{ position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
 /* The narrowest phones with the largest text (320 px at A++): tighter gaps so
    the language switch, Aa and Menu fit without pushing the page sideways.
    Every control keeps a 44 px wide target. */
@@ -779,7 +784,9 @@ html.hc .dl-card{ border:3px solid #000; }
 html.hc .qr-card img{ border-color:#000; }
 
 /* ============ How to use ============ */
-.video-split{ display:grid; grid-template-columns:auto minmax(0,1fr); gap:2.5rem; align-items:center; }
+/* The video column is the phone-shaped video's own 20rem (.demo-video): an auto column
+   grows to the <video>'s width="720" and leaves the text a sliver (2 px at 821 px wide). */
+.video-split{ display:grid; grid-template-columns:20rem minmax(0,1fr); gap:2.5rem; align-items:center; }
 @media (max-width:820px){ .video-split{ grid-template-columns:minmax(0,1fr); } }
 .demo-video{ width:min(20rem,100%); margin:0 auto; border-radius:26px; overflow:hidden; background:#2E2E44; padding:.6rem; box-shadow:var(--shadow-2); }
 .demo-video video{ width:100%; height:auto; aspect-ratio:720/1126; border-radius:20px; background:#000; }
