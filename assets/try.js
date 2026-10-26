@@ -54,6 +54,7 @@
   card.addEventListener('click', function(){
     card.setAttribute('aria-pressed', card.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
     syncFaces();
+    if (window.flpCount) window.flpCount('try_card');   // site.js "Visit counts"
   });
   document.getElementById('tryPrev').addEventListener('click', function(){
     idx = (idx - 1 + CARDS.length) % CARDS.length; render();
@@ -167,6 +168,7 @@
       round = 0; score = 0; started = true;
       elDone.hidden = true; elPlay.hidden = false;
       renderRound();
+      if (window.flpCount) window.flpCount('try_game');
     }
 
     function renderRound(){

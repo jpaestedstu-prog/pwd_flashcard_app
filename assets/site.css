@@ -37,6 +37,7 @@
   --bad:#A3262A; --bad-bg:#FDE6E6;
   --warn-ink:#6B4E00; --warn-bg:#FFF3D6;
   --tip-ink:#1F5F55; --tip-bg:#E8F7F3;
+  --star:#F5B301;          /* the fill of a chosen rating star (outlined in --warn-ink) */
   --focus:#4B3DB5;
   --radius:20px;
   --radius-sm:14px;
@@ -57,6 +58,7 @@
     --accent-ink:#F59AC0;
     --ok:#8FE0A0; --ok-bg:#16351F; --bad:#FFB4B4; --bad-bg:#3D1A1D;
     --warn-ink:#F2E3B5; --warn-bg:#3B3423; --tip-ink:#A8E6DA; --tip-bg:#163530;
+    --star:#E8A800;
     --focus:#C9C0FF;
     --shadow-1:0 1px 2px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.28);
     --shadow-2:0 2px 6px rgba(0,0,0,.45), 0 16px 38px rgba(0,0,0,.4);
@@ -74,6 +76,7 @@ html.hc{
   --accent-ink:#9E0F45; --focus:#000000;
   --ok:#0B5A1E; --ok-bg:#FFFFFF; --bad:#8A0F14; --bad-bg:#FFFFFF;
   --warn-ink:#000000; --warn-bg:#FFFFFF; --tip-ink:#000000; --tip-bg:#FFFFFF;
+  --star:#000000;
   --shadow-1:0 0 0 2px #12122A; --shadow-2:0 0 0 3px #12122A;
   color-scheme:light;
 }
@@ -84,6 +87,8 @@ html.fs-xl{ font-size:125%; }
 
 /* ============ Base ============ */
 *,*::before,*::after{ box-sizing:border-box; margin:0; padding:0; }
+/* `hidden` always hides, whatever display a class gives the element (a .btn is inline-flex). */
+[hidden]{ display:none !important; }
 html{ scroll-behavior:smooth; scroll-padding-top:calc(var(--header-h) + 16px); -webkit-text-size-adjust:100%; }
 @media (prefers-reduced-motion:reduce){
   html{ scroll-behavior:auto; }
@@ -253,8 +258,17 @@ html:not(.js) .site-nav ul{ flex-wrap:wrap; }
 
 /* Phones: the wordmark gives way first (still read by screen readers). */
 @media (max-width:420px){
-  .site-header .brand-name{ position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
-  .header-tools .tool-label{ display:none; }
+  .site-header .brand-name,
+  .header-tools .tool-label{ position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+}
+/* The narrowest phones with the largest text (320 px at A++): tighter gaps so
+   the language switch, Aa and Menu fit without pushing the page sideways.
+   Every control keeps a 44 px wide target. */
+@media (max-width:360px){
+  .header-inner{ gap:.5rem; }
+  .header-tools{ gap:.25rem; }
+  .lang-switch button{ min-width:2.2rem; padding:.3rem .35rem; }
+  .tool-btn{ padding:0 .4rem; }
 }
 
 /* Accessibility panel */
@@ -520,6 +534,8 @@ html.hc .hero,html.dys .hero{ background:var(--bg); }
 html.hc .hero h1 .grad{ background:none; color:var(--brand-ink); }
 .hero .lead{ margin-top:1.1rem; font-size:1.2rem; }
 .hero .actions{ margin-top:1.75rem; }
+/* Phones: the main calls to action share one width, edge to edge. */
+@media (max-width:480px){ .hero .actions .btn,.cta-band .actions .btn{ flex:1 1 100%; } }
 .trust{ display:flex; flex-wrap:wrap; gap:.5rem; margin-top:1.5rem; list-style:none; }
 .trust li{
   display:inline-flex; align-items:center; gap:.4rem; font-weight:800; font-size:.88rem; color:var(--ink);
@@ -664,10 +680,10 @@ html.hc .film-play-ico{ color:#000; }
 .film-share ul{ list-style:none; display:flex; flex-wrap:wrap; justify-content:center; gap:.55rem .7rem; margin-top:.7rem; }
 .film-share li{ max-width:none; }
 .film-share a{
-  display:inline-flex; align-items:center; min-height:2.75rem; padding:.4rem 1rem; border-radius:999px;
+  display:inline-flex; align-items:center; gap:.3em; min-height:2.75rem; padding:.4rem 1rem; border-radius:999px;
   background:var(--surface); border:1px solid var(--border); box-shadow:var(--shadow-1);
   font-weight:800; font-size:.92rem; text-decoration:none;
-}
+}   /* gap: flex drops the spaces between "English —", the word and the size */
 .film-share a:hover{ border-color:var(--brand); text-decoration:underline; }
 html.hc .film-share a{ border:2px solid #000; box-shadow:none; }
 
@@ -746,7 +762,8 @@ html.hc .wm-choices button.wrong{ text-decoration:line-through; }
 @media (max-width:900px){ .dl-layout{ grid-template-columns:minmax(0,1fr); } }
 .dl-card{ background:var(--surface); border:1px solid var(--border); border-radius:24px; padding:1.75rem; box-shadow:var(--shadow-2); }
 html.hc .dl-card{ border:3px solid #000; }
-.dl-app{ display:flex; align-items:center; gap:1rem; margin-bottom:1.25rem; }
+.dl-app{ display:flex; flex-wrap:wrap; align-items:center; gap:1rem; margin-bottom:1.25rem; }
+.dl-app > div{ flex:1 1 12rem; min-width:0; }   /* drops below the logo when the title cannot fit beside it */
 .dl-app img{ width:4.5rem; height:4.5rem; border-radius:1.1rem; box-shadow:0 6px 16px rgba(47,127,196,.3); flex:0 0 auto; }
 .dl-app h2{ font-size:1.45rem; }
 .dl-app p{ font-weight:700; font-size:.95rem; }
@@ -863,7 +880,29 @@ html.hc .field input,html.hc .field select,html.hc .field textarea{ border-color
 .field-row{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:1rem; }
 @media (max-width:520px){ .field-row{ grid-template-columns:minmax(0,1fr); } }
 .fb-status{ font-weight:800; color:var(--ok); min-height:1.5em; margin-top:.75rem; }
+.fb-status.bad{ color:var(--bad); }
 .fb-note{ font-size:.88rem; margin-top:.4rem; }
+.field .opt,.stars .opt{ font-weight:600; color:var(--ink-2); }
+/* Star rating: five radio buttons drawn as stars. The outline carries the
+   contrast (3:1+ on every theme); the gold fill only marks the choice. */
+.stars{ border:0; margin:0 0 1rem; padding:0; min-width:0; }
+.stars legend{ font-weight:800; color:var(--ink); font-size:.95rem; margin-bottom:.35rem; padding:0; }
+.stars-row{ display:flex; flex-wrap:wrap; align-items:center; gap:.1rem .2rem; }
+.stars input{ position:absolute; opacity:0; width:1px; height:1px; margin:0; }
+.stars-five{ display:flex; gap:.1rem; }   /* the five stay on one line; they shrink on the narrowest screens */
+.stars label{ display:inline-grid; place-items:center; flex:0 1 2.9rem; min-width:min(2.5rem, 12.5vw); height:2.9rem; border-radius:.8rem; cursor:pointer; color:var(--ink-2); }
+.stars label:hover{ background:var(--brand-soft); }
+.stars input:focus-visible + label{ outline:3px solid var(--focus); outline-offset:1px; }
+.stars svg{ width:min(2.1rem, 10.5vw); height:min(2.1rem, 10.5vw); fill:transparent; stroke:currentColor; stroke-width:1.6; stroke-linejoin:round; }
+.stars label.on{ color:var(--warn-ink); }
+.stars label.on svg{ fill:var(--star); }
+.stars-say{ font-weight:800; color:var(--ink); margin-left:.35rem; }
+/* Windows high-contrast themes: the chosen stars filled with the system highlight. */
+@media (forced-colors:active){ .stars svg{ stroke:CanvasText; } .stars label.on svg{ fill:Highlight; } }
+/* The field only a form-filling robot ever sees. */
+.fb-hp{ position:absolute; left:-10000px; width:1px; height:1px; overflow:hidden; }
+/* A short message from site.js, e.g. after ?nocount=on. */
+.site-notice{ position:fixed; left:50%; bottom:1rem; transform:translateX(-50%); z-index:60; width:max-content; max-width:calc(100vw - 2rem); background:var(--ink); color:var(--bg); padding:.8rem 1.1rem; border-radius:var(--radius-sm); box-shadow:var(--shadow-2); font-weight:700; }
 .contact-list{ list-style:none; display:grid; gap:.75rem; }
 .contact-list li{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:1rem; box-shadow:var(--shadow-1); font-size:.95rem; max-width:none; }
 .contact-list code{ word-break:break-all; }

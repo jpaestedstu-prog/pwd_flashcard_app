@@ -11,6 +11,8 @@
      placeholders (data-ph-en/-fil), the page title and video captions.
    * Moving pictures on Home: the app preview inside the phone, and the film
      (which only loads when someone presses Play).
+   * Visit counts and the feedback form's "Send to the team": anonymous daily
+     tallies in the website's own statistics database (see "Visit counts").
    * Small helpers: screenshot zoom (img.zoomable), the "On this page" spy,
      --header-h, and the offline copy (service worker). */
 (function(){
@@ -74,13 +76,13 @@
   }
 
   each('[data-font]', function(b){
-    b.addEventListener('click', function(){ prefs.font = b.getAttribute('data-font') || ''; save(); applyAll(); });
+    b.addEventListener('click', function(){ prefs.font = b.getAttribute('data-font') || ''; save(); applyAll(); if (prefs.font) countAid('a_text'); });
   });
-  if ($('btnDys')) $('btnDys').addEventListener('click', function(){ prefs.dys = !prefs.dys; save(); applyAll(); });
-  if ($('btnHC')) $('btnHC').addEventListener('click', function(){ prefs.hc = !prefs.hc; save(); applyAll(); });
+  if ($('btnDys')) $('btnDys').addEventListener('click', function(){ prefs.dys = !prefs.dys; save(); applyAll(); if (prefs.dys) countAid('a_dys'); });
+  if ($('btnHC')) $('btnHC').addEventListener('click', function(){ prefs.hc = !prefs.hc; save(); applyAll(); if (prefs.hc) countAid('a_hc'); });
   // "Reduce motion" is an explicit, site-wide answer: it also overrides a
   // Play/Pause pressed earlier on the app preview.
-  if ($('btnStill')) $('btnStill').addEventListener('click', function(){ prefs.still = !prefs.still; loopChoice = null; save(); applyAll(); });
+  if ($('btnStill')) $('btnStill').addEventListener('click', function(){ prefs.still = !prefs.still; loopChoice = null; save(); applyAll(); if (prefs.still) countAid('a_still'); });
   if ($('btnA11yReset')) $('btnA11yReset').addEventListener('click', function(){
     prefs.font = ''; prefs.dys = false; prefs.hc = false; prefs.still = false; loopChoice = null; save(); applyAll();
   });
@@ -147,7 +149,33 @@
   var raf = 0;
   function layoutChanged(){
     if (raf) return;
-    raf = requestAnimationFrame(function(){ raf = 0; fitNav(); measureHeader(); });
+    raf = requestAnimationFrame(function(){ raf = 0; fitNav(); measureHeader(); scrollBoxes(); });
+  }
+
+  // A table wider than the screen scrolls sideways inside its .table-scroll
+  // box. A keyboard user can only scroll a box they can focus, so a box that
+  // scrolls becomes a focusable region named after the heading above it.
+  function scrollBoxes(){
+    each('.table-scroll', function(box){
+      var scrolls = box.scrollWidth > box.clientWidth + 1;
+      if (scrolls === box.hasAttribute('tabindex')) return;
+      if (!scrolls) {
+        ['tabindex', 'role', 'aria-label', 'data-label-en', 'data-label-fil'].forEach(function(a){ box.removeAttribute(a); });
+        return;
+      }
+      var heads = [].filter.call(document.querySelectorAll('h2, h3'), function(h){
+        return h.compareDocumentPosition(box) & Node.DOCUMENT_POSITION_FOLLOWING;
+      });
+      var h = heads[heads.length - 1], text = function(sel){
+        var s = h && (h.querySelector(sel) || h);
+        return s ? s.textContent.trim() : '';
+      };
+      box.setAttribute('tabindex', '0');
+      box.setAttribute('role', 'region');
+      box.setAttribute('data-label-en', 'Table: ' + text('.en') + ' (scrolls sideways)');
+      box.setAttribute('data-label-fil', 'Talahanayan: ' + text('.fil') + ' (naiiscroll pakanan)');
+      box.setAttribute('aria-label', box.getAttribute(prefs.fil ? 'data-label-fil' : 'data-label-en'));
+    });
   }
   addEventListener('resize', layoutChanged);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(layoutChanged);
@@ -364,6 +392,242 @@
       document.addEventListener('webkitfullscreenchange', filmFollow);
     }
   }
+
+  // ---- Visit counts ----------------------------------------------------------
+  // Each page view adds one to a few named tallies for today in the website's
+  // own statistics database: a Firebase project of its own, separate from the
+  // app's (website_admin/README.md), whose rules accept nothing but "one more"
+  // and let no one but the team read. The tallies: the page, its language, the
+  // kind of device, how the visitor arrived and which reading aids are on.
+  // No cookies, no IDs, no IP addresses kept. The browser keeps one small note
+  // ('flp-visit', never sent): the day it was last counted, so a visitor
+  // counts once a day; that it was counted before; and the reading aids
+  // already counted that day.
+  // Nothing is counted when the browser asks not to be tracked (Do Not Track,
+  // Global Privacy Control), on any copy of the site but the published one, or
+  // on a device the team excluded with ?nocount=on (?nocount=off undoes it).
+  // The feedback form on faq.html sends through the same database.
+  var STATS = { host: 'jpaestedstu-prog.github.io', project: 'flashlearn-pwd-site', key: 'AIzaSyAGjW0oU_R0KZYQmyYujaGP1fghr9fXRNE' };
+  var PAGE_KEYS = ['index', 'try', 'download', 'how_to_use', 'games', 'fsl_dictionary',
+                   'teachers_guide', 'faq', 'awareness', 'about', 'privacy', 'gaze_control'];
+  var EVENTS = ['apk_arm64', 'apk_arm32', 'apk_universal', 'webapp', 'try_card', 'try_game', 'film', 'demo'];
+  var db = (function(){
+    var base = 'https://firestore.googleapis.com/v1', project = STATS.project, key = STATS.key, test = null;
+    if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
+      // A local copy counts only when a test points it at the Firestore emulator.
+      try { test = JSON.parse(localStorage.getItem('flp-stats-test') || 'null'); } catch(e){}
+      if (!test || !test.base || !test.project) return null;
+      base = test.base; project = test.project; key = '';
+    } else if (location.hostname !== STATS.host) return null;
+    if (!project || !window.fetch) return null;
+    var root = 'projects/' + project + '/databases/(default)/documents';
+    return { url: base + '/' + root + ':commit' + (key ? '?key=' + encodeURIComponent(key) : ''), root: root, test: !!test };
+  })();
+  function stored(k){ try { return localStorage.getItem(k); } catch(e){ return undefined; } }
+
+  var noCount = /[?&]nocount=(on|off)(&|$)/.exec(location.search);
+  if (noCount) {
+    try {
+      if (noCount[1] === 'on') localStorage.setItem('flp-nocount', '1'); else localStorage.removeItem('flp-nocount');
+    } catch(e){}
+    // Out of the address bar, so the link is never shared with it.
+    try {
+      history.replaceState(null, '', location.pathname +
+        location.search.replace(/([?&])nocount=(on|off)(&|$)/, '$1').replace(/[?&]$/, '') + location.hash);
+    } catch(e){}
+    var note = document.createElement('p');
+    note.className = 'site-notice';
+    note.setAttribute('role', 'status');
+    note.innerHTML = noCount[1] === 'on'
+      ? '<span class="en">This browser’s visits are no longer counted.</span><span class="fil">Hindi na binibilang ang mga pagbisita mula sa browser na ito.</span>'
+      : '<span class="en">This browser’s visits are counted again.</span><span class="fil">Binibilang na ulit ang mga pagbisita mula sa browser na ito.</span>';
+    document.body.appendChild(note);
+    setTimeout(function(){ if (note.parentNode) note.parentNode.removeChild(note); }, 8000);
+  }
+
+  var dnt = navigator.doNotTrack === '1' || navigator.doNotTrack === 'yes' || window.doNotTrack === '1' ||
+            navigator.globalPrivacyControl === true;
+  var robot = !!navigator.webdriver ||
+              /bot|crawl|spider|slurp|headless|lighthouse|pagespeed|prerender|preview|inspectiontool/i.test(navigator.userAgent || '');
+  var counting = !!db && !dnt && stored('flp-nocount') !== '1' && (db.test || !robot);
+
+  function today(){ return new Date(Date.now() + 8 * 36e5).toISOString().slice(0, 10); }   // Philippine day (UTC+8)
+  function mq(q){ return !!(window.matchMedia && matchMedia(q).matches); }
+
+  function commit(writes, keepalive){
+    return fetch(db.url, {
+      method: 'POST', body: JSON.stringify({ writes: writes }), keepalive: !!keepalive,
+      headers: { 'Content-Type': 'application/json' }, credentials: 'omit', referrerPolicy: 'no-referrer'
+    }).then(function(r){ if (!r.ok) throw new Error('HTTP ' + r.status); return r; });
+  }
+  // Adds one to each of `keys` in one document (created on its first write);
+  // `fields` are plain values written alongside.
+  function bump(path, keys, keepalive, fields){
+    fields = fields || {};
+    return commit([{
+      update: { name: db.root + '/' + path, fields: fields },
+      updateMask: { fieldPaths: Object.keys(fields) },
+      updateTransforms: keys.map(function(k){ return { fieldPath: k, increment: { integerValue: '1' } }; })
+    }], keepalive);
+  }
+
+  function pageKey(){
+    var f = (location.pathname.split('/').pop() || 'index').replace(/\.html$/, '').replace(/-/g, '_');
+    return PAGE_KEYS.indexOf(f) === -1 ? 'other' : f;
+  }
+  function deviceKind(){
+    if (!mq('(pointer: coarse)')) return 'computer';
+    return Math.min(screen.width || 0, screen.height || 0) < 600 ? 'phone' : 'tablet';
+  }
+  // How the visitor arrived. Counted when they come from outside the site,
+  // not between its pages, not on a reload or Back.
+  function source(){
+    var nav = window.performance && performance.getEntriesByType && performance.getEntriesByType('navigation')[0];
+    if (nav && (nav.type === 'reload' || nav.type === 'back_forward')) return null;
+    if (/[?&](src|utm_source)=qr(&|$)/i.test(location.search)) return 'qr';
+    var r = document.referrer || '', h = '';
+    if (!r) return 'direct';
+    try { h = new URL(r).hostname.toLowerCase(); } catch(e){}
+    if (h === location.hostname) return null;
+    if (/facebook|messenger|instagram|tiktok|youtube|youtu\.be|linkedin|reddit|pinterest|threads|viber|telegram|whatsapp|discord|twitter|(^|\.)(t\.co|x\.com|fb\.me|m\.me|fb\.com)$/.test(h)) return 'social';
+    if (/(^|\.)(google|bing|yahoo|duckduckgo|ecosia|baidu|yandex|naver|qwant|startpage|brave)\.|^search\./.test(h)) return 'search';
+    if (/(^|\.)github\.(com|io)$/.test(h)) return 'github';
+    return 'other';
+  }
+  function aidsOn(){
+    var on = [];
+    if (prefs.font === 'lg' || prefs.font === 'xl') on.push('a_text');
+    if (prefs.dys) on.push('a_dys');
+    if (prefs.hc) on.push('a_hc');
+    if (prefs.still) on.push('a_still');
+    return on;
+  }
+  function deviceSettings(){
+    var on = [];
+    if (mq('(prefers-reduced-motion: reduce)')) on.push('o_motion');
+    if (mq('(prefers-color-scheme: dark)')) on.push('o_dark');
+    if (mq('(prefers-contrast: more)') || mq('(forced-colors: active)')) on.push('o_contrast');
+    return on;
+  }
+  // 'flp-visit' = { d: day last counted, a: reading aids counted that day,
+  // r: 1 once this browser has been counted before }. null when the browser
+  // keeps no storage: such a visit still counts as a page view, never as a
+  // visitor.
+  function visit(){
+    var s = stored('flp-visit');
+    if (s === undefined) return null;
+    try { return JSON.parse(s || '{}') || {}; } catch(e){ return {}; }
+  }
+  function keepVisit(v){ try { localStorage.setItem('flp-visit', JSON.stringify(v)); } catch(e){} }
+
+  function countView(){
+    var day = today(), keys = ['v', 'p_' + pageKey(), prefs.fil ? 'l_fil' : 'l_en'];
+    var src = source(), seen = visit(), next = null;
+    if (src) keys.push('s_' + src);
+    if (seen && seen.d !== day) {   // this browser's first page today
+      var aids = aidsOn();
+      keys.push('u', 'd_' + deviceKind());
+      if (!seen.r) keys.push('n');
+      keys = keys.concat(aids, deviceSettings());
+      next = { d: day, a: aids, r: 1 };
+    }
+    // Remembered only once counted: a visit that could not be sent is
+    // counted on the next page instead.
+    bump('daily/' + day, keys).then(function(){ if (next) keepVisit(next); }, function(){});
+  }
+  // A reading aid switched on after today's first page.
+  function countAid(k){
+    if (!counting) return;
+    var seen = visit();
+    if (!seen || seen.d !== today() || (seen.a || []).indexOf(k) !== -1) return;
+    seen.a = (seen.a || []).concat(k);
+    keepVisit(seen);
+    bump('daily/' + seen.d, [k]).catch(function(){});
+  }
+  // Downloads, the web app, Try It and the videos: once per page view each,
+  // except Word Match games, which count every time one starts.
+  var counted = {};
+  function countEvent(name, keepalive){
+    if (!counting || EVENTS.indexOf(name) === -1 || (counted[name] && name !== 'try_game')) return;
+    counted[name] = 1;
+    bump('daily/' + today(), ['e_' + name], keepalive).catch(function(){});
+  }
+  function countSign(name){
+    if (!counting || counted['w_' + name] || !/^[a-z0-9_]{1,40}$/.test(name)) return;
+    counted['w_' + name] = 1;
+    bump('signs/' + today(), ['w_' + name], false, { last: { stringValue: 'w_' + name } }).catch(function(){});
+  }
+  window.flpCount = countEvent;
+
+  function linkCount(e){
+    var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+    if (!a || (e.type === 'auxclick' && e.button !== 1)) return;
+    var href = a.getAttribute('href') || '';
+    var apk = /\/releases\/download\/[^\/]+\/[^\/]*-(arm64|arm32|universal)\.apk$/i.exec(href);
+    // keepalive: the count still goes out when the link leaves the page.
+    if (apk) countEvent('apk_' + apk[1].toLowerCase(), true);
+    else if (/^(\.\/)?app\/?$/.test(href)) countEvent('webapp', true);
+  }
+  document.addEventListener('click', linkCount, true);
+  document.addEventListener('auxclick', linkCount, true);
+  // `play` does not bubble: listen while it travels down.
+  document.addEventListener('play', function(e){
+    var v = e.target;
+    if (!v || v.tagName !== 'VIDEO' || v.classList.contains('loop')) return;   // not the Home preview
+    var src = v.currentSrc || v.getAttribute('src') || '';
+    var sign = /\/videos\/fsl\/([a-z0-9-]+)\.mp4/i.exec(src);
+    if (sign) countSign(sign[1].toLowerCase().replace(/-/g, '_'));
+    else if (/\/videos\/film-/.test(src)) countEvent('film');
+    else if (/\/videos\/(app-demo|gaze-demo|fsl-welcome)\./.test(src)) countEvent('demo');
+  }, true);
+
+  if (counting) {
+    // After the page itself has loaded, and only once it is actually seen
+    // (not a tab opened in the background and never looked at, not a prerender).
+    var startCount = function(){
+      if (document.prerendering) {
+        document.addEventListener('prerenderingchange', startCount, { once: true });
+      } else if (document.visibilityState === 'hidden') {
+        var onShow = function(){
+          if (document.visibilityState !== 'visible') return;
+          document.removeEventListener('visibilitychange', onShow);
+          countView();
+        };
+        document.addEventListener('visibilitychange', onShow);
+      } else countView();
+    };
+    if (document.readyState === 'complete') setTimeout(startCount, 300);
+    else addEventListener('load', function(){ setTimeout(startCount, 300); });
+  }
+
+  // ---- "Send to the team" (faq.html) ------------------------------------------
+  // One rating and/or message, written once and never readable from here.
+  // Sending is something the visitor chose, so Do Not Track does not stop it.
+  function randomId(){
+    var abc = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789', id = '';
+    var bytes = new Uint8Array(20);
+    window.crypto.getRandomValues(bytes);
+    for (var i = 0; i < bytes.length; i++) id += abc[bytes[i] % abc.length];
+    return id;
+  }
+  window.flpFeedback = {
+    ready: !!(db && window.crypto && window.crypto.getRandomValues),
+    // f = { type, role, message, rating (1-5, optional), device (optional) }
+    send: function(f){
+      var fields = {
+        type: { stringValue: f.type }, role: { stringValue: f.role }, message: { stringValue: f.message },
+        page: { stringValue: pageKey() }, lang: { stringValue: prefs.fil ? 'fil' : 'en' },
+        status: { stringValue: 'new' }
+      };
+      if (f.rating) fields.rating = { integerValue: String(f.rating) };
+      if (f.device) fields.device = { stringValue: f.device };
+      return commit([{
+        update: { name: db.root + '/feedback/' + randomId(), fields: fields },
+        currentDocument: { exists: false },
+        updateTransforms: [{ fieldPath: 'created', setToServerValue: 'REQUEST_TIME' }]
+      }]);
+    }
+  };
 
   applyAll();
   fitNav();
