@@ -85,7 +85,7 @@ FOOTER_COLS = [
     ]),
     ("The project", "Ang proyekto", "About the project", [
         ("about.html", "About the team", "Tungkol sa pangkat"),
-        ("faq.html#feedback", "Send feedback", "Magpadala ng feedback"),
+        ("faq.html#feedback", "Rate the app or send feedback", "I-rate ang app o magpadala ng feedback"),
         ("privacy.html", "Privacy &amp; data", "Privacy at datos"),
         ("https://github.com/jpaestedstu-prog/pwd_flashcard_app", "GitHub", "GitHub"),
     ]),

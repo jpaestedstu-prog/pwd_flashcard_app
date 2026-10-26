@@ -28,7 +28,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
-<link rel="stylesheet" href="assets/site.css?v=ad7d0d3635">
+<link rel="stylesheet" href="assets/site.css?v=a733a45d2f">
 <script>(function(h){h.classList.add('js');try{var p=JSON.parse(localStorage.getItem('flp-a11y')||'{}');if(p.font==='lg'||p.font==='xl')h.classList.add('fs-'+p.font);if(p.dys)h.classList.add('dys');if(p.hc)h.classList.add('hc');if(p.still)h.classList.add('still');if(p.fil){h.classList.add('fil');h.setAttribute('lang','fil');}if(p.fil||p.font==='lg'||p.font==='xl')h.classList.add('nav-compact');}catch(e){}})(document.documentElement);</script>
 <!--/gen:site-head-->
 <script type="application/ld+json">
@@ -46,7 +46,7 @@
     {"@type":"Question","name":"How do teachers and parents use it?","acceptedAnswer":{"@type":"Answer","text":"Create a Teacher or Parent profile to set up classes or home groups, generate join codes for students, view progress reports, and leave encouraging notes. Student profiles created with a class code appear automatically in the teacher's dashboard. The full walkthrough is in the Teacher's Guide."}},
     {"@type":"Question","name":"What data does the app keep?","acceptedAnswer":{"@type":"Answer","text":"A Guest Player's profile never leaves the tablet. Every other profile is also saved online, so a learner can join a class or home group, send messages and move to a new tablet. Mood check-ins, notebook pages and saved Talk Board phrases stay on the tablet. There are no ads, and data is never sold. The Privacy & data page explains everything in plain words."}},
     {"@type":"Question","name":"Is FlashLearn PWD really free?","acceptedAnswer":{"@type":"Answer","text":"Yes. FlashLearn PWD is a student thesis project built to help PWD learners, with no ads and no in-app purchases."}},
-    {"@type":"Question","name":"How can I give feedback or report a problem?","acceptedAnswer":{"@type":"Answer","text":"Use the feedback form on this page — it works with your own email app, no account needed. If you have a GitHub account, you can also open a ticket on the project's issues page."}}
+    {"@type":"Question","name":"How can I give feedback or report a problem?","acceptedAnswer":{"@type":"Answer","text":"Use the feedback form on this page to rate the app, report a problem or share an idea — no account needed. If you have a GitHub account, you can also open a ticket on the project's issues page."}}
   ]
 }
 </script>
@@ -163,7 +163,7 @@
       </details>
       <details class="faq" id="report">
         <summary><span class="en">How can I give feedback or report a problem?</span><span class="fil">Paano ako magbibigay ng feedback o mag-uulat ng problema?</span></summary>
-        <div class="d-body"><p><span class="en">We'd love to hear from you! Use the <a href="#feedback">feedback form</a> below — it works with your own email app, no account needed. If you have a GitHub account, you can also open a ticket on our <a href="https://github.com/jpaestedstu-prog/pwd_flashcard_app/issues" rel="noopener">issues page</a>.</span><span class="fil">Gusto naming marinig ang inyong opinyon! Gamitin ang <a href="#feedback">feedback form</a> sa ibaba — gumagana ito sa inyong sariling email app, walang kailangang account. Kung may GitHub account kayo, maaari ring magbukas ng ticket sa aming <a href="https://github.com/jpaestedstu-prog/pwd_flashcard_app/issues" rel="noopener">issues page</a>.</span></p></div>
+        <div class="d-body"><p><span class="en">We'd love to hear from you! Use the <a href="#feedback">feedback form</a> below to rate the app, report a problem or share an idea — no account needed. If you have a GitHub account, you can also open a ticket on our <a href="https://github.com/jpaestedstu-prog/pwd_flashcard_app/issues" rel="noopener">issues page</a>.</span><span class="fil">Gusto naming marinig ang inyong opinyon! Gamitin ang <a href="#feedback">feedback form</a> sa ibaba para i-rate ang app, mag-ulat ng problema o magbahagi ng ideya — walang kailangang account. Kung may GitHub account kayo, maaari ring magbukas ng ticket sa aming <a href="https://github.com/jpaestedstu-prog/pwd_flashcard_app/issues" rel="noopener">issues page</a>.</span></p></div>
       </details>
     </div>
   </div>
@@ -173,40 +173,57 @@
   <div class="container">
     <div class="section-head">
       <p class="eyebrow"><span aria-hidden="true">💌</span> <span class="en">We'd love to hear from you</span><span class="fil">Gusto naming marinig kayo</span></p>
-      <h2><span class="en">Send us your feedback</span><span class="fil">Ipadala ang inyong feedback</span></h2>
-      <p class="lead"><span class="en">Tried the app with your class or your child? Found a problem, or have an idea? Your message goes straight to the team — and every piece of feedback helps our thesis research make the app better for PWD learners.</span><span class="fil">Nasubukan na ang app kasama ang inyong klase o anak? May nakitang problema, o may ideya? Diretso sa team ang inyong mensahe — at bawat feedback ay tumutulong sa aming thesis research para mapabuti ang app para sa mga mag-aaral na PWD.</span></p>
+      <h2><span class="en">Ratings &amp; feedback</span><span class="fil">Rating at feedback</span></h2>
+      <p class="lead"><span class="en">Tried the app with your class or your child? Give it a rating, tell us about a problem, or share an idea — every message helps our thesis research make the app better for PWD learners.</span><span class="fil">Nasubukan na ang app kasama ang inyong klase o anak? Bigyan ito ng rating, sabihin sa amin ang problema, o magbahagi ng ideya — bawat mensahe ay tumutulong sa aming thesis research para mapabuti ang app para sa mga mag-aaral na PWD.</span></p>
     </div>
     <div class="fb-layout">
-      <form class="form-card" id="fbForm">
+      <form class="form-card" id="fbForm" novalidate>
+        <fieldset class="stars" id="fbStars">
+          <legend><span class="en">How would you rate FlashLearn PWD? <span class="opt">(optional)</span></span><span class="fil">Anong rating ang ibibigay ninyo sa FlashLearn PWD? <span class="opt">(opsyonal)</span></span></legend>
+          <div class="stars-row">
+            <span class="stars-five">
+            <input type="radio" name="fbRating" id="fbR1" value="1"><label for="fbR1"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2.8l2.85 5.8 6.4.93-4.63 4.5 1.1 6.37L12 17.4l-5.72 3l1.1-6.37-4.63-4.5 6.4-.93z"/></svg><span class="sr-only"><span class="en">1 star: Poor</span><span class="fil">1 bituin: Mahina</span></span></label>
+            <input type="radio" name="fbRating" id="fbR2" value="2"><label for="fbR2"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2.8l2.85 5.8 6.4.93-4.63 4.5 1.1 6.37L12 17.4l-5.72 3l1.1-6.37-4.63-4.5 6.4-.93z"/></svg><span class="sr-only"><span class="en">2 stars: Fair</span><span class="fil">2 bituin: Katamtaman</span></span></label>
+            <input type="radio" name="fbRating" id="fbR3" value="3"><label for="fbR3"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2.8l2.85 5.8 6.4.93-4.63 4.5 1.1 6.37L12 17.4l-5.72 3l1.1-6.37-4.63-4.5 6.4-.93z"/></svg><span class="sr-only"><span class="en">3 stars: Good</span><span class="fil">3 bituin: Mabuti</span></span></label>
+            <input type="radio" name="fbRating" id="fbR4" value="4"><label for="fbR4"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2.8l2.85 5.8 6.4.93-4.63 4.5 1.1 6.37L12 17.4l-5.72 3l1.1-6.37-4.63-4.5 6.4-.93z"/></svg><span class="sr-only"><span class="en">4 stars: Very good</span><span class="fil">4 bituin: Napakabuti</span></span></label>
+            <input type="radio" name="fbRating" id="fbR5" value="5"><label for="fbR5"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2.8l2.85 5.8 6.4.93-4.63 4.5 1.1 6.37L12 17.4l-5.72 3l1.1-6.37-4.63-4.5 6.4-.93z"/></svg><span class="sr-only"><span class="en">5 stars: Excellent</span><span class="fil">5 bituin: Napakahusay</span></span></label>
+            </span>
+            <span class="stars-say" id="fbStarsSay" aria-hidden="true"></span>
+            <button type="button" class="link-btn" id="fbStarsClear" hidden><span class="en">Clear</span><span class="fil">Alisin</span></button>
+          </div>
+        </fieldset>
         <div class="field-row">
           <label class="field"><span><span class="en">I am a…</span><span class="fil">Ako ay…</span></span>
             <select id="fbRole">
-              <option value="Teacher" data-en="Teacher" data-fil="Guro">Teacher</option>
-              <option value="Parent or Guardian" data-en="Parent or guardian" data-fil="Magulang o tagapag-alaga">Parent or guardian</option>
-              <option value="Student" data-en="Student" data-fil="Mag-aaral">Student</option>
-              <option value="Other" data-en="Other" data-fil="Iba pa">Other</option>
+              <option value="Teacher" data-kind="teacher" data-en="Teacher" data-fil="Guro">Teacher</option>
+              <option value="Parent or Guardian" data-kind="parent" data-en="Parent or guardian" data-fil="Magulang o tagapag-alaga">Parent or guardian</option>
+              <option value="Student" data-kind="student" data-en="Student" data-fil="Mag-aaral">Student</option>
+              <option value="Other" data-kind="other" data-en="Other" data-fil="Iba pa">Other</option>
             </select>
           </label>
           <label class="field"><span><span class="en">Message type</span><span class="fil">Uri ng mensahe</span></span>
             <select id="fbType">
-              <option value="Problem or bug" data-en="Problem or bug" data-fil="Problema o bug">Problem or bug</option>
-              <option value="Suggestion" data-en="Suggestion" data-fil="Mungkahi">Suggestion</option>
-              <option value="Praise or story" data-en="Praise or story" data-fil="Papuri o kuwento">Praise or story</option>
+              <option value="Problem or bug" data-kind="problem" data-en="Problem or bug" data-fil="Problema o bug">Problem or bug</option>
+              <option value="Suggestion" data-kind="idea" data-en="Suggestion" data-fil="Mungkahi">Suggestion</option>
+              <option value="Praise or story" data-kind="praise" data-en="Praise or story" data-fil="Papuri o kuwento">Praise or story</option>
             </select>
           </label>
         </div>
         <label class="field"><span><span class="en">Device (optional)</span><span class="fil">Device (opsyonal)</span></span>
-          <input id="fbDevice" type="text" placeholder="e.g. Samsung Galaxy Tab A9, Android 13" data-ph-en="e.g. Samsung Galaxy Tab A9, Android 13" data-ph-fil="hal. Samsung Galaxy Tab A9, Android 13" autocomplete="off">
+          <input id="fbDevice" type="text" maxlength="120" placeholder="e.g. Samsung Galaxy Tab A9, Android 13" data-ph-en="e.g. Samsung Galaxy Tab A9, Android 13" data-ph-fil="hal. Samsung Galaxy Tab A9, Android 13" autocomplete="off">
         </label>
-        <label class="field"><span><span class="en">Your message</span><span class="fil">Ang inyong mensahe</span></span>
-          <textarea id="fbMsg" required rows="5"></textarea>
+        <label class="field"><span><span class="en">Your message <span class="opt">(optional with a rating)</span></span><span class="fil">Ang inyong mensahe <span class="opt">(opsyonal kung may rating)</span></span></span>
+          <textarea id="fbMsg" rows="5" maxlength="2000"></textarea>
         </label>
+        <label class="fb-hp" aria-hidden="true">Leave this empty <input type="text" id="fbHp" tabindex="-1" autocomplete="off"></label>
         <div class="actions">
-          <button class="btn btn-primary" type="submit"><span aria-hidden="true">📧</span> <span class="en">Open in your email app</span><span class="fil">Buksan sa inyong email app</span></button>
+          <button class="btn btn-primary" type="submit" id="fbSend" hidden><span aria-hidden="true">📨</span> <span class="en">Send to the team</span><span class="fil">Ipadala sa team</span></button>
+          <button class="btn btn-primary" type="button" id="fbEmail"><span aria-hidden="true">📧</span> <span class="en">Open in your email app</span><span class="fil">Buksan sa inyong email app</span></button>
           <button class="btn btn-secondary" type="button" id="fbCopy"><span aria-hidden="true">📋</span> <span class="en">Copy message instead</span><span class="fil">Kopyahin na lang</span></button>
         </div>
         <p class="fb-status" id="fbStatus" aria-live="polite"></p>
-        <p class="fb-note"><span aria-hidden="true">🔒</span> <span class="en">This website sends nothing by itself — the buttons only prepare the message in your own email app (or copy it), so you stay in control.</span><span class="fil">Walang ipinapadala ang website na ito nang mag-isa — inihahanda lang ng mga button ang mensahe sa inyong sariling email app (o kinokopya ito), kaya kayo ang may kontrol.</span></p>
+        <p class="fb-note" id="fbNoteSite" hidden><span aria-hidden="true">🔒</span> <span class="en">“Send to the team” delivers your rating and message to the FlashLearn PWD team through this website’s own database, with the page and language you used — no name, email or account — and it is deleted after 12 months. Please don’t write names, phone numbers or details about a child. Want an answer, or asking us to delete a profile? Use “Open in your email app” so we can reply. <a href="privacy.html#website">How the website handles this</a>.</span><span class="fil">Ipinapadala ng “Ipadala sa team” ang inyong rating at mensahe sa FlashLearn PWD team sa sariling database ng website na ito, kasama ang pahina at wikang ginamit ninyo — walang pangalan, email o account — at binubura ito pagkalipas ng 12 buwan. Huwag pong isulat ang mga pangalan, numero ng telepono o detalye tungkol sa isang bata. Gusto ng sagot, o hihilingin na burahin ang isang profile? Gamitin ang “Buksan sa inyong email app” para makasagot kami. <a href="privacy.html#website">Paano ito hinahawakan ng website</a>.</span></p>
+        <p class="fb-note" id="fbNoteMail"><span aria-hidden="true">🔒</span> <span class="en">This website sends nothing by itself — the buttons only prepare the message in your own email app (or copy it), so you stay in control.</span><span class="fil">Walang ipinapadala ang website na ito nang mag-isa — inihahanda lang ng mga button ang mensahe sa inyong sariling email app (o kinokopya ito), kaya kayo ang may kontrol.</span></p>
       </form>
       <div>
         <h3><span class="en">Other ways to reach us</span><span class="fil">Iba pang paraan</span></h3>
@@ -253,7 +270,7 @@
         <h2 class="footer-title"><span class="en">The project</span><span class="fil">Ang proyekto</span></h2>
         <ul>
           <li><a href="about.html"><span class="en">About the team</span><span class="fil">Tungkol sa pangkat</span></a></li>
-          <li><a href="faq.html#feedback"><span class="en">Send feedback</span><span class="fil">Magpadala ng feedback</span></a></li>
+          <li><a href="faq.html#feedback"><span class="en">Rate the app or send feedback</span><span class="fil">I-rate ang app o magpadala ng feedback</span></a></li>
           <li><a href="privacy.html"><span class="en">Privacy &amp; data</span><span class="fil">Privacy at datos</span></a></li>
           <li><a href="https://github.com/jpaestedstu-prog/pwd_flashcard_app" rel="noopener">GitHub</a></li>
         </ul>
@@ -265,47 +282,135 @@
     </div>
   </div>
 </footer>
-<script src="assets/site.js?v=7277155a41"></script>
+<script src="assets/site.js?v=fdfe4b631d"></script>
 <!--/gen:site-footer-->
 <script>
 (function(){
-  // Feedback form: composes the message in the visitor's own email app
-  // (mailto) or copies it — the site itself never sends anything.
+  // Feedback form: a star rating and/or a message. "Send to the team" writes
+  // it to the website's own database (site.js, flpFeedback); "Open in your
+  // email app" (mailto) and "Copy message instead" send nothing themselves.
+  // Without that database (a local copy, or before it is set up) the email
+  // app is the way to send, as it always was.
   var form = document.getElementById('fbForm');
   if (!form) return;
   var addr = ['jaj4ngpinasto', 'gmail.com'].join('@'); // assembled here to avoid address-harvesting bots
   document.getElementById('fbAddr').textContent = addr;
   var status = document.getElementById('fbStatus');
+  var site = window.flpFeedback && window.flpFeedback.ready ? window.flpFeedback : null;
+  var sendBtn = document.getElementById('fbSend'), mailBtn = document.getElementById('fbEmail');
+  var role = document.getElementById('fbRole'), type = document.getElementById('fbType');
+  var device = document.getElementById('fbDevice'), msg = document.getElementById('fbMsg');
+  var openedAt = Date.now();
+  if (site) {
+    sendBtn.hidden = false;
+    mailBtn.classList.remove('btn-primary');
+    mailBtn.classList.add('btn-secondary');
+    document.getElementById('fbNoteSite').hidden = false;
+    document.getElementById('fbNoteMail').hidden = true;
+  }
+  function say(html, bad){
+    status.innerHTML = html;
+    status.classList.toggle('bad', !!bad);
+  }
 
+  // Stars: five radio buttons; the chosen one and those before it fill in.
+  var WORDS = [null, ['Poor', 'Mahina'], ['Fair', 'Katamtaman'], ['Good', 'Mabuti'],
+               ['Very good', 'Napakabuti'], ['Excellent', 'Napakahusay']];
+  var stars = [].slice.call(form.querySelectorAll('input[name="fbRating"]'));
+  var starsSay = document.getElementById('fbStarsSay'), starsClear = document.getElementById('fbStarsClear');
+  function rating(){
+    for (var i = 0; i < stars.length; i++) if (stars[i].checked) return +stars[i].value;
+    return 0;
+  }
+  function showStars(){
+    var r = rating();
+    stars.forEach(function(s){ s.nextElementSibling.classList.toggle('on', +s.value <= r); });
+    starsSay.innerHTML = r ? r + ' / 5 · <span class="en">' + WORDS[r][0] + '</span><span class="fil">' + WORDS[r][1] + '</span>' : '';
+    starsClear.hidden = !r;
+  }
+  stars.forEach(function(s){ s.addEventListener('change', showStars); });
+  starsClear.addEventListener('click', function(){
+    stars.forEach(function(s){ s.checked = false; });
+    showStars();
+    stars[0].focus();
+  });
+
+  function kind(select){ return select.options[select.selectedIndex].getAttribute('data-kind'); }
+  function filled(){
+    if (msg.value.trim() || rating()) return true;
+    say('<span class="en">✍️ Choose a rating or write a message first.</span><span class="fil">✍️ Pumili muna ng rating o sumulat ng mensahe.</span>', true);
+    msg.focus();
+    return false;
+  }
   function compose(){
-    var role = document.getElementById('fbRole').value;
-    var type = document.getElementById('fbType').value;
-    var dev  = document.getElementById('fbDevice').value.trim();
-    var msg  = document.getElementById('fbMsg').value.trim();
+    var text = msg.value.trim(), dev = device.value.trim(), r = rating();
+    var what = text ? type.value : 'Rating';
     return {
-      subject: '[FlashLearn PWD] ' + type + ' (' + role + ')',
-      body: 'Role: ' + role + '\nType: ' + type + (dev ? '\nDevice: ' + dev : '') +
-            '\n\n' + msg + '\n\n— Sent from the FlashLearn PWD website'
+      subject: '[FlashLearn PWD] ' + what + ' (' + role.value + ')',
+      body: 'Role: ' + role.value + '\nType: ' + what + (r ? '\nRating: ' + r + ' / 5' : '') +
+            (dev ? '\nDevice: ' + dev : '') + (text ? '\n\n' + text : '') +
+            '\n\n— Sent from the FlashLearn PWD website'
     };
+  }
+
+  // At most a few sends a day from one browser. A form filled in faster than
+  // a person can, or with the hidden field a person never sees: thanked, not sent.
+  var PER_DAY = 5;
+  function today(){ return new Date(Date.now() + 8 * 36e5).toISOString().slice(0, 10); }
+  function sentToday(){
+    try { var s = JSON.parse(localStorage.getItem('flp-sent') || '{}') || {}; return s.d === today() ? s.n || 0 : 0; }
+    catch(e){ return 0; }
+  }
+  function noteSent(){
+    try { localStorage.setItem('flp-sent', JSON.stringify({ d: today(), n: sentToday() + 1 })); } catch(e){}
+  }
+  function thanked(ratingOnly){
+    say(ratingOnly
+      ? '<span class="en">✅ Thank you for rating FlashLearn PWD!</span><span class="fil">✅ Salamat sa pag-rate sa FlashLearn PWD!</span>'
+      : '<span class="en">✅ Thank you! Your message reached the FlashLearn PWD team.</span><span class="fil">✅ Salamat! Natanggap na ng FlashLearn PWD team ang inyong mensahe.</span>');
+    msg.value = ''; device.value = '';
+    stars.forEach(function(s){ s.checked = false; });
+    showStars();
+  }
+  function sendHere(){
+    if (!filled()) return;
+    if (sentToday() >= PER_DAY) {
+      say('<span class="en">You have sent ' + PER_DAY + ' messages today — thank you! For more, please email us at <b>' + addr + '</b>.</span><span class="fil">Nakapagpadala na kayo ng ' + PER_DAY + ' mensahe ngayong araw — salamat! Para sa iba pa, mag-email sa <b>' + addr + '</b>.</span>', true);
+      return;
+    }
+    var text = msg.value.trim(), r = rating();
+    if (document.getElementById('fbHp').value || Date.now() - openedAt < 1500) { thanked(r && !text); return; }
+    sendBtn.disabled = true;
+    say('<span class="en">⏳ Sending…</span><span class="fil">⏳ Ipinapadala…</span>');
+    site.send({ type: text ? kind(type) : 'rating', role: kind(role), message: text.slice(0, 2000),
+                rating: r, device: device.value.trim().slice(0, 120) })
+      .then(function(){ noteSent(); thanked(r && !text); }, function(){
+        say('<span class="en">⚠️ It could not be sent — are you online? Please try again, or use “Open in your email app”.</span><span class="fil">⚠️ Hindi ito naipadala — may internet ba kayo? Subukan ulit, o gamitin ang “Buksan sa inyong email app”.</span>', true);
+      })
+      .then(function(){ sendBtn.disabled = false; });
+  }
+  function openMail(){
+    if (!filled()) return;
+    var m = compose();
+    say('<span class="en">✅ Your email app should open — just press Send there.</span><span class="fil">✅ Bubukas ang inyong email app — pindutin lang ang Send doon.</span>');
+    location.href = 'mailto:' + addr + '?subject=' + encodeURIComponent(m.subject) + '&body=' + encodeURIComponent(m.body);
   }
   form.addEventListener('submit', function(e){
     e.preventDefault();
-    var m = compose();
-    status.innerHTML = '<span class="en">✅ Your email app should open — just press Send there.</span><span class="fil">✅ Bubukas ang inyong email app — pindutin lang ang Send doon.</span>';
-    location.href = 'mailto:' + addr + '?subject=' + encodeURIComponent(m.subject) + '&body=' + encodeURIComponent(m.body);
+    if (site) sendHere(); else openMail();
   });
+  mailBtn.addEventListener('click', openMail);
   document.getElementById('fbCopy').addEventListener('click', function(){
-    var msg = document.getElementById('fbMsg');
-    if (!msg.value.trim()) { msg.reportValidity ? msg.reportValidity() : msg.focus(); return; }
+    if (!filled()) return;
     var m = compose();
     var text = 'To: ' + addr + '\nSubject: ' + m.subject + '\n\n' + m.body;
     var done = function(){
-      status.innerHTML = '<span class="en">✅ Copied! Paste it into any email or chat app and send it to <b>' + addr + '</b>.</span><span class="fil">✅ Nakopya! I-paste ito sa kahit anong email o chat app at ipadala sa <b>' + addr + '</b>.</span>';
+      say('<span class="en">✅ Copied! Paste it into any email or chat app and send it to <b>' + addr + '</b>.</span><span class="fil">✅ Nakopya! I-paste ito sa kahit anong email o chat app at ipadala sa <b>' + addr + '</b>.</span>');
     };
     var failed = function(){
       // Copying can be blocked (older browsers, denied permission). Say so and
       // show the address rather than leaving the button looking dead.
-      status.innerHTML = '<span class="en">⚠️ Your browser blocked the copy. Select the message and copy it yourself, then send it to <b>' + addr + '</b>.</span><span class="fil">⚠️ Hindi pinayagan ng browser ang pagkopya. Piliin at kopyahin ang mensahe, at ipadala sa <b>' + addr + '</b>.</span>';
+      say('<span class="en">⚠️ Your browser blocked the copy. Select the message and copy it yourself, then send it to <b>' + addr + '</b>.</span><span class="fil">⚠️ Hindi pinayagan ng browser ang pagkopya. Piliin at kopyahin ang mensahe, at ipadala sa <b>' + addr + '</b>.</span>', true);
     };
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(done, function(){ fallbackCopy(text, done, failed); });
