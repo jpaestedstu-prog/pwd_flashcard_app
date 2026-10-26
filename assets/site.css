@@ -235,7 +235,8 @@ html.js.nav-compact .header-tools{ margin-left:auto; }
 html.js .site-nav.open{
   position:absolute; left:0; right:0; top:100%; margin:0;
   background:var(--surface); border-bottom:1px solid var(--border); box-shadow:0 18px 30px rgba(30,24,70,.16);
-  max-height:calc(100vh - var(--header-h)); overflow-y:auto; overscroll-behavior:contain;
+  max-height:calc(100vh - var(--header-h)); max-height:calc(100dvh - var(--header-h));   /* dvh: see .toc */
+  overflow-y:auto; overscroll-behavior:contain;
 }
 html.js .site-nav.open ul{
   display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.5rem;
@@ -827,7 +828,10 @@ html.hc .step-num{ background:#000; box-shadow:none; }
 /* ============ Guide pages (Teacher's Guide, Privacy) ============ */
 .doc-layout{ display:grid; grid-template-columns:15.5rem minmax(0,1fr); gap:3rem; align-items:start; padding-top:2.5rem; padding-bottom:4rem; }
 @media (max-width:980px){ .doc-layout{ grid-template-columns:minmax(0,1fr); gap:1.5rem; } }
-.toc{ position:sticky; top:calc(var(--header-h) + 1.25rem); max-height:calc(100vh - var(--header-h) - 2.5rem); overflow-y:auto; }
+/* 100dvh is the height the browser really shows. 100vh assumes its toolbar is hidden, which
+   it never is on a tablet: the list's last links sat under the screen's edge there. */
+.toc{ position:sticky; top:calc(var(--header-h) + 1.25rem); max-height:calc(100vh - var(--header-h) - 2.5rem);
+  max-height:calc(100dvh - var(--header-h) - 2.5rem); overflow-y:auto; }
 @media (max-width:980px){ .toc{ position:static; max-height:none; } }
 .toc details{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); box-shadow:var(--shadow-1); }
 .toc summary{ cursor:pointer; list-style:none; padding:.8rem 1rem; font-family:var(--font-head); font-weight:600; color:var(--ink); }
