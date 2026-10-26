@@ -130,12 +130,12 @@
   // The links stay in the header only when they actually fit. Measured, not
   // guessed: Filipino labels and the larger text sizes are much wider.
   function fitNav(){
+    // Measure the full header (menu closed, not compact, wordmark shown), all
+    // in one task so nothing is painted in between.
+    html.classList.remove('nav-compact', 'head-tight');
     if (!nav) return;
-    // Measure the inline layout (menu closed, not compact), all in one task so
-    // nothing is painted in between.
     var wasOpen = nav.classList.contains('open');
     nav.classList.remove('open');
-    html.classList.remove('nav-compact');
     var ul = nav.querySelector('ul');
     var inline = getComputedStyle(nav).display !== 'none';   // false below the CSS breakpoint
     if (inline && ul && ul.scrollWidth > ul.clientWidth + 1) html.classList.add('nav-compact');
@@ -143,13 +143,22 @@
     if (wasOpen && compact) nav.classList.add('open');
     else if (wasOpen && menuBtn) menuBtn.setAttribute('aria-expanded', 'false');
   }
+  // Then the wordmark and the Menu label give way (as they do below 420 px)
+  // whenever the controls would still run past the screen: large phones, a
+  // phone set to a small display size, the larger text.
+  function fitHead(){
+    var inner = header && header.querySelector('.header-inner'), tools = header && header.querySelector('.header-tools');
+    if (!inner || !tools) return;
+    var edge = inner.getBoundingClientRect().right - (parseFloat(getComputedStyle(inner).paddingRight) || 0);
+    if (tools.getBoundingClientRect().right > edge + 0.5) html.classList.add('head-tight');
+  }
   function measureHeader(){
     if (header) html.style.setProperty('--header-h', Math.round(header.getBoundingClientRect().height) + 'px');
   }
   var raf = 0;
   function layoutChanged(){
     if (raf) return;
-    raf = requestAnimationFrame(function(){ raf = 0; fitNav(); measureHeader(); scrollBoxes(); });
+    raf = requestAnimationFrame(function(){ raf = 0; fitNav(); fitHead(); measureHeader(); scrollBoxes(); });
   }
 
   // A table wider than the screen scrolls sideways inside its .table-scroll
@@ -631,6 +640,7 @@
 
   applyAll();
   fitNav();
+  fitHead();
   measureHeader();
 
   // ---- Offline copy --------------------------------------------------------
