@@ -3,18 +3,20 @@ emulator, against the LOCAL Firebase emulators (nothing real is touched).
 
     cd website_admin
     firebase emulators:start --only firestore,auth --project demo-flashlearn-site
-    python tool/website_device_check.py [serial] [screenshot folder]
+    python tool/website_device_check.py [serial] [screenshot folder] [--sideways]
 
 Tunnels (removed afterwards): adb reverse 8899 (website), 8898 (dashboard), 8080 and
 9099 (Firestore and Auth emulators); adb forward 9230 to Chrome's DevTools. Checks that
 every page fits the screen with no script errors, that a visit is counted with the
 device's real kind (phone or tablet), that the feedback form sends, and that the
-dashboard signs in, opens every section, fits and passes axe.
+dashboard signs in, opens every section, fits and passes axe. --sideways turns the
+screen once Chrome is open (auto-rotate off, user rotation 1) and puts both settings back.
 """
 import json, os, subprocess, sys, tempfile, time, urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-ARGS = sys.argv[1:]
+SIDEWAYS_RUN = "--sideways" in sys.argv[1:]
+ARGS = [a for a in sys.argv[1:] if not a.startswith("--")]
 SERIAL = next((a for a in ARGS if not any(c in a for c in r"/\:")), None)   # a serial has no path characters
 SHOTS = next((a for a in ARGS if a != SERIAL), None) or tempfile.mkdtemp(prefix="fldev-")
 os.makedirs(SHOTS, exist_ok=True)
@@ -48,6 +50,29 @@ def device_page():
     return h.wait_for(find, 40)
 
 
+def turn_sideways(p):
+    """Turns the screen sideways with Chrome in front. Turning it before Chrome restarts does
+    not hold: the launcher shows in between, and an upright-only launcher (the Villaon's)
+    turns the screen back for good. Returns the settings to put back."""
+    get = lambda name: adb("shell", "settings", "get", "system", name)
+    before = {name: get(name) for name in ("accelerometer_rotation", "user_rotation")}
+    adb("shell", "settings", "put", "system", "accelerometer_rotation", "0")
+    if before["user_rotation"] == "1":   # already 1: only a change turns the screen
+        adb("shell", "settings", "put", "system", "user_rotation", "0")
+    adb("shell", "settings", "put", "system", "user_rotation", "1")
+    check("the screen turned sideways", h.wait_for(lambda: p.js("innerWidth > innerHeight"), 15),
+          p.js("innerWidth + ' x ' + innerHeight"))
+    return before
+
+
+def put_back(settings):
+    for name, value in settings.items():
+        if value in ("", "null"):
+            adb("shell", "settings", "delete", "system", name, check_ok=False)
+        else:
+            adb("shell", "settings", "put", "system", name, value, check_ok=False)
+
+
 def main():
     model = adb("shell", "getprop", "ro.product.model")
     h.wait_for(lambda: adb("shell", "getprop", "sys.boot_completed") == "1", 180)
@@ -70,6 +95,7 @@ def main():
     adb("shell", "am", "force-stop", "com.android.chrome")
     adb("shell", "am", "start", "-a", "android.intent.action.VIEW", "-d", "http://127.0.0.1:8899/index.html", "com.android.chrome")
     adb("forward", "tcp:9230", "localabstract:chrome_devtools_remote")
+    rotation = None
     try:
         ws = device_page()
         if not ws:
@@ -79,8 +105,12 @@ def main():
             p.call(d)
         for origin in ("http://127.0.0.1:8899", "http://127.0.0.1:8898"):
             p.call("Storage.clearDataForOrigin", origin=origin, storageTypes="all")
+        if SIDEWAYS_RUN:
+            rotation = turn_sideways(p)
         run(p, kind)
     finally:
+        if rotation:
+            put_back(rotation)
         adb("forward", "--remove", "tcp:9230", check_ok=False)
         for port in PORTS:
             adb("reverse", "--remove", f"tcp:{port}", check_ok=False)
@@ -91,9 +121,22 @@ def main():
     sys.exit(1 if failed else 0)
 
 
-FITS = """(function(){
-  var W = document.documentElement.clientWidth, t = document.querySelector('.header-tools');
-  return document.documentElement.scrollWidth <= W && (!t || t.getBoundingClientRect().right <= W + 0.5);
+# Why a page does not fit the screen, or '' when it does: it really scrolls sideways, its
+# content is wider than the screen (hidden by body{overflow-x:hidden}, which cuts it off
+# instead), or the header's controls end past the edge. The screen width is the exact one:
+# clientWidth rounds a 423.53 px screen down to 423, and scrollWidth (a whole number) can
+# then read 424 on a page that fits.
+SIDEWAYS = """(function(){
+  var x = scrollX, y = scrollY;
+  scrollTo({left: 100000, top: y, behavior: 'instant'});
+  var moved = scrollX;
+  scrollTo({left: x, top: y, behavior: 'instant'});
+  var W = document.documentElement.getBoundingClientRect().width, sw = document.documentElement.scrollWidth;
+  var t = document.querySelector('.header-tools'), right = t ? t.getBoundingClientRect().right : 0;
+  if (moved > 0) return 'scrolls ' + moved + ' px sideways';
+  if (sw > Math.ceil(W)) return 'content ' + sw + ' px wide on a ' + W.toFixed(1) + ' px screen';
+  if (right > W + 0.5) return 'header controls end at ' + right.toFixed(1) + ' px on a ' + W.toFixed(1) + ' px screen';
+  return '';
 })()"""
 
 
@@ -119,8 +162,9 @@ def run(p, kind):
         p.errors.clear()
         p.goto(f"{h.SITE}/{page}")
         time.sleep(0.4)
-        if not p.js(FITS):
-            wide.append(page)
+        why = p.js(SIDEWAYS)
+        if why:
+            wide.append(f"{page}: {why}")
         errors += [f"{page}: {e}" for e in p.errors]
     check(f"every page fits the {kind}'s screen (no sideways scrolling, header inside)", not wide, wide)
     check("no script errors on any page", not errors, errors[:3])
@@ -151,19 +195,31 @@ def run(p, kind):
         p.js(f"location.hash = '#{view}'")
         p.wait(f"!document.querySelector('.view[data-view={view}]').hidden")
         time.sleep(0.6)
-        if p.js("document.documentElement.scrollWidth > document.documentElement.clientWidth"):
-            wide.append(view)
+        why = p.js(SIDEWAYS)
+        if why:
+            wide.append(f"{view}: {why}")
         found += [view + ": " + v for v in h.axe(p, view)]
         if view in ("overview", "feedback"):
             p.shot(f"device-{kind}-dashboard-{view}")
+    # Up to 900 px wide the sidebar becomes a top bar with tabs (an upright phone); a
+    # phone turned sideways is wider than that and keeps the sidebar, which suits its
+    # short screen better than a bar taking a quarter of the height.
     layout = p.js("getComputedStyle(document.getElementById('app')).display")
-    check(f"the dashboard layout suits a {kind} ({'sidebar' if layout == 'grid' else 'top bar with tabs'})",
-          (layout == "block") if kind == "phone" else True, layout)
+    width = p.js("document.documentElement.clientWidth")
+    check(f"the dashboard layout suits a {kind} {width} px wide ({'sidebar' if layout == 'grid' else 'top bar with tabs'})",
+          layout == ("grid" if width > 900 else "block"), layout)
     if layout == "grid":
         fill = p.js("(function(){var s=document.getElementById('side').getBoundingClientRect(), y=innerHeight-4;"
                     "var e=document.elementFromPoint(20, y);"
                     "return {sideBottom: Math.round(s.bottom), viewport: innerHeight, atBottom: e ? (e.closest('#side') ? 'sidebar' : e.tagName) : null};})()")
         check("the sidebar reaches the bottom of the screen", fill["sideBottom"] >= fill["viewport"] - 1 and fill["atBottom"] == "sidebar", fill)
+        # A phone's address bar takes part of the screen: scrolled to its end, the
+        # sidebar's last control must still be on the screen, not under its edge.
+        reach = p.js("(function(){var s=document.getElementById('side'), b=document.getElementById('btnSignOut');"
+                     "s.scrollTop = s.scrollHeight; var r = b.getBoundingClientRect();"
+                     "var out = {signOutBottom: Math.round(r.bottom), screen: innerHeight, sideHeight: s.clientHeight, scrolls: s.scrollHeight > s.clientHeight};"
+                     "s.scrollTop = 0; return out;})()")
+        check("every sidebar control can be scrolled onto the screen (Sign out last)", reach["signOutBottom"] <= reach["screen"], reach)
     check("no dashboard section scrolls sideways on the device", not wide, wide)
     check("accessibility: no axe violations in any section on the device", not found, found[:4])
     check("no script errors on the dashboard", not p.errors, p.errors[:3])

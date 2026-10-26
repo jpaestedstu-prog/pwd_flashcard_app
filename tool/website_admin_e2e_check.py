@@ -621,6 +621,11 @@ def run(p):
                                                           " && document.querySelectorAll('#kpis .tile').length === 5"))
     p.call("Emulation.setDeviceMetricsOverride", width=390, height=844, deviceScaleFactor=1, mobile=True)
     p.call("Emulation.setEmulatedMedia", features=[{"name": "prefers-color-scheme", "value": "dark"}])
+    # With an unread count on the Feedback tab: its screen-reader text once escaped the
+    # scrolling tab strip and made the whole page 550 px wide on a phone.
+    p.js("(function(){ const s = document.querySelector('#inbox .msg-item select'); s.value = 'new'; s.dispatchEvent(new Event('change')); })()")
+    check("phone width: marking a message new again brings back the tab's unread count",
+          p.wait("!document.getElementById('navUnseen').hidden"))
     wide, found = [], []
     for view in ("overview", "feedback"):
         p.js(f"location.hash = '#{view}'")
