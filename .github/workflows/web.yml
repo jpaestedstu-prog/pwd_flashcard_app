@@ -13,7 +13,7 @@ name: Web
 on:
   workflow_dispatch:
   push:
-    branches: [main, work/v1.4.2]
+    branches: [main, work/v1.4.2, work/v1.4.3]
     paths-ignore:
       - 'docs/**'
       - 'CHAPTER*/**'
