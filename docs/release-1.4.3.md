@@ -73,7 +73,19 @@ of its own.
 - In Chrome 155 (the offline test build): the web D-pad check 10 of 10,
   twice; the web smoke walk 57 screens, no problems, as a desktop and as a
   Pixel 7.
-- GitHub's Android and Web workflows: run on the pushed branch.
+- GitHub's Android workflow (analyze and the whole suite, the release APKs,
+  walkthroughs on a phone and a tablet, each upright and sideways) and Web
+  workflow (Chrome and Firefox as a desktop and as a phone, Safari on macOS
+  and iOS) pass on 1942466.
+
+Published 27 October 2026, with the owner's go-ahead: release
+**v1.4.3** (Latest) on 1942466, its three APKs uploaded over a phone hotspot
+in about 7 minutes and GitHub's SHA-256 of each matching SHA256SUMS; each
+download link answers with the right size. The website and web app went to
+gh-pages **0730853** (from 7b3e84e: the download section, changelog,
+version.json and service worker v41, and the web app's four changed files);
+all eight are byte-identical live, and the live web app reaches its first
+screen with no errors as a desktop and as a phone.
 
 ## Not checked, and limits
 
