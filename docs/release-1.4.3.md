@@ -52,18 +52,28 @@ of its own.
 
 ## Checked
 
-- The full test suite: PENDING tests, all passing, on the release code.
+- The full test suite: **6,633 tests**, all passing, and `flutter analyze`
+  clean, on the release code (45eb7da).
 - The D-pad tests above: 528, all passing on the final code; each new rule's
   test was run against the old code first and failed there.
+- The release files (`bash tool/build_release.sh` into
+  `build/release-v1.4.3`, from 45eb7da): arm64 `56bf88c9…`, arm32
+  `7f7f4b2c…`, universal `bb95ec69…`, signed with the original key; the Play
+  APK and bundle with the upload key; manifests, signers and the release-file
+  scan all ok. The release arm64 APK installed over the tablet's build,
+  keeping every profile, and walked by keyboard: down to the tab bar, along
+  it to Cards, Enter, down to a deck (the ring around it), Enter opens it; no
+  errors in the device log.
 - On the Honor NDL-W09: the Guest Player (Cards, Home button, AI Buddy);
   Player with Progress (Home to the tab bar and back up from each tab,
   Settings by keyboard and by controller, Progress); a Child (Cognitive):
   Home by keyboard, gaze rows on all five tabs, Buddy; Students (Hearing, and
   Cognitive): the Daily Reward collected with down and Enter. Each profile's
   gaze settings were saved first and put back after (checked equal).
-- In Chrome 155 (desktop window): the web D-pad check 10 of 10, twice; the web
-  smoke walk PENDING.
-- GitHub's Android and Web workflows: PENDING.
+- In Chrome 155 (the offline test build): the web D-pad check 10 of 10,
+  twice; the web smoke walk 57 screens, no problems, as a desktop and as a
+  Pixel 7.
+- GitHub's Android and Web workflows: run on the pushed branch.
 
 ## Not checked, and limits
 
