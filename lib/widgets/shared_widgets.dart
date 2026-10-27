@@ -8,6 +8,7 @@ import '../l10n/app_localizations_en.dart';
 import 'animated_dialogs.dart';
 import 'depth_3d.dart';
 import 'tilt_3d.dart';
+import 'dpad_focusable.dart';
 
 /// Animated button with scale press effect and optional icon
 class AnimatedPressButton extends StatefulWidget {
@@ -67,7 +68,7 @@ class _AnimatedPressButtonState extends State<AnimatedPressButton>
     final bgColor = widget.backgroundColor ?? AppColors.primary;
     final radius = BorderRadius.circular(widget.borderRadius);
 
-    return GestureDetector(
+    return DpadFocusable(onActivate: widget.onPressed, child: GestureDetector(
       onTap: () => widget.onPressed?.call(),
       onTapDown: (_) => _controller.forward(),
       onTapUp: (_) => _controller.reverse(),
@@ -100,7 +101,7 @@ class _AnimatedPressButtonState extends State<AnimatedPressButton>
           ),
         ),
       ),
-    );
+    ));
   }
 }
 

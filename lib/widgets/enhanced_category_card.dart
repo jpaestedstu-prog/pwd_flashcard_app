@@ -6,6 +6,7 @@ import '../data/models/enums.dart';
 import '../l10n/app_localizations.dart';
 import '../l10n/app_localizations_en.dart';
 import 'depth_3d.dart';
+import 'dpad_focusable.dart';
 import 'tilt_3d.dart';
 
 /// An enhanced category card with painted wave decorations, gradient background,
@@ -43,7 +44,9 @@ class _EnhancedCategoryCardState extends State<EnhancedCategoryCard>
     final deep = widget.category.darkColor;
     final t = AppLocalizations.of(context) ?? AppLocalizationsEn();
 
-    return Semantics(
+    return DpadFocusable(
+      onActivate: widget.onTap,
+      child: Semantics(
       button: true,
       label: t.catCardSemantics(
         widget.category.labelOf(t),
@@ -230,6 +233,7 @@ class _EnhancedCategoryCardState extends State<EnhancedCategoryCard>
             ),
           ),
         ),
+      ),
       ),
     );
   }

@@ -39,6 +39,14 @@
   "progress": "Progress",
   "streak": "Streak",
   "mastery": "Mastery",
+  "dpadStopTotals": "Your totals",
+  "@dpadStopTotals": {
+    "description": "D-pad stop name for the Progress tab's top numbers (streak, stars, words, games)."
+  },
+  "dpadStopLevel": "Your level",
+  "@dpadStopLevel": {
+    "description": "D-pad stop name for the level bar on the Progress tab."
+  },
   "categoryProgress": "Category Progress",
   "recentGames": "Recent Games",
   "playGamePrompt": "Play a game to see your scores here!",
@@ -3760,7 +3768,7 @@
   },
   "progJustNow": "Just now",
   "progYesterday": "Yesterday",
-  "progGameSemantics": "{game}: {score} of {total}, {percent} percent, {stars} stars, {when}",
+  "progGameSemantics": "{game}: {score} of {total}, {percent} percent, {stars, plural, =1{1 star} other{{stars} stars}}, {when}",
   "@progGameSemantics": {
     "placeholders": {
       "game": {

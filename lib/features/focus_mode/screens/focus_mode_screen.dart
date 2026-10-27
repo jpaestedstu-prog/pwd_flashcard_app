@@ -10,6 +10,7 @@ import '../../../data/local/hive_service.dart';
 import '../../../providers/app_providers.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../models/focus_mode_models.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 class FocusModeScreen extends ConsumerStatefulWidget {
   const FocusModeScreen({super.key});
@@ -696,7 +697,7 @@ class _DurationChip extends StatelessWidget {
       button: true,
       selected: isSelected,
       label: isFilipino ? duration.labelFilipino : duration.label,
-      child: GestureDetector(
+      child: DpadFocusable(onActivate: onTap, child: GestureDetector(
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
@@ -731,7 +732,7 @@ class _DurationChip extends StatelessWidget {
             ],
           ),
         ),
-      ),
+      )),
     );
   }
 }

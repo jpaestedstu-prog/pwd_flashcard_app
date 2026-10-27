@@ -5,6 +5,9 @@ import '../../core/theme/app_typography.dart';
 import '../../data/models/enums.dart';
 import '../l10n/app_localizations.dart';
 import '../l10n/app_localizations_en.dart';
+import '../features/gamepad/providers/gamepad_screen.dart';
+import '../features/gamepad/widgets/gamepad_screen_registrar.dart';
+import '../features/gaze_control/widgets/gaze_modal_region.dart';
 
 /// A step in the onboarding tutorial.
 class TutorialStep {
@@ -419,7 +422,19 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
     final isLast = _currentStep == widget.steps.length - 1;
     final t = AppLocalizations.of(context) ?? AppLocalizationsEn();
 
-    return Material(
+    // Drawn inside Home's own Stack, with no route: as a gaze modal the
+    // hands-free D-pad steps through its two buttons rather than the tiles
+    // dimmed behind it, and the controller reads it out and offers the same
+    // two — the main action first.
+    return GazeModalRegion(
+      child: GamepadScreenRegistrar(
+        title: step.title,
+        narration: [step.description],
+        items: [
+          GamepadItem(label: isLast ? t.letsGo : t.next, onActivate: _next),
+          GamepadItem(label: t.skip, onActivate: _skip),
+        ],
+        child: Material(
       color: Colors.black.withValues(alpha: 0.7),
       child: SafeArea(
         child: Column(
@@ -429,7 +444,10 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
               alignment: Alignment.topRight,
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: TextButton(
+                child: GamepadFocusable(
+                  index: 1,
+                  expand: false,
+                  child: TextButton(
                   onPressed: _skip,
                   child: Text(
                     t.skip,
@@ -437,6 +455,7 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
                       color: Colors.white70,
                     ),
                   ),
+                ),
                 ),
               ),
             ),
@@ -485,7 +504,9 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
               padding: const EdgeInsets.symmetric(horizontal: 40),
               child: SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
+                child: GamepadFocusable(
+                  index: 0,
+                  child: ElevatedButton(
                   onPressed: _next,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: HCColor.of(context).fillFor(step.color),
@@ -505,11 +526,14 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
                     ),
                   ),
                 ),
+                ),
               ),
             ),
 
             const Spacer(),
           ],
+        ),
+      ),
         ),
       ),
     );

@@ -52,10 +52,27 @@ class GazeModalHost extends InheritedWidget {
 ///  * the overlay becomes its own focus scope and takes focus when it opens,
 ///    so traversal moves among *its* buttons and never strays onto the
 ///    controls dimmed behind it.
+///
+/// Two app-wide counts sit beside the scopes' own:
+///  * [anyOpen] — the game controller has no gaze scope to ask, and drove the
+///    hub's grid under a level-up celebration or Home's first-visit tour; it
+///    steps through the region by focus instead while any is open;
+///  * [openAboveScopes] — a region with no scope above it at all: the AI
+///    Buddy's panel floats over the router, outside every scope, so the
+///    navigation shell counts it as covering itself.
 class GazeModalRegion extends StatefulWidget {
   const GazeModalRegion({super.key, required this.child});
 
   final Widget child;
+
+  static int _open = 0;
+  static int _openUnhosted = 0;
+
+  /// Whether any in-screen modal is open anywhere in the app.
+  static bool get anyOpen => _open > 0;
+
+  /// Whether a modal outside every gaze scope is open (see above).
+  static bool get openAboveScopes => _openUnhosted > 0;
 
   @override
   State<GazeModalRegion> createState() => _GazeModalRegionState();
@@ -75,6 +92,8 @@ class _GazeModalRegionState extends State<GazeModalRegion> {
       _registered = true;
       _host = GazeModalHost._maybeOf(context);
       _host?._open();
+      GazeModalRegion._open++;
+      if (_host == null) GazeModalRegion._openUnhosted++;
     }
     // Take the focus whenever this region's screen is the one on top — on
     // mount, and again when a page above it closes (`ModalRoute.of` makes
@@ -93,6 +112,12 @@ class _GazeModalRegionState extends State<GazeModalRegion> {
   @override
   void dispose() {
     _host?._close();
+    if (_registered) {
+      if (GazeModalRegion._open > 0) GazeModalRegion._open--;
+      if (_host == null && GazeModalRegion._openUnhosted > 0) {
+        GazeModalRegion._openUnhosted--;
+      }
+    }
     _focusScope.dispose();
     super.dispose();
   }

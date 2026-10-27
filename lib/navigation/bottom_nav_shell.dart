@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 import '../data/models/enums.dart';
 import '../core/theme/app_colors.dart';
 import '../core/services/celebration_service.dart';
+import '../widgets/dpad_focusable.dart';
+import 'dpad_keys.dart' show dpadFloatingParent;
 import '../core/utils/responsive_utils.dart';
 import '../core/services/xp_level_service.dart';
 import '../l10n/app_localizations.dart';
@@ -22,6 +24,7 @@ import '../features/gamepad/providers/gamepad_sections.dart';
 import '../features/gaze_control/models/gaze_settings.dart';
 import '../features/gaze_control/providers/gaze_home_grid.dart';
 import '../features/gaze_control/widgets/gaze_hints.dart';
+import '../features/gaze_control/widgets/gaze_home_tiles.dart';
 import '../features/gaze_control/widgets/nav_gaze_scope.dart';
 import '../widgets/level_up_celebration_screen.dart';
 import '../features/assessment/widgets/learner_assignment_sync.dart';
@@ -222,10 +225,52 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
     });
   }
 
+  /// The guest's floating Home button, as the D-pad's last row on the guest's
+  /// hubs (see [GazeHomeGrid.publishShellCells]). Without it a guest steering
+  /// by head movement who opened Cards or Games could not come back.
+  final Object _guestHomeToken = Object();
+  bool _guestHomePublished = false;
+
+  void _publishGuestHome(bool show) {
+    if (show == _guestHomePublished) return;
+    _guestHomePublished = show;
+    // After the frame: the grid notifies its listeners, which rebuild.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _guestHomePublished != show) return;
+      if (show) {
+        gazeHomeGrid.publishShellCells([
+          GazeTileCell(label: 'Home', onActivate: () => context.go('/home')),
+        ], owner: _guestHomeToken);
+      } else {
+        gazeHomeGrid.clearShellCells(owner: _guestHomeToken);
+      }
+    });
+  }
+
+  /// Offers this shell's focus scope to the controls floating above the
+  /// router (see [dpadFloatingParent]). After the frame: listeners rebuild.
+  FocusScopeNode? _floatingParent;
+
+  void _publishFloatingParent() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final scope = FocusScope.of(context);
+      _floatingParent = scope;
+      if (!identical(dpadFloatingParent.value, scope)) {
+        dpadFloatingParent.value = scope;
+      }
+    });
+  }
+
   @override
   void dispose() {
     if (!kReleaseMode) GazeDebugBridge.levelUpHook = null;
     gamepadSections.clear(owner: _sectionsToken);
+    gazeHomeGrid.clearShellCells(owner: _guestHomeToken);
+    if (_floatingParent != null &&
+        identical(dpadFloatingParent.value, _floatingParent)) {
+      dpadFloatingParent.value = null;
+    }
     _animController.dispose();
     for (final c in _bounceControllers.values) {
       c.dispose();
@@ -298,6 +343,7 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
 
     final location = _location;
     final currentIndex = _currentIndex(location);
+    _publishFloatingParent();
     // A learner hub publishes its own gaze grid; any other page shown inside
     // the shell (Settings) is driven by gaze focus traversal instead. The
     // educator hubs keep the tab-bar D-pad they have always had.
@@ -329,6 +375,8 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
       // learner had no way back — system Back closed the app. Back from a hub
       // now returns to the guest home, and a Home button shows the way.
       final atHome = location.startsWith('/home');
+      final showHome = !atHome && navShown && !_guestHubCovered;
+      _publishGuestHome(showHome);
       return PopScope(
         canPop: atHome,
         onPopInvokedWithResult: (didPop, _) {
@@ -370,14 +418,17 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
                     FloatingActionButtonLocation.startFloat,
                 // "Home" in both languages — the app's Filipino UI calls that
                 // screen Home too (see _studentNavItems).
-                floatingActionButton: atHome || !navShown || _guestHubCovered
+                floatingActionButton: !showHome
                     ? null
-                    : FloatingActionButton.extended(
-                        heroTag: 'guest-home',
-                        tooltip: AppLocalizations.of(context)?.nfGoHome,
-                        onPressed: () => context.go('/home'),
-                        icon: const Icon(Icons.home_rounded),
-                        label: const Text('Home'),
+                    : GazeShellFocusable(
+                        owner: _guestHomeToken,
+                        child: FloatingActionButton.extended(
+                          heroTag: 'guest-home',
+                          tooltip: AppLocalizations.of(context)?.nfGoHome,
+                          onPressed: () => context.go('/home'),
+                          icon: const Icon(Icons.home_rounded),
+                          label: const Text('Home'),
+                        ),
                       ),
               ),
               if (_celebratingLevel != null)
@@ -393,6 +444,9 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
     }
     final items = _isEducator ? _educatorNavItems() : _studentNavItems();
     _publishSections([for (final item in items) item.label], currentIndex);
+    // Only a guest has the floating Home button; a profile switch from one
+    // must not leave its cell behind.
+    _publishGuestHome(false);
     // Whose assigned work to keep current. Watched so a profile switch swaps
     // the listener; null for educators, whose side is pulled elsewhere.
     final learnerId = ref.watch(
@@ -871,7 +925,12 @@ class _AnimatedNavItemState extends State<_AnimatedNavItem> {
       button: true,
       label: widget.item.label,
       selected: widget.isSelected,
-      child: GestureDetector(
+      // Gaze and the controller step onto the tabs as the grid's last row;
+      // the arrow keys need a focus stop, or a keyboard learner could never
+      // leave the first tab.
+      child: DpadFocusable(
+        onActivate: _handleTap,
+        child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: _handleTap,
         // The parent Row stretches each Expanded child to barHeight, so no
@@ -968,6 +1027,7 @@ class _AnimatedNavItemState extends State<_AnimatedNavItem> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

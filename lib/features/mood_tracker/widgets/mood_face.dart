@@ -5,6 +5,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../models/mood_models.dart';
 import '../../../core/widgets/fit_text.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 /// One selectable mood face.
 ///
@@ -65,7 +66,7 @@ class MoodFace extends StatelessWidget {
       button: true,
       selected: isSelected,
       label: isFilipino ? 'Pakiramdam na $label' : '$label mood',
-      child: GestureDetector(
+      child: DpadFocusable(onActivate: onTap, child: GestureDetector(
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 250),
@@ -139,7 +140,7 @@ class MoodFace extends StatelessWidget {
             ],
           ),
         ),
-      ),
+      )),
     );
   }
 }

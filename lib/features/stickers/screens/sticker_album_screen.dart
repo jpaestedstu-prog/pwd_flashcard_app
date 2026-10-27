@@ -13,6 +13,7 @@ import '../models/sticker_models.dart';
 import '../models/sticker_progress.dart';
 import '../widgets/sticker_unlocked_overlay.dart';
 import '../../../core/widgets/fit_text.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 class StickerAlbumScreen extends ConsumerStatefulWidget {
   const StickerAlbumScreen({super.key});
@@ -504,7 +505,7 @@ class _StickerTile extends StatelessWidget {
     return Semantics(
       button: true,
       label: semanticsLabel,
-      child: GestureDetector(
+      child: DpadFocusable(onActivate: onTap, child: GestureDetector(
         onTap: onTap,
         child: Stack(
           clipBehavior: Clip.none,
@@ -627,7 +628,7 @@ class _StickerTile extends StatelessWidget {
               ),
           ],
         ),
-      ),
+      )),
     );
   }
 }

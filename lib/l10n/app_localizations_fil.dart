@@ -108,6 +108,12 @@ class AppLocalizationsFil extends AppLocalizations {
   String get mastery => 'Kabihasaan';
 
   @override
+  String get dpadStopTotals => 'Ang iyong mga kabuuan';
+
+  @override
+  String get dpadStopLevel => 'Ang iyong level';
+
+  @override
   String get categoryProgress => 'Progreso ng Kategorya';
 
   @override

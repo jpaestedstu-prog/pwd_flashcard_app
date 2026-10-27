@@ -24,6 +24,7 @@ import '../../gaze_control/widgets/gaze_scope.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 /// Wraps [index] into 0…count-1, handling negatives so a left move from the
 /// first tile lands on the last. Returns 0 for an empty set. Pure + testable.
@@ -672,7 +673,7 @@ class _PhraseStrip extends StatelessWidget {
             label: phrase.pinned
                 ? _t(context).tbSavedPhrase(label)
                 : _t(context).tbRecentPhrase(label),
-            child: GestureDetector(
+            child: DpadFocusable(onActivate: () => onUse(phrase), child: GestureDetector(
               onTap: () => onUse(phrase),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -716,7 +717,7 @@ class _PhraseStrip extends StatelessWidget {
                   ],
                 ),
               ),
-            ),
+            )),
           );
         },
       ),
@@ -795,7 +796,7 @@ class _SentenceStrip extends StatelessWidget {
                           child: Semantics(
                             label: useFilipino ? tile.labelFil : tile.label,
                             button: true,
-                            child: GestureDetector(
+                            child: DpadFocusable(onActivate: () => onTapTile(tile), child: GestureDetector(
                               onTap: () => onTapTile(tile),
                               child: Chip(
                                 avatar: Text(
@@ -816,7 +817,7 @@ class _SentenceStrip extends StatelessWidget {
                                 materialTapTargetSize:
                                     MaterialTapTargetSize.shrinkWrap,
                               ),
-                            ),
+                            )),
                           ),
                         );
                       }).toList(),
@@ -911,7 +912,7 @@ class _CircleButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final enabled = onTap != null;
-    return GestureDetector(
+    return DpadFocusable(onActivate: onTap, child: GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
@@ -932,7 +933,7 @@ class _CircleButton extends StatelessWidget {
         ),
         child: Icon(icon, color: AppColors.textOnPrimary, size: size * 0.55),
       ),
-    );
+    ));
   }
 }
 
@@ -963,7 +964,7 @@ class _CategoryChip extends StatelessWidget {
       button: true,
       label: _t(context).tbCategory(label),
       selected: isActive,
-      child: GestureDetector(
+      child: DpadFocusable(onActivate: onTap, child: GestureDetector(
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
@@ -1002,7 +1003,7 @@ class _CategoryChip extends StatelessWidget {
             ],
           ),
         ),
-      ),
+      )),
     );
   }
 }
@@ -1043,7 +1044,7 @@ class _BoardTileWidget extends StatelessWidget {
     return Semantics(
       button: true,
       label: _t(context).tbTileSemantics(spoken),
-      child: GestureDetector(
+      child: DpadFocusable(onActivate: onTap, child: GestureDetector(
         onTap: onTap,
         onLongPress: onLongPress,
         child:
@@ -1118,7 +1119,7 @@ class _BoardTileWidget extends StatelessWidget {
                   duration: 250.ms,
                   delay: Duration(milliseconds: delay),
                 ),
-      ),
+      )),
     );
   }
 }

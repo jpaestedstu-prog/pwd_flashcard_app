@@ -33,6 +33,7 @@ import '../services/sign_clip_readiness.dart';
 import '../widgets/assessment_media_panel.dart';
 import '../widgets/assessment_sign_clip.dart';
 import '../../../navigation/nav_extensions.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 /// Screen that runs an assessment quiz — supports multiple choice,
 /// true/false, and fill-in-the-blank question formats. Fully accessible
@@ -995,7 +996,7 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
                       if (_currentQuestion.hint != null &&
                           _currentQuestion.hint!.isNotEmpty) ...[
                         const SizedBox(height: 16),
-                        GestureDetector(
+                        DpadFocusable(onActivate: () => setState(() => _showHint = !_showHint), child: GestureDetector(
                           onTap: () =>
                               setState(() => _showHint = !_showHint),
                           child: Semantics(
@@ -1026,7 +1027,7 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
                               ],
                             ),
                           ),
-                        ),
+                        )),
                         if (_showHint)
                           Padding(
                             padding: const EdgeInsets.only(top: 8),
@@ -1165,7 +1166,7 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
             button: !_answered,
             label: shown,
             selected: isSelected,
-            child: GestureDetector(
+            child: DpadFocusable(onActivate: () => _selectAnswer(choice), child: GestureDetector(
               onTap: () => _selectAnswer(choice),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
@@ -1215,7 +1216,7 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
                   ],
                 ),
               ),
-            ),
+            )),
           ),
         )
             .animate(key: ValueKey('choice_${_currentIndex}_$i'))
@@ -1278,7 +1279,7 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
       label: shown,
       onTap: _answered ? null : () => _selectAnswer(choice),
       child: ExcludeSemantics(
-        child: GestureDetector(
+        child: DpadFocusable(onActivate: () => _selectAnswer(choice), child: GestureDetector(
           onTap: () => _selectAnswer(choice),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 300),
@@ -1357,7 +1358,7 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
               ],
             ),
           ),
-        ),
+        )),
       ),
     );
   }

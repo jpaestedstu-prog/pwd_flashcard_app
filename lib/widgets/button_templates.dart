@@ -5,6 +5,7 @@ import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import 'depth_3d.dart';
 import 'tilt_3d.dart';
+import 'dpad_focusable.dart';
 
 // ═══════════════════════════════════════════════════════════════════
 // 1. FLASHCARD NAVIGATION BUTTON
@@ -73,7 +74,7 @@ class _FlashcardNavButtonState extends State<FlashcardNavButton>
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return DpadFocusable(onActivate: widget.onPressed, child: GestureDetector(
       onTap: () => widget.onPressed?.call(),
       onTapDown: (_) => _controller.forward(),
       onTapUp: (_) => _controller.reverse(),
@@ -134,7 +135,7 @@ class _FlashcardNavButtonState extends State<FlashcardNavButton>
           ),
         ),
       ),
-    );
+    ));
   }
 }
 
@@ -401,7 +402,7 @@ class _RewardFeedbackButtonState extends State<RewardFeedbackButton>
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              GestureDetector(
+              DpadFocusable(onActivate: _onTap, child: GestureDetector(
                 onTap: _onTap,
                 // pressScale 1.0: the press controller already squashes to
                 // 0.88; the wrapper adds the perspective tilt.
@@ -471,7 +472,7 @@ class _RewardFeedbackButtonState extends State<RewardFeedbackButton>
                     ),
                   ),
                 ),
-              ),
+              )),
               if (widget.label != null) ...[
                 const SizedBox(height: 6),
                 Text(

@@ -10,6 +10,7 @@ import '../../../widgets/depth_3d.dart';
 import '../../../widgets/tilt_3d.dart';
 import 'story_meta.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 /// A themed, vertical "cover" card for a single story.
 ///
@@ -70,7 +71,7 @@ class _StoryCoverCardState extends State<StoryCoverCard> {
         ? story.titleFil
         : story.titleEn;
 
-    return Semantics(
+    return DpadFocusable(onActivate: widget.unlocked ? widget.onTap : widget.onLockedTap, child: Semantics(
       button: widget.unlocked,
       label: locked
           ? _t(context).storyLocked(title)
@@ -182,7 +183,7 @@ class _StoryCoverCardState extends State<StoryCoverCard> {
           ),
         ),
       ),
-    );
+    ));
   }
 }
 

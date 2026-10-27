@@ -7,6 +7,7 @@ import '../data/models/student_filter.dart';
 import '../providers/student_list_provider.dart';
 import '../l10n/app_localizations.dart';
 import '../l10n/app_localizations_en.dart';
+import 'dpad_focusable.dart';
 
 /// Reusable search + filter bar for the student list.
 ///
@@ -177,7 +178,7 @@ class _StudentFilterBarState extends ConsumerState<StudentFilterBar> {
                       .copyWith(color: hc.textSecondary),
                 ),
                 const Spacer(),
-                GestureDetector(
+                DpadGestureDetector(
                   onTap: () {
                     _searchController.clear();
                     ref.read(studentFilterProvider.notifier).clearFilters();

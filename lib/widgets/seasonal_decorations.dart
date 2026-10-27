@@ -6,6 +6,7 @@ import 'package:pwdpwdpwd/data/models/seasonal_events.dart';
 import 'package:pwdpwdpwd/providers/app_providers.dart';
 import 'package:pwdpwdpwd/providers/seasonal_event_provider.dart';
 import '../core/utils/reduced_motion.dart';
+import '../core/widgets/fit_text.dart';
 import '../l10n/app_localizations.dart';
 import '../l10n/app_localizations_en.dart';
 
@@ -205,7 +206,6 @@ class _SeasonalBannerStripState extends ConsumerState<SeasonalBannerStrip>
   late final AnimationController _controller;
   late final Animation<double> _slide;
   late final Animation<double> _fade;
-  bool _dismissed = false;
 
   @override
   void initState() {
@@ -235,14 +235,17 @@ class _SeasonalBannerStripState extends ConsumerState<SeasonalBannerStrip>
   @override
   Widget build(BuildContext context) {
     final event = ref.watch(seasonalEventProvider);
-    if (event == null || _dismissed) return const SizedBox.shrink();
+    if (event == null || !ref.watch(seasonalBannerShownProvider)) {
+      return const SizedBox.shrink();
+    }
 
     final reducedMotion = ref.watch(
       settingsProvider.select((s) => s.reducedMotion),
     );
     final banner = _SeasonalBanner(
       event: event,
-      onDismiss: () => setState(() => _dismissed = true),
+      onDismiss: () =>
+          ref.read(seasonalBannerDismissedProvider.notifier).state = true,
     );
 
     // The entrance is decoration; a learner who asked for less motion gets the
@@ -269,6 +272,26 @@ class _SeasonalBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // At large text the words need the row: the days-left chip moves under
+    // them, and the decorative emoji keeps its size.
+    final roomy = MediaQuery.textScalerOf(context).scale(1.0) < 1.3;
+    final daysLeft = event.daysRemaining > 0
+        ? Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.25),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              '${event.daysRemaining}d left',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          )
+        : null;
     return SafeArea(
       bottom: false,
       child: Padding(
@@ -293,6 +316,7 @@ class _SeasonalBanner extends StatelessWidget {
               children: [
                 Text(
                   event.emoji,
+                  textScaler: TextScaler.noScaling,
                   style: const TextStyle(fontSize: 28),
                 ),
                 const SizedBox(width: 12),
@@ -301,12 +325,16 @@ class _SeasonalBanner extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
+                      // FitText: beside the emoji, the days-left chip and the
+                      // close button the column is narrow, and at 2x on a
+                      // phone "Halloween" broke as "Hallowee / n".
+                      FitText(
                         event.nameOf(
                           filipino: Localizations.localeOf(context)
                                   .languageCode ==
                               'fil',
                         ),
+                        maxLines: null,
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -314,37 +342,26 @@ class _SeasonalBanner extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 2),
-                      Text(
+                      FitText(
                         event.descriptionOf(
                           filipino: Localizations.localeOf(context)
                                   .languageCode ==
                               'fil',
                         ),
+                        maxLines: null,
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.9),
                           fontSize: 12,
                         ),
                       ),
+                      if (!roomy && daysLeft != null) ...[
+                        const SizedBox(height: 6),
+                        daysLeft,
+                      ],
                     ],
                   ),
                 ),
-                if (event.daysRemaining > 0)
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.25),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '${event.daysRemaining}d left',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
+                if (roomy && daysLeft != null) daysLeft,
                 const SizedBox(width: 4),
                 // A real button: labelled for a screen reader, reachable by
                 // a switch, gaze or keyboard, and a full 48 dp to hit.

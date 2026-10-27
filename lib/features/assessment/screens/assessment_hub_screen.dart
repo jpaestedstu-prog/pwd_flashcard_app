@@ -26,6 +26,7 @@ import '../widgets/assessment_media_panel.dart';
 import '../widgets/assessment_media_sheets.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../core/widgets/fit_text.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 class AssessmentHubScreen extends ConsumerWidget {
   const AssessmentHubScreen({super.key});
@@ -1006,7 +1007,7 @@ class _AssessmentTypeCard extends StatelessWidget {
           : _tr(context).hubCardNewSemantics(
               type.labelOf(AppLocalizations.of(context)),
             ),
-      child: GestureDetector(
+      child: DpadFocusable(onActivate: isLocked ? null : onTap, child: GestureDetector(
         onTap: isLocked ? null : onTap,
         child: AnimatedOpacity(
           duration: const Duration(milliseconds: 300),
@@ -1074,7 +1075,7 @@ class _AssessmentTypeCard extends StatelessWidget {
             ),
           ),
         ),
-      ),
+      )),
     );
   }
 }
@@ -1111,7 +1112,7 @@ class _CategoryMasteryCard extends StatelessWidget {
           : _tr(
               context,
             ).hubMasteryNewSemantics(category.labelOf(_tr(context))),
-      child: GestureDetector(
+      child: DpadFocusable(onActivate: onTap, child: GestureDetector(
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.all(14),
@@ -1164,7 +1165,7 @@ class _CategoryMasteryCard extends StatelessWidget {
             ],
           ),
         ),
-      ),
+      )),
     );
   }
 }
@@ -1279,7 +1280,7 @@ class _AssignedWorkTile extends StatelessWidget {
             mediaKinds.map((k) => k.labelOf(_tr(context))).join(', '),
           _tr(context).hubTapToStart,
         ].join('. '),
-        child: GestureDetector(
+        child: DpadFocusable(onActivate: onTap, child: GestureDetector(
           onTap: onTap,
           child: Container(
             padding: const EdgeInsets.all(16),
@@ -1361,7 +1362,7 @@ class _AssignedWorkTile extends StatelessWidget {
               ],
             ),
           ),
-        ),
+        )),
       ),
     );
   }
@@ -1416,7 +1417,7 @@ class _FeedbackTile extends StatelessWidget {
           t.assessFeedbackTapToOpen,
         ].join('. '),
         child: ExcludeSemantics(
-          child: GestureDetector(
+          child: DpadFocusable(onActivate: open, child: GestureDetector(
             onTap: open,
             child: Container(
               padding: const EdgeInsets.all(16),
@@ -1473,7 +1474,7 @@ class _FeedbackTile extends StatelessWidget {
                 ],
               ),
             ),
-          ),
+          )),
         ),
       ),
     );
@@ -1508,7 +1509,7 @@ class _CustomAssessmentTile extends StatelessWidget {
               assessment.title,
               _tr(context).hubQuestionCount(assessment.questions.length),
             ),
-        child: GestureDetector(
+        child: DpadFocusable(onActivate: onTap, child: GestureDetector(
           onTap: onTap,
           child: Container(
             padding: const EdgeInsets.all(16),
@@ -1586,7 +1587,7 @@ class _CustomAssessmentTile extends StatelessWidget {
               ],
             ),
           ),
-        ),
+        )),
       ),
     );
   }
@@ -1818,7 +1819,7 @@ class _LearnerGainTile extends StatelessWidget {
       child: Semantics(
         button: true,
         label: _tr(context).hubLearnerRowSemantics(profile.name, status),
-        child: GestureDetector(
+        child: DpadFocusable(onActivate: onTap, child: GestureDetector(
           onTap: onTap,
           child: Container(
             padding: const EdgeInsets.all(14),
@@ -1879,7 +1880,7 @@ class _LearnerGainTile extends StatelessWidget {
               ],
             ),
           ),
-        ),
+        )),
       ),
     );
   }

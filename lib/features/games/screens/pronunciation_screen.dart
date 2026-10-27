@@ -42,6 +42,7 @@ import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/fullscreen_host.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../../../core/utils/seeded_random.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 /// Pronunciation Practice — an audio-first game.
 ///
@@ -755,7 +756,7 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
                                                     label: round.isEnglishPrompt
                                                         ? l10n.playSoundEnglish
                                                         : l10n.playSoundFilipino,
-                                                    child: GestureDetector(
+                                                    child: DpadFocusable(onActivate: _speakCurrentWord, child: GestureDetector(
                                                       onTap: _speakCurrentWord,
                                                       child: Container(
                                                         width: context
@@ -788,7 +789,7 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
                                                           color: Colors.white,
                                                         ),
                                                       ),
-                                                    ),
+                                                    )),
                                                   ),
                                                   const SizedBox(height: 16),
                                                   Text(
@@ -843,7 +844,7 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
                                                       mainAxisAlignment:
                                                           MainAxisAlignment.center,
                                                       children: [
-                                                        GestureDetector(
+                                                        DpadFocusable(onActivate: _answered ? null : _handleVoiceAnswer, child: GestureDetector(
                                                           onTap: _answered
                                                               ? null
                                                               : _handleVoiceAnswer,
@@ -855,7 +856,7 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
                                                                 ? AppColors.error
                                                                 : AppColors.accent,
                                                           ),
-                                                        ),
+                                                        )),
                                                         if (_voiceHint
                                                             .isNotEmpty) ...[
                                                           const SizedBox(width: 8),
@@ -956,7 +957,7 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
                                           : showWrong
                                           ? l10n.wrongAnswerSuffix
                                           : ''}',
-                                  child: GestureDetector(
+                                  child: DpadFocusable(onActivate: () => _selectAnswer(index), child: GestureDetector(
                                     onTap: () => _selectAnswer(index),
                                     child: AnimatedContainer(
                                       duration: const Duration(milliseconds: 300),
@@ -1022,7 +1023,7 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
                                         ],
                                       ),
                                     ),
-                                  ),
+                                  )),
                                 );
 
                                 // Shake animation for wrong answer

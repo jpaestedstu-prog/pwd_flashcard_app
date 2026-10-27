@@ -17,6 +17,7 @@ import '../services/routine_media_store.dart';
 import '../services/routine_sign_launcher.dart';
 import '../widgets/routine_media.dart';
 import '../widgets/routine_step_card.dart';
+import '../../../navigation/dpad_keys.dart';
 
 /// Opens the step editor and returns the edited step, or null if cancelled.
 Future<RoutineStep?> openRoutineStepEditor(
@@ -351,7 +352,7 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
                   ),
                   // A locking step must end, so its length starts at five
                   // minutes; any other step may have no timer at all.
-                  Slider(
+                  DpadSliderScope(child: Slider(
                     value: _draft.durationMinutes.toDouble().clamp(
                       _locks(_draft) ? 5 : 0,
                       60,
@@ -366,7 +367,7 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
                       () =>
                           _draft = _draft.copyWith(durationMinutes: v.round()),
                     ),
-                  ),
+                  )),
 
                   const SizedBox(height: 4),
                   Row(
@@ -395,7 +396,7 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
                       ),
                     ],
                   ),
-                  Slider(
+                  DpadSliderScope(child: Slider(
                     value: _draft.remindMinutesBefore.toDouble().clamp(0, 30),
                     max: 30,
                     divisions: 6,
@@ -407,7 +408,7 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
                         remindMinutesBefore: v.round(),
                       ),
                     ),
-                  ),
+                  )),
                   Text(
                     l
                         ? 'Ang maagang babala ay mas madaling sundan kaysa sa '

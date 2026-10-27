@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'jigsaw_piece_clipper.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 /// A single draggable jigsaw piece that displays a clipped portion
 /// of the source image (or emoji fallback).
@@ -86,7 +87,7 @@ class JigsawPieceWidget extends StatelessWidget {
     return Semantics(
       label: l10n.jigsawPieceSemantics(row + 1, col + 1),
       button: true,
-      child: GestureDetector(
+      child: DpadFocusable(onActivate: onTap, child: GestureDetector(
         onTap: onTap,
         child: Container(
           decoration: BoxDecoration(
@@ -100,7 +101,7 @@ class JigsawPieceWidget extends StatelessWidget {
           ),
           child: piece,
         ),
-      ),
+      )),
     );
   }
 }

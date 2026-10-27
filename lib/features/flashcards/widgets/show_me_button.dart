@@ -10,6 +10,7 @@ import '../../../data/models/models.dart';
 import 'media_sheet_layout.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 /// "Show Me" — opens a short looping clip of the vocabulary word in motion.
 /// Visual demonstrations are far clearer than written text, especially for
@@ -251,7 +252,7 @@ class _ShowMeSheetState extends State<_ShowMeSheet> {
         aspectRatio: aspect,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(16),
-          child: GestureDetector(
+          child: DpadGestureDetector(
             onTap: () => setState(() {
               controller.value.isPlaying
                   ? controller.pause()

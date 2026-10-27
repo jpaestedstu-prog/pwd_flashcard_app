@@ -2,6 +2,24 @@
   "_comment": "Newest first. tools/release_page_build.py renders the website's download section, changelog, website/version.json and the GitHub release notes from this file plus pubspec.yaml and the built APKs. The first entry must match the pubspec version.",
   "releases": [
     {
+      "version": "1.4.3",
+      "build": 17,
+      "date": "2026-10-27",
+      "summary_en": "1.4.3: every control within reach of a D-pad. The arrow keys of a keyboard, a TV-style remote or a switch box, the game controller and Gaze Control now reach every tile, card, game, story, Progress panel and Settings choice, for guests, Players, Students and Children alike, with a ring that shows where you are. In the web app the arrow keys move from control to control instead of scrolling the page.",
+      "summary_fil": "1.4.3: naaabot na ng D-pad ang bawat kontrol. Ang mga arrow key ng keyboard, ng remote o ng switch box, ang game controller at ang Gaze Control ay umaabot na sa bawat tile, card, laro, kuwento, bahagi ng Progress at pagpipilian sa Settings, para sa guest, Player, Student at Child, at may kuwadrong nagpapakita kung nasaan ka. Sa web app, inililipat na ng mga arrow key ang pokus mula sa isang kontrol patungo sa susunod, sa halip na i-scroll ang pahina.",
+      "notes_en": "The arrow keys, the game controller and Gaze Control now reach every tile, card, game, story and Progress panel, with a ring that shows where you are, in the app and in the web app.",
+      "notes_fil": "Naaabot na ng mga arrow key, ng game controller at ng Gaze Control ang bawat tile, card, laro, kuwento at bahagi ng Progress, at may kuwadrong nagpapakita kung nasaan ka, sa app at sa web app.",
+      "bullets_en": [
+        "Arrow keys work as a D-pad on Home, Cards, Games, Stories, Progress and Settings, and in the web app, where they used to scroll the page. A ring shows the focused control from the first press, and Enter presses it.",
+        "Every tile and button that answered only a touch can now be reached and pressed: deck and story covers, game answers and tiles, the flashcard viewer, the Daily Challenge, mood faces, Settings choices, the Talk Board, stickers and more.",
+        "Progress can be stepped through panel by panel, and pressing a panel reads it aloud. Each recent game is named by how it went (“Word Match: 4 of 5, 80 percent, 1 star”).",
+        "Down from a page reaches the tab bar, a guest’s Home button and the AI Buddy, and a control straight ahead comes before one off to the side. Up and down leave a slider instead of being stuck in it.",
+        "The game controller’s up and down reach every control on screens without a list (Settings’ text sizes and screen orientation were skipped), and it names icon buttons such as the Star Shop and Settings instead of “Unnamed item”.",
+        "Gaze Control and the controller reach the holiday banner’s close button, each Daily Challenge answer and the AI Buddy on every hub, and leave the hub’s tiles alone while the AI Buddy or a first-visit tour is open.",
+        "The holiday banner keeps its words whole at large text on phones."
+      ]
+    },
+    {
       "version": "1.4.2",
       "build": 16,
       "tag": "v1.4.2-build16",

@@ -12,6 +12,7 @@ import '../models/survey_models.dart';
 import '../services/survey_service.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../../../navigation/nav_extensions.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 /// Full SUS (System Usability Scale) survey screen.
 ///
@@ -303,15 +304,17 @@ class _SusSurveyScreenState extends ConsumerState<SusSurveyScreen> {
               children: List.generate(5, (i) {
                 final value = i + 1;
                 final isSelected = selected == value;
+                void pick() {
+                  ref.read(hapticServiceProvider).lightTap();
+                  setState(() => _responses[index] = value);
+                }
+
                 return Expanded(
                   child: Semantics(
                     selected: isSelected,
                     label: '${scaleLabels[i]}, ${isFilipino ? "tanong" : "question"} ${index + 1}',
-                    child: GestureDetector(
-                      onTap: () {
-                        ref.read(hapticServiceProvider).lightTap();
-                        setState(() => _responses[index] = value);
-                      },
+                    child: DpadFocusable(onActivate: pick, child: GestureDetector(
+                      onTap: pick,
                       child: Column(
                         children: [
                           AnimatedContainer(
@@ -360,7 +363,7 @@ class _SusSurveyScreenState extends ConsumerState<SusSurveyScreen> {
                           ),
                         ],
                       ),
-                    ),
+                    )),
                   ),
                 );
               }),

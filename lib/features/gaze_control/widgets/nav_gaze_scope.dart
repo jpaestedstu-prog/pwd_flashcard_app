@@ -23,6 +23,7 @@ import 'gaze_hints.dart';
 import 'gaze_route_guard.dart';
 import 'gaze_session.dart';
 import 'gaze_traversal.dart';
+import 'gaze_modal_region.dart';
 import 'shell_modal_observer.dart';
 import 'voice_control_mixin.dart';
 
@@ -292,9 +293,11 @@ class _NavGazeScopeState extends ConsumerState<NavGazeScope>
   /// A sheet or dialog opened from the visible hub pushes onto the shell's own
   /// navigator, which this scope's [ModalRoute] cannot see — so consult the
   /// observer installed on it. Without this the D-pad kept driving the hub grid
-  /// underneath an open sheet.
+  /// underneath an open sheet. The AI Buddy's panel is the same thing drawn
+  /// above the router, where no route and no scope can see it.
   @override
-  bool get extraCovered => shellModalObserver.isCovering;
+  bool get extraCovered =>
+      shellModalObserver.isCovering || GazeModalRegion.openAboveScopes;
 
   /// Drive **focus traversal** rather than the tab / tile grid: either
   /// something is layered over the shell, or the shell's own nav bar is hidden

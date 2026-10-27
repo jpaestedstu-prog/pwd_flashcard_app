@@ -35,6 +35,7 @@ import '../../gamepad/providers/gamepad_screen.dart';
 import '../../gamepad/widgets/gamepad_screen_registrar.dart';
 import '../../gaze_control/widgets/gaze_dpad_scope.dart';
 import '../../../widgets/fullscreen_host.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 class FlashcardViewerScreen extends ConsumerStatefulWidget {
   final FlashcardCategory category;
@@ -882,7 +883,7 @@ class _FlipCard extends StatelessWidget {
               card.wordEnglish,
               category.labelOf(AppLocalizations.of(context)!),
             ),
-      child: GestureDetector(
+      child: DpadFocusable(onActivate: onFlip, child: GestureDetector(
         onTap: onFlip,
         behavior: HitTestBehavior.deferToChild,
         child: TweenAnimationBuilder<double>(
@@ -974,7 +975,7 @@ class _FlipCard extends StatelessWidget {
             );
           },
         ),
-      ),
+      )),
     );
   }
 
@@ -1564,7 +1565,7 @@ class _ActionButton extends StatelessWidget {
       button: true,
       enabled: enabled,
       label: semanticLabel ?? AppLocalizations.of(context)!.viewerButton(label),
-      child: GestureDetector(
+      child: DpadFocusable(onActivate: enabled ? onTap : null, child: GestureDetector(
         onTap: enabled ? onTap : null,
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1631,7 +1632,7 @@ class _ActionButton extends StatelessWidget {
             ),
           ],
         ),
-      ),
+      )),
     );
   }
 }

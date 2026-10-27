@@ -14,6 +14,8 @@ import '../../../providers/app_providers.dart' show settingsProvider;
 import '../../gaze_control/logic/gaze_focus_driver.dart';
 import '../../gaze_control/providers/gaze_home_grid.dart';
 import '../../gaze_control/services/gaze_switch_input.dart';
+import '../../gaze_control/widgets/gaze_focus_overlay.dart' show DpadFocusRing;
+import '../../gaze_control/widgets/gaze_modal_region.dart';
 import '../../gaze_control/widgets/shell_modal_observer.dart';
 import '../logic/gamepad_actions.dart';
 import '../logic/gamepad_cursor.dart';
@@ -715,6 +717,9 @@ class _GamepadHostState extends ConsumerState<GamepadHost> {
     if (!gazeHomeGrid.hasGrid) return false;
     if (shellModalObserver.isCovering) return false;
     if (_anythingPushed) return false;
+    // A celebration, a first-visit tour or the AI Buddy's panel drawn over
+    // the hub, with no route of its own: its buttons are stepped by focus.
+    if (GazeModalRegion.anyOpen) return false;
     return true;
   }
 
@@ -781,6 +786,8 @@ class _GamepadHostState extends ConsumerState<GamepadHost> {
 
   void _moveItem(int delta) {
     if (_screenHasItems) {
+      // Published items draw their own ring (GamepadFocusable).
+      DpadFocusRing.controllerStopped();
       _screenCursor.setRows([gamepadScreen.items.length]);
       delta > 0 ? _screenCursor.next() : _screenCursor.previous();
       gamepadScreen.setFocus(_screenCursor.index);
@@ -788,6 +795,7 @@ class _GamepadHostState extends ConsumerState<GamepadHost> {
       return;
     }
     if (_gridMode) {
+      DpadFocusRing.controllerStopped();
       _cursor.setRows(_gridRows());
       if (_cursor.isEmpty) {
         _say(_phrases.nothingHere);
@@ -798,11 +806,14 @@ class _GamepadHostState extends ConsumerState<GamepadHost> {
       _announceCurrentItem();
       return;
     }
-    final moved = GazeFocusDriver.move(
-          delta > 0 ? TraversalDirection.down : TraversalDirection.up,
-        ) ||
+    // One control at a time in reading order, as the published lists step:
+    // left and right are the sections', so a move by direction would leave
+    // the rest of a row out of reach (see [GazeFocusDriver.step]).
+    final moved = GazeFocusDriver.step(forward: delta > 0) ||
         GazeFocusDriver.moveFirst();
     if (moved) {
+      // Nothing else marks focus here for a learner who can see the screen.
+      DpadFocusRing.controllerMoved();
       _announceFocused();
     } else {
       _say(_phrases.nothingHere);
@@ -936,7 +947,7 @@ class _GamepadHostState extends ConsumerState<GamepadHost> {
       }
       final cell = gazeHomeGrid.cellAt(_cursor.row, _cursor.col);
       if (cell != null) {
-        _say(_phrases.opening(cell.label));
+        _say(cell.opens ? _phrases.opening(cell.label) : cell.label);
         _hapticSuccess();
         cell.onActivate();
         return;
@@ -959,6 +970,7 @@ class _GamepadHostState extends ConsumerState<GamepadHost> {
     // with nothing to press — pull focus onto its first control so the
     // learner's press is never simply swallowed.
     if (GazeFocusDriver.moveFirst()) {
+      DpadFocusRing.controllerMoved();
       _announceFocused();
       return;
     }
@@ -1015,7 +1027,9 @@ class _GamepadHostState extends ConsumerState<GamepadHost> {
       // arrival, and it means the learner's next D-pad press starts from the
       // top of the screen rather than from nowhere.
       final onScopeNode = _labelOfFocused() == null;
-      if (onScopeNode) GazeFocusDriver.moveFirst();
+      if (onScopeNode && GazeFocusDriver.moveFirst()) {
+        DpadFocusRing.controllerMoved();
+      }
 
       // What to say is the *destination*, named from the control that opened
       // it — not whatever happens to hold focus now. The first focusable on a

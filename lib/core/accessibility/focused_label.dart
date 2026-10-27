@@ -21,6 +21,13 @@ abstract final class FocusedLabel {
   /// How far up to look for an explicit `Semantics` / `Tooltip` label.
   static const int labelAncestorHops = 14;
 
+  /// How far up a [Tooltip] is still trusted. A tooltip wraps the one
+  /// control it describes, and a Material 3 IconButton puts it 22 elements
+  /// above the node that takes focus — past [labelAncestorHops], so the
+  /// game controller read Home's Star Shop and Settings buttons as "Unnamed
+  /// item".
+  static const int tooltipAncestorHops = 30;
+
   /// How far up to look for *scraped* text — deliberately much shorter.
   static const int labelTextHops = 3;
 
@@ -50,7 +57,15 @@ abstract final class FocusedLabel {
     var hops = 0;
     context.visitAncestorElements((ancestor) {
       hops++;
-      if (hops > labelAncestorHops) return false;
+      if (hops > tooltipAncestorHops) return false;
+      if (hops > labelAncestorHops) {
+        final w = ancestor.widget;
+        if (w is Tooltip) {
+          found = _ofWidget(w);
+          if (found != null) return false;
+        }
+        return true;
+      }
       final own = _ofWidget(ancestor.widget);
       if (own != null) {
         found = own;
@@ -64,6 +79,11 @@ abstract final class FocusedLabel {
     });
     return found;
   }
+
+  /// Whether [text] holds something a voice can actually say — not only
+  /// zero-width characters, emoji or arrows.
+  static bool pronounceable(String text) =>
+      _pronounceable.hasMatch(text.replaceAll(_invisible, ''));
 
   /// A label carried by the widget itself, if it declares one.
   static String? _ofWidget(Widget widget) {

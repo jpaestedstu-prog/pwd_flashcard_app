@@ -5,6 +5,7 @@ import '../data/models/shop_data.dart';
 import '../l10n/app_localizations.dart';
 import '../core/widgets/fit_text.dart';
 import 'shop_badge.dart';
+import 'dpad_focusable.dart';
 
 /// A visual theme preview card for the shop's Themes tab.
 ///
@@ -155,7 +156,7 @@ class _ThemePreviewCardState extends State<ThemePreviewCard> {
             },
           ),
         },
-        child: GestureDetector(
+        child: DpadFocusable(onActivate: widget.onTap, child: GestureDetector(
         onTap: widget.onTap,
         onTapDown: _onTapDown,
         onTapUp: _onTapUp,
@@ -269,7 +270,7 @@ class _ThemePreviewCardState extends State<ThemePreviewCard> {
             ),
           ),
         ),
-      ),
+      )),
       ),
     );
   }

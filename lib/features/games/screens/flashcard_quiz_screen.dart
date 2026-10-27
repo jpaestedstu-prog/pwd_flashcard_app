@@ -34,6 +34,7 @@ import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/fullscreen_host.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../unfinished_round_stars.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 class FlashcardQuizScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
@@ -642,7 +643,7 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return DpadFocusable(onActivate: onTap, child: GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Semantics(
@@ -680,7 +681,7 @@ class _ActionButton extends StatelessWidget {
           },
         ),
       ),
-    );
+    ));
   }
 }
 

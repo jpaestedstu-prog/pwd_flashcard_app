@@ -18,6 +18,7 @@ import '../../../widgets/android_app_notice.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../core/utils/platform_caps.dart';
+import '../../../navigation/dpad_keys.dart';
 
 /// Configuration screen for Bluetooth gamepad control, plus the on-screen copy
 /// of the button guide.
@@ -505,7 +506,7 @@ class _SliderTile extends StatelessWidget {
               ),
             ],
           ),
-          Slider(
+          DpadSliderScope(child: Slider(
             value: value.clamp(min, max),
             min: min,
             max: max,
@@ -513,7 +514,7 @@ class _SliderTile extends StatelessWidget {
             activeColor: AppColors.primary,
             label: valueLabel,
             onChanged: onChanged,
-          ),
+          )),
           Padding(
             padding: const EdgeInsets.only(left: 30, bottom: 4),
             child: Text(

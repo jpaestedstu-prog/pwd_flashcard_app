@@ -16,6 +16,7 @@ import '../../parent/models/educator_audience.dart';
 import '../models/teacher_analytics_models.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 class TeacherAnalyticsScreen extends ConsumerWidget {
   const TeacherAnalyticsScreen({super.key});
@@ -486,7 +487,7 @@ class _StudentRow extends StatelessWidget {
     // three identical zeroes.
     final isTopThree = rank <= 3 && student.hasGradedActivity;
 
-    return GestureDetector(
+    return DpadGestureDetector(
       onTap: () => context.push(
         '/progress-timeline/${student.profileId}?name=${Uri.encodeComponent(student.name)}',
       ),

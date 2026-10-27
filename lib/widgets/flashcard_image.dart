@@ -11,6 +11,7 @@ import '../data/models/enums.dart';
 import '../data/models/models.dart';
 import '../l10n/app_localizations.dart';
 import '../l10n/app_localizations_en.dart';
+import 'dpad_focusable.dart';
 
 /// A reusable widget that renders a visual representation of a flashcard.
 ///
@@ -265,7 +266,7 @@ class _FlashcardImageState extends State<FlashcardImage> {
                             '${_t(context).fiTapReal}')
                 : '${_t(context).fiPictureClue}. '
                       '${FlashcardImage.tapHint(showingPhoto: _showPhoto, l10n: _t(context))}',
-            child: GestureDetector(
+            child: DpadFocusable(onActivate: _toggle, child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: _toggle,
               // Reuse the same smooth 3D flip the viewer's big card uses
@@ -299,7 +300,7 @@ class _FlashcardImageState extends State<FlashcardImage> {
                   );
                 },
               ),
-            ),
+            )),
           ),
         ),
         const SizedBox(height: 12),

@@ -33,6 +33,7 @@ import '../../../widgets/fullscreen_host.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../core/utils/seeded_random.dart';
 import '../unfinished_round_stars.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 class JigsawPuzzleScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
@@ -715,7 +716,7 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
                     top: r * pieceH,
                     width: pieceW,
                     height: pieceH,
-                    child: GestureDetector(
+                    child: DpadFocusable(onActivate: () => _selectGridSlot(index), child: GestureDetector(
                       onTap: () => _selectGridSlot(index),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
@@ -733,7 +734,7 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
                               : Colors.transparent,
                         ),
                       ),
-                    ),
+                    )),
                   );
                 }),
                 // ── Placed pieces (assemble the picture) ──

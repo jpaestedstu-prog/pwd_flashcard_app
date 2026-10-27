@@ -19,7 +19,12 @@ import '../controllers/companion_controller.dart';
 import '../models/companion_presentation.dart';
 import '../../gamepad/providers/gamepad_screen.dart';
 import '../../gamepad/widgets/gamepad_screen_registrar.dart';
+import '../../gaze_control/providers/gaze_home_grid.dart';
+import '../../gaze_control/widgets/gaze_home_tiles.dart';
+import '../../gaze_control/widgets/gaze_modal_region.dart';
 import '../../gaze_control/widgets/shell_modal_observer.dart';
+import '../../../navigation/dpad_keys.dart' show dpadFloatingParent;
+import '../../../widgets/dpad_focusable.dart';
 
 /// Mounts the floating AI Companion above the whole app. Placed in the
 /// `MaterialApp.builder` (below the lock / eviction gates) so the companion
@@ -78,16 +83,23 @@ class _CompanionOverlayState extends ConsumerState<CompanionOverlay> {
 
   @override
   void dispose() {
-    // The launcher's controller item outlives this widget otherwise, leaving
-    // an "Open the tutor" entry that opens nothing.
-    gamepadScreen.clearFloating(owner: _floatingToken);
+    // The launcher's D-pad cell outlives this widget otherwise, leaving an
+    // "AI Tutor" entry that opens nothing.
+    gazeHomeGrid.clearShellCells(owner: _floatingToken);
     super.dispose();
   }
 
 
   @override
   Widget build(BuildContext context) {
-    if (!ref.watch(companionVisibleProvider)) return const SizedBox.shrink();
+    if (!ref.watch(companionVisibleProvider)) {
+      // Switched off, or not a learner: nothing floats, so nothing is left on
+      // the D-pad to open.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        gazeHomeGrid.clearShellCells(owner: _floatingToken);
+      });
+      return const SizedBox.shrink();
+    }
 
     final presentation = ref.watch(companionPresentationProvider);
     final isOpen =
@@ -124,23 +136,26 @@ class _CompanionOverlayState extends ConsumerState<CompanionOverlay> {
             (shellModalObserver.covering.value ||
                 rootPopupObserver.covering.value);
         if (!companionShownOn(loc) || covered) {
-          // Off the hubs the launcher is not drawn, so it must not linger in
-          // the controller's item list either.
+          // Off the hubs the launcher is not drawn, so it must not linger on
+          // the D-pad either.
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            gamepadScreen.clearFloating(owner: _floatingToken);
+            gazeHomeGrid.clearShellCells(owner: _floatingToken);
           });
           return const SizedBox.shrink();
         }
-        // Offer the launcher to the controller while it is the thing on
-        // screen. It floats above the hub rather than belonging to it, so it
-        // is published as a *floating* item and lands at the end of the hub's
-        // own list — otherwise a learner who cannot see it has no way to open
-        // the tutor at all.
+        // Offer the launcher to the D-pad — gaze and the controller — while it
+        // is the thing on screen. It floats above the hub rather than
+        // belonging to it, so it is the shell's floating row, after the hub's
+        // own — otherwise a learner who cannot see it, or cannot touch it, has
+        // no way to open the tutor at all.
         _publishLauncher(context, open: isOpen);
         return Stack(
           children: [
             if (isOpen) _Scrim(onTap: () => _controller.close()),
             if (isOpen)
+              // A gaze modal: the hub underneath stops answering the D-pad,
+              // and the panel takes the focus, so head moves, the arrow keys
+              // and the controller step through the panel's own controls.
               _PanelAnchor(presentation: presentation)
             else
               _positionedLauncher(context, presentation),
@@ -153,7 +168,7 @@ class _CompanionOverlayState extends ConsumerState<CompanionOverlay> {
   CompanionController get _controller =>
       ref.read(companionControllerProvider.notifier);
 
-  /// Stable identity for this overlay's floating publication.
+  /// Stable identity for this overlay's floating D-pad cell.
   final Object _floatingToken = Object();
 
   /// Publishes (or withdraws) the "open the tutor" control.
@@ -166,17 +181,19 @@ class _CompanionOverlayState extends ConsumerState<CompanionOverlay> {
       if (open) {
         // While the panel is up it publishes its own items; a launcher
         // floating on top of them would just be a second way to close it.
-        gamepadScreen.clearFloating(owner: _floatingToken);
+        gazeHomeGrid.clearShellCells(owner: _floatingToken);
         return;
       }
-      gamepadScreen.publishFloating(
+      gazeHomeGrid.publishShellCells(
         [
-          // Named as the *thing*, not the action: the host already prefixes
-          // "Opening …", so "Open the tutor" read back as
+          // Named as the *thing*, not the action: the controller already
+          // prefixes "Opening …", so "Open the tutor" read back as
           // "Opening Open the tutor".
-          GamepadItem(label: 'AI Tutor', onActivate: _controller.open),
+          GazeTileCell(label: 'AI Tutor', onActivate: _controller.open),
         ],
         owner: _floatingToken,
+        // Right of a guest's Home button, as it floats on screen.
+        order: 1,
       );
     });
   }
@@ -201,7 +218,16 @@ class _CompanionOverlayState extends ConsumerState<CompanionOverlay> {
     return Positioned(
       left: pos.dx,
       top: pos.dy,
-      child: _CompanionLauncher(
+      child: GazeShellFocusable(
+        owner: _floatingToken,
+        // Hung under the shell's focus scope: this overlay is beside the
+        // router, so otherwise no arrow from the hub could reach it.
+        child: ValueListenableBuilder<FocusNode?>(
+          valueListenable: dpadFloatingParent,
+          builder: (context, parent, _) => DpadFocusable(
+        onActivate: _controller.open,
+        parentNode: parent,
+        child: _CompanionLauncher(
         presentation: presentation,
         size: launcher,
         onTap: _controller.open,
@@ -214,6 +240,9 @@ class _CompanionOverlayState extends ConsumerState<CompanionOverlay> {
                   _dragPos = Offset(x, y);
                 })
             : null,
+      ),
+          ),
+        ),
       ),
     );
   }
@@ -385,7 +414,9 @@ class _PanelAnchor extends StatelessWidget {
       child: SizedBox(
         width: width,
         height: height,
-        child: _CompanionPanel(presentation: presentation),
+        child: GazeModalRegion(
+          child: _CompanionPanel(presentation: presentation),
+        ),
       ),
     );
   }

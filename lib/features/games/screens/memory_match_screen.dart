@@ -36,6 +36,7 @@ import '../../gamepad/providers/gamepad_screen.dart';
 import '../../gamepad/widgets/gamepad_screen_registrar.dart';
 import '../../../core/utils/seeded_random.dart';
 import '../unfinished_round_stars.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 /// How many columns, and what card shape (width / height), put all [count]
 /// cards on screen in a [width] x [height] area with [spacing] between them.
@@ -771,7 +772,7 @@ class _MemoryCardWidget extends StatelessWidget {
           : card.isFlipped
           ? l10n.memoryCardShowing(card.displayText)
           : l10n.memoryCardFaceDown,
-      child: GestureDetector(
+      child: DpadFocusable(onActivate: onTap, child: GestureDetector(
         onTap: onTap,
         child: TweenAnimationBuilder<double>(
           tween: Tween(
@@ -791,7 +792,7 @@ class _MemoryCardWidget extends StatelessWidget {
             );
           },
         ),
-      ),
+      )),
     );
 
     if (!highlighted) return content;

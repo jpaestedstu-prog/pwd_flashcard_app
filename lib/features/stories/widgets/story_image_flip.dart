@@ -9,6 +9,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../data/local/seed_stories.dart' show StoryImagePair;
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 /// A tap-to-flip story illustration that switches between a **cartoon** picture
 /// and the matching **real-life** photograph, with a smooth 3D flip — the same
@@ -197,7 +198,7 @@ class _StoryImageFlipState extends State<StoryImageFlip> {
                       ' ${_t(context).fiTapCartoon}'
                 : '${_t(context).fiCartoonOf(_subject)}'
                       ' ${_t(context).fiTapReal}',
-            child: GestureDetector(
+            child: DpadFocusable(onActivate: _toggle, child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: _toggle,
               // The same smooth 3D flip the flashcard viewer uses
@@ -231,7 +232,7 @@ class _StoryImageFlipState extends State<StoryImageFlip> {
                   );
                 },
               ),
-            ),
+            )),
           ),
         ),
         SizedBox(height: widget.compact ? 8 : 12),

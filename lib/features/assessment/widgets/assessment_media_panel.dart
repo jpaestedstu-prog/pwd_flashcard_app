@@ -18,6 +18,7 @@ import '../models/assessment_media_presentation.dart';
 import '../services/assessment_media_cache.dart';
 import '../../../core/services/web_media.dart';
 import '../../../core/utils/platform_caps.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 /// Builds a video in place of the plugin, which no test binding provides.
 typedef AssessmentVideoBuilder =
@@ -553,7 +554,7 @@ class _MediaImageState extends State<_MediaImage> {
           hint: t.assessMediaTapToEnlarge,
           onTap: () => _enlarge(context),
           child: ExcludeSemantics(
-            child: GestureDetector(
+            child: DpadFocusable(onActivate: () => _enlarge(context), child: GestureDetector(
               onTap: () => _enlarge(context),
               child: Container(
                 constraints: BoxConstraints(maxHeight: widget.maxHeight),
@@ -571,7 +572,7 @@ class _MediaImageState extends State<_MediaImage> {
                   child: _image(),
                 ),
               ),
-            ),
+            )),
           ),
         ),
         if (isGif && widget.pauseAnimation)
@@ -944,10 +945,10 @@ class _MediaVideoState extends State<_MediaVideo> {
               : Stack(
                   fit: StackFit.expand,
                   children: [
-                    GestureDetector(
+                    DpadFocusable(onActivate: _toggle, child: GestureDetector(
                       onTap: _toggle,
                       child: ExcludeSemantics(child: VideoPlayer(c)),
-                    ),
+                    )),
                     if (!playing)
                       Center(
                         child: Material(

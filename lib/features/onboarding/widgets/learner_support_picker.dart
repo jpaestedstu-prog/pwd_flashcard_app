@@ -6,6 +6,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 /// Picks the supports a Student / Child profile carries for its accessibility
 /// category — the sign system a Deaf learner uses, how a learner with low
@@ -134,7 +135,7 @@ class _SupportTile extends StatelessWidget {
       checked: singleChoice ? null : isSelected,
       selected: singleChoice ? isSelected : null,
       label: '${option.labelOf(l10n)}. ${option.descriptionOf(l10n)}',
-      child: GestureDetector(
+      child: DpadFocusable(onActivate: onTap, child: GestureDetector(
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
@@ -187,7 +188,7 @@ class _SupportTile extends StatelessWidget {
             ],
           ),
         ),
-      ),
+      )),
     );
   }
 }

@@ -16,6 +16,7 @@ import 'animated_dialogs.dart';
 import 'animated_score_reveal.dart';
 import 'tilt_3d.dart';
 import '../l10n/app_localizations_en.dart';
+import 'dpad_focusable.dart';
 
 // ─── Category Picker Bottom Sheet ───────────────────────
 
@@ -464,10 +465,10 @@ class _CategoryOptionCardState extends State<_CategoryOptionCard> {
             },
           ),
         },
-        child: GestureDetector(
+        child: DpadFocusable(onActivate: widget.onTap, child: GestureDetector(
           onTap: widget.onTap,
           child: Pressable3D(maxTilt: 0.04, child: card),
-        ),
+        )),
       ),
     );
   }
@@ -746,7 +747,7 @@ class _DifficultyCardState extends State<_DifficultyCard> {
             },
           ),
         },
-        child: GestureDetector(
+        child: DpadFocusable(onActivate: widget.onTap, child: GestureDetector(
           onTap: widget.onTap,
           child: Pressable3D(
             maxTilt: 0.04,
@@ -858,7 +859,7 @@ class _DifficultyCardState extends State<_DifficultyCard> {
               ),
             ),
           ),
-        ),
+        )),
       ),
     );
   }
@@ -912,7 +913,7 @@ class _AutoDifficultyCard extends StatelessWidget {
     };
     const autoColor = Color(0xFF7C4DFF);
 
-    return GestureDetector(
+    return DpadFocusable(onActivate: () => onTap(suggested), child: GestureDetector(
       onTap: () => onTap(suggested),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -999,7 +1000,7 @@ class _AutoDifficultyCard extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ));
   }
 }
 

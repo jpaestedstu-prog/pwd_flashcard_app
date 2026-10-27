@@ -14,6 +14,7 @@ import '../models/recommendation_models.dart';
 import '../providers/recommendation_provider.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../navigation/nav_extensions.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 /// Smart study recommendations screen that analyzes the student's data and
 /// presents personalized, actionable suggestions on what to study next.
@@ -257,7 +258,7 @@ class _RecommendationCard extends ConsumerWidget {
     final hc = HCColor.of(context);
     final rec = recommendation;
 
-    return GestureDetector(
+    return DpadFocusable(onActivate: () => _navigate(context, ref), child: GestureDetector(
           onTap: () => _navigate(context, ref),
           child: Container(
             padding: const EdgeInsets.all(16),
@@ -359,7 +360,7 @@ class _RecommendationCard extends ConsumerWidget {
               ],
             ),
           ),
-        )
+        ))
         .animate()
         .fadeIn(
           duration: 400.ms,

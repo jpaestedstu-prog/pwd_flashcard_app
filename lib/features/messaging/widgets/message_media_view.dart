@@ -10,6 +10,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/platform_caps.dart';
 import '../models/messaging_models.dart';
 import '../services/message_media.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 /// The inside of a photo or video bubble.
 ///
@@ -183,7 +184,7 @@ class _MessageMediaBodyState extends State<MessageMediaBody> {
             label: fil ? 'Tingnan ang larawan' : 'Look at the photo',
             onTap: look,
             excludeSemantics: true,
-            child: GestureDetector(
+            child: DpadFocusable(onActivate: look, child: GestureDetector(
               onTap: look,
               child: frame(
                 source.image(
@@ -197,7 +198,7 @@ class _MessageMediaBodyState extends State<MessageMediaBody> {
                   ),
                 ),
               ),
-            ),
+            )),
           );
         },
       );

@@ -37,6 +37,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/fullscreen_host.dart';
 import '../../../core/utils/seeded_random.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 class WordMatchScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
@@ -734,7 +735,7 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
                                       '${l10n.answerChoiceSemantics(choice.wordEnglish)}'
                                       '${showCorrect ? l10n.correctAnswerSuffix : ''}'
                                       '${showWrong ? l10n.wrongAnswerSuffix : ''}',
-                                  child: GestureDetector(
+                                  child: DpadFocusable(onActivate: () => _selectAnswer(index), child: GestureDetector(
                                     onTap: () => _selectAnswer(index),
                                     child: AnimatedContainer(
                                       duration: const Duration(milliseconds: 300),
@@ -775,7 +776,7 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
                                         ),
                                       ),
                                     ),
-                                  ),
+                                  )),
                                 );
 
                                 // Shake animation for wrong answer

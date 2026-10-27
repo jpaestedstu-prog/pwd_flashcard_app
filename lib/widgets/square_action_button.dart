@@ -4,6 +4,7 @@ import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
 import 'depth_3d.dart';
+import 'dpad_focusable.dart';
 
 /// A compact, square icon-over-label action button.
 ///
@@ -64,7 +65,7 @@ class SquareActionButton extends StatelessWidget {
       enabled: enabled,
       label: semanticLabel ?? '$label button',
       child: ExcludeSemantics(
-        child: GestureDetector(
+        child: DpadFocusable(onActivate: (enabled && !loading) ? onTap : null, child: GestureDetector(
           onTap: (enabled && !loading) ? onTap : null,
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -137,7 +138,7 @@ class SquareActionButton extends StatelessWidget {
               ),
             ],
           ),
-        ),
+        )),
       ),
     );
   }

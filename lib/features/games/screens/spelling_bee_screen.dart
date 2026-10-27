@@ -40,6 +40,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/fullscreen_host.dart';
 import '../../../core/utils/seeded_random.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 class SpellingBeeScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
@@ -864,7 +865,7 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
                               label: _answerSlots[i] != null
                                   ? l10n.slotFilled(i + 1, _answerSlots[i]!)
                                   : l10n.slotEmpty(i + 1),
-                              child: GestureDetector(
+                              child: DpadFocusable(onActivate: () => _removeLetterAtSlot(i), child: GestureDetector(
                                 onTap: () => _removeLetterAtSlot(i),
                                 child: AnimatedContainer(
                                   duration: const Duration(milliseconds: 200),
@@ -900,7 +901,7 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
                                     ),
                                   ),
                                 ),
-                              ),
+                              )),
                             );
                           }),
                         ),
@@ -945,7 +946,7 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
                                     : l10n.letterTapToPlace(
                                         _scrambledLetters[i],
                                       ),
-                                child: GestureDetector(
+                                child: DpadFocusable(onActivate: () => _placeLetter(i), child: GestureDetector(
                                   onTap: () => _placeLetter(i),
                                   child: AnimatedContainer(
                                     duration: const Duration(milliseconds: 200),
@@ -992,7 +993,7 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
                                       ),
                                     ),
                                   ),
-                                ),
+                                )),
                               );
                             }),
                           )
@@ -1014,7 +1015,7 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            GestureDetector(
+                            DpadFocusable(onActivate: _wordComplete ? null : _handleVoiceInput, child: GestureDetector(
                               onTap: _wordComplete ? null : _handleVoiceInput,
                               child: MicrophoneWaveform(
                                 isListening: _isListening,
@@ -1023,7 +1024,7 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
                                     ? AppColors.error
                                     : AppColors.accent,
                               ),
-                            ),
+                            )),
                             if (_voiceHint.isNotEmpty) ...[
                               const SizedBox(width: 8),
                               // Flexible + ellipsis so a long hint at XL font scale wraps

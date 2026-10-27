@@ -20,6 +20,7 @@ import '../../../widgets/app_back_button.dart';
 import '../services/child_time_limit_service.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../navigation/dpad_keys.dart';
 
 /// Per-child editor for [ChildTimeLimit].
 ///
@@ -204,7 +205,7 @@ class _ChildTimeLimitsScreenState extends ConsumerState<ChildTimeLimitsScreen> {
             ),
             if (draft.dailyLimitEnabled)
               ListTile(
-                title: Slider(
+                title: DpadSliderScope(child: Slider(
                   min: 5,
                   max: 240,
                   divisions: 47,
@@ -212,7 +213,7 @@ class _ChildTimeLimitsScreenState extends ConsumerState<ChildTimeLimitsScreen> {
                   label: '${draft.dailyLimitMinutes} min',
                   onChanged: (v) =>
                       _update(draft.copyWith(dailyLimitMinutes: v.round())),
-                ),
+                )),
                 subtitle: Text(_t(context).tlMinutesPerDay(draft.dailyLimitMinutes)),
               ),
             const Divider(height: 32),
@@ -273,7 +274,7 @@ class _ChildTimeLimitsScreenState extends ConsumerState<ChildTimeLimitsScreen> {
             ),
             if (draft.warningEnabled)
               ListTile(
-                title: Slider(
+                title: DpadSliderScope(child: Slider(
                   min: ChildTimeLimit.minWarningMinutes.toDouble(),
                   max: ChildTimeLimit.maxWarningMinutes.toDouble(),
                   divisions:
@@ -283,7 +284,7 @@ class _ChildTimeLimitsScreenState extends ConsumerState<ChildTimeLimitsScreen> {
                   label: '${draft.effectiveWarningMinutes} min',
                   onChanged: (v) =>
                       _update(draft.copyWith(warningMinutes: v.round())),
-                ),
+                )),
                 subtitle: Text(
                   _t(context).tlNotice(draft.effectiveWarningMinutes),
                 ),

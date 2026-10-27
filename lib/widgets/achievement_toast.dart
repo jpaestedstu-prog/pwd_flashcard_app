@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../data/models/achievements.dart';
+import 'dpad_focusable.dart';
 
 /// A compact, non-blocking achievement notification that slides in at the top.
 ///
@@ -94,7 +95,7 @@ class _AchievementToastWidgetState extends State<_AchievementToastWidget> {
         duration: 400.ms,
         child: IgnorePointer(
           ignoring: !_visible,
-          child: GestureDetector(
+          child: DpadFocusable(onActivate: _visible ? _dismiss : null, child: GestureDetector(
             onTap: _dismiss,
             child: Material(
             elevation: 8,
@@ -176,7 +177,7 @@ class _AchievementToastWidgetState extends State<_AchievementToastWidget> {
               ),
             ),
           ),
-          ),
+          )),
         )
             .animate()
             .slideY(begin: -1.0, duration: 400.ms, curve: Curves.easeOutCubic)

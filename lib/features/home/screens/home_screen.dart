@@ -19,6 +19,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/experiment_provider.dart';
+import '../../../providers/seasonal_event_provider.dart';
 import '../../../providers/sticker_provider.dart';
 import '../../../features/experiment/models/experiment_models.dart';
 import '../../../widgets/shared_widgets.dart';
@@ -29,6 +30,7 @@ import '../../../widgets/enhanced_category_card.dart';
 import '../../../widgets/animated_mascot_buddy.dart';
 import '../../../widgets/seasonal_decorations.dart';
 import '../../../widgets/profile_level_button.dart';
+import '../../../widgets/dpad_focusable.dart';
 import '../../../widgets/flashcard_image.dart';
 import '../../assessment/providers/assessment_provider.dart';
 import '../../assessment/widgets/pending_assignments_banner.dart';
@@ -54,6 +56,32 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _showTutorial = false;
+
+  /// Lets the D-pad answer the Daily Challenge card in place.
+  final _dailyWordKey = GlobalKey<_DailyWordCardState>();
+
+  /// The Daily Challenge card's D-pad stops, top to bottom: "View All", then
+  /// each answer while today's question is still open. The answers are the
+  /// card's own — the same seeded set it shows — so pressing one answers.
+  List<GazeTileCell> _dailyWordCells(BuildContext context, UserProfile? who) {
+    final t = _t(context);
+    final open = who != null && !DailyChallenge.hasCompletedToday(who.id);
+    return [
+      GazeTileCell(
+        label: t.homeDailyChallenge,
+        onActivate: () => context.push('/daily-challenge'),
+      ),
+      if (open)
+        for (final (i, choice) in DailyChallenge.generateChoices(
+          DailyChallenge.todaysWord(),
+        ).indexed)
+          GazeTileCell(
+            label: choice,
+            opens: false,
+            onActivate: () => _dailyWordKey.currentState?.selectChoice(i),
+          ),
+    ];
+  }
 
   @override
   void initState() {
@@ -134,10 +162,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
     final gazeGrid = GazeTileGridBuilder(active: gazeHomeOn);
 
-    // ─── Topmost gaze row: profile+level, shop, settings ──
-    // Built here, before the widget tree, so these register as gaze row 0 —
-    // the D-pad's row order has to match the visual order, and the app bar is
-    // what a learner sees first.
+    // ─── Seasonal banner, above everything while it shows ──
+    // Its close button is the page's topmost control, so it is the D-pad's
+    // first row; once closed, the row goes with it.
+    final seasonalEvent = ref.watch(seasonalEventProvider);
+    final seasonalBanner = seasonalEvent != null &&
+            ref.watch(seasonalBannerShownProvider)
+        ? gazeGrid
+              .section(
+                columns: 1,
+                expand: false,
+                entries: [
+                  (
+                    tile: const SeasonalBannerStrip(),
+                    cell: GazeTileCell(
+                      label: '${_t(context).close} · '
+                          '${seasonalEvent.nameOf(filipino: _t(context).localeName.startsWith('fil'))}',
+                      onActivate: () => ref
+                          .read(seasonalBannerDismissedProvider.notifier)
+                          .state = true,
+                    ),
+                  ),
+                ],
+              )
+              .first
+        : const SizedBox.shrink();
+
+    // ─── Next gaze row: profile+level, shop, settings ──
+    // Built here, before the widget tree, so these register in the order the
+    // D-pad walks — the row order has to match the visual order, and the app
+    // bar is what a learner sees first after the banner.
     void openPlayerProfile() => context.push('/gamification-dashboard');
     final appBarCells = gazeGrid.section(
       columns: 3,
@@ -260,7 +314,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     // In the scroll, not over it: as an overlay it covered the
                     // first row of feature tiles and stayed there while the
                     // page scrolled underneath.
-                    const SliverToBoxAdapter(child: SeasonalBannerStrip()),
+                    SliverToBoxAdapter(child: seasonalBanner),
 
                     // Awards stickers earned since the last visit, so the
                     // Sticker Album tile below can carry an accurate badge.
@@ -384,31 +438,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         child: RepaintBoundary(
                           child: Padding(
                             padding: EdgeInsets.symmetric(horizontal: padding),
-                            // One gaze cell for the whole card: opening it goes
-                            // to the full Daily Challenge screen (same as the
-                            // card's "View All"), where the quiz can be played.
-                            child: gazeGrid
-                                .section(
-                                  columns: 1,
-                                  expand: false,
-                                  entries: [
-                                    (
-                                      tile: _DailyWordCard()
-                                          .animate()
-                                          .fadeIn(
-                                            duration: 400.ms,
-                                            delay: 200.ms,
-                                          )
-                                          .slideY(begin: 0.08, end: 0),
-                                      cell: GazeTileCell(
-                                        label: _t(context).homeDailyChallenge,
-                                        onActivate: () =>
-                                            context.push('/daily-challenge'),
+                            // A D-pad stop for "View All" and one for each
+                            // answer, so today's question can be answered
+                            // right here, as a finger does.
+                            child:
+                                _DailyWordCard(
+                                      key: _dailyWordKey,
+                                      gazeRows: gazeGrid.rowsFor(
+                                        _dailyWordCells(context, profile),
                                       ),
-                                    ),
-                                  ],
-                                )
-                                .first,
+                                      // The answers leave the D-pad once
+                                      // answered.
+                                      onAnswered: () {
+                                        if (mounted) setState(() {});
+                                      },
+                                    )
+                                    .animate()
+                                    .fadeIn(duration: 400.ms, delay: 200.ms)
+                                    .slideY(begin: 0.08, end: 0),
                           ),
                         ),
                       ),
@@ -479,17 +526,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ..._moreSections(context, gazeGrid, padding),
 
                     // ─── Categories Header ────────────────
+                    // Its "See All" is a row of its own on the D-pad, between
+                    // the tools above and the category cards below it.
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: EdgeInsets.fromLTRB(padding, 28, padding, 4),
-                        child: SectionHeader(
-                          title:
-                              AppLocalizations.of(
-                                context,
-                              )?.vocabularyCategories ??
-                              'Vocabulary Categories',
-                          onSeeAll: () => context.go('/flashcards'),
-                        ),
+                        child: gazeGrid
+                            .section(
+                              columns: 1,
+                              expand: false,
+                              entries: [
+                                (
+                                  tile: SectionHeader(
+                                    title: _t(context).vocabularyCategories,
+                                    onSeeAll: () => context.go('/flashcards'),
+                                  ),
+                                  cell: GazeTileCell(
+                                    label: '${_t(context).assessSeeAll} · '
+                                        '${_t(context).vocabularyCategories}',
+                                    onActivate: () => context.go('/flashcards'),
+                                  ),
+                                ),
+                              ],
+                            )
+                            .first,
                       ),
                     ),
 
@@ -1421,6 +1481,19 @@ class _DailyLoginRewardDialog extends StatelessWidget {
 
 // ─── Daily Word Challenge Card ────────────────────────
 class _DailyWordCard extends ConsumerStatefulWidget {
+  const _DailyWordCard({
+    super.key,
+    this.gazeRows = const [],
+    this.onAnswered,
+  });
+
+  /// The D-pad rows Home reserved for this card ([HomeScreen] lists them):
+  /// "View All" first, then each open answer. Empty while no D-pad is in use.
+  final List<int> gazeRows;
+
+  /// Called once today's answer is saved.
+  final VoidCallback? onAnswered;
+
   @override
   ConsumerState<_DailyWordCard> createState() => _DailyWordCardState();
 }
@@ -1451,8 +1524,10 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
     }
   }
 
-  void _selectChoice(int index) async {
+  /// Answers with choice [index] — from a tap, or from the D-pad via Home.
+  void selectChoice(int index) async {
     if (_answered || _alreadyCompleted) return;
+    if (index < 0 || index >= _choices.length) return;
     final correct = _choices[index] == _card.wordFilipino;
     final haptic = ref.read(hapticServiceProvider);
     setState(() {
@@ -1483,7 +1558,15 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
         _alreadyCompleted = true;
         _streak = DailyChallenge.getStreak(profile.id);
       });
+      widget.onAnswered?.call();
     }
+  }
+
+  /// [child] with the D-pad's ring while its stop at [slot] is focused.
+  Widget _gazeStop(int slot, Widget child) {
+    final rows = widget.gazeRows;
+    if (slot >= rows.length) return child;
+    return GazeFocusable(row: rows[slot], col: 0, expand: false, child: child);
   }
 
   @override
@@ -1545,7 +1628,9 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
               ],
               // Navigate to full daily challenge screen. A 48 dp target
               // around the small pill (it was 23 dp tall).
-              Semantics(
+              _gazeStop(0, DpadFocusable(
+                onActivate: () => context.push('/daily-challenge'),
+                child: Semantics(
                 container: true,
                 button: true,
                 label: t.homeOpenDailyChallenge,
@@ -1588,6 +1673,7 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
                   ),
                 ),
               ),
+              )),
                 ],
               ),
             ],
@@ -1676,10 +1762,13 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
                 borderColor = Colors.white.withValues(alpha: 0.2);
               }
 
+              final answerable = !_answered && !_alreadyCompleted;
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: GestureDetector(
-                  onTap: () => _selectChoice(i),
+                child: _gazeStop(1 + i, DpadFocusable(
+                  onActivate: answerable ? () => selectChoice(i) : null,
+                  child: GestureDetector(
+                  onTap: () => selectChoice(i),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 300),
                     width: double.infinity,
@@ -1719,6 +1808,7 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
                     ),
                   ),
                 ),
+                )),
               );
             }),
             // Result message

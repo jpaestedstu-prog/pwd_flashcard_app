@@ -33,6 +33,7 @@ import '../../../widgets/fsl_fullscreen_player.dart';
 import '../services/child_unlock_override_service.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 /// Grace window granted on a successful PIN / recovery-code entry. The
 /// underlying time-limit/alarm/schedule rule may still be active, so
@@ -940,11 +941,11 @@ class _HandoffFlipCardState extends ConsumerState<_HandoffFlipCard> {
             button: _canFlip,
             image: true,
             label: _semanticLabel,
-            child: GestureDetector(
+            child: DpadFocusable(onActivate: _canFlip ? _flip : null, child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: _canFlip ? _flip : null,
               child: Center(child: card),
-            ),
+            )),
           ),
         ),
         const SizedBox(height: 8),

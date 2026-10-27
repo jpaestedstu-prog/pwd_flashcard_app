@@ -8,6 +8,7 @@ import '../../../core/utils/reduced_motion.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 /// State of a single node on a [WindingTrail].
 ///
@@ -223,7 +224,7 @@ class _TrailNodeView extends StatelessWidget {
     return Semantics(
       button: node.onTap != null,
       label: '${node.label}. ${isDone ? _t(context).lpNodeCompleted : isCurrent ? _t(context).lpNodeCurrent : isAvailable ? _t(context).lpNodeAvailable : _t(context).lpNodeLocked}',
-      child: GestureDetector(
+      child: DpadFocusable(onActivate: node.onTap, child: GestureDetector(
         onTap: node.onTap,
         behavior: HitTestBehavior.opaque,
         child: Column(
@@ -242,7 +243,7 @@ class _TrailNodeView extends StatelessWidget {
             ],
           ],
         ),
-      ),
+      )),
     );
   }
 }

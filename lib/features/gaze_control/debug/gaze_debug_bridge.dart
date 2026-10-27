@@ -21,6 +21,7 @@ import '../services/gaze_metrics.dart';
 import '../services/gaze_switch_input.dart';
 import '../widgets/gaze_session.dart';
 import '../widgets/voice_control_mixin.dart';
+import '../widgets/gaze_focus_overlay.dart' show DpadFocusRing;
 
 /// **Debug-only** remote control for Gaze Control, so the whole feature can be
 /// exercised on a real tablet without a person moving their head in front of
@@ -332,6 +333,7 @@ abstract final class GazeDebugBridge {
         for (final s in VoiceControlMixin.debugScopes)
           if (s.mounted) {...s.debugDescribe(), 'voice': s.voiceActive},
       ],
+      'dpad': DpadFocusRing.debugState(),
       'grid': {
         'rows': [
           for (final row in gazeHomeGrid.rows) [for (final c in row) c.label],

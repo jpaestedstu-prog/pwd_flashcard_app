@@ -33,6 +33,7 @@ import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/fullscreen_host.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../core/utils/seeded_random.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 class SentenceBuilderScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
@@ -697,7 +698,7 @@ class _SentenceBuilderScreenState extends ConsumerState<SentenceBuilderScreen>
                                       button: true,
                                       label:
                                           '${_answered ? (isCorrectChoice ? "Correct answer" : (isSelected ? "Your wrong answer" : "")) : "Option"}: $choice',
-                                      child: GestureDetector(
+                                      child: DpadFocusable(onActivate: () => _onChoiceTapped(choice), child: GestureDetector(
                                         onTap: () => _onChoiceTapped(choice),
                                         child: AnimatedContainer(
                                           duration: const Duration(
@@ -781,7 +782,7 @@ class _SentenceBuilderScreenState extends ConsumerState<SentenceBuilderScreen>
                                             ],
                                           ),
                                         ),
-                                      ),
+                                      )),
                                     ),
                                   )
                                   .animate(

@@ -15,6 +15,7 @@ import '../../../data/local/local_repository.dart';
 import '../../../providers/app_providers.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 /// Chooses which profiles a device-scoped "Manage Profiles" list may show.
 ///
@@ -231,7 +232,7 @@ class _StudentProfileListScreenState
                     child: Icon(Icons.delete_rounded,
                         color: HCColor.of(context).graphic(AppColors.error), size: 28),
                   ),
-                  child: GestureDetector(
+                  child: DpadFocusable(onActivate: () => context.push( '/student-profile-detail', extra: student, ), child: GestureDetector(
                     onTap: () => context.push(
                       '/student-profile-detail',
                       extra: student,
@@ -242,7 +243,7 @@ class _StudentProfileListScreenState
                       isDark: isDark,
                       onDelete: () => _confirmDelete(student),
                     ),
-                  ),
+                  )),
                 )
                     .animate()
                     .fadeIn(

@@ -37,6 +37,7 @@ import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/fullscreen_host.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../core/utils/seeded_random.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 /// Picture-Word Association Game
 ///
@@ -675,7 +676,7 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
                             '${l10n.pictureOfSemantics(choice.wordEnglish)}'
                             '${showCorrect ? l10n.correctAnswerSuffix : ''}'
                             '${showWrong ? l10n.wrongAnswerSuffix : ''}',
-                        child: GestureDetector(
+                        child: DpadFocusable(onActivate: () => _selectAnswer(index), child: GestureDetector(
                           onTap: () => _selectAnswer(index),
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 300),
@@ -710,7 +711,7 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
                               ),
                             ),
                           ),
-                        ),
+                        )),
                       );
                     },
                   ),
@@ -832,7 +833,7 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
                             '${l10n.answerSemantics(choice.wordEnglish)}'
                             '${showCorrect ? l10n.correctAnswerSuffix : ''}'
                             '${showWrong ? l10n.wrongAnswerSuffix : ''}',
-                        child: GestureDetector(
+                        child: DpadFocusable(onActivate: () => _selectAnswer(index), child: GestureDetector(
                           onTap: () => _selectAnswer(index),
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 300),
@@ -865,7 +866,7 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
                               ),
                             ),
                           ),
-                        ),
+                        )),
                       );
                     },
                   ),

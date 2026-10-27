@@ -18,6 +18,7 @@ import '../services/gaze_metrics.dart';
 import '../services/gaze_switch_input.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../navigation/dpad_keys.dart';
 
 /// Configuration + launch screen for the Gaze (head + blink) accessibility
 /// control. Persists to [GazeSettings] and offers a "Try it now" button into
@@ -1028,7 +1029,7 @@ class _SliderTile extends StatelessWidget {
                     : () => onChanged((current - _step).clamp(min, max)),
               ),
               Expanded(
-                child: Slider(
+                child: DpadSliderScope(child: Slider(
                   value: current,
                   min: min,
                   max: max,
@@ -1036,7 +1037,7 @@ class _SliderTile extends StatelessWidget {
                   label: valueLabel,
                   activeColor: AppColors.primary,
                   onChanged: onChanged,
-                ),
+                )),
               ),
               IconButton(
                 icon: const Icon(Icons.add_circle_outline_rounded),

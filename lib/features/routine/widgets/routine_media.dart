@@ -13,6 +13,7 @@ import '../models/routine_models.dart';
 import '../services/routine_media_store.dart';
 import '../../../core/services/web_media.dart';
 import '../../../core/utils/platform_caps.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 /// Everything about showing a routine step's media — and about showing its
 /// *absence* well, which is most of the work.
@@ -657,7 +658,7 @@ class _RoutineVideoSheetState extends State<_RoutineVideoSheet> {
                               alignment: Alignment.center,
                               child: const CircularProgressIndicator(),
                             )
-                          : GestureDetector(
+                          : DpadGestureDetector(
                               onTap: () => setState(() {
                                 controller.value.isPlaying
                                     ? controller.pause()

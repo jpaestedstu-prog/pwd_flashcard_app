@@ -12,6 +12,7 @@ import '../../../providers/app_providers.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../models/parent_teacher_note_models.dart';
 import '../services/notes_cloud_service.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 class ParentTeacherNotesScreen extends ConsumerStatefulWidget {
   /// When set, the screen is scoped to a single learner — used by the
@@ -466,7 +467,7 @@ class _ParentTeacherNotesScreenState
                   runSpacing: 8,
                   children: NoteCategory.values.map((cat) {
                     final isSelected = selectedCategory == cat;
-                    return GestureDetector(
+                    return DpadFocusable(onActivate: () => setModalState(() => selectedCategory = cat), child: GestureDetector(
                       onTap: () => setModalState(() => selectedCategory = cat),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
@@ -489,7 +490,7 @@ class _ParentTeacherNotesScreenState
                           ),
                         ),
                       ),
-                    );
+                    ));
                   }).toList(),
                 ),
                 const SizedBox(height: 16),
@@ -583,7 +584,7 @@ class _FilterChip extends StatelessWidget {
       button: true,
       selected: isSelected,
       label: label,
-      child: GestureDetector(
+      child: DpadFocusable(onActivate: onTap, child: GestureDetector(
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
@@ -614,7 +615,7 @@ class _FilterChip extends StatelessWidget {
             ],
           ),
         ),
-      ),
+      )),
     );
   }
 }

@@ -24,6 +24,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../l10n/app_localizations_fil.dart';
 import '../../../navigation/nav_extensions.dart';
+import '../../../navigation/dpad_keys.dart';
 
 /// Screen for teachers to create custom assessments manually — or, given
 /// [editId], to change one they already saved.
@@ -280,7 +281,7 @@ class _AssessmentBuilderScreenState
                       Row(
                         children: [
                           Expanded(
-                            child: Slider(
+                            child: DpadSliderScope(child: Slider(
                               value: _timeLimitMinutes.toDouble(),
                               min: 3,
                               max: 30,
@@ -288,7 +289,7 @@ class _AssessmentBuilderScreenState
                               label: _t(context).abMinutes(_timeLimitMinutes),
                               onChanged: (v) =>
                                   setState(() => _timeLimitMinutes = v.round()),
-                            ),
+                            )),
                           ),
                           Container(
                             padding: const EdgeInsets.symmetric(

@@ -17,6 +17,7 @@ import '../../../core/utils/accessible_sizing.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../widgets/learner_support_picker.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 /// A 3-step accessibility setup wizard shown after profile creation.
 ///
@@ -765,7 +766,7 @@ class _DisabilityCard extends StatelessWidget {
           '${type.labelOf(AppLocalizations.of(context))}: '
         '${type.descriptionOf(AppLocalizations.of(context))}'
         '${isSelected ? ", selected" : ""}',
-      child: GestureDetector(
+      child: DpadFocusable(onActivate: onTap, child: GestureDetector(
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 300),
@@ -865,7 +866,7 @@ class _DisabilityCard extends StatelessWidget {
             ],
           ),
         ),
-      ),
+      )),
     );
   }
 }

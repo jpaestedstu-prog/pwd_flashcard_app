@@ -58,6 +58,7 @@ import 'data/remote/firestore_repository.dart';
 
 import 'data/models/shop_data.dart';
 import 'navigation/app_router.dart';
+import 'navigation/dpad_keys.dart';
 import 'providers/app_providers.dart';
 import 'widgets/connectivity_banner.dart';
 import 'widgets/sound_off_hint.dart';
@@ -611,6 +612,10 @@ class FlashLearnApp extends ConsumerWidget {
         locale: Locale(settings.locale),
         supportedLocales: AppLocalizations.supportedLocales,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
+        // The arrow keys step from control to control here and in a browser
+        // alike — see dpad_keys.dart.
+        shortcuts: dpadShortcuts,
+        actions: dpadActions,
         builder: (context, child) {
           // Apply global font scale from settings, multiplied against the
           // OS scale, then clamp the product into a layout-safe range so

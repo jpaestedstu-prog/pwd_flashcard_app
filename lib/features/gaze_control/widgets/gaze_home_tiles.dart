@@ -55,6 +55,20 @@ class GazeTileGridBuilder {
     }
     return out;
   }
+
+  /// Registers [cells] as rows of one, in order, for a widget that draws its
+  /// own controls: it wraps each control in a [GazeFocusable] at the row
+  /// returned for it. Empty while inactive, so that widget draws no rings.
+  ///
+  /// [section] wraps whole tiles; this is for a card with several controls
+  /// inside it (Home's Daily Challenge card: "View All" and each answer),
+  /// which as one cell left all but one of them out of reach.
+  List<int> rowsFor(List<GazeTileCell> cells) {
+    if (!active) return const [];
+    return [
+      for (final cell in cells) (rows..add([cell])).length - 1,
+    ];
+  }
 }
 
 /// Wraps a single Home feature tile so it shows a bright highlight ring while
@@ -71,8 +85,11 @@ class GazeFocusable extends StatefulWidget {
   /// ([StackFit.expand]) — correct for fixed-extent grid cells, where the tile
   /// may be smaller than the cell and the ring should frame the whole cell.
   /// Pass false for a child in an unbounded list (e.g. a full-width button in a
-  /// `SliverList`) so the [Stack] sizes to the child ([StackFit.loose]) instead
-  /// of throwing on an unbounded main-axis constraint.
+  /// `SliverList`) so the [Stack] hands the child exactly what it was given
+  /// ([StackFit.passthrough]) instead of throwing on an unbounded main-axis
+  /// constraint. Passed through rather than loosened: a list row is given its
+  /// full width, and a loose [Stack] let a panel shrink to its content the
+  /// moment a D-pad was in use (Progress's totals and charts).
   final bool expand;
 
   const GazeFocusable({
@@ -137,30 +154,91 @@ class _GazeFocusableState extends State<GazeFocusable> {
   @override
   Widget build(BuildContext context) {
     return Stack(
-      fit: widget.expand ? StackFit.expand : StackFit.loose,
+      fit: widget.expand ? StackFit.expand : StackFit.passthrough,
       children: [
         widget.child,
-        if (_focused)
-          Positioned.fill(
-            child: IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.accent, width: 3),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.accent.withValues(alpha: 0.5),
-                      blurRadius: 14,
-                      spreadRadius: 1,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+        if (_focused) const _GazeRing(),
       ],
     );
   }
+}
+
+/// The D-pad's ring, laid over a focused cell without taking any touch.
+class _GazeRing extends StatelessWidget {
+  const _GazeRing();
+
+  @override
+  Widget build(BuildContext context) => Positioned.fill(
+    child: IgnorePointer(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.accent, width: 3),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.accent.withValues(alpha: 0.5),
+              blurRadius: 14,
+              spreadRadius: 1,
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+/// [GazeFocusable] for one of the shell's floating controls (see
+/// [GazeHomeGrid.publishShellCells]). Their row is whichever follows the
+/// hub's, which moves as hubs change, so it is found by [owner] instead.
+class GazeShellFocusable extends StatefulWidget {
+  const GazeShellFocusable({
+    super.key,
+    required this.owner,
+    this.index = 0,
+    required this.child,
+  });
+
+  final Object owner;
+
+  /// Which of [owner]'s floating controls this is.
+  final int index;
+  final Widget child;
+
+  @override
+  State<GazeShellFocusable> createState() => _GazeShellFocusableState();
+}
+
+class _GazeShellFocusableState extends State<GazeShellFocusable> {
+  bool _focused = false;
+
+  bool get _now => gazeHomeGrid.isShellFocused(widget.owner, widget.index);
+
+  @override
+  void initState() {
+    super.initState();
+    _focused = _now;
+    gazeHomeGrid.addListener(_onGridChanged);
+  }
+
+  @override
+  void dispose() {
+    gazeHomeGrid.removeListener(_onGridChanged);
+    super.dispose();
+  }
+
+  void _onGridChanged() {
+    final focused = _now;
+    if (focused == _focused || !mounted) return;
+    setState(() => _focused = focused);
+  }
+
+  @override
+  Widget build(BuildContext context) => Stack(
+    children: [
+      widget.child,
+      if (_focused) const _GazeRing(),
+    ],
+  );
 }
 
 /// Publishes the Home feature-tile [rows] to [gazeHomeGrid] (when [active]) so

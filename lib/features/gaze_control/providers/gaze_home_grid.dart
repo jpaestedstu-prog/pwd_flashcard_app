@@ -12,7 +12,18 @@ class GazeTileCell implements VoiceTarget {
   @override
   final String label;
   final VoidCallback onActivate;
-  const GazeTileCell({required this.label, required this.onActivate});
+
+  /// Whether activating it opens somewhere else, which is what nearly every
+  /// hub cell does — so the game controller says "Opening …". False for a
+  /// cell that acts in place, such as an answer on Home's Daily Challenge
+  /// card: "Opening Uminom" would be nonsense there.
+  final bool opens;
+
+  const GazeTileCell({
+    required this.label,
+    required this.onActivate,
+    this.opens = true,
+  });
 
   /// Published tiles are always tappable (a hub never publishes a greyed tile).
   @override
@@ -46,14 +57,70 @@ class GazeHomeGrid extends ChangeNotifier {
   /// grid. Null means no owner (or a token-less legacy/test caller).
   Object? _owner;
 
-  /// The published tile grid (rows of cells). Empty when no Home grid is active.
-  List<List<GazeTileCell>> get rows => _rows;
+  /// Controls the shell floats over the hubs — a guest's Home button, the AI
+  /// Buddy launcher — by owner, with the order they sit in across the row.
+  final Map<Object, ({int order, List<GazeTileCell> cells})> _shell = {};
+  List<GazeTileCell> _shellCells = const [];
+
+  /// The published tile grid (rows of cells), with the shell's floating
+  /// controls as one last row. Empty when no hub grid is active: the floating
+  /// controls only ever sit over a hub.
+  List<List<GazeTileCell>> get rows => _rows.isEmpty
+      ? const []
+      : _shellCells.isEmpty
+      ? _rows
+      : [..._rows, _shellCells];
 
   /// Whether a Home screen currently has a navigable grid published.
   bool get hasGrid => _rows.isNotEmpty;
 
+  /// Publishes [cells] as [owner]'s part of the shell's floating row, at
+  /// [order] across it (lowest first). An empty list withdraws them.
+  ///
+  /// They float above the hub rather than belonging to it, so they cannot be
+  /// one of its rows — yet a learner steering by D-pad had no other way to
+  /// reach them: a guest on Cards could never get back Home by head
+  /// movement alone. Gaze and the game controller both walk [rows], so one
+  /// row here serves both.
+  void publishShellCells(
+    List<GazeTileCell> cells, {
+    required Object owner,
+    int order = 0,
+  }) {
+    final before = [for (final c in _shellCells) c.label].join('|');
+    if (cells.isEmpty) {
+      _shell.remove(owner);
+    } else {
+      _shell[owner] = (order: order, cells: List.unmodifiable(cells));
+    }
+    final parts = _shell.values.toList()
+      ..sort((a, b) => a.order.compareTo(b.order));
+    _shellCells = List.unmodifiable([for (final p in parts) ...p.cells]);
+    final after = [for (final c in _shellCells) c.label].join('|');
+    if (before != after) notifyListeners();
+  }
+
+  /// Withdraws [owner]'s floating controls.
+  void clearShellCells({required Object owner}) =>
+      publishShellCells(const [], owner: owner);
+
+  /// Whether [owner]'s floating control number [index] holds the cursor.
+  bool isShellFocused(Object owner, int index) {
+    if (_rows.isEmpty || _focusRow != _rows.length) return false;
+    var start = 0;
+    final parts = _shell.entries.toList()
+      ..sort((a, b) => a.value.order.compareTo(b.value.order));
+    for (final part in parts) {
+      if (identical(part.key, owner)) {
+        return _focusCol == null || _focusCol == start + index;
+      }
+      start += part.value.cells.length;
+    }
+    return false;
+  }
+
   /// Cell counts per row — the shape the shell's `GazeGridCursor` needs.
-  List<int> get rowLengths => [for (final r in _rows) r.length];
+  List<int> get rowLengths => [for (final r in rows) r.length];
 
   /// The focused cell published by the shell, or null when the cursor is on the
   /// bottom-nav bar (or no grid is active).
@@ -103,8 +170,9 @@ class GazeHomeGrid extends ChangeNotifier {
   /// The cell at [row]/[col], or null if out of range (defensive: the layout can
   /// change between a gaze event firing and its handler running).
   GazeTileCell? cellAt(int row, int col) {
-    if (row < 0 || row >= _rows.length) return null;
-    final r = _rows[row];
+    final all = rows;
+    if (row < 0 || row >= all.length) return null;
+    final r = all[row];
     if (col < 0 || col >= r.length) return null;
     return r[col];
   }

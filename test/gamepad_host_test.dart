@@ -148,15 +148,18 @@ void main() {
     gamepadSections.clear();
   });
 
-  Future<void> pumpHost(WidgetTester tester) async {
+  Future<void> pumpHost(
+    WidgetTester tester, {
+    Widget body = const Text('app'),
+  }) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           gamepadServiceProvider.overrideWithValue(pad),
           ttsServiceProvider.overrideWithValue(tts),
         ],
-        child: const MaterialApp(
-          home: GamepadHost(child: Scaffold(body: Text('app'))),
+        child: MaterialApp(
+          home: GamepadHost(child: Scaffold(body: body)),
         ),
       ),
     );
@@ -432,6 +435,49 @@ void main() {
       expect(tts.spoken, isNotEmpty,
           reason: 'a press with no audible result is indistinguishable from a '
               'dead button');
+    });
+
+    testWidgets('down alone reaches every control of a row on an '
+        'unadopted screen', (tester) async {
+      // Left and right belong to the sections, so on a screen that publishes
+      // no items up and down are all a learner has. Stepped by direction,
+      // down from the heading took the first chip and then the button under
+      // it: Settings' M, L and XL text sizes could not be reached.
+      Widget chip(String label) =>
+          TextButton(onPressed: () {}, child: Text(label));
+      await pumpHost(
+        tester,
+        body: Column(
+          children: [
+            SizedBox(width: double.infinity, child: chip('Text size')),
+            Row(children: [chip('S'), chip('M'), chip('L'), chip('XL')]),
+            SizedBox(width: double.infinity, child: chip('Below')),
+          ],
+        ),
+      );
+      publishShell();
+      pad.connect();
+      await tester.pump();
+
+      final heard = <String>[];
+      for (var i = 0; i < 6; i++) {
+        tts.clear();
+        pad.press(GamepadButton.dpadDown);
+        await tester.pump();
+        await tester.pump();
+        heard.add(tts.last);
+      }
+      expect(heard, ['Text size', 'S', 'M', 'L', 'XL', 'Below']);
+
+      final back = <String>[];
+      for (var i = 0; i < 5; i++) {
+        tts.clear();
+        pad.press(GamepadButton.dpadUp);
+        await tester.pump();
+        await tester.pump();
+        back.add(tts.last);
+      }
+      expect(back, ['XL', 'L', 'M', 'S', 'Text size']);
     });
 
     testWidgets('a dead end always names the way out', (tester) async {

@@ -23,6 +23,7 @@ import '../models/settings_presentation.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../core/utils/keyboard.dart';
 import '../../../navigation/nav_extensions.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 /// Screen for editing an existing user profile (name, avatar, disability type).
 ///
@@ -472,7 +473,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               final av = entry.$2;
               final isSelected =
                   i == _selectedAvatar && _selectedPremiumAvatarId == null;
-              return GestureDetector(
+              return DpadGestureDetector(
                 onTap: () {
                   setState(() {
                     _selectedAvatar = i;
@@ -534,7 +535,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 final owned = progressN.hasPurchased(item.id);
                 final isSelected =
                     _selectedPremiumAvatarId == item.id;
-                return GestureDetector(
+                return DpadGestureDetector(
                   onTap: owned
                       ? () {
                           setState(() {
@@ -755,7 +756,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               style: AppTypography.titleSmall
                   .copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
-          GestureDetector(
+          DpadGestureDetector(
             onTap: () async {
               await closeKeyboardFirst(context);
               if (!context.mounted) return;
@@ -797,7 +798,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   overflow: TextOverflow.ellipsis,
 )),
                   if (_selectedBirthDate != null)
-                    GestureDetector(
+                    DpadGestureDetector(
                       onTap: () {
                         setState(() => _selectedBirthDate = null);
                         _onChanged();
@@ -887,7 +888,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               runSpacing: 8,
               children: FlashcardCategory.values.map((cat) {
                 final selected = _selectedInterests.contains(cat);
-                return GestureDetector(
+                return DpadGestureDetector(
                   onTap: () {
                     setState(() {
                       if (selected) {
@@ -1175,7 +1176,7 @@ class _DisabilityTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
-    return GestureDetector(
+    return DpadFocusable(onActivate: onTap, child: GestureDetector(
       onTap: onTap,
       child: Semantics(
         label: '${type.labelOf(AppLocalizations.of(context))}'
@@ -1219,7 +1220,7 @@ class _DisabilityTile extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ));
   }
 }
 

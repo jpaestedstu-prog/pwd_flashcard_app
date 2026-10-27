@@ -10,6 +10,8 @@ import '../../../widgets/app_back_button.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../navigation/dpad_keys.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 /// Full voice-guided navigation mode with a step-by-step guided tour
 /// and auto-reading of screen elements.
@@ -268,7 +270,7 @@ class _VoiceGuidedModeScreenState
                   ],
                 ),
                 const SizedBox(height: 8),
-                Slider(
+                DpadSliderScope(child: Slider(
                   value: settings.ttsSpeed,
                   min: 0.1,
                   divisions: 9,
@@ -276,7 +278,7 @@ class _VoiceGuidedModeScreenState
                   onChanged: (value) {
                     ref.read(settingsProvider.notifier).updateTtsSpeed(value);
                   },
-                ),
+                )),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -707,7 +709,7 @@ class _LanguageOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: GestureDetector(
+      child: DpadFocusable(onActivate: onTap, child: GestureDetector(
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 250),
@@ -739,7 +741,7 @@ class _LanguageOption extends StatelessWidget {
             ],
           ),
         ),
-      ),
+      )),
     );
   }
 }

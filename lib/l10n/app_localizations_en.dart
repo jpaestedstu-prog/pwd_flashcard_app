@@ -107,6 +107,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mastery => 'Mastery';
 
   @override
+  String get dpadStopTotals => 'Your totals';
+
+  @override
+  String get dpadStopLevel => 'Your level';
+
+  @override
   String get categoryProgress => 'Category Progress';
 
   @override
@@ -5460,7 +5466,13 @@ class AppLocalizationsEn extends AppLocalizations {
     int stars,
     String when,
   ) {
-    return '$game: $score of $total, $percent percent, $stars stars, $when';
+    String _temp0 = intl.Intl.pluralLogic(
+      stars,
+      locale: localeName,
+      other: '$stars stars',
+      one: '1 star',
+    );
+    return '$game: $score of $total, $percent percent, $_temp0, $when';
   }
 
   @override

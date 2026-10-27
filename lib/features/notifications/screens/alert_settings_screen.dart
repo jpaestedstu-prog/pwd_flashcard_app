@@ -10,6 +10,7 @@ import '../services/alert_service.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../navigation/dpad_keys.dart';
 
 /// Screen for configuring alert preferences.
 ///
@@ -139,7 +140,7 @@ class _AlertSettingsScreenState extends State<AlertSettingsScreen> {
                       ],
                     ),
                   ),
-                  Slider(
+                  DpadSliderScope(child: Slider(
                     value: _config.accuracyThreshold,
                     min: 0.2,
                     max: 0.8,
@@ -149,7 +150,7 @@ class _AlertSettingsScreenState extends State<AlertSettingsScreen> {
                         '${(_config.accuracyThreshold * 100).round()}%',
                     onChanged: (val) => _saveConfig(
                         _config.copyWith(accuracyThreshold: val)),
-                  ),
+                  )),
 
                   const Divider(height: 1),
 
@@ -178,7 +179,7 @@ class _AlertSettingsScreenState extends State<AlertSettingsScreen> {
                       ],
                     ),
                   ),
-                  Slider(
+                  DpadSliderScope(child: Slider(
                     value: _config.inactivityDays.toDouble(),
                     min: 1,
                     max: 14,
@@ -187,7 +188,7 @@ class _AlertSettingsScreenState extends State<AlertSettingsScreen> {
                     label: _t(context).asDays(_config.inactivityDays),
                     onChanged: (val) => _saveConfig(
                         _config.copyWith(inactivityDays: val.round())),
-                  ),
+                  )),
                   const SizedBox(height: 8),
                 ],
               ),

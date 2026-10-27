@@ -36,6 +36,7 @@ import '../timed_game_mixin.dart';
 import 'pause_overlay.dart';
 import '../../../widgets/fullscreen_host.dart';
 import '../../../core/utils/seeded_random.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 /// One tappable answer in a [TapQuizRound].
 class TapChoice {
@@ -866,7 +867,7 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
           '${l10n.answerSemantics(choice.textIn(l10n))}'
           '${showCorrect ? l10n.correctAnswerSuffix : ''}'
           '${showWrong ? l10n.wrongAnswerSuffix : ''}',
-      child: GestureDetector(
+      child: DpadFocusable(onActivate: () => _selectAnswer(index), child: GestureDetector(
         onTap: () => _selectAnswer(index),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 300),
@@ -910,7 +911,7 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
             ),
           ),
         ),
-      ),
+      )),
     );
 
     if (showWrong) {

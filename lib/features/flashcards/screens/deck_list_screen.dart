@@ -19,6 +19,7 @@ import '../../gaze_control/providers/gaze_home_grid.dart';
 import '../../../providers/tile_grid_active_provider.dart';
 import '../../gaze_control/widgets/gaze_home_tiles.dart';
 import '../../progress/models/category_mastery.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 class DeckListScreen extends ConsumerWidget {
   const DeckListScreen({super.key});
@@ -275,7 +276,7 @@ class _DeckCardState extends State<_DeckCard> {
     final deep = widget.category.darkColor;
     final isMastered = widget.progress >= 0.9;
 
-    return Semantics(
+    return DpadFocusable(onActivate: widget.onTap, child: Semantics(
       button: true,
       label: AppLocalizations.of(context)!.deckSemantics(
         widget.category.labelOf(AppLocalizations.of(context)!),
@@ -545,7 +546,7 @@ class _DeckCardState extends State<_DeckCard> {
           ),
         ),
       ),
-    );
+    ));
   }
 }
 

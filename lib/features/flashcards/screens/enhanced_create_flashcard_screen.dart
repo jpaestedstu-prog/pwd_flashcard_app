@@ -20,6 +20,7 @@ import '../../../core/utils/accessible_sizing.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../navigation/nav_extensions.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 /// Enhanced flashcard creator with image attachment and voice recording.
 ///
@@ -481,10 +482,10 @@ class _ImagePickerArea extends StatelessWidget {
       );
     }
 
-    return GestureDetector(
+    return DpadFocusable(onActivate: onPick, child: GestureDetector(
       onTap: onPick,
       child: _placeholder(context),
-    );
+    ));
   }
 
   Widget _placeholder(BuildContext context) {
@@ -630,7 +631,7 @@ class _MicButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return DpadFocusable(onActivate: onPressed, child: GestureDetector(
       onTap: onPressed,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
@@ -664,7 +665,7 @@ class _MicButton extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ));
   }
 }
 

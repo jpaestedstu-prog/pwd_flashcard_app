@@ -39,6 +39,8 @@ import '../../../widgets/animated_dialogs.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../core/utils/platform_caps.dart';
 import '../models/settings_presentation.dart';
+import '../../../widgets/dpad_focusable.dart';
+import '../../../navigation/dpad_keys.dart';
 
 /// Whether the daily study reminder is actually waiting on this device, or
 /// null where that cannot be asked (a browser, a test without the plugin).
@@ -328,7 +330,7 @@ class SettingsScreen extends ConsumerWidget {
                 subtitle: _fontSizeLabel(l10n, settings.fontScale),
                 trailing: SizedBox(
                   width: 150,
-                  child: Slider(
+                  child: DpadSliderScope(child: Slider(
                     value: settings.fontScale,
                     min: 0.8,
                     max: 1.5,
@@ -337,7 +339,7 @@ class SettingsScreen extends ConsumerWidget {
                     onChanged: (v) => settingsNotifier.update(
                       settings.copyWith(fontScale: v),
                     ),
-                  ),
+                  )),
                 ),
               ),
 
@@ -710,7 +712,7 @@ class SettingsScreen extends ConsumerWidget {
                       '${settings.dailyMissionSize} words per day',
                   trailing: SizedBox(
                     width: 150,
-                    child: Slider(
+                    child: DpadSliderScope(child: Slider(
                       value: settings.dailyMissionSize.clamp(3, 5).toDouble(),
                       min: 3,
                       max: 5,
@@ -718,7 +720,7 @@ class SettingsScreen extends ConsumerWidget {
                       label: '${settings.dailyMissionSize}',
                       onChanged: (v) =>
                           settingsNotifier.setDailyMissionSize(v.round()),
-                    ),
+                    )),
                   ),
                 ),
 
@@ -764,7 +766,7 @@ class SettingsScreen extends ConsumerWidget {
                   semanticsValue: _speedSpoken(l10n, settings.ttsSpeed),
                   trailing: SizedBox(
                     width: 150,
-                    child: Slider(
+                    child: DpadSliderScope(child: Slider(
                       value: settings.ttsSpeed,
                       min: 0.3,
                       divisions: 7,
@@ -774,7 +776,7 @@ class SettingsScreen extends ConsumerWidget {
                               settings.copyWith(ttsSpeed: v),
                             )
                           : null,
-                    ),
+                    )),
                   ),
                 ),
 
@@ -2094,7 +2096,7 @@ class _SizePresetButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: GestureDetector(
+      child: DpadFocusable(onActivate: onTap, child: GestureDetector(
         onTap: onTap,
         child: Semantics(
           button: true,
@@ -2135,7 +2137,7 @@ class _SizePresetButton extends StatelessWidget {
             ),
           ),
         ),
-      ),
+      )),
     );
   }
 }
@@ -2279,7 +2281,7 @@ class _ChoiceButton extends StatelessWidget {
       textAlign: stacked ? TextAlign.start : TextAlign.center,
       style: _labelStyle.copyWith(color: color),
     );
-    return Semantics(
+    return DpadFocusable(onActivate: onTap, child: Semantics(
       button: true,
       selected: isActive,
       label: semanticsLabel,
@@ -2325,7 +2327,7 @@ class _ChoiceButton extends StatelessWidget {
                 ),
         ),
       ),
-    );
+    ));
   }
 }
 

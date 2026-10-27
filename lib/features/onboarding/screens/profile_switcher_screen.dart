@@ -20,6 +20,7 @@ import '../../../providers/app_providers.dart';
 import '../../../core/utils/accessible_sizing.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 /// Screen shown when multiple profiles exist on the device.
 /// Allows switching between profiles. If a profile has a PIN,
@@ -237,7 +238,7 @@ class _ProfileCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
 
-    return GestureDetector(
+    return DpadFocusable(onActivate: onTap, child: GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(20),
@@ -349,7 +350,7 @@ class _ProfileCard extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ));
   }
 }
 

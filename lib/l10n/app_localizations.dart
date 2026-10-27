@@ -290,6 +290,18 @@ abstract class AppLocalizations {
   /// **'Mastery'**
   String get mastery;
 
+  /// D-pad stop name for the Progress tab's top numbers (streak, stars, words, games).
+  ///
+  /// In en, this message translates to:
+  /// **'Your totals'**
+  String get dpadStopTotals;
+
+  /// D-pad stop name for the level bar on the Progress tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Your level'**
+  String get dpadStopLevel;
+
   /// No description provided for @categoryProgress.
   ///
   /// In en, this message translates to:
@@ -8951,7 +8963,7 @@ abstract class AppLocalizations {
   /// No description provided for @progGameSemantics.
   ///
   /// In en, this message translates to:
-  /// **'{game}: {score} of {total}, {percent} percent, {stars} stars, {when}'**
+  /// **'{game}: {score} of {total}, {percent} percent, {stars, plural, =1{1 star} other{{stars} stars}}, {when}'**
   String progGameSemantics(
     String game,
     int score,

@@ -18,6 +18,7 @@ import '../services/report_generator.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 /// Screen for generating, previewing and sharing weekly progress reports.
 ///
@@ -477,7 +478,7 @@ class _ChildReportCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return DpadFocusable(onActivate: onTap, child: GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
@@ -645,7 +646,7 @@ class _ChildReportCard extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ));
   }
 }
 

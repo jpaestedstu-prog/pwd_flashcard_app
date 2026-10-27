@@ -35,15 +35,36 @@ abstract final class GazeFocusDriver {
   static bool move(TraversalDirection direction) {
     final node = focused;
     if (node == null) return false;
+    _openShellPageEdge(node);
     // Geometry first: for a D-pad, "the control below this one" is what the
     // learner means.
     final row = _skippedRow(node, direction);
     if (row != null) {
-      row.requestFocus();
+      _focusChosen(node, row);
       _revealFocused();
       return true;
     }
-    if (node.focusInDirection(direction)) {
+    // On a page inside the navigation shell, the shell's own controls are
+    // part of the one screen the learner sees. Flutter searches the page
+    // first, and a page control even off to one side beat a shell control
+    // straight that way: on a guest's two-column Cards page nothing led to
+    // the AI Buddy beside the last deck.
+    final inLine = _shellControlToward(node, direction, inLineOnly: true);
+    if (inLine != null) {
+      _focusChosen(node, inLine);
+      _revealFocused();
+      return true;
+    }
+    // ◀ ▶ stay in their row. With nothing beside it in the row, Flutter takes
+    // the nearest control anywhere that way — from the last Mood Check-In
+    // face that was the Star Shop button at the top of Home, and every
+    // further ▶ went round the top of the page again, so the rest of Home
+    // could not be stepped to. The reading order below carries on into the
+    // next row instead.
+    final across = direction == TraversalDirection.left ||
+        direction == TraversalDirection.right;
+    if ((!across || _hasNeighbourInRow(node, direction)) &&
+        node.focusInDirection(direction)) {
       _revealFocused();
       return true;
     }
@@ -56,15 +77,218 @@ abstract final class GazeFocusDriver {
     final forward =
         direction == TraversalDirection.down ||
         direction == TraversalDirection.right;
+    // Off the end of a page inside the navigation shell, the shell's own
+    // controls come next. Flutter's search above only takes a control whose
+    // centre lies past the focused one's far edge, and a guest's floating
+    // Home button sits over the lower corner of the last deck: down wrapped
+    // round to the first deck, and the button was never reached.
+    if (!across && (forward ? isLast() : isFirst())) {
+      final shell = _shellControlToward(node, direction, inLineOnly: false);
+      if (shell != null) {
+        _focusChosen(node, shell);
+        _revealFocused();
+        return true;
+      }
+    }
     // Past the last control, going on wraps round to the start of the page —
     // the real start, which reading order alone would not find (see
     // [moveToStart]).
     if (forward && isLast()) return moveToStart();
+    // The next control in *this* driver's reading order — rows top to
+    // bottom, each left to right, the order [isFirst], [isLast] and scanning
+    // use — so ▶ at the end of a row carries on into the next row. Flutter's
+    // own next-focus order bands controls differently, and from the end of a
+    // row it could step back to one already passed.
+    final order = _readingOrder(node);
+    final at = order.indexOf(node);
+    final step = forward ? at + 1 : at - 1;
+    if (at >= 0 && step >= 0 && step < order.length) {
+      _focusChosen(node, order[step]);
+      _revealFocused();
+      return true;
+    }
     if (forward ? node.nextFocus() : node.previousFocus()) {
       _revealFocused();
       return true;
     }
     return false;
+  }
+
+  /// Whether a control sits beside [node], level with it, in [direction] —
+  /// anywhere a move from it may reach (see [reachableScope]).
+  static bool _hasNeighbourInRow(FocusNode node, TraversalDirection direction) {
+    final scope = reachableScope(node);
+    if (scope == null || node is FocusScopeNode) return false;
+    final Rect from;
+    try {
+      from = node.rect;
+    } catch (_) {
+      return false;
+    }
+    final right = direction == TraversalDirection.right;
+    for (final other in scope.traversalDescendants) {
+      if (identical(other, node) || other is FocusScopeNode) continue;
+      final Rect r;
+      try {
+        r = other.rect;
+      } catch (_) {
+        continue;
+      }
+      final level = r.top < from.bottom - rowSlack &&
+          r.bottom > from.top + rowSlack;
+      final beside = right
+          ? r.center.dx > from.center.dx + 1
+          : r.center.dx < from.center.dx - 1;
+      if (level && beside) return true;
+    }
+    return false;
+  }
+
+  /// Where a move between a page inside the navigation shell and the shell's
+  /// own controls — the tab bar, a guest's floating Home button, the AI Buddy
+  /// launcher — should land, judged by centres. Null when neither side is
+  /// involved, or Flutter's own search should decide.
+  ///
+  /// With [inLineOnly], only controls in [node]'s row (◀ ▶) or column (▲ ▼)
+  /// count, on the page and in the shell alike, and the nearest wins:
+  ///  * from the page, only when it is a shell control — the page's own are
+  ///    Flutter's to find;
+  ///  * from a shell control, whichever it is. Flutter counts the page itself
+  ///    as a control there, one the size of the page, and lands on whatever
+  ///    the page last had focused: ◀ from the AI Buddy, level with a guest's
+  ///    last deck, went to a deck up in the other column.
+  ///
+  /// Otherwise — a move off the end of the page — only the shell's controls
+  /// count, those in line first, then the nearest.
+  ///
+  /// The shell's other pages are passed over: a page under the current one
+  /// is hidden but keeps its controls in the focus tree.
+  static FocusNode? _shellControlToward(
+    FocusNode node,
+    TraversalDirection direction, {
+    required bool inLineOnly,
+  }) {
+    final own = node.nearestScope;
+    if (node is FocusScopeNode || node.context == null || own == null) {
+      return null;
+    }
+    final fromShell = !_isShellPage(own);
+    FocusScopeNode? page;
+    final FocusScopeNode? scope;
+    if (!fromShell) {
+      page = own;
+      scope = own.enclosingScope;
+    } else {
+      if (!inLineOnly) return null;
+      scope = own;
+      page = _shellPageInside(own);
+    }
+    final pageContext = page?.context;
+    if (page == null || scope == null || pageContext == null) return null;
+    final pages = Navigator.maybeOf(pageContext)?.focusNode;
+    if (pages == null) return null;
+    final Rect from;
+    try {
+      from = node.rect;
+    } catch (_) {
+      return null;
+    }
+    final vertical = direction == TraversalDirection.up ||
+        direction == TraversalDirection.down;
+    final forward = direction == TraversalDirection.down ||
+        direction == TraversalDirection.right;
+    FocusNode? best;
+    var bestInPage = false;
+    var bestKey = (0, 0.0, 0.0);
+    for (final other in scope.traversalDescendants) {
+      if (identical(other, node) ||
+          other is FocusScopeNode ||
+          other.context == null) {
+        continue;
+      }
+      final inPage = other.ancestors.contains(page);
+      if (inPage ? !inLineOnly : other.ancestors.contains(pages)) continue;
+      final Rect r;
+      try {
+        r = other.rect;
+      } catch (_) {
+        continue;
+      }
+      final ahead = vertical
+          ? r.center.dy - from.center.dy
+          : r.center.dx - from.center.dx;
+      // Within a row's slack is level, not below or above.
+      final past = vertical ? rowSlack : 1.0;
+      if (forward ? ahead <= past : ahead >= -past) continue;
+      final inLine = vertical
+          ? r.right > from.left && r.left < from.right
+          : r.top < from.bottom - rowSlack && r.bottom > from.top + rowSlack;
+      if (inLineOnly && !inLine) continue;
+      final key = (
+        inLine ? 0 : 1,
+        ahead.abs(),
+        (vertical
+                ? r.center.dx - from.center.dx
+                : r.center.dy - from.center.dy)
+            .abs(),
+      );
+      if (best == null ||
+          key.$1 < bestKey.$1 ||
+          (key.$1 == bestKey.$1 &&
+              (key.$2 < bestKey.$2 ||
+                  (key.$2 == bestKey.$2 && key.$3 < bestKey.$3)))) {
+        best = other;
+        bestInPage = inPage;
+        bestKey = key;
+      }
+    }
+    return !fromShell && bestInPage ? null : best;
+  }
+
+  /// Lets a move off the edge of a page **inside the navigation shell** carry
+  /// on into the shell: down from a hub's last tile reaches the tab bar.
+  ///
+  /// Every page has a focus scope of its own, and Flutter's directional
+  /// traversal stops at a scope's edge unless told otherwise — and the tab
+  /// bar is outside the page, in the shell. So a learner on arrow keys could
+  /// step through a hub but never leave it, and gaze on Settings could never
+  /// reach the tabs. Only a current *page* on the shell's own navigator gets
+  /// this: a sheet or a dialog stays a closed box, and a page pushed over the
+  /// whole shell has nothing behind it that it should lead to.
+  static void _openShellPageEdge(FocusNode node) {
+    final scope = node is FocusScopeNode ? node : node.nearestScope;
+    if (scope == null || !_isShellPage(scope)) return;
+    scope.directionalTraversalEdgeBehavior = TraversalEdgeBehavior.parentScope;
+  }
+
+  /// The navigation shell's current page inside [scope] — when [scope] is
+  /// the shell's own, around it — or null.
+  static FocusScopeNode? _shellPageInside(FocusScopeNode scope) {
+    for (final n in scope.traversalDescendants) {
+      if (n is FocusScopeNode && _isShellPage(n)) return n;
+    }
+    return null;
+  }
+
+  /// Whether [scope] is the current page on a navigator nested inside the
+  /// app's own — the navigation shell's.
+  static bool _isShellPage(FocusScopeNode scope) {
+    final context = scope.context;
+    if (context == null || !context.mounted) return false;
+    final route = ModalRoute.of(context);
+    if (route is! PageRoute || !route.isCurrent) return false;
+    final navigator = route.navigator;
+    if (navigator == null) return false;
+    final root = Navigator.maybeOf(context, rootNavigator: true);
+    return !identical(navigator, root);
+  }
+
+  /// The surface a move from [node] may reach: its own page or dialog — or,
+  /// for a page inside the navigation shell, the shell around it.
+  static FocusScopeNode? reachableScope(FocusNode node) {
+    final scope = node is FocusScopeNode ? node : node.nearestScope;
+    if (scope == null) return null;
+    return _isShellPage(scope) ? (scope.enclosingScope ?? scope) : scope;
   }
 
   /// The nearest row of controls that Flutter's own ▲ ▼ would jump over, or
@@ -85,6 +309,12 @@ abstract final class GazeFocusDriver {
     final down = direction == TraversalDirection.down;
     if (!down && direction != TraversalDirection.up) return null;
     if (node is FocusScopeNode) return null; // nothing focused yet
+    // Rows of a page, not the shell's own controls: from a tab or the AI
+    // Buddy, the move is [_shellControlToward]'s. From the tab bar, the AI
+    // Buddy floating off at the right counted as a row between each tab and
+    // the page, and up from every tab went to it.
+    final own = node.nearestScope;
+    if (own != null && _shellPageInside(own) != null) return null;
     final Rect from;
     try {
       from = node.rect;
@@ -101,7 +331,7 @@ abstract final class GazeFocusDriver {
         continue;
       }
       final dy = r.center.dy - from.center.dy;
-      if (down ? dy > _rowSlack : dy < -_rowSlack) ahead.add((node: n, rect: r));
+      if (down ? dy > rowSlack : dy < -rowSlack) ahead.add((node: n, rect: r));
     }
     if (ahead.isEmpty) return null;
     // What Flutter would choose: the nearest control in this column.
@@ -112,26 +342,51 @@ abstract final class GazeFocusDriver {
     if (inColumn.isEmpty) return null;
     double gap(Rect r) => (r.center.dy - from.center.dy).abs();
     final pick = inColumn.reduce((a, b) => gap(a.rect) <= gap(b.rect) ? a : b);
-    // Rows wholly between here and there.
+    // Rows wholly between here and there: past this control as well as short
+    // of that one. A control level with this one is beside it, not between —
+    // up from the AI Buddy, level with a guest's last deck, went to that deck
+    // instead of the one above it.
     final between = [
       for (final c in ahead)
         if (down
-            ? c.rect.bottom <= pick.rect.top + _rowSlack
-            : c.rect.top >= pick.rect.bottom - _rowSlack)
+            ? c.rect.top >= from.bottom - rowSlack &&
+                c.rect.bottom <= pick.rect.top + rowSlack
+            : c.rect.bottom <= from.top + rowSlack &&
+                c.rect.top >= pick.rect.bottom - rowSlack)
           if (!identical(c.node, pick.node)) c,
     ];
     if (between.isEmpty) return null;
     final nearest = between.map((c) => gap(c.rect)).reduce((a, b) => a < b ? a : b);
     final row = [
       for (final c in between)
-        if (gap(c.rect) - nearest <= _rowSlack) c,
+        if (gap(c.rect) - nearest <= rowSlack) c,
     ];
     double across(Rect r) => (r.center.dx - from.center.dx).abs();
     return row.reduce((a, b) => across(a.rect) <= across(b.rect) ? a : b).node;
   }
 
   /// Controls whose centres are this close share a row.
-  static const double _rowSlack = 8;
+  static const double rowSlack = 8;
+
+  /// Focuses [to] for a move this driver chose itself, wiping Flutter's
+  /// memory of the arrow steps before it.
+  ///
+  /// Flutter remembers its own steps so that the opposite arrow comes back
+  /// the same way, and a step made here bypasses that record. On Home, after
+  /// the tab bar and the AI Buddy, ▲ from the last category jumped two rows
+  /// up into another column — where an arrow had last left the page.
+  static void _focusChosen(FocusNode from, FocusNode to) {
+    for (final node in [from, to]) {
+      for (FocusScopeNode? s = node.nearestScope;
+          s != null;
+          s = s.enclosingScope) {
+        final context = s.context;
+        if (context == null || !context.mounted) continue;
+        FocusTraversalGroup.maybeOf(context)?.invalidateScopeData(s);
+      }
+    }
+    to.requestFocus();
+  }
 
   /// Scrolls the newly focused control into view.
   ///
@@ -328,7 +583,13 @@ abstract final class GazeFocusDriver {
   /// Smoothing): a scanning learner went round the lower half for ever and
   /// never reached "Enable Gaze Control" or "Try it now" again, and a head
   /// learner wrapping off the bottom landed somewhere in the middle.
-  static bool moveToStart() {
+  static bool moveToStart() => _moveToEdge(start: true);
+
+  /// Focuses the very last control of the focused surface, scrolling down to
+  /// it first — the end of the page, as [moveToStart] finds its start.
+  static bool moveToEnd() => _moveToEdge(start: false);
+
+  static bool _moveToEdge({required bool start}) {
     final node = focused;
     final context = node?.context;
     if (node == null || context == null) return false;
@@ -336,22 +597,59 @@ abstract final class GazeFocusDriver {
     var scrollable = context.findAncestorStateOfType<ScrollableState>();
     while (scrollable != null) {
       final position = scrollable.position;
-      if (position.hasPixels && position.pixels > position.minScrollExtent) {
-        position.jumpTo(position.minScrollExtent);
+      if (position.hasPixels &&
+          position.hasContentDimensions &&
+          (start
+              ? position.pixels > position.minScrollExtent
+              : position.pixels < position.maxScrollExtent)) {
+        position.jumpTo(
+          start ? position.minScrollExtent : position.maxScrollExtent,
+        );
         scrolled = true;
       }
       scrollable = scrollable.context.findAncestorStateOfType<ScrollableState>();
     }
-    if (!scrolled) return _focusFirst(node);
-    // The top of the page is laid out on the next frame. The control that had
-    // focus may be gone by then (scrolled out of a lazy list), so fall back to
-    // its surface.
+    if (!scrolled) return _focusEdge(node, start: start);
+    // The edge of the page is laid out on the next frame. The control that
+    // had focus may be gone by then (scrolled out of a lazy list), so fall
+    // back to its surface.
     final scope = node.nearestScope;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final now = focused ?? (scope?.context == null ? null : scope);
-      if (now != null) _focusFirst(now);
+      if (now != null) _focusEdge(now, start: start);
     });
     WidgetsBinding.instance.scheduleFrame();
+    return true;
+  }
+
+  static bool _focusEdge(FocusNode node, {required bool start}) {
+    if (start) return _focusFirst(node);
+    final order = _readingOrder(node);
+    if (order.isEmpty) return false;
+    if (!identical(order.last, node)) _focusChosen(node, order.last);
+    _revealFocused();
+    return true;
+  }
+
+  /// Steps focus to the next control in reading order — rows top to bottom,
+  /// each left to right — or the previous one, wrapping round at either end.
+  ///
+  /// For an input with only two directions: the game controller's up and
+  /// down walk items one at a time, because its left and right belong to the
+  /// sections. Stepped by direction instead, down from a heading took one
+  /// chip of a row and then the control under it, and Settings' other text
+  /// sizes could not be reached at all.
+  static bool step({required bool forward}) {
+    final node = focused;
+    if (node == null || node is FocusScopeNode) return false;
+    final order = _readingOrder(node);
+    final at = order.indexOf(node);
+    if (at < 0) return false;
+    final next = forward ? at + 1 : at - 1;
+    if (next < 0) return moveToEnd();
+    if (next >= order.length) return moveToStart();
+    _focusChosen(node, order[next]);
+    _revealFocused();
     return true;
   }
 
@@ -365,7 +663,7 @@ abstract final class GazeFocusDriver {
         if (!isBackButton(n)) n,
     ];
     final first = order.isEmpty ? all.first : order.first;
-    if (!identical(first, node)) first.requestFocus();
+    if (!identical(first, node)) _focusChosen(node, first);
     _revealFocused();
     return true;
   }

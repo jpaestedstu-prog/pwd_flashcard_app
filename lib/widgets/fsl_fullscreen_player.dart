@@ -15,6 +15,8 @@ import '../l10n/app_localizations.dart';
 import '../l10n/app_localizations_en.dart';
 import '../core/theme/accessible_theme.dart';
 import '../core/utils/platform_caps.dart';
+import '../navigation/dpad_keys.dart';
+import 'dpad_focusable.dart';
 
 /// Opens the FSL fullscreen video player as a fullscreen dialog.
 ///
@@ -604,7 +606,7 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
     // Null while playing (the icon is a static pause) and null under reduced
     // motion, which is what stops the idle pulse.
     final pulse = isPlaying ? null : motionLoop(context, reverse: true);
-    return GestureDetector(
+    return DpadFocusable(onActivate: _togglePlayPause, child: GestureDetector(
       onTap: _togglePlayPause,
       child: Semantics(
         button: true,
@@ -644,7 +646,7 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
               curve: Curves.easeInOut,
             ),
       ),
-    );
+    ));
   }
 
   // ─── Speed panel ────────────────────────────────────
@@ -669,7 +671,7 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
               child: Semantics(
                 button: true,
                 label: _t(context).fpSetSpeed('$speed'),
-                child: GestureDetector(
+                child: DpadFocusable(onActivate: () => _setSpeed(speed), child: GestureDetector(
                   onTap: () => _setSpeed(speed),
                   child: AnimatedContainer(
                     duration: AppConstants.fastDuration,
@@ -691,7 +693,7 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
                       ),
                     ),
                   ),
-                ),
+                )),
               ),
             );
           }),
@@ -780,7 +782,7 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
                       thumbColor: AppColors.primaryLight,
                       overlayColor: AppColors.primary.withValues(alpha: 0.2),
                     ),
-                    child: Slider(
+                    child: DpadSliderScope(child: Slider(
                       value: progress.clamp(0.0, 1.0),
                       onChanged: (value) {
                         final target = Duration(
@@ -795,7 +797,7 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
                       onChangeEnd: (_) {
                         _startHideControlsTimer();
                       },
-                    ),
+                    )),
                   ),
                 ),
               ),

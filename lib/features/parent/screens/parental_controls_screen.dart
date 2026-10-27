@@ -11,6 +11,7 @@ import '../../../core/widgets/fit_text.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../navigation/nav_extensions.dart';
+import '../../../navigation/dpad_keys.dart';
 
 /// Educator / parent screen for configuring parental controls.
 ///
@@ -178,7 +179,7 @@ class _ParentalControlsScreenState
                               .copyWith(color: hc.textSecondary)),
                     ],
                   ),
-                  Slider(
+                  DpadSliderScope(child: Slider(
                     value: _controls.dailyTimeLimitMinutes.toDouble(),
                     min: 15,
                     max: 180,
@@ -186,7 +187,7 @@ class _ParentalControlsScreenState
                     label: _t(context).pcMin(_controls.dailyTimeLimitMinutes),
                     onChanged: (v) => _update(_controls.copyWith(
                         dailyTimeLimitMinutes: v.round())),
-                  ),
+                  )),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [

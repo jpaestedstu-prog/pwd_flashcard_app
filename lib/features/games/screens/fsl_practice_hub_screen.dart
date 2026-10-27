@@ -19,6 +19,7 @@ import '../../../widgets/fullscreen_host.dart';
 import '../../gamepad/widgets/gamepad_screen_registrar.dart';
 import '../../gamepad/providers/gamepad_screen.dart';
 import '../../../core/widgets/fit_text.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 /// Hub screen for FSL (Filipino Sign Language) Practice.
 ///
@@ -319,7 +320,7 @@ class _FslModeCardState extends State<_FslModeCard> {
     return Semantics(
       button: true,
       label: '${widget.title}. ${widget.subtitle}',
-      child: GestureDetector(
+      child: DpadFocusable(onActivate: widget.onTap, child: GestureDetector(
         onTap: widget.onTap,
         onTapDown: (_) => setState(() => _pressed = true),
         onTapUp: (_) => setState(() => _pressed = false),
@@ -414,7 +415,7 @@ class _FslModeCardState extends State<_FslModeCard> {
             ),
           ),
         ),
-      ),
+      )),
     );
   }
 }

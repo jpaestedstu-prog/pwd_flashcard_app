@@ -16,6 +16,7 @@ import '../../../core/widgets/fit_text.dart';
 import '../../assessment/models/question_prompt.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 class WordOfDayScreen extends ConsumerStatefulWidget {
   const WordOfDayScreen({super.key});
@@ -55,6 +56,11 @@ class _WordOfDayScreenState extends ConsumerState<WordOfDayScreen> {
     if (settings.ttsEnabled) {
       ref.read(ttsServiceProvider).speak(text);
     }
+  }
+
+  void _flip() {
+    setState(() => _flipped = !_flipped);
+    ref.read(hapticServiceProvider).lightTap();
   }
 
   @override
@@ -119,11 +125,8 @@ class _WordOfDayScreenState extends ConsumerState<WordOfDayScreen> {
                 child: Semantics(
                   button: true,
                   hint: isFilipino ? 'I-tap para i-flip' : 'Tap to flip',
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() => _flipped = !_flipped);
-                      ref.read(hapticServiceProvider).lightTap();
-                    },
+                  child: DpadFocusable(onActivate: _flip, child: GestureDetector(
+                    onTap: _flip,
                     child: AnimatedSwitcher(
                       duration: const Duration(milliseconds: 400),
                       transitionBuilder: (child, animation) {
@@ -133,7 +136,7 @@ class _WordOfDayScreenState extends ConsumerState<WordOfDayScreen> {
                           ? _buildBackCard(hc, isFilipino)
                           : _buildFrontCard(hc, isFilipino),
                     ),
-                  ),
+                  )),
                 ),
               ).animate().scale(
                 begin: const Offset(0.9, 0.9),

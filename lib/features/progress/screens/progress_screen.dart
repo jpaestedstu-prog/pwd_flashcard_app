@@ -19,6 +19,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/experiment_provider.dart';
 import '../../../widgets/xp_level_bar.dart';
+import '../../../widgets/dpad_focusable.dart';
 import '../../../features/experiment/models/experiment_models.dart';
 import '../../gaze_control/providers/gaze_home_grid.dart';
 import '../../../providers/tile_grid_active_provider.dart';
@@ -172,6 +173,46 @@ class ProgressScreen extends ConsumerWidget {
       }
     }
 
+    // Says one panel's words, in the learner's language — see [infoStop].
+    void speakText(String text) {
+      final tts = ref.read(ttsServiceProvider);
+      if (settings.locale == 'fil') {
+        tts.speakFilipino(text);
+      } else {
+        tts.speakEnglish(text);
+      }
+    }
+
+    // Each panel of information below is a D-pad stop of its own, in page
+    // order: the buttons alone ended above Category Progress, so a learner
+    // steering by D-pad never saw the rest of the tab. Reaching a stop brings
+    // it into view; pressing it reads it aloud.
+    Widget infoStop(String label, Widget panel) {
+      final reader = DpadReadAloud(speakText);
+      return gazeGrid
+          .section(
+            columns: 1,
+            expand: false,
+            entries: [
+              (
+                tile: DpadInfoStop(reader: reader, child: panel),
+                cell: GazeTileCell(
+                  label: label,
+                  onActivate: reader.read,
+                  opens: false,
+                ),
+              ),
+            ],
+          )
+          .first;
+    }
+
+    // A section header over its panel, as one stop.
+    Widget headed(Widget header, Widget panel) => Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [header, const SizedBox(height: 12), panel],
+    );
+
     // Opens the theme/layout customize sheet — shared by the palette button's
     // tap and its gaze cell so both always agree.
     void openCustomizeSheet() => showProgressCustomizeSheet(
@@ -254,7 +295,7 @@ class ProgressScreen extends ConsumerWidget {
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   // ─── Top Stats (responsive, overflow-safe grid) ──
-                  OverflowGuard(
+                  infoStop(l10n.dpadStopTotals, OverflowGuard(
                         label: 'progress-top-stats',
                         child: ProgressStatGrid(
                           layout: layout,
@@ -317,7 +358,7 @@ class ProgressScreen extends ConsumerWidget {
                       )
                       .animate()
                       .fadeIn(duration: ms(400))
-                      .slideY(begin: -0.15, end: 0),
+                      .slideY(begin: -0.15, end: 0)),
 
                   SizedBox(height: layout.sectionGap),
 
@@ -326,10 +367,13 @@ class ProgressScreen extends ConsumerWidget {
                   // the tab named Progress — the one place they come to ask
                   // "how am I doing?". Same shared bar, so the number here can
                   // never disagree with the one on Home.
-                  XpLevelBar(progress: progress, showNextGoal: true)
-                      .animate()
-                      .fadeIn(duration: ms(400), delay: ms(120))
-                      .slideY(begin: -0.1, end: 0),
+                  infoStop(
+                    l10n.dpadStopLevel,
+                    XpLevelBar(progress: progress, showNextGoal: true)
+                        .animate()
+                        .fadeIn(duration: ms(400), delay: ms(120))
+                        .slideY(begin: -0.1, end: 0),
+                  ),
 
                   SizedBox(height: layout.sectionGap),
 
@@ -359,7 +403,7 @@ class ProgressScreen extends ConsumerWidget {
                   ],
 
                   // ─── Overall Mastery ─────────────
-                  Semantics(
+                  infoStop(l10n.mastery, Semantics(
                         label: l10n.progMasterySemantics(
                           (masteryPct * 100).round(),
                           masteredWords,
@@ -423,7 +467,7 @@ class ProgressScreen extends ConsumerWidget {
                       .scale(
                         begin: const Offset(0.8, 0.8),
                         end: const Offset(1, 1),
-                      ),
+                      )),
 
                   SizedBox(height: layout.sectionGap),
 
@@ -432,19 +476,18 @@ class ProgressScreen extends ConsumerWidget {
                   // stops moving visibly once it is large — so the tab slowly
                   // stops giving feedback to whoever has used it longest.
                   if (show.showWeekly) ...[
+                    infoStop(l10n.thisWeek, headed(
                     ProgressSectionHeader(
                       title: l10n.thisWeek,
                       icon: Icons.date_range_rounded,
                       iconColor: accent,
                     ),
-                    const SizedBox(height: 12),
-                    if (week.isEmpty)
-                      _EmptyNote(
+                    week.isEmpty
+                      ? _EmptyNote(
                         icon: Icons.hourglass_empty_rounded,
                         message: l10n.weeklyEmpty,
                       ).animate().fadeIn(duration: ms(400), delay: ms(260))
-                    else
-                      OverflowGuard(
+                      : OverflowGuard(
                         label: 'progress-weekly-stats',
                         child: ProgressStatGrid(
                           layout: layout,
@@ -483,6 +526,7 @@ class ProgressScreen extends ConsumerWidget {
                           ],
                         ),
                       ).animate().fadeIn(duration: ms(400), delay: ms(260)),
+                    )),
 
                     SizedBox(height: layout.sectionGap),
                   ],
@@ -646,7 +690,9 @@ class ProgressScreen extends ConsumerWidget {
                     // header's own word total.
                     final catMastery = mastery[cat]!;
 
-                    return Padding(
+                    // One stop per deck: the whole list is taller than a
+                    // phone's screen, so as one stop it could not be shown.
+                    return infoStop(cat.labelOf(l10n), Padding(
                           padding: const EdgeInsets.only(bottom: 14),
                           child: CategoryProgressRow(
                             icon: cat.icon,
@@ -663,7 +709,7 @@ class ProgressScreen extends ConsumerWidget {
                           duration: ms(400),
                           delay: ms(300 + i * 80),
                         )
-                        .slideX(begin: 0.1, end: 0);
+                        .slideX(begin: 0.1, end: 0));
                   }),
 
                   SizedBox(height: layout.sectionGap),
@@ -676,10 +722,13 @@ class ProgressScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
                   if (progress.recentScores.isEmpty)
-                    _EmptyNote(
-                      icon: Icons.sports_esports_rounded,
-                      message: l10n.playGamePrompt,
-                    ).animate().fadeIn(duration: ms(400), delay: ms(750))
+                    infoStop(
+                      l10n.recentGames,
+                      _EmptyNote(
+                        icon: Icons.sports_esports_rounded,
+                        message: l10n.playGamePrompt,
+                      ).animate().fadeIn(duration: ms(400), delay: ms(750)),
+                    )
                   else
                     ...progress.recentScores.reversed
                         .take(show.maxRecentGames)
@@ -689,7 +738,7 @@ class ProgressScreen extends ConsumerWidget {
                         .map((entry) {
                           final i = entry.key;
                           final score = entry.value;
-                          return Padding(
+                          return infoStop(_recentGameSentence(l10n, score), Padding(
                                 padding: const EdgeInsets.only(bottom: 10),
                                 child: _RecentGameTile(score: score),
                               )
@@ -698,7 +747,7 @@ class ProgressScreen extends ConsumerWidget {
                                 duration: ms(400),
                                 delay: ms(750 + i * 60),
                               )
-                              .slideX(begin: 0.1, end: 0);
+                              .slideX(begin: 0.1, end: 0));
                         }),
 
                   SizedBox(height: layout.sectionGap),
@@ -712,14 +761,18 @@ class ProgressScreen extends ConsumerWidget {
                   // Order is the policy's call. For a Deaf learner the sign
                   // section is the headline and goes first; for everyone else
                   // reading leads. Same two blocks either way.
+                  //
+                  // Built as functions and called in the order shown: each
+                  // registers its D-pad stop as it is made, and the stops have
+                  // to run down the page the way the blocks do.
                   ...(() {
-                    final reading = <Widget>[
+                    List<Widget> reading() => [
+                      infoStop(l10n.reading, headed(
                       ProgressSectionHeader(
                         title: l10n.reading,
                         icon: Icons.auto_stories_rounded,
                         iconColor: accent,
                       ),
-                      const SizedBox(height: 12),
                       OverflowGuard(
                         label: 'progress-reading-stats',
                         child: ProgressStatGrid(
@@ -741,17 +794,18 @@ class ProgressScreen extends ConsumerWidget {
                           ],
                         ),
                       ).animate().fadeIn(duration: ms(400), delay: ms(780)),
+                      )),
                       SizedBox(height: layout.sectionGap),
                     ];
 
-                    final signing = <Widget>[
+                    List<Widget> signing() => [
                       if (showFsl) ...[
+                        infoStop(l10n.signLanguage, headed(
                         ProgressSectionHeader(
                           title: l10n.signLanguage,
                           icon: Icons.sign_language_rounded,
                           iconColor: AppColors.secondaryDark,
                         ),
-                        const SizedBox(height: 12),
                         OverflowGuard(
                           label: 'progress-sign-stats',
                           child: ProgressStatGrid(
@@ -779,13 +833,14 @@ class ProgressScreen extends ConsumerWidget {
                             ],
                           ),
                         ).animate().fadeIn(duration: ms(400), delay: ms(800)),
+                        )),
                         SizedBox(height: layout.sectionGap),
                       ],
                     ];
 
                     return show.signFirst
-                        ? [...signing, ...reading]
-                        : [...reading, ...signing];
+                        ? [...signing(), ...reading()]
+                        : [...reading(), ...signing()];
                   })(),
 
                   // ─── Star Collection ─────────────
@@ -793,26 +848,27 @@ class ProgressScreen extends ConsumerWidget {
                   // at the top — so it is the first thing dropped when the page
                   // needs to be shorter.
                   if (show.showStarGrid) ...[
+                    infoStop(l10n.starCollection, headed(
                     ProgressSectionHeader(
                       title: l10n.starCollection,
                       icon: Icons.auto_awesome_rounded,
                       iconColor: AppColors.warning,
                     ),
-                    const SizedBox(height: 12),
                     _StarGrid(
                       totalStars: totalStars,
                     ).animate().fadeIn(duration: ms(400), delay: ms(800)),
+                    )),
 
                     SizedBox(height: layout.sectionGap),
                   ],
 
                   // ─── Achievement Badges ──────────
+                  infoStop(l10n.achievements, headed(
                   ProgressSectionHeader(
                     title: l10n.achievements,
                     icon: Icons.emoji_events_rounded,
                     iconColor: AppColors.warning,
                   ),
-                  const SizedBox(height: 12),
                   Builder(
                     builder: (context) {
                       final unlockedIds = ref.watch(
@@ -857,6 +913,7 @@ class ProgressScreen extends ConsumerWidget {
                       ).animate().fadeIn(duration: ms(400), delay: ms(900));
                     },
                   ),
+                  )),
 
                   const SizedBox(height: 40),
                 ]),
@@ -1041,20 +1098,37 @@ class _AchievementRow extends StatelessWidget {
 // ────────────────────────────────────────
 // Recent Game Score Tile
 // ────────────────────────────────────────
+/// When a game was played, said the way the tile says it.
+String _formatDate(AppLocalizations t, DateTime d) {
+  final now = DateTime.now();
+  final diff = now.difference(d);
+  if (diff.inMinutes < 1) return t.progJustNow;
+  if (diff.inHours < 1) return t.gmMinutesAgo(diff.inMinutes);
+  if (diff.inDays < 1) return t.gmHoursAgo(diff.inHours);
+  if (diff.inDays == 1) return t.progYesterday;
+  if (diff.inDays < 7) return t.gmDaysAgo(diff.inDays);
+  return '${d.month}/${d.day}';
+}
+
+/// The whole of a recent game in one sentence — the game, the score, the
+/// stars and when. A screen reader says it for the tile, and the D-pad stop
+/// is named by it too: by the game's name alone, four rounds of Word Match
+/// were four stops all called "Word Match".
+String _recentGameSentence(AppLocalizations t, GameScore score) {
+  final pct = score.total > 0 ? score.score / score.total : 0.0;
+  return t.progGameSemantics(
+    score.gameType.labelOf(t),
+    score.score,
+    score.total,
+    (pct * 100).round(),
+    score.starsEarned,
+    _formatDate(t, score.date),
+  );
+}
+
 class _RecentGameTile extends StatelessWidget {
   final GameScore score;
   const _RecentGameTile({required this.score});
-
-  String _formatDate(AppLocalizations t, DateTime d) {
-    final now = DateTime.now();
-    final diff = now.difference(d);
-    if (diff.inMinutes < 1) return t.progJustNow;
-    if (diff.inHours < 1) return t.gmMinutesAgo(diff.inMinutes);
-    if (diff.inDays < 1) return t.gmHoursAgo(diff.inHours);
-    if (diff.inDays == 1) return t.progYesterday;
-    if (diff.inDays < 7) return t.gmDaysAgo(diff.inDays);
-    return '${d.month}/${d.day}';
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1062,14 +1136,7 @@ class _RecentGameTile extends StatelessWidget {
     final gt = score.gameType;
     final t = AppLocalizations.of(context)!;
     return Semantics(
-      label: t.progGameSemantics(
-        gt.labelOf(t),
-        score.score,
-        score.total,
-        (pct * 100).round(),
-        score.starsEarned,
-        _formatDate(t, score.date),
-      ),
+      label: _recentGameSentence(t, score),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(

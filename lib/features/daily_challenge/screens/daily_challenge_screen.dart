@@ -21,6 +21,7 @@ import '../../../core/widgets/fit_text.dart';
 import '../../../core/widgets/reflow_row.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 /// Full-screen Daily Mission — a bite-sized session of 3–5 quiz items
 /// (size configurable via [AppSettings.dailyMissionSize]) with calendar,
@@ -728,7 +729,7 @@ class _FiftyFiftyButton extends StatelessWidget {
       container: true,
       button: true,
       label: _t(context).dcFiftySemantics(remaining),
-      child: GestureDetector(
+      child: DpadFocusable(onActivate: onTap, child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: Container(
@@ -756,7 +757,7 @@ class _FiftyFiftyButton extends StatelessWidget {
             ],
           ),
         ),
-      ),
+      )),
     );
   }
 }
@@ -939,7 +940,7 @@ class _ChoiceButton extends StatelessWidget {
       label: eliminated ? _t(context).dcRemovedByHint(text) : text,
       child: Opacity(
         opacity: eliminated ? 0.45 : 1,
-        child: GestureDetector(
+        child: DpadFocusable(onActivate: disabled ? null : onTap, child: GestureDetector(
           onTap: disabled ? null : onTap,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 300),
@@ -989,7 +990,7 @@ class _ChoiceButton extends StatelessWidget {
               ],
             ),
           ),
-        ),
+        )),
       ),
     );
   }

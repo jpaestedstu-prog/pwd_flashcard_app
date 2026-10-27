@@ -12,6 +12,7 @@ import 'app_action_bar.dart';
 import 'fsl_fullscreen_player.dart';
 import 'shimmer_loading.dart';
 import '../l10n/app_localizations_en.dart';
+import 'dpad_focusable.dart';
 
 /// Presents the FSL sign-language clip for [wordEnglish] in a modal bottom
 /// sheet with an inline, looping video player (speed selector, replay, close,
@@ -261,7 +262,7 @@ class _FslVideoSheetState extends State<FslVideoSheet> {
                           ),
                         )
                       : _initialized
-                      ? GestureDetector(
+                      ? DpadGestureDetector(
                           onTap: () {
                             setState(() {
                               _controller.value.isPlaying
@@ -300,7 +301,7 @@ class _FslVideoSheetState extends State<FslVideoSheet> {
                                           ?.tuFullScreen ??
                                       'Watch in full screen',
                                   excludeSemantics: true,
-                                  child: GestureDetector(
+                                  child: DpadGestureDetector(
                                   behavior: HitTestBehavior.opaque,
                                   onTap: () async {
                                     final wasPlaying =
@@ -406,7 +407,7 @@ class _FslVideoSheetState extends State<FslVideoSheet> {
                   ),
                   ..._speeds.map((speed) {
                     final isActive = _playbackSpeed == speed;
-                    return GestureDetector(
+                    return DpadGestureDetector(
                       onTap: () {
                         setState(() => _playbackSpeed = speed);
                         _controller.setPlaybackSpeed(speed);

@@ -6,6 +6,7 @@ import '../../../data/models/enums.dart';
 import '../../../data/models/learning_path.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../widgets/dpad_focusable.dart';
 
 class PathCard extends StatelessWidget {
   final LearningPath path;
@@ -37,7 +38,7 @@ class PathCard extends StatelessWidget {
       label:
           '${_t(context).lpCardSemantics(path.titleOf(filipino: _t(context).localeName.startsWith('fil')), completedSteps, totalSteps)}'
           '${isUnlocked ? '' : ' ${_t(context).lpCardLocked}'}',
-      child: GestureDetector(
+      child: DpadFocusable(onActivate: onTap, child: GestureDetector(
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 300),
@@ -198,7 +199,7 @@ class PathCard extends StatelessWidget {
             ],
           ),
         ),
-      ),
+      )),
     );
   }
 }

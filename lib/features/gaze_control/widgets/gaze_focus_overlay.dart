@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart' show AppColors;
 import '../logic/gaze_focus_driver.dart';
+import '../providers/gaze_home_grid.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 
@@ -111,14 +113,68 @@ class _RingState {
   int get hashCode => Object.hash(hint, exitFocused);
 }
 
+/// The same ring for the other two D-pads — the arrow keys and the game
+/// controller — wherever they move keyboard focus.
+///
+/// Material marks a focused control with a faint tint, and only once Flutter
+/// counts the input as a keyboard: the controller's keys never reach Flutter
+/// as key presses (its bridge consumes them), and Android's virtual keyboard
+/// device — what a switch-access app or `adb` injects through — is never
+/// counted as one. So a sighted learner steering Settings or a dialog saw
+/// nothing move at all, and a keyboard learner saw a tint too faint to steer
+/// by. This ring is drawn instead, framing whatever holds focus, from the
+/// first D-pad move until a finger touches the screen.
+abstract final class DpadFocusRing {
+  static final ValueNotifier<bool> _controllerMoving = ValueNotifier(false);
+  static bool _watchingTouch = false;
+
+  /// The game controller just moved focus by traversal.
+  static void controllerMoved() => _moved();
+
+  /// An arrow key just moved focus (see `DpadDirectionalFocusAction`).
+  static void arrowKeysMoved() => _moved();
+
+  static void _moved() {
+    if (!_watchingTouch) {
+      _watchingTouch = true;
+      GestureBinding.instance.pointerRouter.addGlobalRoute(_onPointer);
+    }
+    _controllerMoving.value = true;
+  }
+
+  /// The controller went back to a grid or a screen that draws its own ring.
+  static void controllerStopped() => _controllerMoving.value = false;
+
+  /// What the plain ring is doing, for the gaze debug bridge's `state`.
+  static Map<String, Object?> debugState() => {
+    'highlightMode': FocusManager.instance.highlightMode.name,
+    'controllerMoving': _controllerMoving.value,
+    'plainRingMounted': _plainMounted,
+    'plainRingRect': _plainRect?.toString(),
+    'gazeRingRequested': _GazeRingRequests.instance.visible.value != null,
+    'primaryFocus': FocusManager.instance.primaryFocus?.toString(),
+  };
+
+  static bool _plainMounted = false;
+  static Rect? _plainRect;
+
+  static void _onPointer(PointerEvent event) {
+    if (event is PointerDownEvent) _controllerMoving.value = false;
+  }
+}
+
 /// Draws the gaze traversal ring above every route, dialog and sheet.
 ///
 /// Installed once, in `MaterialApp.builder`, around the app. Renders nothing
-/// (beyond its child) until a gaze scope asks for the ring.
+/// (beyond its child) until a gaze scope asks for the ring — or a keyboard or
+/// the controller moves focus (see [DpadFocusRing]).
 class GazeFocusRingLayer extends StatelessWidget {
   const GazeFocusRingLayer({super.key, required this.child});
 
   final Widget child;
+
+  /// The ring itself, for tests to find.
+  static const Key ringKey = ValueKey('gaze-focus-ring');
 
   @override
   Widget build(BuildContext context) {
@@ -131,7 +187,7 @@ class GazeFocusRingLayer extends StatelessWidget {
           // Above the router there is no Material at all, and text without
           // one is drawn in Flutter's red-yellow "missing Material" style.
           builder: (context, state, _) => state == null
-              ? const SizedBox.shrink()
+              ? const _DpadRing()
               : Material(
                   type: MaterialType.transparency,
                   child: _GazeFocusRing(
@@ -145,13 +201,70 @@ class GazeFocusRingLayer extends StatelessWidget {
   }
 }
 
+/// The plain ring, while a keyboard or the controller is the input: Flutter's
+/// own "traditional" highlight mode (keys since the last touch), or the
+/// controller's flag. Not while a hub's grid has its cursor — the tile draws
+/// its own ring then, and a second one around some stray focus would point
+/// two ways at once.
+class _DpadRing extends StatefulWidget {
+  const _DpadRing();
+
+  @override
+  State<_DpadRing> createState() => _DpadRingState();
+}
+
+class _DpadRingState extends State<_DpadRing> {
+  @override
+  void initState() {
+    super.initState();
+    FocusManager.instance.addHighlightModeListener(_changed);
+    DpadFocusRing._controllerMoving.addListener(_onChanged);
+    gazeHomeGrid.addListener(_onChanged);
+  }
+
+  @override
+  void dispose() {
+    FocusManager.instance.removeHighlightModeListener(_changed);
+    DpadFocusRing._controllerMoving.removeListener(_onChanged);
+    gazeHomeGrid.removeListener(_onChanged);
+    super.dispose();
+  }
+
+  void _changed(FocusHighlightMode _) => _onChanged();
+
+  void _onChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final keys =
+        FocusManager.instance.highlightMode == FocusHighlightMode.traditional;
+    final on = (keys || DpadFocusRing._controllerMoving.value) &&
+        gazeHomeGrid.focusRow == null;
+    if (!on) return const SizedBox.shrink();
+    return const Material(
+      type: MaterialType.transparency,
+      child: _GazeFocusRing(hint: null, exitFocused: false, plain: true),
+    );
+  }
+}
+
 class _GazeFocusRing extends StatefulWidget {
-  const _GazeFocusRing({required this.hint, required this.exitFocused});
+  const _GazeFocusRing({
+    required this.hint,
+    required this.exitFocused,
+    this.plain = false,
+  });
 
   final String? hint;
 
   /// The highlight is on the Back pill, not on a control.
   final bool exitFocused;
+
+  /// The ring alone, for the keyboard and the controller: their Back is a key
+  /// of their own, and the gaze hint would tell them to blink.
+  final bool plain;
 
   @override
   State<_GazeFocusRing> createState() => _GazeFocusRingState();
@@ -172,6 +285,7 @@ class _GazeFocusRingState extends State<_GazeFocusRing> {
   @override
   void initState() {
     super.initState();
+    if (widget.plain) DpadFocusRing._plainMounted = true;
     FocusManager.instance.addListener(_onFocusChanged);
     // Focus may already have settled before the ring was inserted; read it
     // after this frame, once the covering route has laid out.
@@ -181,6 +295,10 @@ class _GazeFocusRingState extends State<_GazeFocusRing> {
 
   @override
   void dispose() {
+    if (widget.plain) {
+      DpadFocusRing._plainMounted = false;
+      DpadFocusRing._plainRect = null;
+    }
     _followTimer?.cancel();
     FocusManager.instance.removeListener(_onFocusChanged);
     super.dispose();
@@ -194,7 +312,12 @@ class _GazeFocusRingState extends State<_GazeFocusRing> {
 
   void _sync() {
     if (!mounted) return;
-    final next = GazeFocusDriver.focusedRect;
+    // A page's own scope holds focus before anything on it is chosen; its
+    // rect is the whole page, which is no place to point.
+    final next = widget.plain && GazeFocusDriver.focused is FocusScopeNode
+        ? null
+        : GazeFocusDriver.focusedRect;
+    if (widget.plain) DpadFocusRing._plainRect = next;
     if (next == _rect) return;
     setState(() => _rect = next);
   }
@@ -211,7 +334,7 @@ class _GazeFocusRingState extends State<_GazeFocusRing> {
       child: Stack(
         children: [
           // The way out of whatever is showing, where a back button belongs.
-          Positioned(
+          if (!widget.plain) Positioned(
             top: 0,
             left: 0,
             child: SafeArea(
@@ -230,6 +353,7 @@ class _GazeFocusRingState extends State<_GazeFocusRing> {
             Positioned.fromRect(
               rect: rect.inflate(4),
               child: DecoratedBox(
+                key: GazeFocusRingLayer.ringKey,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: AppColors.accent, width: 3),
@@ -246,7 +370,7 @@ class _GazeFocusRingState extends State<_GazeFocusRing> {
           // The mode is unfamiliar and the ring alone doesn't explain it, so
           // say what the gestures do — the same reassurance the shell's
           // "Look ◀ ▶ to choose" chip gives on the hubs.
-          Positioned(
+          if (!widget.plain) Positioned(
             left: 16,
             right: 16,
             bottom: 0,

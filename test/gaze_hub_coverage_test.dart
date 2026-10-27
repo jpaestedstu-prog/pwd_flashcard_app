@@ -15,6 +15,7 @@ import 'package:pwdpwdpwd/features/home/screens/player_home_screen.dart';
 import 'package:pwdpwdpwd/features/progress/screens/progress_screen.dart';
 import 'package:pwdpwdpwd/l10n/app_localizations.dart';
 import 'package:pwdpwdpwd/providers/app_providers.dart';
+import 'package:pwdpwdpwd/providers/seasonal_event_provider.dart';
 
 /// Coverage contract for the hands-free D-pad: with Gaze Control on and the
 /// "Bottom nav + feature tiles" reach selected, every hub screen must publish a
@@ -46,9 +47,21 @@ class _GazeTilesOnNotifier extends GazeSettingsNotifier {
   GazeSettings build() => const GazeSettings(enabled: true);
 }
 
+/// Fixed progress, for a hub whose cells come from what the learner did.
+class _StubProgressNotifier extends ProgressNotifier {
+  _StubProgressNotifier(this._progress);
+  final LearningProgress _progress;
+
+  @override
+  LearningProgress build() => _progress;
+}
+
 List<Override> _overrides(UserRole role, {bool guest = false}) => [
       profileProvider.overrideWith(() => _StubProfileNotifier(role, guest: guest)),
       gazeSettingsProvider.overrideWith(_GazeTilesOnNotifier.new),
+      // A holiday banner adds Home's topmost row (its close button) while
+      // one runs; the rows below are what this file pins, on any date.
+      seasonalEventProvider.overrideWithValue(null),
     ];
 
 /// All labels currently published to the shell's D-pad, in row-major order.
@@ -60,6 +73,7 @@ Future<void> _pumpHub(
   Widget hub, {
   required UserRole role,
   bool guest = false,
+  List<Override> extra = const [],
 }) async {
   // A portrait-tablet surface (the app's target form factor) — the default
   // 800×600 test window is shorter than some hub layouts are designed for.
@@ -69,7 +83,7 @@ Future<void> _pumpHub(
   addTearDown(tester.view.resetDevicePixelRatio);
   await tester.pumpWidget(
     ProviderScope(
-      overrides: _overrides(role, guest: guest),
+      overrides: [..._overrides(role, guest: guest), ...extra],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         locale: const Locale('en'),
@@ -204,6 +218,43 @@ void main() {
     );
     // Customize is the topmost row, matching the app bar's visual position.
     expect(_publishedLabels().first, 'Customize');
+
+    await _unmount(tester);
+  });
+
+  testWidgets('Progress names each recent game by how it went',
+      (tester) async {
+    // Named by the game alone, four rounds of Word Match were four stops all
+    // called "Word Match" to a learner hearing the controller or gaze.
+    GameScore round(int score) => GameScore(
+          gameType: GameType.wordMatch,
+          score: score,
+          total: 5,
+          starsEarned: 1,
+          date: DateTime.now(),
+        );
+    final progress = LearningProgress(
+      profileId: 'test-profile',
+      lastActivityDate: DateTime.now(),
+      gamesPlayed: 2,
+      recentScores: [round(2), round(4)],
+    );
+    await _pumpHub(
+      tester,
+      const ProgressScreen(),
+      role: UserRole.student,
+      extra: [
+        progressProvider.overrideWith(() => _StubProgressNotifier(progress)),
+      ],
+    );
+
+    final games =
+        _publishedLabels().where((l) => l.startsWith('Word Match')).toList();
+    expect(games, hasLength(2));
+    expect(games[0], contains('4 of 5'));
+    expect(games[1], contains('2 of 5'));
+    // Said aloud on every move, so the grammar is heard too.
+    expect(games[0], contains('1 star,'));
 
     await _unmount(tester);
   });
