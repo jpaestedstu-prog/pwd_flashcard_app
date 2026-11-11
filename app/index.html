@@ -97,6 +97,21 @@
       if (l) l.remove();
     });
   </script>
+  <script>
+    // A slider's name. Flutter labels the element around a slider's <input>, and
+    // a screen reader that lands on the input heard only its value ("slider,
+    // Normal, 100%"). The name goes on the input as well.
+    new MutationObserver(function () {
+      document.querySelectorAll('flt-semantics > input[type=range]').forEach(function (input) {
+        var name = input.parentElement.getAttribute('aria-label');
+        if (name && input.getAttribute('aria-label') !== name) {
+          input.setAttribute('aria-label', name);
+        }
+      });
+    }).observe(document.documentElement, {
+      subtree: true, childList: true, attributes: true, attributeFilter: ['aria-label'],
+    });
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
