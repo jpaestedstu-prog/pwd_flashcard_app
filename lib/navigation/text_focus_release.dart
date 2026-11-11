@@ -36,7 +36,27 @@ class TextFocusReleaseObserver extends NavigatorObserver {
   }
 
   /// Whether the focus at [context] is a text box's.
+  ///
+  /// Not when [context] is leaving the tree in this frame: `go('/settings')`
+  /// from the card viewer, on a phone held sideways, took down the widget
+  /// that held the focus as it opened Settings. Such a widget is still
+  /// mounted but no longer active, and a debug build refuses to look up an
+  /// ancestor from it: the error was thrown inside the Navigator's push and
+  /// left the Navigator locked (the landscape walkthroughs on CI, 11 Nov). A
+  /// release build makes no such check, so it is unchanged.
   static bool holdsText(BuildContext context) =>
-      context.widget is EditableText ||
-      context.findAncestorWidgetOfExactType<EditableText>() != null;
+      _active(context) &&
+      (context.widget is EditableText ||
+          context.findAncestorWidgetOfExactType<EditableText>() != null);
+
+  /// Whether [context] is in the tree right now. Only a debug build keeps
+  /// that state, and only a debug build needs it.
+  static bool _active(BuildContext context) {
+    var active = true;
+    assert(() {
+      if (context is Element) active = context.debugIsActive;
+      return true;
+    }());
+    return active;
+  }
 }

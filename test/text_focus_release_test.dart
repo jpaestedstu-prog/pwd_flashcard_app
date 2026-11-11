@@ -162,4 +162,69 @@ void main() {
     await tester.pumpAndSettle();
     expect(button.hasFocus, isTrue);
   });
+
+  // The landscape walkthroughs on CI (11 Nov): `go('/settings')` from the
+  // card viewer took down the widget that held the focus in the same frame
+  // as it opened Settings. That widget was still mounted but no longer
+  // active, and a debug build refuses to look up an ancestor from there: the
+  // error was thrown inside the Navigator's push, left the Navigator locked,
+  // and Settings never showed. Here the focus sits beside a Navigator and
+  // goes in the same rebuild that gives the Navigator its new screen.
+  testWidgets('a focus leaving as a new screen opens: no error, and the '
+      'screen opens', (tester) async {
+    final node = FocusNode();
+    addTearDown(node.dispose);
+    final host = GlobalKey<_LeavingFocusHostState>();
+    await tester.pumpWidget(MaterialApp(
+      home: _LeavingFocusHost(key: host, node: node),
+    ));
+    node.requestFocus();
+    await tester.pump();
+    expect(node.hasFocus, isTrue);
+    host.currentState!.openNext();
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.text('Next screen'), findsOneWidget);
+    expect(node.hasFocus, isFalse, reason: 'it left with its widget');
+  });
+}
+
+/// A focusable box above a Navigator; [openNext] removes the box and gives
+/// the Navigator a new screen in one rebuild, the box first.
+class _LeavingFocusHost extends StatefulWidget {
+  const _LeavingFocusHost({super.key, required this.node});
+
+  final FocusNode node;
+
+  @override
+  State<_LeavingFocusHost> createState() => _LeavingFocusHostState();
+}
+
+class _LeavingFocusHostState extends State<_LeavingFocusHost> {
+  final _observers = [TextFocusReleaseObserver()];
+  var _boxShown = true;
+  var _pages = <Page<void>>[
+    const MaterialPage(key: ValueKey('first'), child: Text('First screen')),
+  ];
+
+  void openNext() => setState(() {
+        _boxShown = false;
+        _pages = [
+          ..._pages,
+          const MaterialPage(key: ValueKey('next'), child: Text('Next screen')),
+        ];
+      });
+
+  @override
+  Widget build(BuildContext context) => Column(children: [
+        if (_boxShown)
+          Focus(focusNode: widget.node, child: const SizedBox(height: 10)),
+        Expanded(
+          child: Navigator(
+            pages: _pages,
+            observers: _observers,
+            onDidRemovePage: (_) {},
+          ),
+        ),
+      ]);
 }

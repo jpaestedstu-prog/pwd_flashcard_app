@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -85,10 +87,18 @@ void main() {
           }
 
           final controls = ['Previous', 'FSL', 'Show Me', 'Flip', 'Next'];
-          final rows = {
-            for (final c in controls) tester.getCenter(find.text(c)).dy.round(),
-          };
-          expect(rows.length, 1, reason: '$where: the controls are on one row');
+          // The labels' centres, not rounded: on one row they are equal to a
+          // hair, and at 320x568 and 1.5x exactly on a half pixel (538.5),
+          // where rounding split them in two with CI's Linux fonts (11 Nov).
+          // A second row is a whole button lower.
+          final ys = [
+            for (final c in controls) tester.getCenter(find.text(c)).dy,
+          ];
+          expect(
+            ys.reduce(math.max) - ys.reduce(math.min),
+            lessThan(1),
+            reason: '$where: the controls are on one row',
+          );
           expect(
             tester.getCenter(find.text('English')).dy,
             closeTo(tester.getCenter(find.text('Filipino')).dy, 1),
