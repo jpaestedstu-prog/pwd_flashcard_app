@@ -180,8 +180,37 @@ abstract class DropPermissionsTask : DefaultTask() {
     }
 }
 
+// The version code of a build for ONE kind of processor that is not split per
+// ABI: what `flutter run` makes for the connected device (`-Ptarget-platform=
+// android-arm64` on the Honor). Flutter gives such a build the bare build number
+// (27), while the website's split APK for that processor carries 2000 + build
+// (arm64), 1000 + build (arm32) or 4000 + build (x86_64) - see
+// docs/signing.md. Installing 27 over an installed 2026 is a downgrade, Android
+// refuses it, and Flutter's tool answers a failed install by UNINSTALLING the
+// app and installing again: every profile on the tablet went with it (the
+// Honor, 10 Nov 2026, 09:14). So a single-processor build takes the code its
+// split APK would have and installs over the matching website copy as an
+// update. Split, universal and Play builds name several processors and keep
+// Flutter's own codes.
+val singleAbiVersionOffset: Int? =
+    if (project.findProperty("split-per-abi")?.toString() == "true") {
+        null
+    } else {
+        when (project.findProperty("target-platform")?.toString()?.trim()) {
+            "android-arm" -> 1000
+            "android-arm64" -> 2000
+            "android-x64" -> 4000
+            else -> null
+        }
+    }
+
 androidComponents {
     onVariants { variant ->
+        singleAbiVersionOffset?.let { offset ->
+            variant.outputs.forEach { output ->
+                output.versionCode.set(offset + flutter.versionCode)
+            }
+        }
         if (isPlayBuild) {
             val task = project.tasks.register<DropPermissionsTask>(
                 "drop${variant.name.replaceFirstChar { it.uppercase() }}PlayPermissions",

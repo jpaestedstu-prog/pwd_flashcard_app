@@ -36,6 +36,20 @@ password were deleted.
   build therefore installs over a tablet's real copy. This matters: when
   `flutter run` meets a signature mismatch it *uninstalls* the app, which
   wipes every profile on a shared study tablet.
+- **A build for one processor carries its split APK's version code.** The
+  website's split APKs number themselves 2000 + build (arm64), 1000 + build
+  (arm32) and 4000 + build (x86_64); a build for the connected device alone,
+  which is what `flutter run` makes, used to get the bare build number. On
+  10 November 2026 a debug build numbered 27 met the Honor's installed 2026,
+  Android refused the downgrade, and `flutter run` answered the failed
+  install the same way: it uninstalled the app and installed again, and all
+  21 profiles on the tablet went with it (restored from the cloud with
+  recovery codes the same day). `android/app/build.gradle.kts`
+  (`singleAbiVersionOffset`) now gives such a build the code its split APK
+  would have, so running the current code installs as an update. It cannot
+  help an *older* tree: running a build numbered below the installed one on
+  a study tablet still uninstalls it. Install test copies with
+  `adb install -r` instead, which only ever fails.
 - **No key, no build.** Gradle stops with a message if `key.properties` is
   missing, rather than signing with some other key.
 - `FLASHLEARN_SIGNING_PROPERTIES` may point at a `key.properties` somewhere
