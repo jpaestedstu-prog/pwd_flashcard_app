@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../core/widgets/fit_text.dart';
+import '../../../core/utils/localized_date.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -69,7 +71,7 @@ class ShowcaseCard extends StatelessWidget {
             ),
           ),
           color: hc.surface,
-          child: InkWell(
+          child: Semantics(container: true, button: true, child: InkWell(
             onTap: onTap,
             borderRadius: BorderRadius.circular(20),
             child: Column(
@@ -140,8 +142,6 @@ class ShowcaseCard extends StatelessWidget {
                                     fontWeight: FontWeight.w800,
                                     color: hc.textPrimary,
                                   ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ],
                             ),
@@ -203,8 +203,6 @@ class ShowcaseCard extends StatelessWidget {
                     style: AppTypography.bodySmall.copyWith(
                       color: hc.textSecondary,
                     ),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
 
@@ -331,21 +329,35 @@ class ShowcaseCard extends StatelessWidget {
                 // ─── Footer: date + actions ─────────
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 8, 12),
-                  child: Row(
+                  // The date and the buttons on one line where they fit, the
+                  // buttons under the date where not (82 px over on a phone).
+                  child: Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      Icon(
-                        Icons.calendar_today_rounded,
-                        size: 12,
-                        color: hc.textHint,
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.calendar_today_rounded,
+                            size: 12,
+                            color: hc.textHint,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            LocalizedDate.monthDayYear(
+                              item.earnedAt,
+                              AppLocalizations.of(context),
+                            ),
+                            style: AppTypography.labelSmall.copyWith(
+                              color: hc.textHint,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        _formatDate(item.earnedAt),
-                        style: AppTypography.labelSmall.copyWith(
-                          color: hc.textHint,
-                        ),
-                      ),
-                      const Spacer(),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
                       if (onPin != null)
                         IconButton(
                           onPressed: onPin,
@@ -358,7 +370,6 @@ class ShowcaseCard extends StatelessWidget {
                                 ? typeColor
                                 : hc.textHint,
                           ),
-                          visualDensity: VisualDensity.compact,
                           tooltip: item.isPinned
                               ? _t(context).scUnpin
                               : _t(context).scPinTop,
@@ -371,15 +382,16 @@ class ShowcaseCard extends StatelessWidget {
                             size: 18,
                             color: hc.textHint,
                           ),
-                          visualDensity: VisualDensity.compact,
                           tooltip: _t(context).scRemoveFrom,
                         ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
               ],
             ),
-          ),
+          )),
         ),
       ),
     );
@@ -392,13 +404,6 @@ class ShowcaseCard extends StatelessWidget {
     return AppColors.error;
   }
 
-  String _formatDate(DateTime date) {
-    final months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
-    return '${months[date.month - 1]} ${date.day}, ${date.year}';
-  }
 }
 
 /// Header widget for the portfolio showing student name & stats
@@ -444,14 +449,16 @@ class PortfolioHeader extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Text('🎨', style: TextStyle(fontSize: 32)),
+              const ExcludeSemantics(
+                child: Text('🎨', style: TextStyle(fontSize: 32)),
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "$name's Portfolio",
+                      _t(context).scNamesPortfolio(name),
                       style: AppTypography.titleLarge.copyWith(
                         color: AppColors.textOnPrimary,
                         fontWeight: FontWeight.w800,
@@ -469,32 +476,53 @@ class PortfolioHeader extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
-          Row(
-            children: [
-              _MiniStat(
-                icon: Icons.collections_bookmark_rounded,
-                label: _t(context).scStatItems,
-                value: '$totalItems',
-              ),
-              const SizedBox(width: 16),
-              _MiniStat(
-                icon: Icons.push_pin_rounded,
-                label: _t(context).scStatPinned,
-                value: '$pinnedItems',
-              ),
-              const SizedBox(width: 16),
-              _MiniStat(
-                icon: Icons.emoji_events_rounded,
-                label: _t(context).scStatAwards,
-                value: '$achievementCount',
-              ),
-              const SizedBox(width: 16),
-              _MiniStat(
-                icon: Icons.star_rounded,
-                label: _t(context).stars,
-                value: '$starsEarned',
-              ),
-            ],
+          // Four across leave a phone about 42 px a label: "Mga
+          // Gantimpala" was drawn at 6 px (8 Nov). Two by two there.
+          LayoutBuilder(
+            builder: (context, box) {
+              final stats = <Widget>[
+                _MiniStat(
+                  icon: Icons.collections_bookmark_rounded,
+                  label: _t(context).scStatItems,
+                  value: '$totalItems',
+                ),
+                _MiniStat(
+                  icon: Icons.push_pin_rounded,
+                  label: _t(context).scStatPinned,
+                  value: '$pinnedItems',
+                ),
+                _MiniStat(
+                  icon: Icons.emoji_events_rounded,
+                  label: _t(context).scStatAwards,
+                  value: '$achievementCount',
+                ),
+                _MiniStat(
+                  icon: Icons.star_rounded,
+                  label: _t(context).stars,
+                  value: '$starsEarned',
+                ),
+              ];
+              final scale = MediaQuery.textScalerOf(context).scale(1);
+              final perRow = box.maxWidth >= 48 + 4 * (16 + 80 * scale)
+                  ? 4
+                  : 2;
+              return Column(
+                children: [
+                  for (var r = 0; r < stats.length; r += perRow) ...[
+                    if (r > 0) const SizedBox(height: 12),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (var c = r; c < r + perRow; c++) ...[
+                          if (c > r) const SizedBox(width: 16),
+                          stats[c],
+                        ],
+                      ],
+                    ),
+                  ],
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -519,7 +547,7 @@ class _MiniStat extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: Container(
+      child: Semantics(label: '$value $label', excludeSemantics: true, child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.15),
@@ -536,17 +564,17 @@ class _MiniStat extends StatelessWidget {
                 fontWeight: FontWeight.w800,
               ),
             ),
-            Text(
+            // Whole, a little smaller where a Filipino word is too long.
+            FitText(
               label,
               style: AppTypography.labelSmall.copyWith(
-                color: AppColors.textOnPrimary.withValues(alpha: 0.75),
-                fontSize: 9,
+                color: AppColors.textOnPrimary.withValues(alpha: 0.85),
               ),
-              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
             ),
           ],
         ),
-      ),
+      )),
     );
   }
 }

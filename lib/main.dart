@@ -1,8 +1,10 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show kReleaseMode;
+import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode;
+import 'navigation/browser_focus_release.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +12,8 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'l10n/app_localizations.dart';
+import 'core/accessibility/screen_reader_focus_guard.dart';
+import 'core/accessibility/spoken_words.dart';
 import 'core/security/owner_uid_migration.dart';
 import 'core/security/pin_migration.dart';
 import 'core/security/username_migration.dart';
@@ -17,6 +21,7 @@ import 'core/services/action_clip_service.dart';
 import 'core/services/active_time_tracker.dart';
 import 'core/services/alarm_scheduler.dart';
 import 'core/services/orientation_hold.dart';
+import 'core/services/screen_awake.dart';
 import 'core/services/schedule_ownership.dart';
 import 'features/routine/services/routine_reminder_scheduler.dart';
 import 'features/routine/providers/today_routine_provider.dart';
@@ -43,7 +48,7 @@ import 'features/gamepad/widgets/gamepad_host.dart';
 import 'features/gaze_control/debug/gaze_debug_bridge.dart';
 import 'features/gaze_control/services/gaze_metrics.dart';
 import 'features/gaze_control/providers/gaze_settings_provider.dart'
-    show gazeKeyboardBypassProvider;
+    show gazeKeyboardBypassProvider, gazeSettingsProvider;
 import 'features/gaze_control/widgets/gaze_focus_overlay.dart';
 import 'features/tv_cast/widgets/cast_status_pill.dart';
 import 'features/onboarding/widgets/membership_eviction_gate.dart';
@@ -51,7 +56,9 @@ import 'features/onboarding/widgets/membership_eviction_gate.dart';
 // on all platforms. If you haven't run that command yet, see the README.
 import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/form_factor.dart';
 import 'core/utils/error_handler.dart';
+import 'core/utils/frame_timing_log.dart';
 import 'data/local/hive_service.dart';
 import 'data/local/local_repository.dart';
 import 'data/remote/firestore_repository.dart';
@@ -59,9 +66,12 @@ import 'data/remote/firestore_repository.dart';
 import 'data/models/shop_data.dart';
 import 'navigation/app_router.dart';
 import 'navigation/dpad_keys.dart';
+import 'navigation/dpad_modal_focus.dart';
+import 'core/utils/input_trace.dart';
 import 'providers/app_providers.dart';
 import 'widgets/connectivity_banner.dart';
 import 'widgets/sound_off_hint.dart';
+import 'widgets/filipino_voice_hint.dart';
 import 'widgets/error_boundary.dart';
 import 'core/services/sync_queue/sync_queue_service.dart';
 import 'widgets/sync_status_widget.dart';
@@ -86,15 +96,31 @@ SystemUiOverlayStyle _systemUiStyleFor({required bool isDark}) {
 // ignore: unused_element
 AppLifecycleListener? _gazeMetricsLifecycle;
 
+/// Keeps the browser's accessibility tree on for the life of the app: held,
+/// never read.
+// ignore: unused_element
+SemanticsHandle? _webSemantics;
+
 void main() {
   // Wrap the entire startup in a guarded zone so that
   // ensureInitialized() and runApp() share the SAME zone.
   // This prevents the "Zone mismatch" error.
   ErrorHandler.runGuarded(() async {
-    WidgetsFlutterBinding.ensureInitialized();
+    // WidgetsFlutterBinding, telling TalkBack the app's words without their
+    // emoji ("Welcome Back!", not "Welcome Back! waving hand").
+    SpokenWordsBinding.ensureInitialized();
+
+    // In a browser Flutter builds the page a screen reader reads only after
+    // a press on its hidden "Enable accessibility" button, so NVDA or
+    // Narrator met that one button and nothing of the app. On from the
+    // start, as it is on the tablet.
+    if (kIsWeb) _webSemantics = SemanticsBinding.instance.ensureSemantics();
+    if (kIsWeb) installBrowserFocusRelease();
 
     // Install global error handling FIRST
     ErrorHandler.init();
+    // Frame times to the device log, in a measuring build only.
+    FrameTimingLog.install();
     setupErrorWidget();
 
     // ─── High Refresh-Rate Performance Configuration ──────
@@ -263,6 +289,11 @@ void main() {
       GazeDebugBridge.install(contextOf: () => rootNavigatorKey.currentContext);
     }
 
+    // A pop-up opens with its first control focused, so a D-pad's first
+    // press acts instead of vanishing into the empty dialog.
+    DpadModalFocus.install();
+    InputTrace.installFocusLog();
+
     runApp(
       ProviderScope(
         overrides: [
@@ -293,6 +324,13 @@ class FlashLearnApp extends ConsumerWidget {
     final settings = ref.watch(settingsProvider);
     // The active profile's "Screen orientation" (deduplicated inside).
     OrientationHold.prefer(settings.screenOrientation);
+    // The display stays on only while this learner steers hands-free
+    // (deduplicated inside; see ScreenAwake).
+    ScreenAwake.keepOn(
+      ref.watch(
+        gazeSettingsProvider.select((g) => g.enabled || g.voiceCommands),
+      ),
+    );
 
     // ── Active-time tracking + alarm scheduler lifecycle ──
     // When the active profile is a student/child, start the tracker
@@ -589,10 +627,12 @@ class FlashLearnApp extends ConsumerWidget {
         ? AppTheme.withReducedMotion(baseTheme)
         : baseTheme;
 
-    // When reduced motion is enabled, set all flutter_animate durations to zero
-    // so every .animate() call throughout the app becomes instant.
-    // When reduced motion is enabled, skip all flutter_animate durations.
-    // Otherwise use a snappy 250 ms default (lower than 300 ms for 120 Hz feel).
+    // When reduced motion is enabled, zero flutter_animate's default duration,
+    // which every effect that names no duration of its own reads. An effect
+    // that names one (most screens' short entrance fades) still plays: a
+    // list's staggered entrance goes through StaggerIn, which plays nothing
+    // with Reduced Motion on, and endless loops are stopped below. Otherwise
+    // a snappy 250 ms default (lower than 300 ms for a 120 Hz feel).
     Animate.defaultDuration = settings.reducedMotion
         ? Duration.zero
         : const Duration(milliseconds: 250);
@@ -624,7 +664,7 @@ class FlashLearnApp extends ConsumerWidget {
           final mediaQuery = MediaQuery.of(context);
           final systemScale = mediaQuery.textScaler.scale(1.0);
           final combined = (systemScale * settings.fontScale).clamp(0.85, 1.5);
-          return AnnotatedRegion<SystemUiOverlayStyle>(
+          final app = AnnotatedRegion<SystemUiOverlayStyle>(
             // The status and navigation bars of every screen that does not set its
             // own (an app bar does). Without a default, a screen kept whatever the
             // last app bar left: white icons on the light Home after Progress, or
@@ -632,6 +672,7 @@ class FlashLearnApp extends ConsumerWidget {
             value: systemUi,
             child: MediaQuery(
               data: mediaQuery.copyWith(textScaler: TextScaler.linear(combined)),
+              child: AdaptiveTheme(
               // ErrorBoundary (global error snackbars), ConnectivityBanner (offline
               // indicator), then MembershipEvictionGate above LockEnforcerGate so an
               // educator-driven removal wins over a time-driven lock.
@@ -670,7 +711,18 @@ class FlashLearnApp extends ConsumerWidget {
                                   // who listen to the words: over the screens,
                                   // never over a lock.
                                   child: SoundOffHintHost(
-                                    child: child ?? const SizedBox.shrink(),
+                                    // "No Filipino voice on this device",
+                                    // once, where Filipino would be read
+                                    // in the English voice.
+                                    child: FilipinoVoiceHintHost(
+                                      // A D-pad focus left out of sight
+                                      // lets go while a screen reader runs,
+                                      // so it cannot pull TalkBack back.
+                                      child: ScreenReaderFocusGuard(
+                                        child:
+                                            child ?? const SizedBox.shrink(),
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -682,7 +734,25 @@ class FlashLearnApp extends ConsumerWidget {
                   ),
                 ),
               ),
+              ),
             ),
+          );
+          // Up and down leave a one-line text field (dpad_keys.dart). Here,
+          // inside Flutter's own text shortcuts, so it is asked first, and
+          // around the overlays as well as the screens.
+          //
+          // In Filipino, the words a screen reader is handed are marked
+          // Filipino, so TalkBack (and a browser's reader) reads them with a
+          // Filipino voice on a tablet set to English (SpokenWords.filipino;
+          // its vocabulary words stay English).
+          //
+          // AdaptiveTheme: the control sizes for a phone, a tablet or a
+          // computer's browser, over the shared theme. It reads the text
+          // scale, so it goes inside the MediaQuery that sets it.
+          return Semantics(
+            localeForSubtree:
+                settings.locale == 'fil' ? SpokenWords.filipino : null,
+            child: DpadFieldExits(child: app),
           );
         },
       ),

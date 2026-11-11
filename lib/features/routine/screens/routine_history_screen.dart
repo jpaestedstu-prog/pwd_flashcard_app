@@ -14,6 +14,7 @@ import '../models/routine_history.dart';
 import '../models/routine_models.dart';
 import '../widgets/routine_lock_log.dart';
 import '../widgets/routine_wait_report_section.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// What actually happened, day by day.
 ///
@@ -63,7 +64,7 @@ class RoutineHistoryScreen extends ConsumerWidget {
           backgroundColor: Colors.transparent,
           elevation: 0,
           leading: const AppBackButton(),
-          title: Text(
+          title: AppBarTitle(
             childDisplayName == null
                 ? (l ? 'Kasaysayan ng Routine' : 'Routine History')
                 : (l

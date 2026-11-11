@@ -167,6 +167,9 @@ Future<MoodAnswer?> _askInSheet(
   speakMoodQuestion(ref, question);
   return showModalBottomSheet<MoodAnswer>(
     context: context,
+    // Without it the dismiss area is read as "Scrim", Material's
+    // untranslated default.
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
     isScrollControlled: true,
     // Reduced motion turns off the drag-to-dismiss gesture (and its
     // rubber-banding); the layout and the "Not now" button are identical
@@ -188,8 +191,12 @@ Future<MoodAnswer?> _askInSheet(
 /// whom the faces carry nothing (see [MoodPresentation.speakSelection]).
 void speakMoodQuestion(WidgetRef ref, String text) {
   if (!ref.read(moodPresentationProvider).speakSelection) return;
-  // Fire and forget: a learner should never wait on the speaker.
-  ref.read(ttsServiceProvider).speak(text);
+  // Fire and forget: a learner should never wait on the speaker. In the
+  // app's language, which the question is written in.
+  ref.read(ttsServiceProvider).speakIn(
+        text,
+        filipino: ref.read(settingsProvider).locale == 'fil',
+      );
 }
 
 /// Saves [answer] against a moment of the day and tells the learner.

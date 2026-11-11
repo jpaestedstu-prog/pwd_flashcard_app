@@ -176,7 +176,7 @@ class _LevelUpCelebrationScreenState extends State<LevelUpCelebrationScreen>
   /// beneath it — and puts the learner's focus on the dismiss button.
   @override
   Widget build(BuildContext context) =>
-      GazeModalRegion(child: _celebration(context));
+      GazeModalRegion(onBack: widget.onDismiss, child: _celebration(context));
 
   Widget _celebration(BuildContext context) {
     // `widget.reducedMotion` is passed down by the shell, and the scope covers

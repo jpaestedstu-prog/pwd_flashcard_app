@@ -240,6 +240,10 @@ class _WarningBanner extends StatelessWidget {
             liveRegion: true,
             label: '$title. $message',
             container: true,
+            // The press below is excluded with the drawing; a screen reader
+            // could hear the warning but never dismiss it.
+            button: true,
+            onTap: onDismiss,
             child: ExcludeSemantics(
               child: Card(
                 elevation: 6,

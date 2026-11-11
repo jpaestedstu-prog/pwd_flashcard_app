@@ -225,20 +225,23 @@ class _MoodPickerState extends State<MoodPicker> {
           const SizedBox(height: 4),
           SizedBox(
             width: double.infinity,
-            child: Semantics(
-              button: true,
-              label: isFilipino
-                  ? 'I-save ang pakiramdam mo'
-                  : 'Save how you feel',
-              excludeSemantics: true,
-              child: ElevatedButton.icon(
-                onPressed: _save,
-                icon: Text(
+            child: ElevatedButton.icon(
+              onPressed: _save,
+              // The face is shown, not read: the label says what the button
+              // does.
+              icon: ExcludeSemantics(
+                child: Text(
                   selected.emoji,
                   style: const TextStyle(fontSize: 20),
                   textScaler: const TextScaler.linear(1.0),
                 ),
-                label: Text(
+              ),
+              label: Semantics(
+                label: isFilipino
+                  ? 'I-save ang pakiramdam mo'
+                  : 'Save how you feel',
+                excludeSemantics: true,
+                child: Text(
                   isFilipino ? 'I-save' : 'Save',
                   style: AppTypography.titleSmall.copyWith(
                     color: Colors.white,
@@ -246,18 +249,18 @@ class _MoodPickerState extends State<MoodPicker> {
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+              ),
+              ),
+              style: ElevatedButton.styleFrom(
+                // `darkColor`, not `color`: the label is white, and white on
+                // the pale happy / tired swatches fails contrast badly.
+                backgroundColor: selected.darkColor,
+                minimumSize: const Size.fromHeight(48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                style: ElevatedButton.styleFrom(
-                  // `darkColor`, not `color`: the label is white, and white on
-                  // the pale happy / tired swatches fails contrast badly.
-                  backgroundColor: selected.darkColor,
-                  minimumSize: const Size.fromHeight(48),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  elevation: 0,
-                  shadowColor: Colors.transparent,
-                ),
+                elevation: 0,
+                shadowColor: Colors.transparent,
               ),
             ),
           ),
@@ -324,10 +327,10 @@ class _Face extends StatelessWidget {
     final label = mood.labelOf(isFilipino: isFilipino);
 
     return Semantics(
+      container: true,
       button: true,
       selected: selected,
       label: label,
-      excludeSemantics: true,
       // Its own Material: this is rendered in a route above the app's, and a
       // bare InkWell there has no ink to splash on.
       child: Material(
@@ -335,56 +338,58 @@ class _Face extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(4),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: size,
-                  height: size,
-                  decoration: BoxDecoration(
-                    // The chosen face is filled and ringed harder than the
-                    // rest: with a note field on screen the selection has to
-                    // survive the learner looking away at the keyboard.
-                    color: tint.withValues(
-                      alpha: selected
-                          ? (hc.hc ? 0.45 : 0.38)
-                          : (hc.hc ? 0.30 : 0.18),
+          child: ExcludeSemantics(
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: size,
+                    height: size,
+                    decoration: BoxDecoration(
+                      // The chosen face is filled and ringed harder than the
+                      // rest: with a note field on screen the selection has to
+                      // survive the learner looking away at the keyboard.
+                      color: tint.withValues(
+                        alpha: selected
+                            ? (hc.hc ? 0.45 : 0.38)
+                            : (hc.hc ? 0.30 : 0.18),
+                      ),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: tint, width: selected ? 4 : 2),
                     ),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: tint, width: selected ? 4 : 2),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    mood.emoji,
-                    style: TextStyle(
-                      fontSize: size * 0.45,
-                      height: 1.0,
-                      leadingDistribution: TextLeadingDistribution.even,
+                    alignment: Alignment.center,
+                    child: Text(
+                      mood.emoji,
+                      style: TextStyle(
+                        fontSize: size * 0.45,
+                        height: 1.0,
+                        leadingDistribution: TextLeadingDistribution.even,
+                      ),
+                      textScaler: const TextScaler.linear(1.0),
                     ),
-                    textScaler: const TextScaler.linear(1.0),
                   ),
-                ),
-                const SizedBox(height: 4),
-                SizedBox(
-                  // Comfortably wider than the circle, because the label is
-                  // what has to fit — not the face. Tied to the circle it was
-                  // 68px, and "Frustrated" is one word wider than that, so
-                  // Flutter broke it mid-word ("Frustrat / ed").
-                  width: size + 40,
-                  child: Text(
-                    label,
-                    style: AppTypography.labelSmall.copyWith(
-                      color: hc.textSecondary,
-                      fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+                  const SizedBox(height: 4),
+                  SizedBox(
+                    // Comfortably wider than the circle, because the label is
+                    // what has to fit — not the face. Tied to the circle it was
+                    // 68px, and "Frustrated" is one word wider than that, so
+                    // Flutter broke it mid-word ("Frustrat / ed").
+                    width: size + 40,
+                    child: Text(
+                      label,
+                      style: AppTypography.labelSmall.copyWith(
+                        color: hc.textSecondary,
+                        fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

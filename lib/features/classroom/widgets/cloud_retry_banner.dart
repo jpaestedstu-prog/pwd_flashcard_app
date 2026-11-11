@@ -48,9 +48,7 @@ class _CloudRetryBannerState extends State<CloudRetryBanner> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Still offline — ${FirebaseService.lastInitError ?? "unknown error"}',
-          ),
+          content: Text(_t(context).crbStillOffline),
         ),
       );
     }
@@ -108,7 +106,9 @@ class _CloudRetryBannerState extends State<CloudRetryBanner> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.refresh_rounded, size: 16),
-              label: Text(_retrying ? 'Retrying…' : 'Retry now'),
+              label: Text(
+                _retrying ? _t(context).crbRetrying : _t(context).crbRetryNow,
+              ),
               style: TextButton.styleFrom(foregroundColor: Colors.red.shade900),
             ),
           ),

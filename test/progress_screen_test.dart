@@ -496,8 +496,11 @@ void main() {
       await pumpProgress(tester, role: UserRole.student, locale: 'fil');
       expect(find.text('Sunod-sunod'), findsOneWidget); // Streak
       expect(find.text('Mga Laro'), findsOneWidget); // Games
-      expect(find.text('Kabihasaan'), findsOneWidget); // Mastery
       expect(find.textContaining('Progreso ni'), findsOneWidget);
+      // Under the totals, which take a row more when a label would not fit
+      // three across — as with the test's square-lettered font.
+      await scrollTo(tester, find.text('Kabihasaan'));
+      expect(find.text('Kabihasaan'), findsOneWidget); // Mastery
     });
 
     testWidgets('the sections below the fold are translated too', (
@@ -558,5 +561,56 @@ void main() {
       );
       await expectNoOverflowWhileScrolling(tester, 'child');
     });
+  });
+
+  // The badges panel is one D-pad stop, so TalkBack read every badge inside it
+  // as one item: forty names, each twice, about a minute (the tablet, 10 Nov).
+  // A screen reader now hears one sentence: what was earned, and how many
+  // are left.
+  group('the achievement badges, to a screen reader', () {
+    for (final locale in const ['en', 'fil']) {
+      testWidgets('one short sentence, not every badge ($locale)', (
+        tester,
+      ) async {
+        final semantics = tester.ensureSemantics();
+        await pumpProgress(tester, role: UserRole.student, locale: locale);
+        await scrollTo(
+          tester,
+          find.text(locale == 'en' ? 'Achievements' : 'Mga Achievement'),
+        );
+        final labels = <String>[];
+        bool visit(SemanticsNode node) {
+          final label = node.getSemanticsData().label;
+          if (label.isNotEmpty) labels.add(label);
+          node.visitChildren(visit);
+          return true;
+        }
+
+        for (final view in tester.binding.renderViews) {
+          final root = view.owner?.semanticsOwner?.rootSemanticsNode;
+          if (root != null) visit(root);
+        }
+        final earnedWord = locale == 'en' ? 'Earned: ' : 'Nakuha: ';
+        final noneWord =
+            locale == 'en' ? 'None earned yet.' : 'Wala pang nakukuha.';
+        expect(
+          labels.where((l) => l.contains(earnedWord) || l.contains(noneWord)),
+          isNotEmpty,
+          reason: 'the badges said in one sentence: $labels',
+        );
+        expect(
+          labels.where(
+            (l) =>
+                l.contains('achievement, locked') ||
+                l.contains('achievement, unlocked') ||
+                l.contains('hindi pa nakukuha') ||
+                l.contains('nakuha na'),
+          ),
+          isEmpty,
+          reason: 'no badge read on its own any more',
+        );
+        semantics.dispose();
+      });
+    }
   });
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/widgets/fit_text.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -124,6 +125,41 @@ Future<void> showProgressCustomizeSheet(
   );
 }
 
+/// A skin's name in the reader's language; some stay as they are (Mint).
+String _themeName(AppLocalizations? t, String id, String fallback) =>
+    switch (id) {
+      'classic' => t?.ptClassic,
+      'ocean' => t?.ptOcean,
+      'sunset' => t?.ptSunset,
+      'forest' => t?.ptForest,
+      'candy' => t?.ptCandy,
+      'night' => t?.ptNight,
+      'galaxy' => t?.ptGalaxy,
+      'autumn' => t?.ptAutumn,
+      'rainbow' => t?.ptRainbow,
+      'cocoa' => t?.ptCocoa,
+      _ => null,
+    } ??
+    fallback;
+
+String _layoutName(AppLocalizations? t, String id, String fallback) =>
+    switch (id) {
+      'comfortable' => t?.plComfortable,
+      'compact' => t?.plCompact,
+      'showcase' => t?.plShowcase,
+      _ => null,
+    } ??
+    fallback;
+
+String _layoutBlurb(AppLocalizations? t, String id, String fallback) =>
+    switch (id) {
+      'comfortable' => t?.plComfortableBlurb,
+      'compact' => t?.plCompactBlurb,
+      'showcase' => t?.plShowcaseBlurb,
+      _ => null,
+    } ??
+    fallback;
+
 class _SectionLabel extends StatelessWidget {
   final IconData icon;
   final String text;
@@ -162,7 +198,7 @@ class _ThemeSwatch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
-    return InkWell(
+    return Semantics(container: true, button: true, selected: selected, child: InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(18),
       child: SizedBox(
@@ -205,19 +241,18 @@ class _ThemeSwatch extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 6),
-            Text(
-              theme.displayName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            FitText(
+              _themeName(AppLocalizations.of(context), theme.id, theme.displayName),
               style: AppTypography.bodySmall.copyWith(
                 color: hc.textPrimary,
                 fontWeight: selected ? FontWeight.bold : FontWeight.w500,
               ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
       ),
-    );
+    ));
   }
 }
 
@@ -237,7 +272,7 @@ class _LayoutSwatch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
-    return InkWell(
+    return Semantics(container: true, button: true, selected: selected, child: InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: SizedBox(
@@ -264,9 +299,7 @@ class _LayoutSwatch extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      layout.displayName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      _layoutName(AppLocalizations.of(context), layout.id, layout.displayName),
                       style: AppTypography.labelLarge.copyWith(
                         color: hc.textPrimary,
                         fontWeight:
@@ -274,9 +307,7 @@ class _LayoutSwatch extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      layout.blurb,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      _layoutBlurb(AppLocalizations.of(context), layout.id, layout.blurb),
                       style: AppTypography.labelSmall
                           .copyWith(color: hc.textSecondary),
                     ),
@@ -289,7 +320,7 @@ class _LayoutSwatch extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ));
   }
 }
 

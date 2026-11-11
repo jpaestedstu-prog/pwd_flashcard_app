@@ -221,7 +221,8 @@ class _ShowMeSheetState extends State<_ShowMeSheet> {
     if (_error || (_clip == null && _controller == null)) {
       return Center(
         child: Text(
-          "This clip isn't available right now.",
+          AppLocalizations.of(context)?.smClipUnavailable ??
+              "This clip isn't available right now.",
           style: AppTypography.bodyMedium.copyWith(color: hc.textSecondary),
           textAlign: TextAlign.center,
         ),

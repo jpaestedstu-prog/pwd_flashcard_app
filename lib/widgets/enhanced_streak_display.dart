@@ -91,6 +91,8 @@ class EnhancedStreakHero extends StatelessWidget {
             builder: (context, value, _) {
               return Text(
                 '$value',
+                // With its words: "12" alone said nothing.
+                semanticsLabel: '$value ${_t(context).dayStreak}',
                 style: AppTypography.headlineLarge.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w900,
@@ -103,11 +105,14 @@ class EnhancedStreakHero extends StatelessWidget {
 
           const SizedBox(height: 2),
 
-          Text(
-            _t(context).dayStreak,
-            style: AppTypography.titleSmall.copyWith(
-              color: Colors.white.withValues(alpha: 0.9),
-              fontWeight: FontWeight.w600,
+          // Said with the number above ("12 Day Streak").
+          ExcludeSemantics(
+            child: Text(
+              _t(context).dayStreak,
+              style: AppTypography.titleSmall.copyWith(
+                color: Colors.white.withValues(alpha: 0.9),
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
 
@@ -126,7 +131,9 @@ class EnhancedStreakHero extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(tier.emoji, style: const TextStyle(fontSize: 16)),
+                ExcludeSemantics(
+                  child: Text(tier.emoji, style: const TextStyle(fontSize: 16)),
+                ),
                 const SizedBox(width: 6),
                 // Flexible: at 2x "Nagsisimula Pa Lang" ran 91 px past the
                 // card; now it wraps inside the badge.
@@ -389,10 +396,13 @@ class _PulsingFlameState extends State<_PulsingFlame>
           child: child,
         );
       },
-      child: Text(
-        '🔥',
-        style: TextStyle(
-          fontSize: widget.streakDays >= 14 ? 52 : 44,
+      // A picture: the count beside it is what is read.
+      child: ExcludeSemantics(
+        child: Text(
+          '🔥',
+          style: TextStyle(
+            fontSize: widget.streakDays >= 14 ? 52 : 44,
+          ),
         ),
       ),
     );

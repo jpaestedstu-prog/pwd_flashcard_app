@@ -4,6 +4,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../widgets/auto_fit.dart';
+
 /// Makes every standard control in [theme] readable — the last step of
 /// building each theme the app has.
 ///
@@ -25,6 +27,25 @@ import 'package:flutter/services.dart';
 ///    text colour on it — the soft look, and a label you can read.
 ///
 /// A theme whose colours already pass is left as it was.
+/// The look of a tonal button: the same soft tint a selected chip wears, with
+/// the theme's own text on it (see [accessibleTheme]). The theme's filled
+/// style reaches `FilledButton.tonal` too, so without this a tonal button was
+/// drawn exactly like a primary one and the emphasis it was meant to carry
+/// was lost. Call sites pass it as `style:`.
+ButtonStyle tonalButtonStyle(BuildContext context) {
+  final cs = Theme.of(context).colorScheme;
+  return FilledButton.styleFrom(
+    backgroundColor: cs.secondaryContainer,
+    foregroundColor: cs.onSecondaryContainer,
+    iconColor: cs.onSecondaryContainer,
+  );
+}
+
+/// How many lines a text field's hint may take ([accessibleTheme]). A field
+/// with room for more lines than this should say so with its own
+/// `hintMaxLines`.
+const int kHintMaxLines = 5;
+
 ThemeData accessibleTheme(ThemeData theme) {
   final cs = theme.colorScheme;
   final page = theme.scaffoldBackgroundColor;
@@ -68,17 +89,22 @@ ThemeData accessibleTheme(ThemeData theme) {
         (s) => s.contains(WidgetState.disabled) ? disabled : enabled,
       );
 
+  // Every button's label goes through [autoFitButtonForeground]: it stays
+  // whole and centred however small the button gets. In the theme, so it
+  // reaches every button there is, of every theme, and any added later.
   ButtonStyle filled(ButtonStyle? existing) =>
       (existing ?? const ButtonStyle()).copyWith(
         backgroundColor: states(ink, disabledFill),
         foregroundColor: states(onInk, disabledText),
         iconColor: states(onInk, disabledText),
+        foregroundBuilder: autoFitButtonForeground,
       );
 
   ButtonStyle onPage(ButtonStyle? existing, {bool outlined = false}) {
     final base = (existing ?? const ButtonStyle()).copyWith(
       foregroundColor: states(ink, disabledText),
       iconColor: states(ink, disabledText),
+      foregroundBuilder: autoFitButtonForeground,
     );
     if (!outlined) return base;
     final width =
@@ -152,6 +178,18 @@ ThemeData accessibleTheme(ThemeData theme) {
   return theme.copyWith(
     appBarTheme: theme.appBarTheme.copyWith(
       systemOverlayStyle: statusBarOn(appBarGround),
+    ),
+    // A field's hint wraps onto a second and third line rather than ending in
+    // "…": a one-line field gave its hint one line, and on a phone at the
+    // largest Font Size "Maghanap ng mag-aaral…", "Ilagay ang iyong
+    // pangal…" and "XXXX-XXXX-…" were all cut (3 Nov). The field grows to
+    // hold it. A field that sets its own hint lines keeps them.
+    inputDecorationTheme: theme.inputDecorationTheme.copyWith(
+      hintMaxLines: theme.inputDecorationTheme.hintMaxLines ?? kHintMaxLines,
+      // An error says what to fix; one line cut it ("Dapat hindi bababa sa 8
+      // character ang pa…").
+      errorMaxLines: theme.inputDecorationTheme.errorMaxLines ?? kHintMaxLines,
+      helperMaxLines: theme.inputDecorationTheme.helperMaxLines ?? kHintMaxLines,
     ),
     colorScheme: cs.copyWith(
       primary: ink,

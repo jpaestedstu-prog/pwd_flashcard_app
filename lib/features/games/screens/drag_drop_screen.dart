@@ -27,7 +27,10 @@ import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/fullscreen_host.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../../../widgets/gesture_edge_padding.dart';
+import '../../../widgets/dpad_focusable.dart';
+import '../../gaze_control/logic/gaze_focus_driver.dart';
 import '../unfinished_round_stars.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 class DragDropScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
@@ -61,6 +64,19 @@ class _DragDropScreenState extends ConsumerState<DragDropScreen>
   List<Achievement> _newAchievements = [];
   final Map<String, String?> _matches = {}; // targetId → draggable word
 
+  /// The word picked up by pressing it rather than dragging it — the way
+  /// arrow keys, a switch box, a controller, gaze and a screen reader play
+  /// this game, none of which can drag. Pressing a Filipino row then puts it
+  /// there, through the same [_onAccept] a drop runs.
+  String? _picked;
+
+  /// Each word's focus, so a placement can hand focus on to the next word
+  /// still to place. Kept until dispose: a word can come round again.
+  final Map<String, FocusNode> _wordFocus = {};
+
+  FocusNode _focusOf(String word) =>
+      _wordFocus.putIfAbsent(word, () => FocusNode(debugLabel: 'word $word'));
+
   @override
   void initState() {
     super.initState();
@@ -73,9 +89,10 @@ class _DragDropScreenState extends ConsumerState<DragDropScreen>
     if (widget.categories.isNotEmpty) {
       all = all.where((c) => widget.categories.contains(c.category)).toList();
     }
+    // Shuffled first, so neither twin is always the one left out.
     _flashcards = AdaptiveDifficultyService.pickGameCards(
       profileId: ref.read(profileProvider)?.id,
-      cards: all,
+      cards: distinctDragDropCards(all..shuffle()),
       count: _totalItems,
     );
     _targets = _flashcards
@@ -92,6 +109,7 @@ class _DragDropScreenState extends ConsumerState<DragDropScreen>
         .toList();
     _draggables = _flashcards.map((f) => f.wordEnglish).toList()..shuffle();
     _matches.clear();
+    _picked = null;
     _correctCount = 0;
     _showResult = false;
     startTimerIfNeeded(widget.timedMode);
@@ -99,6 +117,9 @@ class _DragDropScreenState extends ConsumerState<DragDropScreen>
 
   @override
   void dispose() {
+    for (final node in _wordFocus.values) {
+      node.dispose();
+    }
     disposePause();
     disposeTimer();
     super.dispose();
@@ -155,6 +176,32 @@ class _DragDropScreenState extends ConsumerState<DragDropScreen>
         sound.playWrong();
         ref.read(hapticServiceProvider).error();
       }
+    });
+  }
+
+  /// Picks [word] up, or puts it back down when it is already picked up.
+  void _pick(String word) {
+    if (_isPlaced(word)) return;
+    setState(() => _picked = _picked == word ? null : word);
+    ref.read(hapticServiceProvider).selectionClick();
+  }
+
+  /// Puts the picked-up word on [targetId], then focuses the next word to
+  /// place — this one again after a miss, so the learner can try it
+  /// elsewhere straight away instead of hunting back up the board.
+  void _placePicked(String targetId) {
+    final word = _picked;
+    if (word == null) return;
+    _picked = null;
+    _onAccept(targetId, word);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final next = _isPlaced(word)
+          ? _draggables.where((w) => !_isPlaced(w)).firstOrNull
+          : word;
+      final node = next == null ? null : _wordFocus[next];
+      if (node == null || node.context == null) return;
+      GazeFocusDriver.focusChosen(node);
     });
   }
 
@@ -268,7 +315,7 @@ class _DragDropScreenState extends ConsumerState<DragDropScreen>
                   tooltip: l10n.close,
                   onPressed: pauseGame,
                 ),
-                title: Text(AppLocalizations.of(context)!.dragAndDrop),
+                title: AppBarTitle(AppLocalizations.of(context)!.dragAndDrop),
                 actions: [
                   GameBreakAction(onHold: holdForBreak, onResume: resumeFromBreak),
                   IconButton(
@@ -290,6 +337,8 @@ class _DragDropScreenState extends ConsumerState<DragDropScreen>
                     child: Center(
                       child: Text(
                         '$_correctCount / $_totalItems',
+                        semanticsLabel: AppLocalizations.of(context)!
+                            .ddMatchedOf(_correctCount, _totalItems),
                         style: AppTypography.titleMedium.copyWith(
                           color: HCColor.of(context).primary,
                         ),
@@ -310,10 +359,10 @@ class _DragDropScreenState extends ConsumerState<DragDropScreen>
                 child: Column(
                   children: [
                     // Instructions
+                    // Never cut short: the board scrolls, and the second
+                    // half is the only way to play without dragging.
                     Text(
                           AppLocalizations.of(context)!.dragInstruction,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.center,
                           style: AppTypography.bodyMedium.copyWith(
                             color: HCColor.of(context).textSecondary,
@@ -353,36 +402,59 @@ class _DragDropScreenState extends ConsumerState<DragDropScreen>
                             ),
                           );
                         }
+                        final picked = _picked == word;
+                        // One node: the label, and the press and focus of
+                        // the detector below. Pressing picks the word up, so
+                        // every input plays — a finger can still drag it.
                         return Semantics(
+                          container: true,
                           button: true,
-                          label: l10n.draggableWordSemantics(word),
-                          child: Draggable<String>(
-                            data: word,
-                            feedback: Material(
-                              elevation: 8,
-                              borderRadius: BorderRadius.circular(12),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                  vertical: 12,
-                                ),
-                                decoration: BoxDecoration(
-                                  gradient: AppColors.accentGradient,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  word,
-                                  style: AppTypography.labelLarge.copyWith(
-                                    color: Colors.white,
+                          selected: picked,
+                          label: picked
+                              ? l10n.draggableWordPicked(word)
+                              : l10n.draggableWordSemantics(word),
+                          child: DpadGestureDetector(
+                            focusNode: _focusOf(word),
+                            onTap: () => _pick(word),
+                            child: Draggable<String>(
+                              data: word,
+                              // A drag is an answer of its own: whatever was
+                              // picked up by a press is put down.
+                              onDragStarted: () {
+                                if (_picked != null) {
+                                  setState(() => _picked = null);
+                                }
+                              },
+                              feedback: Material(
+                                elevation: 8,
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    gradient: AppColors.accentGradient,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    word,
+                                    style: AppTypography.labelLarge.copyWith(
+                                      color: Colors.white,
+                                    ),
                                   ),
                                 ),
                               ),
+                              childWhenDragging: Opacity(
+                                opacity: 0.3,
+                                child: ExcludeSemantics(
+                                  child: _WordChip(word: word),
+                                ),
+                              ),
+                              child: ExcludeSemantics(
+                                child: _WordChip(word: word, picked: picked),
+                              ),
                             ),
-                            childWhenDragging: Opacity(
-                              opacity: 0.3,
-                              child: _WordChip(word: word),
-                            ),
-                            child: _WordChip(word: word),
                           ),
                         );
                       }).toList(),
@@ -404,6 +476,8 @@ class _DragDropScreenState extends ConsumerState<DragDropScreen>
                               target: target,
                               matchedWord: _matches[target.id],
                               onAccept: (word) => _onAccept(target.id, word),
+                              picked: _picked,
+                              onPlace: () => _placePicked(target.id),
                             )
                             .animate()
                             .fadeIn(
@@ -440,6 +514,29 @@ class _DragDropScreenState extends ConsumerState<DragDropScreen>
 // Supporting types & widgets
 // ────────────────────────────────────────
 
+/// [cards] with one card per word, either way round, keeping the first of
+/// each.
+///
+/// "Walk" and "Chicken" are two seed cards each, and a round that dealt both
+/// had two chips nobody could tell apart: placing one read as placing both,
+/// so the last row could never be filled and the round never ended. Two
+/// rows saying "Manok", or "Gabi" (night, and taro), were no better.
+@visibleForTesting
+List<Flashcard> distinctDragDropCards(Iterable<Flashcard> cards) {
+  final english = <String>{};
+  final filipino = <String>{};
+  final distinct = <Flashcard>[];
+  for (final c in cards) {
+    final en = c.wordEnglish.toLowerCase();
+    final fil = c.wordFilipino.toLowerCase();
+    if (english.contains(en) || filipino.contains(fil)) continue;
+    english.add(en);
+    filipino.add(fil);
+    distinct.add(c);
+  }
+  return distinct;
+}
+
 class _DropTarget {
   final String id;
   final String filipino;
@@ -461,16 +558,27 @@ class _DropTarget {
 
 class _WordChip extends StatelessWidget {
   final String word;
-  const _WordChip({required this.word});
+
+  /// Picked up by a press, and waiting for its row: lifted and ringed, so it
+  /// reads as "in hand" from across a room as well as up close.
+  final bool picked;
+
+  const _WordChip({required this.word, this.picked = false});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: AppColors.primaryLight,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
+        border: Border.all(
+          color: picked
+              ? HCColor.of(context).primary
+              : AppColors.primary.withValues(alpha: 0.4),
+          width: picked ? 3 : 1,
+        ),
+        boxShadow: picked ? AppColors.softShadow : null,
       ),
       child: Text(
         word,
@@ -492,125 +600,157 @@ class _DropTargetRow extends StatelessWidget {
   final String? matchedWord;
   final ValueChanged<String> onAccept;
 
+  /// The word the learner picked up by pressing it, or null.
+  final String? picked;
+
+  /// Puts [picked] here.
+  final VoidCallback onPlace;
+
   const _DropTargetRow({
     required this.target,
     required this.matchedWord,
     required this.onAccept,
+    required this.picked,
+    required this.onPlace,
   });
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    // A row takes a press only while a word is in hand, and never once it
+    // is matched — the same rule [DragTarget] applies to a drop.
+    final word = picked;
+    final canPlace = word != null && !target.isCorrect;
     return Semantics(
-      label: target.isCorrect
+      container: true,
+      button: canPlace,
+      label: canPlace
+          ? l10n.dropTargetPlace(target.filipino, word)
+          : target.isCorrect
           ? l10n.dropTargetMatched(target.filipino, target.englishAnswer)
           : (matchedWord != null
                 ? l10n.dropTargetHolding(target.filipino, matchedWord!)
                 : l10n.dropTargetEmptyHint(target.filipino)),
-      child: DragTarget<String>(
-        onWillAcceptWithDetails: (_) => !target.isCorrect,
-        onAcceptWithDetails: (details) => onAccept(details.data),
-        builder: (context, candidateData, rejectedData) {
-          final isHovering = candidateData.isNotEmpty;
-          return AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-              color: target.isCorrect
-                  ? AppColors.successLight
-                  : isHovering
-                  ? target.color.withValues(alpha: 0.15)
-                  : Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: target.isCorrect
-                    ? AppColors.success
-                    : isHovering
-                    ? target.color
-                    : AppColors.border,
-                width: target.isCorrect || isHovering ? 2 : 1,
+      child: DpadGestureDetector(
+        onTap: canPlace ? onPlace : null,
+        child: DragTarget<String>(
+          onWillAcceptWithDetails: (_) => !target.isCorrect,
+          onAcceptWithDetails: (details) => onAccept(details.data),
+          builder: (context, candidateData, rejectedData) {
+            // A word in hand lights its possible rows as a drag over them
+            // does.
+            final isHovering = candidateData.isNotEmpty || canPlace;
+            // The row in the theme's own colours: it was always white, and
+            // in dark and high contrast its word (the theme's light text)
+            // was white on white (8 Nov).
+            final hc = HCColor.of(context);
+            return ExcludeSemantics(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: target.isCorrect
+                      ? (hc.isDark
+                            ? Color.alphaBlend(
+                                hc.success.withValues(alpha: 0.22),
+                                hc.surface,
+                              )
+                            : AppColors.successLight)
+                      : isHovering
+                      ? target.color.withValues(alpha: 0.15)
+                      : (hc.isDark ? hc.surface : Colors.white),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: target.isCorrect
+                        ? AppColors.success
+                        : isHovering
+                        ? target.color
+                        : AppColors.border,
+                    width: target.isCorrect || isHovering ? 2 : 1,
+                  ),
+                  boxShadow: isHovering ? AppColors.softShadow : [],
+                ),
+                child: Row(
+                  children: [
+                    // Per-word emoji
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: target.color.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: FlashcardPicture(
+                        card: target.card,
+                        extent: 26,
+                        borderRadius: 13,
+                        // The target shows its Filipino word and the learner drags
+                        // the English one onto it; a picture that names both pairs
+                        // them up for free.
+                        revealsAnswer: false,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+
+                    // Filipino word
+                    Expanded(
+                      // The vocabulary word itself, so it must never be split down
+                      // the middle: this row rendered "Kuman / ta" and "Matulo / g"
+                      // on a narrow screen, on the game built to teach those words.
+                      child: FitText(
+                        target.filipino,
+                        style: AppTypography.titleMedium.copyWith(
+                          color: HCColor.of(context).textPrimary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        maxLines: 1,
+                      ),
+                    ),
+
+                    // Drop zone / matched word
+                    if (target.isCorrect) ...[
+                      Icon(
+                        Icons.check_circle_rounded,
+                        color: HCColor.of(context).graphic(AppColors.success),
+                        size: 24,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        matchedWord ?? '',
+                        style: AppTypography.labelLarge.copyWith(
+                          color: HCColor.of(context).successText,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ] else
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: HCColor.of(context).surfaceVariant,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isHovering
+                                ? target.color
+                                : HCColor.of(context).border,
+                          ),
+                        ),
+                        child: Text(
+                          matchedWord ?? '???',
+                          style: AppTypography.labelMedium.copyWith(
+                            color: matchedWord != null
+                                ? HCColor.of(context).errorText
+                                : HCColor.of(context).textHint,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
-              boxShadow: isHovering ? AppColors.softShadow : [],
-            ),
-            child: Row(
-              children: [
-                // Per-word emoji
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: target.color.withValues(alpha: 0.15),
-                    shape: BoxShape.circle,
-                  ),
-                  child: FlashcardPicture(
-                    card: target.card,
-                    extent: 26,
-                    borderRadius: 13,
-                    // The target shows its Filipino word and the learner drags
-                    // the English one onto it; a picture that names both pairs
-                    // them up for free.
-                    revealsAnswer: false,
-                  ),
-                ),
-                const SizedBox(width: 12),
-
-                // Filipino word
-                Expanded(
-                  // The vocabulary word itself, so it must never be split down
-                  // the middle: this row rendered "Kuman / ta" and "Matulo / g"
-                  // on a narrow screen, on the game built to teach those words.
-                  child: FitText(
-                    target.filipino,
-                    style: AppTypography.titleMedium.copyWith(
-                      color: HCColor.of(context).textPrimary,
-                      fontWeight: FontWeight.w700,
-                    ),
-                    maxLines: 1,
-                  ),
-                ),
-
-                // Drop zone / matched word
-                if (target.isCorrect) ...[
-                  Icon(
-                    Icons.check_circle_rounded,
-                    color: HCColor.of(context).graphic(AppColors.success),
-                    size: 24,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    matchedWord ?? '',
-                    style: AppTypography.labelLarge.copyWith(
-                      color: HCColor.of(context).successText,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ] else
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 18,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: HCColor.of(context).surfaceVariant,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isHovering
-                            ? target.color
-                            : HCColor.of(context).border,
-                      ),
-                    ),
-                    child: Text(
-                      matchedWord ?? '???',
-                      style: AppTypography.labelMedium.copyWith(
-                        color: matchedWord != null
-                            ? HCColor.of(context).errorText
-                            : HCColor.of(context).textHint,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }

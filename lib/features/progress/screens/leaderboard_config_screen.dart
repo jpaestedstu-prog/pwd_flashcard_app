@@ -11,6 +11,7 @@ import '../../../providers/online_leaderboard_provider.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Educator-facing leaderboard controls for one classroom / home group.
 ///
@@ -35,7 +36,7 @@ class LeaderboardConfigScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         leading: const AppBackButton(),
-        title: Text(_t(context).lcTitle),
+        title: AppBarTitle(_t(context).lcTitle),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -64,8 +65,8 @@ class LeaderboardConfigScreen extends ConsumerWidget {
                           .copyWith(color: hc.textPrimary)),
                   subtitle: Text(
                     config.visible
-                        ? 'Members can see the rankings.'
-                        : 'Hidden — members see “not enabled yet”.',
+                        ? _t(context).lcVisibleDesc
+                        : _t(context).lcHiddenDesc,
                     style: AppTypography.bodySmall
                         .copyWith(color: hc.textSecondary),
                   ),
@@ -133,8 +134,7 @@ class LeaderboardConfigScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Weekly/Monthly and seasons rank by recent activity. '
-                      'Lifetime stars are always shown for reference.',
+                      _t(context).lcRankNote,
                       style: AppTypography.bodySmall
                           .copyWith(color: hc.textSecondary),
                     ),
@@ -220,8 +220,6 @@ class _MemberHideList extends ConsumerWidget {
             value: !hiddenIds.contains(member.id),
             activeThumbColor: AppColors.primary,
             title: Text(member.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 style:
                     AppTypography.bodyMedium.copyWith(color: hc.textPrimary)),
             subtitle: Text(

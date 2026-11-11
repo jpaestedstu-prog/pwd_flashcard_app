@@ -16,6 +16,8 @@ import '../../../core/utils/accessible_sizing.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../navigation/nav_extensions.dart';
+import '../../../core/widgets/app_bar_title.dart';
+import '../../../core/widgets/text_limits.dart';
 
 class GuidedPracticeScreen extends ConsumerStatefulWidget {
   final FlashcardCategory category;
@@ -149,7 +151,7 @@ class _GuidedPracticeScreenState extends ConsumerState<GuidedPracticeScreen> {
 
     if (_session == null) {
       return Scaffold(
-        appBar: AppBar(title: Text(_t(context).homeGuidedPractice)),
+        appBar: AppBar(title: AppBarTitle(_t(context).homeGuidedPractice)),
         body: const ShimmerPageSkeleton(),
       );
     }
@@ -167,7 +169,7 @@ class _GuidedPracticeScreenState extends ConsumerState<GuidedPracticeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
+        title: AppBarTitle(
           isFilipino ? _t(context).homeGuidedPractice : _t(context).homeGuidedPractice,
         ),
         centerTitle: true,
@@ -205,6 +207,10 @@ class _GuidedPracticeScreenState extends ConsumerState<GuidedPracticeScreen> {
               const SizedBox(height: 4),
               Text(
                 '${isFilipino ? 'Hakbang' : 'Step'} ${_session!.currentStepIndex + 1} / ${_session!.totalSteps}',
+                // In words: "1 / 5" was read with its slash.
+                semanticsLabel: isFilipino
+                    ? 'Hakbang ${_session!.currentStepIndex + 1} sa ${_session!.totalSteps}'
+                    : 'Step ${_session!.currentStepIndex + 1} of ${_session!.totalSteps}',
                 style: AppTypography.bodySmall
                     .copyWith(color: hc.textSecondary),
                 textAlign: TextAlign.center,
@@ -480,6 +486,8 @@ class _FillBlankContent extends StatelessWidget {
           const SizedBox(height: 24),
           TextField(
             controller: controller,
+            maxLength: TextLimits.label,
+            buildCounter: TextLimits.counter,
             enabled: !showResult,
             textAlign: TextAlign.center,
             style: AppTypography.titleLarge.copyWith(
@@ -659,7 +667,7 @@ class _CompletionScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isFilipino ? 'Tapos Na!' : 'Complete!'),
+        title: AppBarTitle(isFilipino ? 'Tapos Na!' : 'Complete!'),
         centerTitle: true,
         elevation: 0,
         backgroundColor: Colors.transparent,

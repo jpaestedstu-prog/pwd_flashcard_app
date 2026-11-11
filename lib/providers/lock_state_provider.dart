@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/services/lock_enforcer.dart';
 import '../data/models/enums.dart';
 import '../features/routine/models/routine_models.dart';
+import '../features/parent/services/learner_restrictions.dart';
 import 'active_time_provider.dart';
 import 'child_alarm_provider.dart';
 import 'child_time_limit_provider.dart';
@@ -79,7 +80,14 @@ final lockStateProvider =
   }
 
   // 3. Underlying time-limit / alarm / schedule rules.
-  final limit = ref.watch(childTimeLimitProvider(childProfileId)).valueOrNull;
+  // Their own limit, or else the device's from Parental Controls.
+  ref.watch(parentalControlsRevisionProvider);
+  final limit = LearnerRestrictions.limitFor(
+    ref.watch(childTimeLimitProvider(childProfileId)).valueOrNull,
+    childProfileId: childProfileId,
+    supervised:
+        canBeLockedByRoutine(ref.watch(profileRoleProvider(childProfileId))),
+  );
   final alarms =
       ref.watch(childAlarmListProvider(childProfileId)).valueOrNull ??
           const [];

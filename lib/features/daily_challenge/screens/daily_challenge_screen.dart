@@ -6,6 +6,7 @@ import '../../../core/accessibility/tts_service.dart';
 import '../../../core/services/celebration_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/auto_fit.dart';
 import '../../../core/utils/localized_date.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../widgets/flashcard_image.dart';
@@ -22,6 +23,7 @@ import '../../../core/widgets/reflow_row.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../widgets/dpad_focusable.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Full-screen Daily Mission — a bite-sized session of 3–5 quiz items
 /// (size configurable via [AppSettings.dailyMissionSize]) with calendar,
@@ -224,7 +226,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
     return Scaffold(
       backgroundColor: hc.background,
       appBar: AppBar(
-        title: Text(
+        title: AppBarTitle(
           _t(context).dcTitle,
           style: AppTypography.titleLarge.copyWith(color: hc.textPrimary),
         ),
@@ -239,6 +241,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
           children: [
             _StreakBanner(
               streak: _streak,
+              doneToday: _alreadyCompleted,
             ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1, end: 0),
 
             const SizedBox(height: 20),
@@ -335,10 +338,13 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
       children: [
         // Header: badge + progress count
         Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             // Both halves flexible: the pill and the counter together are wider
-            // than the row at a large text scale.
+            // than the row at a large text scale. No Spacer between them:
+            // it took a third of the row, and the pill was scaled to 4 px.
             Flexible(
+              flex: 3,
               child: Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -346,26 +352,31 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
                   color: AppColors.accent.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text(
-                  _t(context).dcChip,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.labelMedium.copyWith(
-                    color: HCColor.of(context).readable(AppColors.accent),
-                    fontWeight: FontWeight.w700,
+                // Smaller rather than cut: at the largest Font Size it read
+                // "Daily Mis…" (30 Oct).
+                child: AutoFit(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    _t(context).dcChip,
+                    style: AppTypography.labelMedium.copyWith(
+                      color: HCColor.of(context).readable(AppColors.accent),
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),
             ),
-            const Spacer(),
+            const SizedBox(width: 8),
             Flexible(
-              child: Text(
-                _t(context).dcWordNofM(_currentIndex + 1, _missionWords.length),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTypography.labelSmall.copyWith(
-                  color: hc.textSecondary,
-                  fontWeight: FontWeight.w700,
+              flex: 2,
+              child: AutoFit(
+                alignment: AlignmentDirectional.centerEnd,
+                child: Text(
+                  _t(context).dcWordNofM(_currentIndex + 1, _missionWords.length),
+                  style: AppTypography.labelSmall.copyWith(
+                    color: hc.textSecondary,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
@@ -417,8 +428,11 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
                   ),
                   if (_word.exampleSentence != null) ...[
                     const SizedBox(height: 6),
-                    Text(
+                    // Beside the picture on a phone: at the largest text size
+                    // "Vegetables" broke in two, on the day it was the word.
+                    FitText(
                       _word.exampleSentence!,
+                      maxLines: 6,
                       style: AppTypography.bodySmall.copyWith(
                         color: hc.textSecondary,
                         fontStyle: FontStyle.italic,
@@ -615,7 +629,7 @@ class _DailyChallengeScreenState extends ConsumerState<DailyChallengeScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('💡', style: TextStyle(fontSize: 16)),
+                  const ExcludeSemantics(child: Text('💡', style: TextStyle(fontSize: 16))),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -742,19 +756,22 @@ class _FiftyFiftyButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: hc.primary.withValues(alpha: 0.4)),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.filter_2_rounded, size: 16, color: hc.primary),
-              const SizedBox(width: 4),
-              Flexible(child: Text(
-                '50 / 50 ($remaining)',
-                style: AppTypography.labelSmall.copyWith(
-                  color: hc.primary,
-                  fontWeight: FontWeight.w700,
-                ),
-              )),
-            ],
+          // The button's label says it: "50 / 50 (2)" was read after it.
+          child: ExcludeSemantics(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.filter_2_rounded, size: 16, color: hc.primary),
+                const SizedBox(width: 4),
+                Flexible(child: Text(
+                  '50 / 50 ($remaining)',
+                  style: AppTypography.labelSmall.copyWith(
+                    color: hc.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                )),
+              ],
+            ),
           ),
         ),
       )),
@@ -766,14 +783,21 @@ class _FiftyFiftyButton extends StatelessWidget {
 
 class _StreakBanner extends StatelessWidget {
   final int streak;
-  const _StreakBanner({required this.streak});
+
+  /// Today's mission is behind them: "complete it" was on screen beside
+  /// "Today's mission completed!", and a wrong answer read "start your streak
+  /// today" with no way left to do that today.
+  final bool doneToday;
+  const _StreakBanner({required this.streak, this.doneToday = false});
 
   @override
   Widget build(BuildContext context) {
     String streakMessage;
     String streakEmoji;
     if (streak == 0) {
-      streakMessage = _t(context).dcStreakStart;
+      streakMessage = doneToday
+          ? _t(context).dcStreakTomorrow
+          : _t(context).dcStreakStart;
       streakEmoji = '🌱';
     } else if (streak < 3) {
       streakMessage = _t(context).dcStreakGoing(streak);
@@ -821,7 +845,7 @@ class _StreakBanner extends StatelessWidget {
                 ),
               ],
             ),
-            child: Text(streakEmoji, style: const TextStyle(fontSize: 28)),
+            child: ExcludeSemantics(child: Text(streakEmoji, style: const TextStyle(fontSize: 28))),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -835,13 +859,15 @@ class _StreakBanner extends StatelessWidget {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  _t(context).dcStreakHint,
-                  style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.textOnPrimary.withValues(alpha: 0.85),
+                if (!doneToday) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    _t(context).dcStreakHint,
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.textOnPrimary.withValues(alpha: 0.85),
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
@@ -865,6 +891,7 @@ class _StreakBanner extends StatelessWidget {
             child: Center(
               child: Text(
                 '$streak',
+                semanticsLabel: '${_t(context).dayStreak}: $streak',
                 style: AppTypography.headlineLarge.copyWith(
                   color: AppColors.textOnPrimary,
                   fontWeight: FontWeight.w900,
@@ -937,57 +964,69 @@ class _ChoiceButton extends StatelessWidget {
     return Semantics(
       button: true,
       enabled: !disabled,
-      label: eliminated ? _t(context).dcRemovedByHint(text) : text,
+      // After the answer, which one was right — as the colours show it.
+      label: eliminated
+          ? _t(context).dcRemovedByHint(text)
+          : '$text'
+              '${answered && isCorrectAnswer ? _t(context).correctAnswerSuffix : ''}'
+              '${answered && isSelected && !isCorrectAnswer ? _t(context).wrongAnswerSuffix : ''}',
       child: Opacity(
         opacity: eliminated ? 0.45 : 1,
         child: DpadFocusable(onActivate: disabled ? null : onTap, child: GestureDetector(
           onTap: disabled ? null : onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-            decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: borderColor, width: 2),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: answered && (isCorrectAnswer || isSelected)
-                        ? borderColor.withValues(alpha: 0.2)
-                        : hc.surfaceVariant,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: Text(
-                      String.fromCharCode(65 + index), // A, B, C, D
-                      style: AppTypography.labelMedium.copyWith(
-                        color: hc.textPrimary,
-                        fontWeight: FontWeight.w700,
+          child: ExcludeSemantics(
+            // The label says the answer; the letter and words drawn here were
+            // read again under it.
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: borderColor, width: 2),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: answered && (isCorrectAnswer || isSelected)
+                          ? borderColor.withValues(alpha: 0.2)
+                          : hc.surfaceVariant,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        String.fromCharCode(65 + index), // A, B, C, D
+                        style: AppTypography.labelMedium.copyWith(
+                          color: hc.textPrimary,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    text,
-                    style: AppTypography.titleMedium.copyWith(
-                      color: hc.textPrimary,
-                      fontWeight: FontWeight.w600,
-                      decoration: eliminated
-                          ? TextDecoration.lineThrough
-                          : null,
+                  const SizedBox(width: 12),
+                  // Whole words: "Magandang" broke into "Magandan / g" on a phone
+                  // at the largest text size, on the day it was the answer.
+                  Expanded(
+                    child: FitText(
+                      text,
+                      maxLines: 3,
+                      style: AppTypography.titleMedium.copyWith(
+                        color: hc.textPrimary,
+                        fontWeight: FontWeight.w600,
+                        decoration: eliminated
+                            ? TextDecoration.lineThrough
+                            : null,
+                      ),
                     ),
                   ),
-                ),
-                if (trailingIcon != null)
-                  Icon(trailingIcon, color: iconColor, size: 24),
-              ],
+                  if (trailingIcon != null)
+                    Icon(trailingIcon, color: iconColor, size: 24),
+                ],
+              ),
             ),
           ),
         )),
@@ -1064,7 +1103,9 @@ class _ChallengeCalendar extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          Row(
+          // For the eye: each day says its weekday itself. Spoken, the
+          // letters were seven stops of "M", "T" … "S", "S".
+          ExcludeSemantics(child: Row(
             children: LocalizedDate.weekdayInitials(_t(context)).map((d) {
               return Expanded(
                 child: Center(
@@ -1078,7 +1119,7 @@ class _ChallengeCalendar extends StatelessWidget {
                 ),
               );
             }).toList(),
-          ),
+          )),
           const SizedBox(height: 8),
           ...List.generate(6, (week) {
             return Padding(
@@ -1104,54 +1145,65 @@ class _ChallengeCalendar extends StatelessWidget {
                   ).isAfter(now);
 
                   return Expanded(
-                    child: Container(
-                      height: 36,
-                      margin: const EdgeInsets.all(1),
-                      decoration: BoxDecoration(
-                        gradient: isCompleted
-                            ? LinearGradient(
-                                colors: [
-                                  AppColors.success.withValues(alpha: 0.25),
-                                  AppColors.success.withValues(alpha: 0.12),
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              )
-                            : null,
-                        color: !isCompleted && isToday
-                            ? hc.primary.withValues(alpha: 0.1)
-                            : !isCompleted
-                            ? Colors.transparent
-                            : null,
-                        shape: BoxShape.circle,
-                        border: isToday
-                            ? Border.all(color: hc.primary, width: 2)
-                            : null,
-                        boxShadow: isCompleted
-                            ? [
-                                BoxShadow(
-                                  color: AppColors.success.withValues(
-                                    alpha: 0.15,
+                    child: Semantics(
+                      // "Monday, Day 12, challenge done, today": the tick or
+                      // the number alone said nothing about the day.
+                      label: '${LocalizedDate.weekdayLong(
+                            DateTime(month.year, month.month, dayIndex),
+                            _t(context),
+                          )}, ${_t(context).calDaySemantics(dayIndex)}'
+                        '${isCompleted ? _t(context).dcDayDone : ''}'
+                        '${isToday ? _t(context).calToday : ''}',
+                      excludeSemantics: true,
+                      child: Container(
+                        height: 36,
+                        margin: const EdgeInsets.all(1),
+                        decoration: BoxDecoration(
+                          gradient: isCompleted
+                              ? LinearGradient(
+                                  colors: [
+                                    AppColors.success.withValues(alpha: 0.25),
+                                    AppColors.success.withValues(alpha: 0.12),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                )
+                              : null,
+                          color: !isCompleted && isToday
+                              ? hc.primary.withValues(alpha: 0.1)
+                              : !isCompleted
+                              ? Colors.transparent
+                              : null,
+                          shape: BoxShape.circle,
+                          border: isToday
+                              ? Border.all(color: hc.primary, width: 2)
+                              : null,
+                          boxShadow: isCompleted
+                              ? [
+                                  BoxShadow(
+                                    color: AppColors.success.withValues(
+                                      alpha: 0.15,
+                                    ),
+                                    blurRadius: 6,
                                   ),
-                                  blurRadius: 6,
+                                ]
+                              : [],
+                        ),
+                        child: Center(
+                          child: isCompleted
+                              ? const Text('✅', style: TextStyle(fontSize: 14))
+                              : Text(
+                                  '$dayIndex',
+                                  style: AppTypography.labelSmall.copyWith(
+                                    color: isFuture
+                                        ? hc.textHint
+                                        : hc.textPrimary,
+                                    fontWeight: isToday
+                                        ? FontWeight.w800
+                                        : FontWeight.w500,
+                                  ),
                                 ),
-                              ]
-                            : [],
-                      ),
-                      child: Center(
-                        child: isCompleted
-                            ? const Text('✅', style: TextStyle(fontSize: 14))
-                            : Text(
-                                '$dayIndex',
-                                style: AppTypography.labelSmall.copyWith(
-                                  color: isFuture
-                                      ? hc.textHint
-                                      : hc.textPrimary,
-                                  fontWeight: isToday
-                                      ? FontWeight.w800
-                                      : FontWeight.w500,
-                                ),
-                              ),
+                        ),
                       ),
                     ),
                   );
@@ -1242,7 +1294,7 @@ class _StatsRow extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(b.emoji, style: const TextStyle(fontSize: 18)),
+                    ExcludeSemantics(child: Text(b.emoji, style: const TextStyle(fontSize: 18))),
                     const SizedBox(width: 6),
                     Flexible(
                       child: FitText(
@@ -1282,56 +1334,59 @@ class _StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
 
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            color.withValues(alpha: 0.12),
-            color.withValues(alpha: 0.04),
+    return MergeSemantics(
+      // One phrase ("12 Words"): the number alone was a stop that said only "12".
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              color.withValues(alpha: 0.12),
+              color.withValues(alpha: 0.04),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.08),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
           ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.08),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(color: color.withValues(alpha: 0.2), blurRadius: 8),
-              ],
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(color: color.withValues(alpha: 0.2), blurRadius: 8),
+                ],
+              ),
+              child: ExcludeSemantics(child: Text(emoji, style: const TextStyle(fontSize: 18))),
             ),
-            child: Text(emoji, style: const TextStyle(fontSize: 18)),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: AppTypography.headlineMedium.copyWith(
-              color: hc.textPrimary,
-              fontWeight: FontWeight.w900,
+            const SizedBox(height: 6),
+            Text(
+              value,
+              style: AppTypography.headlineMedium.copyWith(
+                color: hc.textPrimary,
+                fontWeight: FontWeight.w900,
+              ),
             ),
-          ),
-          const SizedBox(height: 2),
-          // "Days Completed" split as "Comple / ted" in a third of a row.
-          FitText(
-            label,
-            textAlign: TextAlign.center,
-            style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
-          ),
-        ],
+            const SizedBox(height: 2),
+            // "Days Completed" split as "Comple / ted" in a third of a row.
+            FitText(
+              label,
+              textAlign: TextAlign.center,
+              style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -16,6 +16,7 @@ import '../../../core/utils/accessible_sizing.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../core/widgets/fit_text.dart';
+import '../../../core/widgets/stagger_in.dart';
 
 class GoalsScreen extends ConsumerStatefulWidget {
   const GoalsScreen({super.key});
@@ -99,16 +100,21 @@ class _GoalsScreenState extends ConsumerState<GoalsScreen> {
                       final goal = active[index];
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 12),
-                        child: _GoalCard(
+                        child: StaggerIn(
+                          index: index,
+                          base: const Duration(milliseconds: 100),
+                          step: const Duration(milliseconds: 50),
+                          child: _GoalCard(
                           goal: goal,
                           onDismiss: () => _removeGoal(goal.id),
-                        )
-                            .animate()
+                        ),
+                          builder: (child, delay) => child.animate()
                             .fadeIn(
                               duration: 350.ms,
-                              delay: (100 + index * 50).ms,
+                              delay: delay,
                             )
                             .slideY(begin: 0.05, end: 0),
+                        ),
                       );
                     },
                     childCount: active.length,
@@ -124,7 +130,7 @@ class _GoalsScreenState extends ConsumerState<GoalsScreen> {
                   padding: EdgeInsets.fromLTRB(padding, 60, padding, 0),
                   child: Column(
                     children: [
-                      const Text('🎯', style: TextStyle(fontSize: 64)),
+                      const ExcludeSemantics(child: Text('🎯', style: TextStyle(fontSize: 64))),
                       const SizedBox(height: 16),
                       Text(
                         _t(context).goalsNone,
@@ -285,7 +291,7 @@ class _SummaryCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Text('🎯', style: TextStyle(fontSize: 40)),
+          const ExcludeSemantics(child: Text('🎯', style: TextStyle(fontSize: 40))),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -381,9 +387,11 @@ class _GoalCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: Text(
-                    goal.type.emoji,
-                    style: const TextStyle(fontSize: 28),
+                  child: ExcludeSemantics(
+                    child: Text(
+                      goal.type.emoji,
+                      style: const TextStyle(fontSize: 28),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -447,10 +455,12 @@ class _GoalCard extends StatelessWidget {
                     color: hc.textSecondary,
                   ),
                   const SizedBox(width: 4),
-                  Text(
-                    _formatDeadline(_t(context), goal.deadline!),
-                    style: AppTypography.labelSmall.copyWith(
-                      color: isExpired ? HCColor.of(context).errorText : hc.textSecondary,
+                  Flexible(
+                    child: Text(
+                      _formatDeadline(_t(context), goal.deadline!),
+                      style: AppTypography.labelSmall.copyWith(
+                        color: isExpired ? HCColor.of(context).errorText : hc.textSecondary,
+                      ),
                     ),
                   ),
                 ],
@@ -491,7 +501,7 @@ class _CreateGoalSheetState extends State<_CreateGoalSheet> {
   GoalType _selectedType = GoalType.wordsLearned;
   int _targetValue = 10;
   bool _hasDeadline = false;
-  DateTime _deadline = DateTime.now().add(const Duration(days: 7));
+  int _deadlineDays = 7;
   FlashcardCategory? _selectedCategory;
 
   final _presets = <GoalType, List<int>>{
@@ -568,7 +578,10 @@ class _CreateGoalSheetState extends State<_CreateGoalSheet> {
               children: GoalType.values.map((type) {
                 final selected = _selectedType == type;
                 return ChoiceChip(
-                  label: Text('${type.emoji} ${_typeLabel(_t(context), type)}'),
+                  label: Text(
+                    '${type.emoji} ${_typeLabel(_t(context), type)}',
+                    semanticsLabel: _typeLabel(_t(context), type),
+                  ),
                   selected: selected,
                   onSelected: (val) => setState(() {
                     _selectedType = type;
@@ -602,12 +615,14 @@ class _CreateGoalSheetState extends State<_CreateGoalSheet> {
                 children: FlashcardCategory.values.map((cat) {
                   final selected = _selectedCategory == cat;
                   return ChoiceChip(
+                    // Flexible: "Mga Bahagi ng Katawan" ran 19 px past a phone's
+                    // edge at the largest Font Size.
                     label: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(cat.icon, size: 16),
                         const SizedBox(width: 4),
-                        Text(cat.label),
+                        Flexible(child: Text(cat.labelOf(_t(context)))),
                       ],
                     ),
                     selected: selected,
@@ -642,7 +657,11 @@ class _CreateGoalSheetState extends State<_CreateGoalSheet> {
                 final suffix =
                     _selectedType == GoalType.categoryMastery ? '%' : '';
                 return ChoiceChip(
-                  label: Text('$val$suffix'),
+                  // "Target: 25": a number alone says nothing to a reader.
+                  label: Text(
+                    '$val$suffix',
+                    semanticsLabel: '${_t(context).goalsTarget}: $val$suffix',
+                  ),
                   selected: selected,
                   onSelected: (s) => setState(() => _targetValue = val),
                   selectedColor: AppColors.primaryLight,
@@ -658,7 +677,10 @@ class _CreateGoalSheetState extends State<_CreateGoalSheet> {
             const SizedBox(height: 20),
 
             // ─── Deadline Toggle ───────────────
-            SwitchListTile(
+            // On its own Material: the sheet's colour hid the row's press.
+            Material(
+              type: MaterialType.transparency,
+              child: SwitchListTile(
               title: Text(
                 _t(context).goalsDeadline,
                 style: AppTypography.titleSmall.copyWith(
@@ -670,32 +692,33 @@ class _CreateGoalSheetState extends State<_CreateGoalSheet> {
               activeTrackColor: AppColors.primaryLight,
               thumbColor: const WidgetStatePropertyAll(AppColors.primary),
               contentPadding: EdgeInsets.zero,
+              ),
             ),
             if (_hasDeadline) ...[
-              Row(
+              // Which one is chosen shows, and says so: these were four plain
+              // buttons that looked and sounded the same after a press, named
+              // "3d" ("3a" in Filipino).
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
-                  for (final days in [3, 7, 14, 30]) ...[
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: OutlinedButton(
-                          onPressed: () => setState(() {
-                            _deadline =
-                                DateTime.now().add(Duration(days: days));
-                          }),
-                          style: OutlinedButton.styleFrom(
-                            side: BorderSide(color: hc.border),
-                          ),
-                          child: Text(
-                            _t(context).goalsDaysShort(days),
-                            style: AppTypography.labelMedium.copyWith(
-                              color: hc.textPrimary,
-                            ),
-                          ),
-                        ),
+                  for (final days in const [3, 7, 14, 30])
+                    ChoiceChip(
+                      label: Text(_t(context).dbDays(days)),
+                      selected: _deadlineDays == days,
+                      onSelected: (_) => setState(() => _deadlineDays = days),
+                      selectedColor: AppColors.primaryLight,
+                      backgroundColor: hc.surfaceLight,
+                      labelStyle: AppTypography.labelLarge.copyWith(
+                        color: _deadlineDays == days
+                            ? HCColor.of(context)
+                                .readable(AppColors.primaryDark)
+                            : hc.textPrimary,
+                        fontWeight: _deadlineDays == days
+                            ? FontWeight.w700
+                            : FontWeight.w500,
                       ),
                     ),
-                  ],
                 ],
               ),
               const SizedBox(height: 8),
@@ -762,7 +785,9 @@ class _CreateGoalSheetState extends State<_CreateGoalSheet> {
       type: _selectedType,
       targetValue: _targetValue,
       createdBy: widget.profileId,
-      deadline: _hasDeadline ? _deadline : null,
+      deadline: _hasDeadline
+          ? DateTime.now().add(Duration(days: _deadlineDays))
+          : null,
       category: _selectedCategory,
     );
     widget.onSave(goal);

@@ -20,6 +20,7 @@ import '../../../widgets/student_filter_bar.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Multi-student dashboard for teachers and parents.
 ///
@@ -51,7 +52,7 @@ class MultiStudentDashboardScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         leading: const AppBackButton(),
-        title: Text(
+        title: AppBarTitle(
           audience.allLearnersTitleOf(filipino: l),
           style: AppTypography.titleMedium
               .copyWith(fontWeight: FontWeight.w700),
@@ -61,7 +62,11 @@ class MultiStudentDashboardScreen extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: Badge(
-                label: Text('${filter.activeFilterCount}'),
+                // The button beside it says what it does: a number alone was a
+                // stop of its own.
+                label: ExcludeSemantics(
+                  child: Text('${filter.activeFilterCount}'),
+                ),
                 isLabelVisible: filter.activeFilterCount > 0,
                 child: IconButton(
                   icon: const Icon(Icons.filter_list_off_rounded),
@@ -230,134 +235,140 @@ class _StudentCard extends StatelessWidget {
         profile.role.labelOf(AppLocalizations.of(context)),
     ];
 
-    return Semantics(
-      button: true,
-      label: _t(context).msCardSemantics(
-        profile.name,
-        progress.wordsLearned,
-        progress.totalStars,
-        progress.liveStreakDays,
+    return Card(
+      elevation: 2,
+      clipBehavior: Clip.antiAlias,
+      margin: const EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: BorderSide(
+          color: AppColors.primary.withValues(alpha: 0.15),
+        ),
       ),
-      child: Card(
-        elevation: 2,
-        clipBehavior: Clip.antiAlias,
-        margin: const EdgeInsets.only(bottom: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-          side: BorderSide(
-            color: AppColors.primary.withValues(alpha: 0.15),
-          ),
+      // The label and the press on one node, the Card's: it merges
+      // what is inside it (the InkWell's press and focus) under this
+      // label. Around the Card, the label sat on a node with nothing
+      // to press.
+      child: Semantics(
+        button: true,
+        label: _t(context).msCardSemantics(
+          profile.name,
+          progress.wordsLearned,
+          progress.totalStars,
+          progress.liveStreakDays,
         ),
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(24),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-            children: [
-              // Avatar + mastery ring
-              CircularPercentIndicator(
-                radius: 36,
-                percent: masteryPct,
-                backgroundColor: AppColors.border,
-                progressColor: AppColors.primary,
-                center: Text(emoji, style: const TextStyle(fontSize: 28)),
-              ),
-              const SizedBox(width: 16),
+          child: ExcludeSemantics(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+              children: [
+                // Avatar + mastery ring
+                CircularPercentIndicator(
+                  radius: 36,
+                  percent: masteryPct,
+                  backgroundColor: AppColors.border,
+                  progressColor: AppColors.primary,
+                  center: Text(emoji, style: const TextStyle(fontSize: 28)),
+                ),
+                const SizedBox(width: 16),
 
-              // Name + stats
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      profile.name,
-                      style: AppTypography.titleMedium.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: HCColor.of(context).textPrimary,
+                // Name + stats
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        profile.name,
+                        style: AppTypography.titleMedium.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: HCColor.of(context).textPrimary,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitleParts.join(' · '),
-                      style: AppTypography.labelSmall.copyWith(
-                        color: HCColor.of(context).textSecondary,
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitleParts.join(' · '),
+                        style: AppTypography.labelSmall.copyWith(
+                          color: HCColor.of(context).textSecondary,
+                        ),
                       ),
-                    ),
 
-                    // Tags row
-                    if (profile.tags.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Wrap(
-                        spacing: 4,
-                        runSpacing: 4,
-                        children: profile.tags
-                            .take(3)
-                            .map((tag) => Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary
-                                        .withValues(alpha: 0.08),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    tag,
-                                    style: AppTypography.labelSmall.copyWith(
-                                      color: HCColor.of(context).primary,
+                      // Tags row
+                      if (profile.tags.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 4,
+                          runSpacing: 4,
+                          children: profile.tags
+                              .take(3)
+                              .map((tag) => Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary
+                                          .withValues(alpha: 0.08),
+                                      borderRadius: BorderRadius.circular(8),
                                     ),
-                                  ),
-                                ))
-                            .toList(),
+                                    child: Text(
+                                      tag,
+                                      style: AppTypography.labelSmall.copyWith(
+                                        color: HCColor.of(context).primary,
+                                      ),
+                                    ),
+                                  ))
+                              .toList(),
+                        ),
+                      ],
+
+                      const SizedBox(height: 10),
+
+                      // Mini stat chips
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        children: [
+                          _MiniStat(
+                            icon: Icons.auto_stories_rounded,
+                            label: '${progress.wordsLearned}',
+                            color: AppColors.secondary,
+                          ),
+                          _MiniStat(
+                            icon: Icons.star_rounded,
+                            label: '${progress.totalStars}',
+                            color: AppColors.warning,
+                          ),
+                          _MiniStat(
+                            icon: Icons.local_fire_department_rounded,
+                            label: '${progress.liveStreakDays}d',
+                            color: AppColors.error,
+                          ),
+                          _MiniStat(
+                            icon: Icons.emoji_events_rounded,
+                            label: '$unlockedCount',
+                            color: AppColors.info,
+                          ),
+                          if (progress.recentScores.isNotEmpty)
+                            _MiniStat(
+                              icon: Icons.trending_up_rounded,
+                              label: '${(recentAvg * 100).round()}%',
+                              color: AppColors.success,
+                            ),
+                        ],
                       ),
                     ],
-
-                    const SizedBox(height: 10),
-
-                    // Mini stat chips
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 6,
-                      children: [
-                        _MiniStat(
-                          icon: Icons.auto_stories_rounded,
-                          label: '${progress.wordsLearned}',
-                          color: AppColors.secondary,
-                        ),
-                        _MiniStat(
-                          icon: Icons.star_rounded,
-                          label: '${progress.totalStars}',
-                          color: AppColors.warning,
-                        ),
-                        _MiniStat(
-                          icon: Icons.local_fire_department_rounded,
-                          label: '${progress.liveStreakDays}d',
-                          color: AppColors.error,
-                        ),
-                        _MiniStat(
-                          icon: Icons.emoji_events_rounded,
-                          label: '$unlockedCount',
-                          color: AppColors.info,
-                        ),
-                        if (progress.recentScores.isNotEmpty)
-                          _MiniStat(
-                            icon: Icons.trending_up_rounded,
-                            label: '${(recentAvg * 100).round()}%',
-                            color: AppColors.success,
-                          ),
-                      ],
-                    ),
-                  ],
+                  ),
                 ),
-              ),
 
-              // Arrow
-              Icon(
-                Icons.arrow_forward_ios_rounded,
-                size: 18,
-                color: HCColor.of(context).textHint,
-              ),
-            ],
+                // Arrow
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 18,
+                  color: HCColor.of(context).textHint,
+                ),
+              ],
+            ),
           ),
           ),
         ),

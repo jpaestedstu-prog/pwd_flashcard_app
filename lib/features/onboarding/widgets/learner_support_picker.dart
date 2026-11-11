@@ -137,7 +137,9 @@ class _SupportTile extends StatelessWidget {
       label: '${option.labelOf(l10n)}. ${option.descriptionOf(l10n)}',
       child: DpadFocusable(onActivate: onTap, child: GestureDetector(
         onTap: onTap,
-        child: AnimatedContainer(
+        // Its texts are the label's own words: they were read a second time.
+        // Inside the press, so a screen reader keeps the press.
+        child: ExcludeSemantics(child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
@@ -187,7 +189,7 @@ class _SupportTile extends StatelessWidget {
               ),
             ],
           ),
-        ),
+        )),
       )),
     );
   }

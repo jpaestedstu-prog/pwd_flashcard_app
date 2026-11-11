@@ -160,97 +160,105 @@ class _RoutineRow extends ConsumerWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Material(
-        type: MaterialType.transparency,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: () => context.push(
-            '/routine-manage/${learner.profileId}'
-            '?name=${Uri.encodeQueryComponent(learner.name)}'
-            '&noun=${Uri.encodeQueryComponent(learnerNoun)}'
-            '&access=${learner.accessibility.index}',
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: hc.primary.withValues(alpha: 0.15),
-                  child: Text(
-                    learner.avatarEmoji.isEmpty ? '🙂' : learner.avatarEmoji,
-                    style: const TextStyle(fontSize: 18),
+      child: Semantics(
+        container: true,
+        // Opens the learner's day: a screen reader says "button", which
+        // an InkWell alone does not.
+        button: true,
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: () => context.push(
+              '/routine-manage/${learner.profileId}'
+              '?name=${Uri.encodeQueryComponent(learner.name)}'
+              '&noun=${Uri.encodeQueryComponent(learnerNoun)}'
+              '&access=${learner.accessibility.index}',
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: hc.primary.withValues(alpha: 0.15),
+                    // A face beside the name, not a word to read out.
+                    child: ExcludeSemantics(
+                      child: Text(
+                        learner.avatarEmoji.isEmpty ? '🙂' : learner.avatarEmoji,
+                        style: const TextStyle(fontSize: 18),
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        learner.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.bodyMedium.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: hc.textPrimary,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Whole: a long name and "Wala pang routine — gumawa
+                        // ng isa" lost their ends on a phone at the largest
+                        // Font Size, on one line and then on two.
+                        Text(
+                          learner.name,
+                          style: AppTypography.bodyMedium.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: hc.textPrimary,
+                          ),
                         ),
-                      ),
-                      Text(
-                        subtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.labelSmall
-                            .copyWith(color: hc.textSecondary),
-                      ),
-                      if (steps.isNotEmpty) ...[
-                        const SizedBox(height: 6),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: LinearProgressIndicator(
-                            value: done / steps.length,
-                            minHeight: 6,
-                            backgroundColor:
-                                hc.textHint.withValues(alpha: 0.2),
-                            valueColor: AlwaysStoppedAnimation(
-                              done == steps.length
-                                  ? AppColors.success
-                                  : hc.primary,
+                        Text(
+                          subtitle,
+                          style: AppTypography.labelSmall
+                              .copyWith(color: hc.textSecondary),
+                        ),
+                        if (steps.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: LinearProgressIndicator(
+                              value: done / steps.length,
+                              minHeight: 6,
+                              backgroundColor:
+                                  hc.textHint.withValues(alpha: 0.2),
+                              valueColor: AlwaysStoppedAnimation(
+                                done == steps.length
+                                    ? AppColors.success
+                                    : hc.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                        // Live, for a learner whose routine locks: what the
+                        // device is waiting on, whether it needs help, and
+                        // every step an adult excused or marked done today.
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: RoutineLearnerLockStatus(
+                            profileId: learner.profileId,
+                            filipino: l,
+                            actionsFor: (context, status) =>
+                                RoutineStepActionBar(
+                              childProfileId: learner.profileId,
+                              learnerName: learner.name,
+                              status: status,
+                              filipino: l,
+                            ),
+                            undoFor: (context, status) => RoutineUndoMarkButton(
+                              childProfileId: learner.profileId,
+                              status: status,
+                              filipino: l,
                             ),
                           ),
                         ),
                       ],
-                      // Live, for a learner whose routine locks: what the
-                      // device is waiting on, whether it needs help, and
-                      // every step an adult excused or marked done today.
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6),
-                        child: RoutineLearnerLockStatus(
-                          profileId: learner.profileId,
-                          filipino: l,
-                          actionsFor: (context, status) =>
-                              RoutineStepActionBar(
-                            childProfileId: learner.profileId,
-                            learnerName: learner.name,
-                            status: status,
-                            filipino: l,
-                          ),
-                          undoFor: (context, status) => RoutineUndoMarkButton(
-                            childProfileId: learner.profileId,
-                            status: status,
-                            filipino: l,
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Icon(
-                  hasAny ? Icons.chevron_right_rounded : Icons.add_rounded,
-                  color: hc.textSecondary,
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  Icon(
+                    hasAny ? Icons.chevron_right_rounded : Icons.add_rounded,
+                    color: hc.textSecondary,
+                  ),
+                ],
+              ),
             ),
           ),
         ),

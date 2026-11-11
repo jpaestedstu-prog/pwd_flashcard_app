@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/auto_fit.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
@@ -67,12 +68,12 @@ class _StoryCoverCardState extends State<StoryCoverCard> {
     final locked = !widget.unlocked;
     final accent = story.category.color;
     final kid = widget.kidMode;
-    final title = _t(context).localeName.startsWith('fil')
-        ? story.titleFil
-        : story.titleEn;
+    final filipino = _t(context).localeName.startsWith('fil');
+    final title = story.titleIn(filipino: filipino);
 
     return DpadFocusable(onActivate: widget.unlocked ? widget.onTap : widget.onLockedTap, child: Semantics(
-      button: widget.unlocked,
+      // Pressable when locked too: the press says why it is locked.
+      button: true,
       label: locked
           ? _t(context).storyLocked(title)
           : '${_t(context).storyTapToRead(title)}'
@@ -82,8 +83,10 @@ class _StoryCoverCardState extends State<StoryCoverCard> {
             ? () => widget.onTap?.call()
             : widget.onLockedTap,
         // Pressable3D adds the press-scale + gentle tilt (reduced-motion aware);
-        // disabled on locked cards so they stay completely static.
-        child: Pressable3D(
+        // disabled on locked cards so they stay completely static. Hidden
+        // from screen readers: the label above says it all, and TalkBack read
+        // the title, the Filipino title and the level again after it.
+        child: ExcludeSemantics(child: Pressable3D(
           enabled: widget.unlocked,
           child: Container(
             decoration: BoxDecoration(
@@ -141,29 +144,36 @@ class _StoryCoverCardState extends State<StoryCoverCard> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          story.titleEn,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style:
-                              (kid
-                                      ? AppTypography.titleMedium
-                                      : AppTypography.titleSmall)
-                                  .copyWith(
-                                    color: locked
-                                        ? hc.textSecondary
-                                        : hc.textPrimary,
-                                  ),
+                        // The whole title, smaller if it must be: at the
+                        // largest Font Size "The Rainbow Garden" was cut
+                        // to "The Rainbow Gar…" (30 Oct).
+                        AutoFit(
+                          alignment: AlignmentDirectional.centerStart,
+                          // The app's language first, the other underneath; a
+                          // child's card has room for one: it was always English.
+                          child: Text(
+                            story.titleIn(filipino: filipino),
+                            style:
+                                (kid
+                                        ? AppTypography.titleMedium
+                                        : AppTypography.titleSmall)
+                                    .copyWith(
+                                      color: locked
+                                          ? hc.textSecondary
+                                          : hc.textPrimary,
+                                    ),
+                          ),
                         ),
                         if (!kid) ...[
                           const SizedBox(height: 2),
-                          Text(
-                            story.titleFil,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTypography.bodySmall.copyWith(
-                              color: hc.textSecondary,
-                              fontStyle: FontStyle.italic,
+                          AutoFit(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Text(
+                              story.titleIn(filipino: !filipino),
+                              style: AppTypography.bodySmall.copyWith(
+                                color: hc.textSecondary,
+                                fontStyle: FontStyle.italic,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 8),
@@ -181,7 +191,7 @@ class _StoryCoverCardState extends State<StoryCoverCard> {
               ),
             ),
           ),
-        ),
+        )),
       ),
     ));
   }

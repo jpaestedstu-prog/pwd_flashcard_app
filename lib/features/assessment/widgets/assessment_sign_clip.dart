@@ -101,54 +101,55 @@ class _AssessmentSignClipState extends State<AssessmentSignClip> {
     final hc = HCColor.of(context);
     final controller = _controller;
 
+    // The clip's own node, named; its Replay button stays reachable (the
+    // whole clip used to be excluded, Replay with it).
     return Semantics(
+      container: true,
       label: _failed ? _tr(context).clipFailedSemantics : _tr(context).clipSemantics,
-      child: ExcludeSemantics(
-        child: Container(
-          decoration: BoxDecoration(
-            color: hc.surfaceVariant,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: hc.border),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: AspectRatio(
-            aspectRatio: 16 / 12,
-            child: _failed
-                ? _unavailable(hc)
-                : !_ready || controller == null
-                ? const Center(child: CircularProgressIndicator())
-                : Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      FittedBox(
-                        child: SizedBox(
-                          width: controller.value.size.width,
-                          height: controller.value.size.height,
-                          child: VideoPlayer(controller),
-                        ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: hc.surfaceVariant,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: hc.border),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: AspectRatio(
+          aspectRatio: 16 / 12,
+          child: _failed
+              ? _unavailable(hc)
+              : !_ready || controller == null
+              ? const Center(child: CircularProgressIndicator())
+              : Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    FittedBox(
+                      child: SizedBox(
+                        width: controller.value.size.width,
+                        height: controller.value.size.height,
+                        child: VideoPlayer(controller),
                       ),
-                      Positioned(
-                        right: 10,
-                        bottom: 10,
-                        child: Material(
-                          color: Colors.black.withValues(alpha: 0.55),
-                          shape: const CircleBorder(),
-                          child: IconButton(
-                            tooltip: _tr(context).clipReplay,
-                            icon: const Icon(
-                              Icons.replay_rounded,
-                              color: Colors.white,
-                            ),
-                            onPressed: () async {
-                              await controller.seekTo(Duration.zero);
-                              await controller.play();
-                            },
+                    ),
+                    Positioned(
+                      right: 10,
+                      bottom: 10,
+                      child: Material(
+                        color: Colors.black.withValues(alpha: 0.55),
+                        shape: const CircleBorder(),
+                        child: IconButton(
+                          tooltip: _tr(context).clipReplay,
+                          icon: const Icon(
+                            Icons.replay_rounded,
+                            color: Colors.white,
                           ),
+                          onPressed: () async {
+                            await controller.seekTo(Duration.zero);
+                            await controller.play();
+                          },
                         ),
                       ),
-                    ],
-                  ),
-          ),
+                    ),
+                  ],
+                ),
         ),
       ),
     );

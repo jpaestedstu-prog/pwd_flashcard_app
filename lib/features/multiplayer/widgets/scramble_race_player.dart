@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 
+import '../../../core/widgets/auto_fit.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../models/multiplayer_models.dart';
@@ -369,8 +370,7 @@ class _ScrambleRacePlayerState extends State<ScrambleRacePlayer> {
                   extent: 52,
                 ),
                 const SizedBox(height: 8),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
+                AutoFit(
                   child: Text(
                     item.prompt,
                     style: AppTypography.displaySmall.copyWith(

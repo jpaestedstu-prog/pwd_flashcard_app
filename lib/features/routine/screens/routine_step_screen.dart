@@ -26,6 +26,7 @@ import '../services/routine_sign_launcher.dart';
 import '../widgets/routine_media.dart';
 import '../widgets/routine_step_card.dart';
 import '../widgets/routine_step_timer.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// One routine step, full screen: its picture, its visual instructions, its
 /// media, its signs, its timer, and the button that ticks it off.
@@ -242,7 +243,7 @@ class _RoutineStepScreenState extends ConsumerState<RoutineStepScreen> {
           backgroundColor: Colors.transparent,
           elevation: 0,
           leading: const AppBackButton(),
-          title: Text(
+          title: AppBarTitle(
             title,
             style: AppTypography.titleMedium.copyWith(
               fontWeight: FontWeight.w700,
@@ -541,19 +542,22 @@ class _HeroMedia extends StatelessWidget {
             ),
             child: Column(
               children: [
-                Semantics(
-                  label: title,
-                  child: ExcludeSemantics(
-                    child: Text(emoji, style: const TextStyle(fontSize: 84)),
-                  ),
+                // The picture stands beside its name, which says it: named too,
+                // the step was read twice.
+                ExcludeSemantics(
+                  child: Text(emoji, style: const TextStyle(fontSize: 84)),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  title,
-                  textAlign: TextAlign.center,
-                  style: AppTypography.titleMedium.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: hc.textPrimary,
+                // For the eye: the top bar says the step's name, and a screen
+                // reader said "Bath Time" twice in a row.
+                ExcludeSemantics(
+                  child: Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: AppTypography.titleMedium.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: hc.textPrimary,
+                    ),
                   ),
                 ),
               ],

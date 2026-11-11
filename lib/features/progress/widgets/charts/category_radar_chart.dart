@@ -45,7 +45,17 @@ class CategoryRadarChart extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          SizedBox(
+          // Each category and how far along: a radar says nothing to a reader.
+          Semantics(
+            label: [
+              for (var i = 0; i < categories.length; i++)
+                l10n.chartPercentOf(
+                  categories[i].labelOf(l10n),
+                  (values[i] * 100).round(),
+                ),
+            ].join(', '),
+            excludeSemantics: true,
+            child: SizedBox(
             height: 280,
             child: RadarChart(
               RadarChartData(
@@ -65,7 +75,7 @@ class CategoryRadarChart extends StatelessWidget {
                 borderData: FlBorderData(show: false),
                 titlePositionPercentageOffset: 0.2,
                 titleTextStyle: AppTypography.labelSmall.copyWith(
-                  fontSize: 9,
+                  fontSize: 10,
                   color: hc.textSecondary,
                 ),
                 getTitle: (index, angle) => RadarChartTitle(
@@ -73,7 +83,7 @@ class CategoryRadarChart extends StatelessWidget {
                 ),
                 tickCount: 4,
                 ticksTextStyle: AppTypography.labelSmall.copyWith(
-                  fontSize: 8,
+                  fontSize: 10,
                   color: hc.textSecondary.withValues(alpha: 0.5),
                 ),
                 tickBorderData: BorderSide(
@@ -84,7 +94,7 @@ class CategoryRadarChart extends StatelessWidget {
                 ),
               ),
             ),
-          ),
+          )),
         ],
       ),
     );

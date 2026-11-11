@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../core/widgets/fit_text.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../l10n/app_localizations_en.dart';
 
@@ -41,6 +42,8 @@ class CategoryProgressRow extends StatelessWidget {
     return Semantics(
       label: (AppLocalizations.of(context) ?? AppLocalizationsEn())
           .progCategoryRowSemantics(label, mastered, total, (p * 100).round()),
+      // Its texts are the label's own words: they were read a second time.
+      excludeSemantics: true,
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
@@ -75,11 +78,12 @@ class CategoryProgressRow extends StatelessWidget {
                 children: [
                   Row(
                     children: [
+                      // Two lines, whole words: on one, "Mga Bahagi ng
+                      // Katawan" and "Family & Greetings" lost their ends
+                      // on a phone at the largest Font Size (3 Nov).
                       Expanded(
-                        child: Text(
+                        child: FitText(
                           label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                           style: AppTypography.labelLarge.copyWith(
                             fontWeight: FontWeight.w600,
                           ),

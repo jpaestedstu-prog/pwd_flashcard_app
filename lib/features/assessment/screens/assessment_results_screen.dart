@@ -18,6 +18,7 @@ import '../services/assessment_service.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../core/widgets/fit_text.dart';
+import '../../../core/widgets/stagger_in.dart';
 
 /// Full analytics dashboard showing assessment history, score trends,
 /// pre/post comparisons, and category breakdowns over time.
@@ -59,7 +60,7 @@ class AssessmentResultsScreen extends ConsumerWidget {
                 child: Row(
                   children: [
                     AppBackButton(
-                      fallbackRoute: '/assessment-hub',
+                      fallbackRoute: '/assessment',
                       color: hc.textPrimary,
                     ),
                     const SizedBox(width: 8),
@@ -99,7 +100,7 @@ class AssessmentResultsScreen extends ConsumerWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text('📊', style: TextStyle(fontSize: 64)),
+                      const ExcludeSemantics(child: Text('📊', style: TextStyle(fontSize: 64))),
                       const SizedBox(height: 16),
                       Text(
                         (AppLocalizations.of(context) ??
@@ -223,12 +224,17 @@ class AssessmentResultsScreen extends ConsumerWidget {
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate((context, index) {
                       final group = attempts[index];
-                      return _AttemptsCard(
+                      return StaggerIn(
+                        index: index,
+                        base: const Duration(milliseconds: 490),
+                        child: _AttemptsCard(
                         type: group.type,
                         attempts: group.results,
-                      ).animate().fadeIn(
+                      ),
+                        builder: (child, delay) => child.animate().fadeIn(
                         duration: 400.ms,
-                        delay: (490 + index * 60).ms,
+                        delay: delay,
+                      ),
                       );
                     }, childCount: attempts.length),
                   ),
@@ -255,10 +261,15 @@ class AssessmentResultsScreen extends ConsumerWidget {
                     final sorted = List.of(results)
                       ..sort((a, b) => b.completedAt.compareTo(a.completedAt));
                     final result = sorted[index];
-                    return _HistoryTile(result: result)
-                        .animate()
-                        .fadeIn(duration: 300.ms, delay: (550 + index * 50).ms)
-                        .slideX(begin: 0.05, end: 0);
+                    return StaggerIn(
+                      index: index,
+                      base: const Duration(milliseconds: 550),
+                      step: const Duration(milliseconds: 50),
+                      child: _HistoryTile(result: result),
+                      builder: (child, delay) => child.animate()
+                        .fadeIn(duration: 300.ms, delay: delay)
+                        .slideX(begin: 0.05, end: 0),
+                    );
                   }, childCount: results.length),
                 ),
               ),
@@ -536,6 +547,10 @@ class _OverallStatsRow extends StatelessWidget {
             label: (AppLocalizations.of(context) ?? AppLocalizationsEn())
                 .resTotalTime,
             value: '${(totalTime / 60).ceil()}m',
+            spokenValue: LocalizedDuration.long(
+              Duration(minutes: (totalTime / 60).ceil()),
+              AppLocalizations.of(context) ?? AppLocalizationsEn(),
+            ),
             icon: Icons.timer_rounded,
             color: AppColors.accent,
           ),
@@ -548,12 +563,17 @@ class _OverallStatsRow extends StatelessWidget {
 class _MiniStat extends StatelessWidget {
   final String label;
   final String value;
+
+  /// [value] as it is said, when its short form would be misread ("15m" is
+  /// "15 meters").
+  final String? spokenValue;
   final IconData icon;
   final Color color;
 
   const _MiniStat({
     required this.label,
     required this.value,
+    this.spokenValue,
     required this.icon,
     required this.color,
   });
@@ -561,7 +581,12 @@ class _MiniStat extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
-    return Container(
+    // One stop, name first: "Total Time, 15 minutes".
+    return Semantics(
+      container: true,
+      label: '$label, ${spokenValue ?? value}',
+      excludeSemantics: true,
+      child: Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
@@ -583,6 +608,7 @@ class _MiniStat extends StatelessWidget {
             style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
           ),
         ],
+      ),
       ),
     );
   }
@@ -656,7 +682,7 @@ class _ScoreTrendChart extends StatelessWidget {
                       '${date.month}/${date.day}',
                       style: AppTypography.labelSmall.copyWith(
                         color: hc.textHint,
-                        fontSize: 10,
+                        fontSize: 11,
                       ),
                     ),
                   );
@@ -836,7 +862,7 @@ class _HistoryTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Text(result.type.emoji, style: const TextStyle(fontSize: 28)),
+            ExcludeSemantics(child: Text(result.type.emoji, style: const TextStyle(fontSize: 28))),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -858,6 +884,21 @@ class _HistoryTile extends StatelessWidget {
                           result.totalQuestions,
                           _formatDuration(result.durationSeconds),
                         ),
+                    // The time in words: "2m 30s" is read "2 meters 30 s".
+                    semanticsLabel:
+                        (AppLocalizations.of(context) ?? AppLocalizationsEn())
+                            .resHistoryLine(
+                              LocalizedDate.monthDay(
+                                result.completedAt,
+                                AppLocalizations.of(context),
+                              ),
+                              result.totalQuestions,
+                              LocalizedDuration.long(
+                                Duration(seconds: result.durationSeconds),
+                                AppLocalizations.of(context) ??
+                                    AppLocalizationsEn(),
+                              ),
+                            ),
                     style: AppTypography.bodySmall.copyWith(
                       color: hc.textHint,
                       fontSize: 11,
@@ -895,7 +936,7 @@ class _HistoryTile extends StatelessWidget {
                   result.gradeOf(AppLocalizations.of(context)),
                   style: AppTypography.labelSmall.copyWith(
                     color: HCColor.of(context).readableOver(_scoreColor(result.percentage), _scoreColor(result.percentage).withValues(alpha: 0.15)),
-                    fontSize: 10,
+                    fontSize: 11,
                   ),
                 ),
               ],
@@ -946,7 +987,7 @@ class _AttemptsCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Text(type.emoji, style: const TextStyle(fontSize: 22)),
+                ExcludeSemantics(child: Text(type.emoji, style: const TextStyle(fontSize: 22))),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(

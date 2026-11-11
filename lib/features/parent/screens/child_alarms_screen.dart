@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/widgets/whole_month_title.dart';
 import '../../../core/utils/localized_date.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -13,6 +14,9 @@ import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../widgets/on_time_alarms.dart';
 import '../../classroom/widgets/cloud_sync_error_view.dart';
+import '../../../core/widgets/app_bar_title.dart';
+import '../../../core/widgets/fit_label.dart';
+import '../../../core/widgets/text_limits.dart';
 
 /// Per-child alarm list — list, add, edit, delete. Reachable from the
 /// per-member popups in classroom and home-group management screens.
@@ -32,9 +36,9 @@ class ChildAlarmsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(childDisplayName == null
-            ? 'Alarms'
-            : 'Alarms — $childDisplayName'),
+        title: AppBarTitle(childDisplayName == null
+            ? _t(context).alTitle
+            : _t(context).alTitleFor(childDisplayName!)),
       ),
       floatingActionButton: FloatingActionButton.extended(
         icon: const Icon(Icons.add_alarm_rounded),
@@ -84,7 +88,7 @@ class ChildAlarmsScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Last synced ${_relTime(mostRecent)}',
+                        _t(context).alLastSynced(_relTime(context, mostRecent)),
                         style: Theme.of(context).textTheme.labelSmall,
                       ),
                       // Hidden unless this device delivers alarms late.
@@ -112,6 +116,7 @@ class ChildAlarmsScreen extends ConsumerWidget {
                   return await showDialog<bool>(
                         context: context,
                         builder: (ctx) => AlertDialog(
+                          scrollable: true,
                           title: Text(_t(context).alDeleteTitle(
                               a.label.isEmpty ? _t(context).alUnnamed : a.label)),
                           actions: [
@@ -146,12 +151,17 @@ class ChildAlarmsScreen extends ConsumerWidget {
                     ),
                     title: Text(a.label.isEmpty ? _t(context).alUnnamed : a.label),
                     subtitle: Text(_subtitleFor(context, a)),
-                    trailing: Switch(
-                      value: a.enabled,
-                      onChanged: (v) async {
-                        await const ChildAlarmService()
-                            .save(a.copyWith(enabled: v));
-                      },
+                    // Named: a screen reader said only "switch, on". The row
+                    // just before it says which alarm.
+                    trailing: Semantics(
+                      label: _t(context).alThisAlarm,
+                      child: Switch(
+                        value: a.enabled,
+                        onChanged: (v) async {
+                          await const ChildAlarmService()
+                              .save(a.copyWith(enabled: v));
+                        },
+                      ),
                     ),
                     onTap: () => _openEditor(context, ref, a),
                   ),
@@ -183,12 +193,13 @@ class ChildAlarmsScreen extends ConsumerWidget {
   /// Compact relative-time formatter for the "Last synced" line.
   /// Inline because nothing else in this screen reaches into the
   /// time domain; matches the formatter on the time-limits screen.
-  String _relTime(DateTime t) {
+  String _relTime(BuildContext context, DateTime t) {
     final delta = DateTime.now().difference(t);
-    if (delta.inSeconds < 60) return 'just now';
-    if (delta.inMinutes < 60) return '${delta.inMinutes} min ago';
-    if (delta.inHours < 24) return '${delta.inHours} h ago';
-    return '${delta.inDays} d ago';
+    final l = _t(context);
+    if (delta.inSeconds < 60) return l.gmJustNow;
+    if (delta.inMinutes < 60) return l.gmMinutesAgo(delta.inMinutes);
+    if (delta.inHours < 24) return l.gmHoursAgo(delta.inHours);
+    return l.gmDaysAgo(delta.inDays);
   }
 
   Future<void> _openEditor(
@@ -266,6 +277,7 @@ class _AlarmEditorDialogState extends State<_AlarmEditorDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      scrollable: true,
       title: Text(widget.existing == null ? _t(context).alNew : _t(context).alEdit),
       content: SingleChildScrollView(
         child: Column(
@@ -274,8 +286,10 @@ class _AlarmEditorDialogState extends State<_AlarmEditorDialog> {
           children: [
             TextField(
               controller: _label,
+              maxLength: TextLimits.label,
+              buildCounter: TextLimits.counter,
               decoration: InputDecoration(
-                labelText: _t(context).alLabel,
+                label: FitLabel(_t(context).alLabel),
                 hintText: _t(context).alLabelHint,
               ),
               textCapitalization: TextCapitalization.sentences,
@@ -288,6 +302,8 @@ class _AlarmEditorDialogState extends State<_AlarmEditorDialog> {
                 onPressed: _pickTime,
                 child: Text(
                   '${_hour.toString().padLeft(2, "0")}:${_minute.toString().padLeft(2, "0")}',
+                  semanticsLabel:
+                      '${_t(context).alTime}: ${_hour.toString().padLeft(2, "0")}:${_minute.toString().padLeft(2, "0")}',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
@@ -308,7 +324,11 @@ class _AlarmEditorDialogState extends State<_AlarmEditorDialog> {
                   7: 'Sun',
                 }.entries)
                   FilterChip(
-                    label: Text(entry.value),
+                    // The reader's own day names: "Lun", "Mar" in Filipino.
+                    label: Text(LocalizedDate.weekdayShort(
+                      entry.key,
+                      AppLocalizations.of(context),
+                    )),
                     selected: _days.contains(entry.key),
                     onSelected: (v) {
                       setState(() {
@@ -379,6 +399,7 @@ class _AlarmEditorDialogState extends State<_AlarmEditorDialog> {
   Future<void> _pickTime() async {
     final picked = await showTimePicker(
       context: context,
+      builder: wholeTimePicker,
       initialTime: TimeOfDay(hour: _hour, minute: _minute),
     );
     if (picked == null) return;

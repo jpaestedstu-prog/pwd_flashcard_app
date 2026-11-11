@@ -155,16 +155,41 @@ class GuardianAddress {
     required String stampedHonorific,
     UserRole? role,
     int? avatarIndex,
+    bool filipino = false,
   }) {
     final name = preferredName.trim();
     if (name.isNotEmpty) return name;
     final stamped = stampedHonorific.trim();
-    if (stamped.isNotEmpty) return stamped;
+    if (stamped.isNotEmpty) return inLanguage(stamped, filipino: filipino);
     if (role != null) {
-      return honorificFor(role: role, avatarIndex: avatarIndex ?? 0);
+      return filipino
+          ? honorificForFilipino(role: role, avatarIndex: avatarIndex ?? 0)
+          : honorificFor(role: role, avatarIndex: avatarIndex ?? 0);
     }
-    return 'your grown-up';
+    return filipino ? 'sa nakatatanda' : 'your grown-up';
   }
+
+  /// A stamped honorific in the language of the device reading it. The stamp
+  /// is written on the educator's device, in English ("your parent"), and a
+  /// learner in Filipino read "ibalik ang device kay your parent". "Ma'am",
+  /// "Daddy" and a name are the same in both.
+  static String inLanguage(String stamped, {required bool filipino}) {
+    const generic = <String, String>{
+      'your teacher': 'sa iyong guro',
+      'your parent': 'sa iyong magulang',
+      'your grown-up': 'sa nakatatanda',
+    };
+    if (filipino) return generic[stamped] ?? stamped;
+    for (final e in generic.entries) {
+      if (e.value == stamped) return e.key;
+    }
+    return stamped;
+  }
+
+  /// "kay Mommy", but "sa iyong magulang": *kay* goes before a name and *sa*
+  /// before anything else, and the generic addresses carry their own.
+  static String _toWhomFilipino(String address) =>
+      address.startsWith('sa ') ? address : 'kay $address';
 
   /// The spoken / captioned hand-off line.
   ///
@@ -185,7 +210,8 @@ class GuardianAddress {
     required UserRole setterRole,
   }) {
     final verb = setterRole == UserRole.parent ? 'ibalik' : 'ibigay';
-    return 'Tapos na ang oras. Pakisuyong $verb ang device kay $address.';
+    return 'Tapos na ang oras. Pakisuyong $verb ang device '
+        '${_toWhomFilipino(address)}.';
   }
 
   /// A short, plain-language variant for cognitive / learning profiles:
@@ -196,6 +222,6 @@ class GuardianAddress {
 
   /// Filipino counterpart of [timesUpMessageSimple].
   static String timesUpMessageSimpleFilipino({required String address}) {
-    return 'Tapos na. Ibigay ang tablet kay $address.';
+    return 'Tapos na. Ibigay ang tablet ${_toWhomFilipino(address)}.';
   }
 }

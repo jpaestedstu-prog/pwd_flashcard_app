@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/widgets/stats_across.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/fit_text.dart';
@@ -30,6 +31,7 @@ import '../../../widgets/app_back_button.dart';
 import '../../../widgets/app_card.dart';
 import '../../../widgets/rich_empty_states.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 export '../models/educator_audience.dart' show EducatorAudience;
 export '../services/educator_recommendations.dart'
@@ -96,7 +98,7 @@ class _EducatorDashboardScreenState
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: const AppBackButton(),
-        title: Text(
+        title: AppBarTitle(
           _audience.dashboardTitleOf(filipino: l),
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
@@ -254,11 +256,11 @@ class _EducatorDashboardScreenState
                           const SizedBox(width: 8),
                           // Expanded so a large font scale can't push the
                           // "N active / M total" counter off the row.
+                          // Two lines before it is cut: "Ang Iyong mga
+                          // Estudyante" lost its end on a phone (3 Nov).
                           Expanded(
-                            child: Text(
+                            child: FitText(
                               _audience.rosterTitleOf(filipino: l),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                               style: AppTypography.titleSmall.copyWith(
                                 fontWeight: FontWeight.w700,
                                 color: hc.textPrimary,
@@ -571,9 +573,12 @@ class _ChildCard extends ConsumerWidget {
                           shape: BoxShape.circle,
                         ),
                         child: Center(
-                          child: Text(
-                            child.avatarEmoji,
-                            style: const TextStyle(fontSize: 22),
+                          // A face beside the name, not a word to read out.
+                          child: ExcludeSemantics(
+                            child: Text(
+                              child.avatarEmoji,
+                              style: const TextStyle(fontSize: 22),
+                            ),
                           ),
                         ),
                       ),
@@ -588,14 +593,15 @@ class _ChildCard extends ConsumerWidget {
                     children: [
                       Row(
                         children: [
+                          // The whole name, on two lines if it needs them: a
+                          // thirty-letter name lost its end (3 Nov).
                           Flexible(
-                            child: Text(
+                            child: FitText(
                               child.name,
                               style: AppTypography.titleSmall.copyWith(
                                 fontWeight: FontWeight.w700,
                                 color: hc.textPrimary,
                               ),
-                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           if (child.isRecentlyActive) ...[
@@ -628,7 +634,7 @@ class _ChildCard extends ConsumerWidget {
                                           alpha: 0.15,
                                         ),
                                       ),
-                                      fontSize: 9,
+                                      fontSize: 11,
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
@@ -699,6 +705,9 @@ class _ChildCard extends ConsumerWidget {
                         const SizedBox(width: 4),
                         Text(
                           '${child.streakDays}',
+                          semanticsLabel: filipino
+                              ? '${child.streakDays} araw na sunod-sunod'
+                              : '${child.streakDays} day streak',
                           style: AppTypography.labelMedium.copyWith(
                             fontWeight: FontWeight.w800,
                             color: hc.readableOver(
@@ -720,7 +729,10 @@ class _ChildCard extends ConsumerWidget {
                 color: hc.border.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Row(
+              // Along the top: a label on two lines must not lift its
+              // neighbours' icons out of line.
+              child: StatsAcross(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _MiniStat(
                     icon: Icons.school_rounded,
@@ -743,6 +755,9 @@ class _ChildCard extends ConsumerWidget {
                   _MiniStat(
                     icon: Icons.timer_rounded,
                     value: '${child.studyMinutesThisWeek}m',
+                    spokenValue: filipino
+                        ? '${child.studyMinutesThisWeek} minuto'
+                        : '${child.studyMinutesThisWeek} minutes',
                     label: filipino ? 'Linggong Ito' : 'This Week',
                     color: AppColors.success,
                   ),
@@ -856,6 +871,9 @@ class _ChildCard extends ConsumerWidget {
                         const SizedBox(width: 3),
                         Text(
                           '$minutesToday/${limit.dailyLimitMinutes}m',
+                          semanticsLabel: filipino
+                              ? '$minutesToday sa ${limit.dailyLimitMinutes} minuto ngayon'
+                              : '$minutesToday of ${limit.dailyLimitMinutes} minutes today',
                           style: AppTypography.labelSmall.copyWith(
                             fontWeight: FontWeight.w700,
                             color: HCColor.of(context).readableOver(pillColor, pillColor.withValues(alpha: 0.4)),
@@ -998,8 +1016,6 @@ class _MoodRow extends ConsumerWidget {
                   color: hc.textSecondary,
                   fontWeight: FontWeight.w600,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
             ),
             if (attention) ...[
@@ -1058,48 +1074,59 @@ class _MiniStat extends StatelessWidget {
   final String label;
   final Color color;
 
+  /// [value] in words, where its short form reads badly aloud ("12m" was
+  /// "12 metres").
+  final String? spokenValue;
+
   const _MiniStat({
     required this.icon,
     required this.value,
     required this.label,
     required this.color,
+    this.spokenValue,
   });
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
+      // One phrase on the card's label ("12 Words"), not a number and a word
+      // read apart.
+      child: Semantics(
+        label: '${spokenValue ?? value} $label',
+        excludeSemantics: true,
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 14, color: color),
             ),
-            child: Icon(icon, size: 14, color: color),
-          ),
-          const SizedBox(height: 4),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              value,
-              maxLines: 1,
-              style: AppTypography.labelMedium.copyWith(
-                fontWeight: FontWeight.w800,
+            const SizedBox(height: 4),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                value,
+                maxLines: 1,
+                style: AppTypography.labelMedium.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
-          ),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppTypography.labelSmall.copyWith(
-              color: HCColor.of(context).textSecondary,
-              fontSize: 9,
+            // A quarter of the card each: "Katumpakan" and "Linggong Ito"
+            // were cut on one line on a phone at the largest Font Size.
+            FitText(
+              label,
+              textAlign: TextAlign.center,
+              style: AppTypography.labelSmall.copyWith(
+                color: HCColor.of(context).textSecondary,
+                fontSize: 11,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

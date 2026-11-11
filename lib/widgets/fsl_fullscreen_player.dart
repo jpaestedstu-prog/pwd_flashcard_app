@@ -767,23 +767,24 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
               const SizedBox(width: 8),
               // Progress bar
               Expanded(
-                child: Semantics(
-                  slider: true,
-                  label: _t(context).fpProgress,
-                  value:
-                      '${(progress * 100).round()}%',
-                  child: SliderTheme(
-                    data: SliderThemeData(
-                      trackHeight: 4,
-                      thumbShape:
-                          const RoundSliderThumbShape(enabledThumbRadius: 7),
-                      activeTrackColor: AppColors.primary,
-                      inactiveTrackColor: Colors.white24,
-                      thumbColor: AppColors.primaryLight,
-                      overlayColor: AppColors.primary.withValues(alpha: 0.2),
-                    ),
-                    child: DpadSliderScope(child: Slider(
+                child: SliderTheme(
+                  data: SliderThemeData(
+                    trackHeight: 4,
+                    thumbShape:
+                        const RoundSliderThumbShape(enabledThumbRadius: 7),
+                    activeTrackColor: AppColors.primary,
+                    inactiveTrackColor: Colors.white24,
+                    thumbColor: AppColors.primaryLight,
+                    overlayColor: AppColors.primary.withValues(alpha: 0.2),
+                  ),
+                  // The name on the slider itself: on a Semantics wrapper
+                  // above it, the name and the value went to a node of their
+                  // own, and the slider TalkBack landed on was nameless.
+                  child: DpadSliderScope(
+                    name: _t(context).fpProgress,
+                    child: Slider(
                       value: progress.clamp(0.0, 1.0),
+                      semanticFormatterCallback: (v) => '${(v * 100).round()}%',
                       onChanged: (value) {
                         final target = Duration(
                           milliseconds:
@@ -797,7 +798,7 @@ class _FslFullscreenPlayerState extends State<FslFullscreenPlayer>
                       onChangeEnd: (_) {
                         _startHideControlsTimer();
                       },
-                    )),
+                    ),
                   ),
                 ),
               ),

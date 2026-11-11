@@ -39,6 +39,11 @@ class LanguageReplayBar extends StatelessWidget {
     final l = AppLocalizations.of(context)!;
     return AppActionBar(
       equalWidth: true,
+      // Two short words, which fit themselves into their half: side by side
+      // down to 120 dp a cell at any Font Size. Stacked, the pair took 132 px
+      // of a phone's height from the card above, and with the largest text on
+      // a narrow phone the card was left a thin strip (9 Nov).
+      minGrowsWithText: false,
       children: [
         // English — blue, matching the English listen affordances elsewhere.
         _LanguageButton(
@@ -72,39 +77,38 @@ class _LanguageButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    return Semantics(
-      button: true,
+    return FilledButton.icon(
+      onPressed: onTap,
+      style: FilledButton.styleFrom(
+        // The language's own colour, deepened just enough for white.
+        backgroundColor: HCColor.of(context).fillFor(color),
+        foregroundColor: Colors.white,
+        // 56dp floor keeps the target comfortably above the 48dp
+        // accessibility minimum; the icon + label still grow with the
+        // Font Size setting.
+        minimumSize: const Size.fromHeight(56),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+      ),
+      icon: Icon(Icons.volume_up_rounded, size: context.scaleIcon(22)),
+      // FilledButton.icon already wraps the label in a Flexible, so we pass
+      // a bare Text; maxLines + ellipsis let a long translation shrink to
+      // fit instead of throwing a horizontal RenderFlex overflow.
       // e.g. "Replay, English" / "Replay, Filipino" so the purpose and the
-      // language are both announced to screen-reader users.
-      label: '${l.replay}, $label',
-      child: ExcludeSemantics(
-        child: FilledButton.icon(
-          onPressed: onTap,
-          style: FilledButton.styleFrom(
-            // The language's own colour, deepened just enough for white.
-            backgroundColor: HCColor.of(context).fillFor(color),
-            foregroundColor: Colors.white,
-            // 56dp floor keeps the target comfortably above the 48dp
-            // accessibility minimum; the icon + label still grow with the
-            // Font Size setting.
-            minimumSize: const Size.fromHeight(56),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-          ),
-          icon: Icon(Icons.volume_up_rounded, size: context.scaleIcon(22)),
-          // FilledButton.icon already wraps the label in a Flexible, so we pass
-          // a bare Text; maxLines + ellipsis let a long translation shrink to
-          // fit instead of throwing a horizontal RenderFlex overflow.
-          label: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppTypography.titleMedium.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-            ),
+      // language are both announced to screen-reader users — on the button's
+      // own node, with its press and focus.
+      label: Semantics(
+        label: '${l.replay}, $label',
+        excludeSemantics: true,
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTypography.titleMedium.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ),

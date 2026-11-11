@@ -13,6 +13,7 @@ import '../../../widgets/app_snack_bar.dart';
 import '../models/parent_teacher_note_models.dart';
 import '../services/notes_cloud_service.dart';
 import '../../../widgets/dpad_focusable.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 class ParentTeacherNotesScreen extends ConsumerStatefulWidget {
   /// When set, the screen is scoped to a single learner — used by the
@@ -227,10 +228,13 @@ class _ParentTeacherNotesScreenState
         : null;
     final title = scopedName != null
         ? (isFilipino ? 'Mga Tala — $scopedName' : 'Notes — $scopedName')
-        : (isFilipino ? 'Mga Tala ng Magulang-Guro' : 'Parent-Teacher Notes');
+        // A learner opens this from "My Notes": the same words on arrival.
+        : !isEducator
+            ? (isFilipino ? 'Aking mga Tala' : 'My Notes')
+            : (isFilipino ? 'Mga Tala ng Magulang-Guro' : 'Parent-Teacher Notes');
 
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
+      appBar: AppBar(title: AppBarTitle(title)),
       // Nothing to write a note against until the roster resolves — showing
       // the FAB early opens an editor with an empty learner picker, which
       // used to file the note against the author's own profile id.
@@ -335,14 +339,36 @@ class _ParentTeacherNotesScreenState
           : 'Notes from your teacher and parent will appear here.';
     }
 
+    // Centred while it fits, and scrolled when it does not: a phone on its
+    // side had 40 px too little for it in Filipino (3 Nov).
+    return LayoutBuilder(
+      builder: (context, box) => SingleChildScrollView(
+        // Clear of the New Note button, which sits over this corner: on a phone
+        // on its side the words ran under it.
+        padding: const EdgeInsets.only(bottom: 88),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minHeight: (box.maxHeight - 88).clamp(0.0, double.infinity),
+          ),
+          child: Center(
+            child: _emptyBody(noRoster, isFilipino, body, hc),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _emptyBody(bool noRoster, bool isFilipino, String body, HCColor hc) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(noRoster ? '👥' : '📝',
-                style: const TextStyle(fontSize: 64)),
+            ExcludeSemantics(
+              child: Text(noRoster ? '👥' : '📝',
+                  style: const TextStyle(fontSize: 64)),
+            ),
             const SizedBox(height: 16),
             Text(
               noRoster
@@ -434,6 +460,8 @@ class _ParentTeacherNotesScreenState
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
                     initialValue: selectedStudentId,
+                    // A long name wraps inside the box (127 px over a phone).
+                    isExpanded: true,
                     decoration: InputDecoration(
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -467,30 +495,38 @@ class _ParentTeacherNotesScreenState
                   runSpacing: 8,
                   children: NoteCategory.values.map((cat) {
                     final isSelected = selectedCategory == cat;
-                    return DpadFocusable(onActivate: () => setModalState(() => selectedCategory = cat), child: GestureDetector(
-                      onTap: () => setModalState(() => selectedCategory = cat),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? hc.primary.withValues(alpha: 0.2)
-                              : hc.cardBackground,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: isSelected ? hc.primary : hc.border,
+                    return Semantics(
+                      container: true,
+                      // A choice: a screen reader says so, and which one is chosen.
+                      button: true,
+                      selected: isSelected,
+                      child: DpadFocusable(onActivate: () => setModalState(() => selectedCategory = cat), child: GestureDetector(
+                        onTap: () => setModalState(() => selectedCategory = cat),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? hc.primary.withValues(alpha: 0.2)
+                                : hc.cardBackground,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isSelected ? hc.primary : hc.border,
+                            ),
+                          ),
+                          child: Text(
+                            '${cat.emoji} ${isFilipino ? cat.labelFilipino : cat.label}',
+                            semanticsLabel:
+                                isFilipino ? cat.labelFilipino : cat.label,
+                            style: AppTypography.labelMedium.copyWith(
+                              color: isSelected ? hc.primary : hc.textPrimary,
+                              fontWeight:
+                                  isSelected ? FontWeight.bold : FontWeight.w500,
+                            ),
                           ),
                         ),
-                        child: Text(
-                          '${cat.emoji} ${isFilipino ? cat.labelFilipino : cat.label}',
-                          style: AppTypography.labelMedium.copyWith(
-                            color: isSelected ? hc.primary : hc.textPrimary,
-                            fontWeight:
-                                isSelected ? FontWeight.bold : FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ));
+                      )),
+                    );
                   }).toList(),
                 ),
                 const SizedBox(height: 16),
@@ -521,24 +557,24 @@ class _ParentTeacherNotesScreenState
                 // Submit
                 SizedBox(
                   width: double.infinity,
-                  child: Semantics(
-                    button: true,
-                    label: isFilipino ? 'I-save ang tala' : 'Save note',
-                    child: FilledButton.icon(
-                      onPressed: () {
-                        final content = contentController.text.trim();
-                        if (content.isEmpty) return;
-                        Navigator.of(context).pop(_NoteEditorResult(
-                          content: content,
-                          category: selectedCategory,
-                          studentId: selectedStudentId,
-                        ));
-                      },
-                      icon: const Icon(Icons.save_rounded),
-                      label: Text(isFilipino ? 'I-save' : 'Save Note'),
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
+                  child: FilledButton.icon(
+                    onPressed: () {
+                      final content = contentController.text.trim();
+                      if (content.isEmpty) return;
+                      Navigator.of(context).pop(_NoteEditorResult(
+                        content: content,
+                        category: selectedCategory,
+                        studentId: selectedStudentId,
+                      ));
+                    },
+                    icon: const Icon(Icons.save_rounded),
+                    label: Semantics(
+                      label: isFilipino ? 'I-save ang tala' : 'Save note',
+                      excludeSemantics: true,
+                      child: Text(isFilipino ? 'I-save' : 'Save Note'),
+                    ),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                   ),
                 ),
@@ -586,33 +622,36 @@ class _FilterChip extends StatelessWidget {
       label: label,
       child: DpadFocusable(onActivate: onTap, child: GestureDetector(
         onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          // 48 dp, the smallest target a finger is promised.
-          constraints: const BoxConstraints(minHeight: 48),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? hc.primary.withValues(alpha: 0.2)
-                : hc.cardBackground,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isSelected ? hc.primary : hc.border,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(emoji, style: const TextStyle(fontSize: 14)),
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style: AppTypography.labelMedium.copyWith(
-                  color: isSelected ? hc.primary : hc.textPrimary,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                ),
+        child: ExcludeSemantics(
+          // The label says it; the emoji and word drawn here were read again.
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            // 48 dp, the smallest target a finger is promised.
+            constraints: const BoxConstraints(minHeight: 48),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? hc.primary.withValues(alpha: 0.2)
+                  : hc.cardBackground,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isSelected ? hc.primary : hc.border,
               ),
-            ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(emoji, style: const TextStyle(fontSize: 14)),
+                const SizedBox(width: 4),
+                Text(
+                  label,
+                  style: AppTypography.labelMedium.copyWith(
+                    color: isSelected ? hc.primary : hc.textPrimary,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       )),
@@ -652,9 +691,17 @@ class NoteCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
+            // Header. The kind and the date wrap: with the button beside them
+            // they ran 62 px past a phone's edge at the largest Font Size.
             Row(
               children: [
+                Expanded(
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -664,17 +711,22 @@ class NoteCard extends StatelessWidget {
                   ),
                   child: Text(
                     '${note.category.emoji} ${isFilipino ? note.category.labelFilipino : note.category.label}',
+                  semanticsLabel: isFilipino
+                      ? note.category.labelFilipino
+                      : note.category.label,
                     style: AppTypography.labelSmall.copyWith(
                       color: hc.primary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
-                const Spacer(),
                 Text(
                   _formatDate(note.createdAt, isFilipino),
                   style: AppTypography.labelSmall.copyWith(
                     color: hc.textSecondary,
+                  ),
+                ),
+                    ],
                   ),
                 ),
                 // A real button: an 18-pixel icon under a bare tap handler
@@ -717,7 +769,6 @@ class NoteCard extends StatelessWidget {
                     style: AppTypography.labelSmall.copyWith(
                       color: hc.textSecondary,
                     ),
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 if (learnerName != null) ...[
@@ -732,7 +783,6 @@ class NoteCard extends StatelessWidget {
                         color: hc.textSecondary,
                         fontWeight: FontWeight.w600,
                       ),
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -748,6 +798,7 @@ class NoteCard extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text(isFilipino ? 'Burahin ang Tala?' : 'Delete Note?'),
         content: Text(
           isFilipino

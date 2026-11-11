@@ -3,7 +3,11 @@ import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 
-/// Animated page transitions for go_router, categorized by screen type.
+import '../core/widgets/page_frame.dart';
+
+/// Animated page transitions for go_router, categorized by screen type, and
+/// the one place a route says how wide its content may run on a big screen
+/// ([PageWidth]).
 ///
 /// Usage in app_router.dart:
 /// ```dart
@@ -26,10 +30,11 @@ class AppPageTransitions {
   static CustomTransitionPage<void> fade({
     required LocalKey key,
     required Widget child,
+    PageWidth width = PageWidth.full,
   }) {
     return CustomTransitionPage(
       key: key,
-      child: child,
+      child: PageFrame(width: width, child: child),
       transitionDuration: _normal,
       reverseTransitionDuration: _normal,
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
@@ -42,10 +47,11 @@ class AppPageTransitions {
   static CustomTransitionPage<void> slideUp({
     required LocalKey key,
     required Widget child,
+    PageWidth width = PageWidth.content,
   }) {
     return CustomTransitionPage(
       key: key,
-      child: child,
+      child: PageFrame(width: width, child: child),
       transitionDuration: _normal,
       reverseTransitionDuration: _normal,
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
@@ -72,18 +78,23 @@ class AppPageTransitions {
   static Page<void> slideRight({
     required LocalKey key,
     required Widget child,
+    PageWidth width = PageWidth.content,
   }) {
-    return CupertinoPage<void>(key: key, child: child);
+    return CupertinoPage<void>(
+      key: key,
+      child: PageFrame(width: width, child: child),
+    );
   }
 
   // ─── Scale + Fade (games, interactive activities) ─────
   static CustomTransitionPage<void> scaleUp({
     required LocalKey key,
     required Widget child,
+    PageWidth width = PageWidth.content,
   }) {
     return CustomTransitionPage(
       key: key,
-      child: child,
+      child: PageFrame(width: width, child: child),
       transitionDuration: _normal,
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
         final curved = CurvedAnimation(
@@ -103,10 +114,11 @@ class AppPageTransitions {
   static CustomTransitionPage<void> blurFade({
     required LocalKey key,
     required Widget child,
+    PageWidth width = PageWidth.content,
   }) {
     return CustomTransitionPage(
       key: key,
-      child: child,
+      child: PageFrame(width: width, child: child),
       transitionDuration: _normal,
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
         final blurValue = Tween<double>(begin: 4.0, end: 0.0).animate(
@@ -135,10 +147,11 @@ class AppPageTransitions {
   static CustomTransitionPage<void> slideFromBottom({
     required LocalKey key,
     required Widget child,
+    PageWidth width = PageWidth.content,
   }) {
     return CustomTransitionPage(
       key: key,
-      child: child,
+      child: PageFrame(width: width, child: child),
       transitionDuration: _normal,
       reverseTransitionDuration: _normal,
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
@@ -162,10 +175,11 @@ class AppPageTransitions {
   static CustomTransitionPage<void> none({
     required LocalKey key,
     required Widget child,
+    PageWidth width = PageWidth.full,
   }) {
     return CustomTransitionPage(
       key: key,
-      child: child,
+      child: PageFrame(width: width, child: child),
       transitionDuration: Duration.zero,
       reverseTransitionDuration: Duration.zero,
       transitionsBuilder: (context, animation, secondaryAnimation, child) {

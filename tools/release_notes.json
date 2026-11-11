@@ -2,6 +2,26 @@
   "_comment": "Newest first. tools/release_page_build.py renders the website's download section, changelog, website/version.json and the GitHub release notes from this file plus pubspec.yaml and the built APKs. The first entry must match the pubspec version.",
   "releases": [
     {
+      "version": "1.4.4",
+      "build": 28,
+      "date": "2026-11-11",
+      "summary_en": "1.4.4: easier to read, hear and reach. TalkBack reads every screen once and in its own language, words are never cut off at the largest text or on small phones, the game controller keeps working right after a keyboard or a screen reader, the AI Buddy floats as its own button, and opening a learner from a teacher’s or parent’s list no longer erases the learner’s details.",
+      "summary_fil": "1.4.4: mas madaling basahin, pakinggan at abutin. Isang beses na binabasa ng TalkBack ang bawat screen, sa sarili nitong wika; hindi na napuputol ang mga salita kahit sa pinakamalaking teksto o sa maliit na telepono; tuloy-tuloy na gumagana ang game controller pagkatapos gumamit ng keyboard o screen reader; lumulutang na ang AI Buddy bilang sariling button; at hindi na nabubura ang detalye ng learner kapag binuksan ito mula sa listahan ng guro o magulang.",
+      "notes_en": "TalkBack reads every screen once in its own language, words are never cut off at large text, the controller works right after a keyboard, the AI Buddy floats as its own button, and a learner opened from a list keeps their details.",
+      "notes_fil": "Isang beses na binabasa ng TalkBack ang bawat screen sa sarili nitong wika, hindi na napuputol ang mga salita sa malaking teksto, gumagana agad ang controller pagkatapos ng keyboard, lumulutang na ang AI Buddy bilang sariling button, at nananatili ang detalye ng learner na binuksan mula sa listahan.",
+      "bullets_en": [
+        "TalkBack reads every screen once, in English or Filipino as the screen is, names every button and slider (sliders with their value), says times in words and no longer reads emoji by name. In the web app, desktop screen readers are told the language and the headings too.",
+        "Words are never cut off with “…” or split in the middle, on small phones or at the largest text size, in English and Filipino; pages, cards and buttons are laid out for phones, tablets and computers alike.",
+        "The AI Buddy is a floating button in the corner, above the tab bar: the pages use the whole screen, it steps aside under pop-ups, and messages appear above it.",
+        "Opening a learner from a teacher’s or parent’s list no longer erases the learner’s PIN, birth date or home group.",
+        "The game controller keeps working right after a keyboard or TalkBack was used, and the controller, the arrow keys and Gaze Control reach the AI Buddy and every item in a list.",
+        "Filipino words are spoken by a Filipino voice when the device has one, and Settings shows how to add one.",
+        "List items appear as soon as they scroll into view, instead of waiting their turn in the opening animation.",
+        "Fixes found on real phones and tablets: no “Something went wrong” after switching profiles, Messages recover by themselves after the connection drops, Home and the Daily Reward follow the new day, and the screen sleeps as usual unless Gaze Control or voice commands are on.",
+        "High-contrast and dark themes keep menus and panels readable."
+      ]
+    },
+    {
       "version": "1.4.3",
       "build": 17,
       "date": "2026-10-27",

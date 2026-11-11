@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
+import '../../../core/widgets/capped_width.dart';
 import '../../../core/accessibility/accessibility_content_policy.dart';
 import '../../../core/accessibility/tts_service.dart';
 import '../../../core/services/xp_level_service.dart';
@@ -10,6 +11,7 @@ import '../../../core/theme/accessible_theme.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
+import '../../../core/widgets/fit_text.dart';
 import '../../../core/widgets/safe_scaffold.dart';
 import '../../../data/local/seed_stories.dart';
 import '../../../data/models/enums.dart';
@@ -33,6 +35,7 @@ import '../widgets/shared/progress_section_header.dart';
 import '../widgets/shared/category_progress_row.dart';
 import '../widgets/shared/progress_stat_grid.dart';
 import '../models/category_mastery.dart';
+import '../../companion/widgets/companion_clearance.dart';
 
 class ProgressScreen extends ConsumerWidget {
   const ProgressScreen({super.key});
@@ -131,7 +134,9 @@ class ProgressScreen extends ConsumerWidget {
     // Wraps a single full-width action button as its own gaze row (the buttons
     // sit in an unbounded SliverList, so the ring must size to the child).
     Widget gazeButton(String label, VoidCallback onTap, Widget button) =>
-        gazeGrid
+        // A comfortable width on a big screen (they ran 1,100 px).
+        CappedWidth(
+          child: gazeGrid
             .section(
               columns: 1,
               expand: false,
@@ -142,7 +147,8 @@ class ProgressScreen extends ConsumerWidget {
                 ),
               ],
             )
-            .first;
+            .first,
+        );
 
     // ─── Spoken summary ───────────────────────────────────
     // The accessible equivalent of the mastery ring and the charts. Everything
@@ -275,13 +281,19 @@ class ProgressScreen extends ConsumerWidget {
                   bottom: 16,
                   end: 56, // clear the palette action at large font scales
                 ),
-                title: Text(
-                  l10n.progressTitle(profile?.name ?? 'Learner'),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.titleMedium.copyWith(
-                    color: headerTextColor,
-                    fontWeight: FontWeight.w700,
+                // Two lines, and smaller before it is cut: on one line a
+                // long name ended "Josefina Maria Dela Cr…" on every
+                // screen size (3 Nov).
+                title: Semantics(
+                  container: true,
+                  header: true,
+                  child: FitText(
+                    l10n.progressTitle(profile?.name ?? 'Learner'),
+                    minScale: 0.55,
+                    style: AppTypography.titleMedium.copyWith(
+                      color: headerTextColor,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
                 background: Container(
@@ -291,634 +303,647 @@ class ProgressScreen extends ConsumerWidget {
             ),
 
             SliverPadding(
-              padding: EdgeInsets.fromLTRB(contentHPad, 20, contentHPad, 20),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  // ─── Top Stats (responsive, overflow-safe grid) ──
-                  infoStop(l10n.dpadStopTotals, OverflowGuard(
-                        label: 'progress-top-stats',
-                        child: ProgressStatGrid(
-                          layout: layout,
-                          stats: [
+            padding: EdgeInsets.fromLTRB(contentHPad, 20, contentHPad, 20),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                // ─── Top Stats (responsive, overflow-safe grid) ──
+                infoStop(l10n.dpadStopTotals, OverflowGuard(
+                      label: 'progress-top-stats',
+                      child: ProgressStatGrid(
+                        layout: layout,
+                        stats: [
+                          ProgressStat(
+                            icon: Icons.local_fire_department_rounded,
+                            label: l10n.streak,
+                            value: '$streak',
+                            // The record only earns a line once it says
+                            // something the big number doesn't. It is also
+                            // the consolation after a missed day: the flame
+                            // resets, this doesn't.
+                            suffix: bestStreak > streak
+                                ? l10n.bestStreak(bestStreak)
+                                : l10n.days,
+                            color: AppColors.accent,
+                          ),
+                          ProgressStat(
+                            icon: Icons.star_rounded,
+                            label: l10n.stars,
+                            value: '$totalStars',
+                            // Home and the Shop show the *balance*; this card
+                            // shows lifetime earnings under the same word,
+                            // so a learner who has spent stars saw two
+                            // different "Stars" numbers. Name both.
+                            suffix: starBalance != totalStars
+                                ? l10n.starsLeftToSpend(starBalance)
+                                : '',
+                            color: AppColors.warning,
+                          ),
+                          ProgressStat(
+                            icon: Icons.menu_book_rounded,
+                            label: l10n.words,
+                            value: '$masteredWords',
+                            suffix: '/ $totalWords',
+                            color: AppColors.secondary,
+                          ),
+                          // Lifetime count. The Recent Games list below only
+                          // ever shows the last ten, so this was the one
+                          // number that said how much play has happened.
+                          ProgressStat(
+                            icon: Icons.sports_esports_rounded,
+                            label: l10n.games,
+                            value: '$gamesPlayed',
+                            color: AppColors.info,
+                          ),
+                          // Only for learners the FSL surfaces are shown to —
+                          // a stat a visual-impairment or cognitive profile can
+                          // never move would just read as a permanent zero.
+                          if (showFsl)
                             ProgressStat(
-                              icon: Icons.local_fire_department_rounded,
-                              label: l10n.streak,
-                              value: '$streak',
-                              // The record only earns a line once it says
-                              // something the big number doesn't. It is also
-                              // the consolation after a missed day: the flame
-                              // resets, this doesn't.
-                              suffix: bestStreak > streak
-                                  ? l10n.bestStreak(bestStreak)
-                                  : l10n.days,
-                              color: AppColors.accent,
+                              icon: Icons.sign_language_rounded,
+                              label: l10n.signs,
+                              value: '$signsLearned',
+                              suffix: totalSigns > 0 ? '/ $totalSigns' : '',
+                              color: AppColors.secondaryDark,
                             ),
-                            ProgressStat(
-                              icon: Icons.star_rounded,
-                              label: l10n.stars,
-                              value: '$totalStars',
-                              // Home and the Shop show the *balance*; this card
-                              // shows lifetime earnings under the same word,
-                              // so a learner who has spent stars saw two
-                              // different "Stars" numbers. Name both.
-                              suffix: starBalance != totalStars
-                                  ? l10n.starsLeftToSpend(starBalance)
-                                  : '',
-                              color: AppColors.warning,
-                            ),
-                            ProgressStat(
-                              icon: Icons.menu_book_rounded,
-                              label: l10n.words,
-                              value: '$masteredWords',
-                              suffix: '/ $totalWords',
-                              color: AppColors.secondary,
-                            ),
-                            // Lifetime count. The Recent Games list below only
-                            // ever shows the last ten, so this was the one
-                            // number that said how much play has happened.
-                            ProgressStat(
-                              icon: Icons.sports_esports_rounded,
-                              label: l10n.games,
-                              value: '$gamesPlayed',
-                              color: AppColors.info,
-                            ),
-                            // Only for learners the FSL surfaces are shown to —
-                            // a stat a visual-impairment or cognitive profile can
-                            // never move would just read as a permanent zero.
-                            if (showFsl)
-                              ProgressStat(
-                                icon: Icons.sign_language_rounded,
-                                label: l10n.signs,
-                                value: '$signsLearned',
-                                suffix: totalSigns > 0 ? '/ $totalSigns' : '',
-                                color: AppColors.secondaryDark,
-                              ),
-                          ],
-                        ),
-                      )
+                        ],
+                      ),
+                    )
+                    .animate()
+                    .fadeIn(duration: ms(400))
+                    .slideY(begin: -0.15, end: 0)),
+
+                SizedBox(height: layout.sectionGap),
+
+                // ─── Level ───────────────────────
+                // The learner's level was on every *home* screen but not on
+                // the tab named Progress — the one place they come to ask
+                // "how am I doing?". Same shared bar, so the number here can
+                // never disagree with the one on Home.
+                infoStop(
+                  l10n.dpadStopLevel,
+                  XpLevelBar(progress: progress, showNextGoal: true)
                       .animate()
-                      .fadeIn(duration: ms(400))
-                      .slideY(begin: -0.15, end: 0)),
+                      .fadeIn(duration: ms(400), delay: ms(120))
+                      .slideY(begin: -0.1, end: 0),
+                ),
 
-                  SizedBox(height: layout.sectionGap),
+                SizedBox(height: layout.sectionGap),
 
-                  // ─── Level ───────────────────────
-                  // The learner's level was on every *home* screen but not on
-                  // the tab named Progress — the one place they come to ask
-                  // "how am I doing?". Same shared bar, so the number here can
-                  // never disagree with the one on Home.
-                  infoStop(
-                    l10n.dpadStopLevel,
-                    XpLevelBar(progress: progress, showNextGoal: true)
-                        .animate()
-                        .fadeIn(duration: ms(400), delay: ms(120))
-                        .slideY(begin: -0.1, end: 0),
-                  ),
-
-                  SizedBox(height: layout.sectionGap),
-
-                  // ─── Hear my progress ────────────
-                  // Everything below is a number or a shape. This says it out
-                  // loud, which for a blind learner is the difference between
-                  // a progress tab and a decoration.
-                  if (show.speakSummary) ...[
-                    gazeButton(
-                      l10n.hearMyProgress,
-                      speakSummary,
-                      FilledButton.tonalIcon(
-                            onPressed: speakSummary,
-                            icon: const Icon(Icons.volume_up_rounded),
-                            label: Text(l10n.hearMyProgress),
-                            style: FilledButton.styleFrom(
-                              minimumSize: const Size.fromHeight(52),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
+                // ─── Hear my progress ────────────
+                // Everything below is a number or a shape. This says it out
+                // loud, which for a blind learner is the difference between
+                // a progress tab and a decoration.
+                if (show.speakSummary) ...[
+                  gazeButton(
+                    l10n.hearMyProgress,
+                    speakSummary,
+                    FilledButton.tonalIcon(
+                          onPressed: speakSummary,
+                          icon: const Icon(Icons.volume_up_rounded),
+                          label: Text(l10n.hearMyProgress),
+                          style: tonalButtonStyle(context).merge(FilledButton.styleFrom(
+                            minimumSize: const Size.fromHeight(52),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
                             ),
-                          )
-                          .animate()
-                          .fadeIn(duration: ms(400), delay: ms(160)),
-                    ),
-                    SizedBox(height: layout.sectionGap),
-                  ],
+                          )),
+                        )
+                        .animate()
+                        .fadeIn(duration: ms(400), delay: ms(160)),
+                  ),
+                  SizedBox(height: layout.sectionGap),
+                ],
 
-                  // ─── Overall Mastery ─────────────
-                  infoStop(l10n.mastery, Semantics(
-                        label: l10n.progMasterySemantics(
-                          (masteryPct * 100).round(),
-                          masteredWords,
-                          totalWords,
+                // ─── Overall Mastery ─────────────
+                infoStop(l10n.mastery, Semantics(
+                      label: l10n.progMasterySemantics(
+                        (masteryPct * 100).round(),
+                        masteredWords,
+                        totalWords,
+                      ),
+                      // The sentence says it; the ring's "0%" and "Mastery"
+                      // were read again.
+                      excludeSemantics: true,
+                      child: Center(
+                        child: Builder(
+                          builder: (context) {
+                            // Responsive, text-scaler-aware ring so it fits small
+                            // tablets in portrait/split-screen and grows (capped)
+                            // with the Font Size setting instead of clipping.
+                            final ringRadius = context.scaledHeightCapped(
+                              context.responsiveTier(
+                                    phone: 72.0,
+                                    tablet: 80.0,
+                                    large: 92.0,
+                                    xl: 100.0,
+                                  ) *
+                                  layout.heroScale,
+                              max: 1.3,
+                            );
+                            return CircularPercentIndicator(
+                              radius: ringRadius,
+                              lineWidth: ringRadius * 0.17,
+                              percent: masteryPct.clamp(0.0, 1.0),
+                              center: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    '${(masteryPct * 100).round()}%',
+                                    style: AppTypography.headlineMedium
+                                        .copyWith(
+                                          fontWeight: FontWeight.w900,
+                                          color: accent,
+                                        ),
+                                  ),
+                                  Text(
+                                    l10n.mastery,
+                                    style: AppTypography.labelSmall.copyWith(
+                                      color: HCColor.of(
+                                        context,
+                                      ).textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              progressColor: accent,
+                              backgroundColor: useTheme
+                                  ? accent.withValues(alpha: 0.15)
+                                  : HCColor.of(context).primaryLight,
+                              circularStrokeCap: CircularStrokeCap.round,
+                              animation: true,
+                              animationDuration: 1000,
+                            );
+                          },
                         ),
-                        child: Center(
-                          child: Builder(
-                            builder: (context) {
-                              // Responsive, text-scaler-aware ring so it fits small
-                              // tablets in portrait/split-screen and grows (capped)
-                              // with the Font Size setting instead of clipping.
-                              final ringRadius = context.scaledHeightCapped(
-                                context.responsiveTier(
-                                      phone: 72.0,
-                                      tablet: 80.0,
-                                      large: 92.0,
-                                      xl: 100.0,
-                                    ) *
-                                    layout.heroScale,
-                                max: 1.3,
-                              );
-                              return CircularPercentIndicator(
-                                radius: ringRadius,
-                                lineWidth: ringRadius * 0.17,
-                                percent: masteryPct.clamp(0.0, 1.0),
-                                center: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      '${(masteryPct * 100).round()}%',
-                                      style: AppTypography.headlineMedium
-                                          .copyWith(
-                                            fontWeight: FontWeight.w900,
-                                            color: accent,
-                                          ),
-                                    ),
-                                    Text(
-                                      l10n.mastery,
-                                      style: AppTypography.labelSmall.copyWith(
-                                        color: HCColor.of(
-                                          context,
-                                        ).textSecondary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                progressColor: accent,
-                                backgroundColor: useTheme
-                                    ? accent.withValues(alpha: 0.15)
-                                    : HCColor.of(context).primaryLight,
-                                circularStrokeCap: CircularStrokeCap.round,
-                                animation: true,
-                                animationDuration: 1000,
-                              );
-                            },
+                      ),
+                    )
+                    .animate()
+                    .fadeIn(duration: ms(600), delay: ms(200))
+                    .scale(
+                      begin: const Offset(0.8, 0.8),
+                      end: const Offset(1, 1),
+                    )),
+
+                SizedBox(height: layout.sectionGap),
+
+                // ─── This Week ───────────────────
+                // Every other figure on this page is a lifetime total, which
+                // stops moving visibly once it is large — so the tab slowly
+                // stops giving feedback to whoever has used it longest.
+                if (show.showWeekly) ...[
+                  infoStop(l10n.thisWeek, headed(
+                  ProgressSectionHeader(
+                    ownStop: false,
+                    title: l10n.thisWeek,
+                    icon: Icons.date_range_rounded,
+                    iconColor: accent,
+                  ),
+                  week.isEmpty
+                    ? _EmptyNote(
+                      icon: Icons.hourglass_empty_rounded,
+                      message: l10n.weeklyEmpty,
+                    ).animate().fadeIn(duration: ms(400), delay: ms(260))
+                    : OverflowGuard(
+                      label: 'progress-weekly-stats',
+                      child: ProgressStatGrid(
+                        layout: layout,
+                        stats: [
+                          ProgressStat(
+                            icon: Icons.event_available_rounded,
+                            label: l10n.daysActive,
+                            value: '${week.daysActive}',
+                            suffix: '/ ${WeeklySummary.days}',
+                            color: AppColors.accent,
+                          ),
+                          ProgressStat(
+                            icon: Icons.timer_rounded,
+                            label: l10n.minutesStudied,
+                            value: '${week.minutes}',
+                            color: AppColors.info,
+                          ),
+                          ProgressStat(
+                            icon: Icons.sports_esports_rounded,
+                            label: l10n.games,
+                            value: '${week.games}',
+                            color: AppColors.secondary,
+                          ),
+                          ProgressStat(
+                            icon: Icons.star_rounded,
+                            label: l10n.stars,
+                            value: '${week.stars}',
+                            color: AppColors.warning,
+                          ),
+                          ProgressStat(
+                            icon: Icons.menu_book_rounded,
+                            label: l10n.newWords,
+                            value: '${week.words}',
+                            color: AppColors.success,
+                          ),
+                        ],
+                      ),
+                    ).animate().fadeIn(duration: ms(400), delay: ms(260)),
+                  )),
+
+                  SizedBox(height: layout.sectionGap),
+                ],
+
+                // ─── Leaderboard + analytics ─────
+                // Hidden for player mode: the leaderboard is class-based and
+                // the analytics dashboards are teacher/parent monitoring
+                // tools. The player keeps their own progress (streak
+                // calendar, certificates, category progress) below.
+                if (profile?.isPlayerMode != true &&
+                    ref.watch(
+                      gamificationFeatureProvider(
+                        GamificationFeature.leaderboard,
+                      ),
+                    )) ...[
+                  gazeButton(
+                    l10n.viewLeaderboard,
+                    () => context.push('/leaderboard'),
+                    FilledButton.icon(
+                          onPressed: () => context.push('/leaderboard'),
+                          icon: const Icon(Icons.leaderboard_rounded),
+                          label: Text(l10n.viewLeaderboard),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 14,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                        )
+                        .animate()
+                        .fadeIn(duration: ms(400), delay: ms(350))
+                        .slideY(begin: 0.1, end: 0),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+
+                // Both chart dashboards ride on the same policy flag, so a
+                // learner who is not shown one is not shown the other.
+                if (show.showChartScreens) ...[
+                  gazeButton(
+                    l10n.detailedAnalytics,
+                    () => context.push('/analytics'),
+                    OutlinedButton.icon(
+                          onPressed: () => context.push('/analytics'),
+                          icon: const Icon(Icons.analytics_rounded),
+                          label: Text(l10n.detailedAnalytics),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 14,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                        )
+                        .animate()
+                        .fadeIn(duration: ms(400), delay: ms(400))
+                        .slideY(begin: 0.1, end: 0),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // "Learning Insights" — the adaptive-analytics dashboard
+                  // (spaced-repetition heatmap, difficulty history). It has
+                  // existed since the adaptive-difficulty work shipped and
+                  // was reachable only by speaking "/adaptive-analytics" at
+                  // the voice navigator: no button anywhere in the app.
+                  gazeButton(
+                    l10n.advancedAnalytics,
+                    () => context.push('/adaptive-analytics'),
+                    OutlinedButton.icon(
+                          onPressed: () =>
+                              context.push('/adaptive-analytics'),
+                          icon: const Icon(Icons.insights_rounded),
+                          label: Text(l10n.advancedAnalytics),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 14,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                        )
+                        .animate()
+                        .fadeIn(duration: ms(400), delay: ms(420))
+                        .slideY(begin: 0.1, end: 0),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+
+                gazeButton(
+                  l10n.streakCalendar,
+                  () => context.push('/streak-calendar'),
+                  OutlinedButton.icon(
+                        onPressed: () => context.push('/streak-calendar'),
+                        icon: const Icon(Icons.calendar_month_rounded),
+                        label: Text(l10n.streakCalendar),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 14,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
                           ),
                         ),
                       )
                       .animate()
-                      .fadeIn(duration: ms(600), delay: ms(200))
-                      .scale(
-                        begin: const Offset(0.8, 0.8),
-                        end: const Offset(1, 1),
-                      )),
+                      .fadeIn(duration: ms(400), delay: ms(450))
+                      .slideY(begin: 0.1, end: 0),
+                ),
 
-                  SizedBox(height: layout.sectionGap),
+                const SizedBox(height: 12),
 
-                  // ─── This Week ───────────────────
-                  // Every other figure on this page is a lifetime total, which
-                  // stops moving visibly once it is large — so the tab slowly
-                  // stops giving feedback to whoever has used it longest.
-                  if (show.showWeekly) ...[
-                    infoStop(l10n.thisWeek, headed(
+                gazeButton(
+                  l10n.certificates,
+                  () => context.push('/certificates'),
+                  OutlinedButton.icon(
+                        onPressed: () => context.push('/certificates'),
+                        icon: const Icon(Icons.workspace_premium_rounded),
+                        label: Text(l10n.certificates),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 14,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                      )
+                      .animate()
+                      .fadeIn(duration: ms(400), delay: ms(500))
+                      .slideY(begin: 0.1, end: 0),
+                ),
+
+                SizedBox(height: layout.sectionGap),
+
+                // ─── Category Progress ──────────
+                ProgressSectionHeader(
+                  title: l10n.categoryProgress,
+                  icon: Icons.category_rounded,
+                  iconColor: accent,
+                ),
+                const SizedBox(height: 12),
+
+                ...FlashcardCategory.values.asMap().entries.map((entry) {
+                  final i = entry.key;
+                  final cat = entry.value;
+                  // Coverage, not the accuracy average — the same
+                  // [CategoryMastery] the certificates, the exports and the
+                  // parent dashboard already use. These rows used to
+                  // multiply the accuracy average by the deck size, which
+                  // claimed "6 of 12 words mastered" from a single correct
+                  // answer and made the section sum to far more than the
+                  // header's own word total.
+                  final catMastery = mastery[cat]!;
+
+                  // One stop per deck: the whole list is taller than a
+                  // phone's screen, so as one stop it could not be shown.
+                  return infoStop(cat.labelOf(l10n), Padding(
+                        padding: const EdgeInsets.only(bottom: 14),
+                        child: CategoryProgressRow(
+                          icon: cat.icon,
+                          label: cat.labelOf(l10n),
+                          color: cat.color,
+                          mastered: catMastery.wordsLearned,
+                          total: catMastery.totalWords,
+                          percent: catMastery.coverage,
+                          surface: cardSurface,
+                        ),
+                      )
+                      .animate()
+                      .fadeIn(
+                        duration: ms(400),
+                        delay: ms(300 + i * 80),
+                      )
+                      .slideX(begin: 0.1, end: 0));
+                }),
+
+                SizedBox(height: layout.sectionGap),
+
+                // ─── Recent Games ─────────────
+                ProgressSectionHeader(
+                  title: l10n.recentGames,
+                  icon: Icons.sports_esports_rounded,
+                  iconColor: accent,
+                ),
+                const SizedBox(height: 12),
+                if (progress.recentScores.isEmpty)
+                  infoStop(
+                    l10n.recentGames,
+                    _EmptyNote(
+                      icon: Icons.sports_esports_rounded,
+                      message: l10n.playGamePrompt,
+                    ).animate().fadeIn(duration: ms(400), delay: ms(750)),
+                  )
+                else
+                  ...progress.recentScores.reversed
+                      .take(show.maxRecentGames)
+                      .toList()
+                      .asMap()
+                      .entries
+                      .map((entry) {
+                        final i = entry.key;
+                        final score = entry.value;
+                        return infoStop(_recentGameSentence(l10n, score), Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: _RecentGameTile(score: score),
+                            )
+                            .animate()
+                            .fadeIn(
+                              duration: ms(400),
+                              delay: ms(750 + i * 60),
+                            )
+                            .slideX(begin: 0.1, end: 0));
+                      }),
+
+                SizedBox(height: layout.sectionGap),
+
+                // ─── Reading / Sign Language ─────
+                // Both were tracked and neither was shown: the Stories tab
+                // has stamped every cover with a ✓ and a ★ since it shipped,
+                // and sign *production* — the milestone, not the watching —
+                // had no surface at all.
+                //
+                // Order is the policy's call. For a Deaf learner the sign
+                // section is the headline and goes first; for everyone else
+                // reading leads. Same two blocks either way.
+                //
+                // Built as functions and called in the order shown: each
+                // registers its D-pad stop as it is made, and the stops have
+                // to run down the page the way the blocks do.
+                ...(() {
+                  List<Widget> reading() => [
+                    infoStop(l10n.reading, headed(
                     ProgressSectionHeader(
-                      title: l10n.thisWeek,
-                      icon: Icons.date_range_rounded,
+                      ownStop: false,
+                      title: l10n.reading,
+                      icon: Icons.auto_stories_rounded,
                       iconColor: accent,
                     ),
-                    week.isEmpty
-                      ? _EmptyNote(
-                        icon: Icons.hourglass_empty_rounded,
-                        message: l10n.weeklyEmpty,
-                      ).animate().fadeIn(duration: ms(400), delay: ms(260))
-                      : OverflowGuard(
-                        label: 'progress-weekly-stats',
+                    OverflowGuard(
+                      label: 'progress-reading-stats',
+                      child: ProgressStatGrid(
+                        layout: layout,
+                        stats: [
+                          ProgressStat(
+                            icon: Icons.auto_stories_rounded,
+                            label: l10n.storiesRead,
+                            value: '$storiesRead',
+                            suffix: '/ ${allStories.length}',
+                            color: AppColors.secondary,
+                          ),
+                          ProgressStat(
+                            icon: Icons.star_rounded,
+                            label: l10n.perfectQuizzes,
+                            value: '$storiesPerfect',
+                            color: AppColors.warning,
+                          ),
+                        ],
+                      ),
+                    ).animate().fadeIn(duration: ms(400), delay: ms(780)),
+                    )),
+                    SizedBox(height: layout.sectionGap),
+                  ];
+
+                  List<Widget> signing() => [
+                    if (showFsl) ...[
+                      infoStop(l10n.signLanguage, headed(
+                      ProgressSectionHeader(
+                        ownStop: false,
+                        title: l10n.signLanguage,
+                        icon: Icons.sign_language_rounded,
+                        iconColor: AppColors.secondaryDark,
+                      ),
+                      OverflowGuard(
+                        label: 'progress-sign-stats',
                         child: ProgressStatGrid(
                           layout: layout,
                           stats: [
                             ProgressStat(
-                              icon: Icons.event_available_rounded,
-                              label: l10n.daysActive,
-                              value: '${week.daysActive}',
-                              suffix: '/ ${WeeklySummary.days}',
-                              color: AppColors.accent,
+                              icon: Icons.visibility_rounded,
+                              label: l10n.signsWatched,
+                              value: '$signsLearned',
+                              suffix: totalSigns > 0 ? '/ $totalSigns' : '',
+                              color: AppColors.secondaryDark,
                             ),
                             ProgressStat(
-                              icon: Icons.timer_rounded,
-                              label: l10n.minutesStudied,
-                              value: '${week.minutes}',
+                              icon: Icons.back_hand_rounded,
+                              label: l10n.signsCanMake,
+                              value: '${progress.signsClaimed}',
                               color: AppColors.info,
                             ),
                             ProgressStat(
-                              icon: Icons.sports_esports_rounded,
-                              label: l10n.games,
-                              value: '${week.games}',
-                              color: AppColors.secondary,
-                            ),
-                            ProgressStat(
-                              icon: Icons.star_rounded,
-                              label: l10n.stars,
-                              value: '${week.stars}',
-                              color: AppColors.warning,
-                            ),
-                            ProgressStat(
-                              icon: Icons.menu_book_rounded,
-                              label: l10n.newWords,
-                              value: '${week.words}',
+                              icon: Icons.verified_rounded,
+                              label: l10n.signsConfirmed,
+                              value: '${progress.signsConfirmed}',
                               color: AppColors.success,
                             ),
                           ],
                         ),
-                      ).animate().fadeIn(duration: ms(400), delay: ms(260)),
-                    )),
-
-                    SizedBox(height: layout.sectionGap),
-                  ],
-
-                  // ─── Leaderboard + analytics ─────
-                  // Hidden for player mode: the leaderboard is class-based and
-                  // the analytics dashboards are teacher/parent monitoring
-                  // tools. The player keeps their own progress (streak
-                  // calendar, certificates, category progress) below.
-                  if (profile?.isPlayerMode != true &&
-                      ref.watch(
-                        gamificationFeatureProvider(
-                          GamificationFeature.leaderboard,
-                        ),
-                      )) ...[
-                    gazeButton(
-                      l10n.viewLeaderboard,
-                      () => context.push('/leaderboard'),
-                      FilledButton.icon(
-                            onPressed: () => context.push('/leaderboard'),
-                            icon: const Icon(Icons.leaderboard_rounded),
-                            label: Text(l10n.viewLeaderboard),
-                            style: FilledButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 14,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
-                          )
-                          .animate()
-                          .fadeIn(duration: ms(400), delay: ms(350))
-                          .slideY(begin: 0.1, end: 0),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-
-                  // Both chart dashboards ride on the same policy flag, so a
-                  // learner who is not shown one is not shown the other.
-                  if (show.showChartScreens) ...[
-                    gazeButton(
-                      l10n.detailedAnalytics,
-                      () => context.push('/analytics'),
-                      OutlinedButton.icon(
-                            onPressed: () => context.push('/analytics'),
-                            icon: const Icon(Icons.analytics_rounded),
-                            label: Text(l10n.detailedAnalytics),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 14,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
-                          )
-                          .animate()
-                          .fadeIn(duration: ms(400), delay: ms(400))
-                          .slideY(begin: 0.1, end: 0),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // "Learning Insights" — the adaptive-analytics dashboard
-                    // (spaced-repetition heatmap, difficulty history). It has
-                    // existed since the adaptive-difficulty work shipped and
-                    // was reachable only by speaking "/adaptive-analytics" at
-                    // the voice navigator: no button anywhere in the app.
-                    gazeButton(
-                      l10n.advancedAnalytics,
-                      () => context.push('/adaptive-analytics'),
-                      OutlinedButton.icon(
-                            onPressed: () =>
-                                context.push('/adaptive-analytics'),
-                            icon: const Icon(Icons.insights_rounded),
-                            label: Text(l10n.advancedAnalytics),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 14,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
-                          )
-                          .animate()
-                          .fadeIn(duration: ms(400), delay: ms(420))
-                          .slideY(begin: 0.1, end: 0),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-
-                  gazeButton(
-                    l10n.streakCalendar,
-                    () => context.push('/streak-calendar'),
-                    OutlinedButton.icon(
-                          onPressed: () => context.push('/streak-calendar'),
-                          icon: const Icon(Icons.calendar_month_rounded),
-                          label: Text(l10n.streakCalendar),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 14,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                          ),
-                        )
-                        .animate()
-                        .fadeIn(duration: ms(400), delay: ms(450))
-                        .slideY(begin: 0.1, end: 0),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  gazeButton(
-                    l10n.certificates,
-                    () => context.push('/certificates'),
-                    OutlinedButton.icon(
-                          onPressed: () => context.push('/certificates'),
-                          icon: const Icon(Icons.workspace_premium_rounded),
-                          label: Text(l10n.certificates),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 14,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                          ),
-                        )
-                        .animate()
-                        .fadeIn(duration: ms(400), delay: ms(500))
-                        .slideY(begin: 0.1, end: 0),
-                  ),
-
-                  SizedBox(height: layout.sectionGap),
-
-                  // ─── Category Progress ──────────
-                  ProgressSectionHeader(
-                    title: l10n.categoryProgress,
-                    icon: Icons.category_rounded,
-                    iconColor: accent,
-                  ),
-                  const SizedBox(height: 12),
-
-                  ...FlashcardCategory.values.asMap().entries.map((entry) {
-                    final i = entry.key;
-                    final cat = entry.value;
-                    // Coverage, not the accuracy average — the same
-                    // [CategoryMastery] the certificates, the exports and the
-                    // parent dashboard already use. These rows used to
-                    // multiply the accuracy average by the deck size, which
-                    // claimed "6 of 12 words mastered" from a single correct
-                    // answer and made the section sum to far more than the
-                    // header's own word total.
-                    final catMastery = mastery[cat]!;
-
-                    // One stop per deck: the whole list is taller than a
-                    // phone's screen, so as one stop it could not be shown.
-                    return infoStop(cat.labelOf(l10n), Padding(
-                          padding: const EdgeInsets.only(bottom: 14),
-                          child: CategoryProgressRow(
-                            icon: cat.icon,
-                            label: cat.labelOf(l10n),
-                            color: cat.color,
-                            mastered: catMastery.wordsLearned,
-                            total: catMastery.totalWords,
-                            percent: catMastery.coverage,
-                            surface: cardSurface,
-                          ),
-                        )
-                        .animate()
-                        .fadeIn(
-                          duration: ms(400),
-                          delay: ms(300 + i * 80),
-                        )
-                        .slideX(begin: 0.1, end: 0));
-                  }),
-
-                  SizedBox(height: layout.sectionGap),
-
-                  // ─── Recent Games ─────────────
-                  ProgressSectionHeader(
-                    title: l10n.recentGames,
-                    icon: Icons.sports_esports_rounded,
-                    iconColor: accent,
-                  ),
-                  const SizedBox(height: 12),
-                  if (progress.recentScores.isEmpty)
-                    infoStop(
-                      l10n.recentGames,
-                      _EmptyNote(
-                        icon: Icons.sports_esports_rounded,
-                        message: l10n.playGamePrompt,
-                      ).animate().fadeIn(duration: ms(400), delay: ms(750)),
-                    )
-                  else
-                    ...progress.recentScores.reversed
-                        .take(show.maxRecentGames)
-                        .toList()
-                        .asMap()
-                        .entries
-                        .map((entry) {
-                          final i = entry.key;
-                          final score = entry.value;
-                          return infoStop(_recentGameSentence(l10n, score), Padding(
-                                padding: const EdgeInsets.only(bottom: 10),
-                                child: _RecentGameTile(score: score),
-                              )
-                              .animate()
-                              .fadeIn(
-                                duration: ms(400),
-                                delay: ms(750 + i * 60),
-                              )
-                              .slideX(begin: 0.1, end: 0));
-                        }),
-
-                  SizedBox(height: layout.sectionGap),
-
-                  // ─── Reading / Sign Language ─────
-                  // Both were tracked and neither was shown: the Stories tab
-                  // has stamped every cover with a ✓ and a ★ since it shipped,
-                  // and sign *production* — the milestone, not the watching —
-                  // had no surface at all.
-                  //
-                  // Order is the policy's call. For a Deaf learner the sign
-                  // section is the headline and goes first; for everyone else
-                  // reading leads. Same two blocks either way.
-                  //
-                  // Built as functions and called in the order shown: each
-                  // registers its D-pad stop as it is made, and the stops have
-                  // to run down the page the way the blocks do.
-                  ...(() {
-                    List<Widget> reading() => [
-                      infoStop(l10n.reading, headed(
-                      ProgressSectionHeader(
-                        title: l10n.reading,
-                        icon: Icons.auto_stories_rounded,
-                        iconColor: accent,
-                      ),
-                      OverflowGuard(
-                        label: 'progress-reading-stats',
-                        child: ProgressStatGrid(
-                          layout: layout,
-                          stats: [
-                            ProgressStat(
-                              icon: Icons.auto_stories_rounded,
-                              label: l10n.storiesRead,
-                              value: '$storiesRead',
-                              suffix: '/ ${allStories.length}',
-                              color: AppColors.secondary,
-                            ),
-                            ProgressStat(
-                              icon: Icons.star_rounded,
-                              label: l10n.perfectQuizzes,
-                              value: '$storiesPerfect',
-                              color: AppColors.warning,
-                            ),
-                          ],
-                        ),
-                      ).animate().fadeIn(duration: ms(400), delay: ms(780)),
+                      ).animate().fadeIn(duration: ms(400), delay: ms(800)),
                       )),
                       SizedBox(height: layout.sectionGap),
-                    ];
+                    ],
+                  ];
 
-                    List<Widget> signing() => [
-                      if (showFsl) ...[
-                        infoStop(l10n.signLanguage, headed(
-                        ProgressSectionHeader(
-                          title: l10n.signLanguage,
-                          icon: Icons.sign_language_rounded,
-                          iconColor: AppColors.secondaryDark,
-                        ),
-                        OverflowGuard(
-                          label: 'progress-sign-stats',
-                          child: ProgressStatGrid(
-                            layout: layout,
-                            stats: [
-                              ProgressStat(
-                                icon: Icons.visibility_rounded,
-                                label: l10n.signsWatched,
-                                value: '$signsLearned',
-                                suffix: totalSigns > 0 ? '/ $totalSigns' : '',
-                                color: AppColors.secondaryDark,
-                              ),
-                              ProgressStat(
-                                icon: Icons.back_hand_rounded,
-                                label: l10n.signsCanMake,
-                                value: '${progress.signsClaimed}',
-                                color: AppColors.info,
-                              ),
-                              ProgressStat(
-                                icon: Icons.verified_rounded,
-                                label: l10n.signsConfirmed,
-                                value: '${progress.signsConfirmed}',
-                                color: AppColors.success,
-                              ),
-                            ],
-                          ),
-                        ).animate().fadeIn(duration: ms(400), delay: ms(800)),
-                        )),
-                        SizedBox(height: layout.sectionGap),
-                      ],
-                    ];
+                  return show.signFirst
+                      ? [...signing(), ...reading()]
+                      : [...reading(), ...signing()];
+                })(),
 
-                    return show.signFirst
-                        ? [...signing(), ...reading()]
-                        : [...reading(), ...signing()];
-                  })(),
-
-                  // ─── Star Collection ─────────────
-                  // Decorative — the star *count* is already in the stat grid
-                  // at the top — so it is the first thing dropped when the page
-                  // needs to be shorter.
-                  if (show.showStarGrid) ...[
-                    infoStop(l10n.starCollection, headed(
-                    ProgressSectionHeader(
-                      title: l10n.starCollection,
-                      icon: Icons.auto_awesome_rounded,
-                      iconColor: AppColors.warning,
-                    ),
-                    _StarGrid(
-                      totalStars: totalStars,
-                    ).animate().fadeIn(duration: ms(400), delay: ms(800)),
-                    )),
-
-                    SizedBox(height: layout.sectionGap),
-                  ],
-
-                  // ─── Achievement Badges ──────────
-                  infoStop(l10n.achievements, headed(
+                // ─── Star Collection ─────────────
+                // Decorative — the star *count* is already in the stat grid
+                // at the top — so it is the first thing dropped when the page
+                // needs to be shorter.
+                if (show.showStarGrid) ...[
+                  infoStop(l10n.starCollection, headed(
                   ProgressSectionHeader(
-                    title: l10n.achievements,
-                    icon: Icons.emoji_events_rounded,
+                    ownStop: false,
+                    title: l10n.starCollection,
+                    icon: Icons.auto_awesome_rounded,
                     iconColor: AppColors.warning,
                   ),
-                  Builder(
-                    builder: (context) {
-                      final unlockedIds = ref.watch(
-                        unlockedAchievementsProvider,
-                      );
-                      if (unlockedIds.isEmpty) {
-                        return _EmptyNote(
-                          icon: Icons.emoji_events_outlined,
-                          message: l10n.firstBadgePrompt,
-                        ).animate().fadeIn(duration: ms(400), delay: ms(900));
-                      }
-                      // A short page shows what was earned and counts the rest.
-                      // Thirty-seven badges of which most are grey reads as a
-                      // list of failures to a learner who is already finding
-                      // the page long.
-                      final shown = show.showLockedAchievements
-                          ? Achievements.all
-                          : Achievements.all
-                                .where((a) => unlockedIds.contains(a.id))
-                                .toList();
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (!show.showLockedAchievements)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
-                              child: Text(
-                                l10n.badgesEarned(
-                                  unlockedIds.length,
-                                  Achievements.all.length,
-                                ),
-                                style: AppTypography.labelLarge.copyWith(
-                                  color: HCColor.of(context).textSecondary,
-                                ),
-                              ),
-                            ),
-                          _AchievementRow(
-                            achievements: shown,
-                            unlockedIds: unlockedIds,
-                          ),
-                        ],
-                      ).animate().fadeIn(duration: ms(400), delay: ms(900));
-                    },
-                  ),
+                  _StarGrid(
+                    totalStars: totalStars,
+                  ).animate().fadeIn(duration: ms(400), delay: ms(800)),
                   )),
 
-                  const SizedBox(height: 40),
-                ]),
-              ),
+                  SizedBox(height: layout.sectionGap),
+                ],
+
+                // ─── Achievement Badges ──────────
+                infoStop(l10n.achievements, headed(
+                ProgressSectionHeader(
+                  ownStop: false,
+                  title: l10n.achievements,
+                  icon: Icons.emoji_events_rounded,
+                  iconColor: AppColors.warning,
+                ),
+                Builder(
+                  builder: (context) {
+                    final unlockedIds = ref.watch(
+                      unlockedAchievementsProvider,
+                    );
+                    if (unlockedIds.isEmpty) {
+                      return _EmptyNote(
+                        icon: Icons.emoji_events_outlined,
+                        message: l10n.firstBadgePrompt,
+                      ).animate().fadeIn(duration: ms(400), delay: ms(900));
+                    }
+                    // A short page shows what was earned and counts the rest.
+                    // Thirty-seven badges of which most are grey reads as a
+                    // list of failures to a learner who is already finding
+                    // the page long.
+                    final shown = show.showLockedAchievements
+                        ? Achievements.all
+                        : Achievements.all
+                              .where((a) => unlockedIds.contains(a.id))
+                              .toList();
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (!show.showLockedAchievements)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: Text(
+                              l10n.badgesEarned(
+                                unlockedIds.length,
+                                Achievements.all.length,
+                              ),
+                              style: AppTypography.labelLarge.copyWith(
+                                color: HCColor.of(context).textSecondary,
+                              ),
+                            ),
+                          ),
+                        _AchievementRow(
+                          achievements: shown,
+                          unlockedIds: unlockedIds,
+                        ),
+                      ],
+                    ).animate().fadeIn(duration: ms(400), delay: ms(900));
+                  },
+                ),
+                )),
+
+                // Room for the last panel to scroll clear of the AI Buddy's
+                // floating button.
+                Consumer(
+                  builder: (context, ref, _) =>
+                      SizedBox(height: companionClearance(context, ref)),
+                ),
+              ]),
             ),
+          ),
           ],
         ),
       ),
@@ -1028,20 +1053,30 @@ class _AchievementRow extends StatelessWidget {
     final filipino = AppLocalizations.of(
       context,
     )!.localeName.startsWith('fil');
-    return Wrap(
+    // One short sentence for a screen reader, in place of every badge: the
+    // panel is one stop (DpadInfoStop), so TalkBack read all forty badges as
+    // one item, each name twice, a minute long (the tablet, 10 Nov).
+    final l10n = AppLocalizations.of(context)!;
+    final earned = [
+      for (final a in achievements)
+        if (unlockedIds.contains(a.id)) a.titleOf(filipino: filipino),
+    ];
+    final left = achievements.length - earned.length;
+    final spoken = [
+      earned.isEmpty
+          ? l10n.progBadgesSpokenNone
+          : l10n.progBadgesSpoken(earned.join(', ')),
+      if (left > 0) l10n.progBadgesSpokenLeft(left),
+    ].join(' ');
+    return Semantics(
+      label: spoken,
+      child: ExcludeSemantics(
+        child: Wrap(
       spacing: 12,
       runSpacing: 12,
       children: achievements.map((a) {
         final unlocked = unlockedIds.contains(a.id);
-        return Semantics(
-          label: unlocked
-              ? AppLocalizations.of(context)!.progAchievementUnlocked(
-                  a.titleOf(filipino: filipino),
-                )
-              : AppLocalizations.of(context)!.progAchievementLocked(
-                  a.titleOf(filipino: filipino),
-                ),
-          child: Column(
+        return Column(
             children: [
               Container(
                 width: 56,
@@ -1073,9 +1108,18 @@ class _AchievementRow extends StatelessWidget {
               const SizedBox(height: 4),
               SizedBox(
                 // Grow the label box with the Font Size setting (capped) so the
-                // 2-line title doesn't clip at large scales.
-                width: context.scaleIcon(64).clamp(64.0, 96.0),
-                child: Text(
+                // title doesn't clip at large scales — a little faster than
+                // the text: at the largest size a twelve-letter Filipino word
+                // ("Salamangkero") did not fit 96 px even made smaller.
+                // 84 at the normal size: in 64, twelve-letter Filipino
+                // names ("Beripikadong") were drawn at 9 px (8 Nov).
+                width: (context.scaleIcon(84) +
+                        (MediaQuery.textScalerOf(context).scale(1) - 1) * 32)
+                    .clamp(84.0, 132.0),
+                // FitText, three lines: at the largest Font Size the
+                // Filipino names split and were cut ("Salaman / gkero n…",
+                // "Supersta / r"), on the tablet (30 Oct).
+                child: FitText(
                   a.titleOf(filipino: filipino),
                   style: AppTypography.labelSmall.copyWith(
                     color: unlocked
@@ -1083,14 +1127,14 @@ class _AchievementRow extends StatelessWidget {
                         : HCColor.of(context).textHint,
                   ),
                   textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                  maxLines: 3,
                 ),
               ),
             ],
-          ),
         );
       }).toList(),
+        ),
+      ),
     );
   }
 }

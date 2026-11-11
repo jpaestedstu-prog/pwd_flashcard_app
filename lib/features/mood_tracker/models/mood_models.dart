@@ -20,13 +20,15 @@ extension MoodTypeX on MoodType {
         MoodType.frustrated => 'Frustrated',
       };
 
+  // Excited and Frustrated were left in English, the only two in the list
+  // (TalkBack read "Piliin ang Excited" in Filipino, 30 Oct).
   String get labelFilipino => switch (this) {
         MoodType.happy => 'Masaya',
-        MoodType.excited => 'Excited',
+        MoodType.excited => 'Nasasabik',
         MoodType.neutral => 'Ayos lang',
         MoodType.tired => 'Pagod',
         MoodType.sad => 'Malungkot',
-        MoodType.frustrated => 'Frustrated',
+        MoodType.frustrated => 'Naiinis',
       };
 
   /// The label in the learner's language.

@@ -1,5 +1,6 @@
 import '../../../core/services/streak_service.dart';
 import '../../../data/models/enums.dart';
+import '../../parent/services/learner_restrictions.dart';
 import '../../../data/models/models.dart';
 import '../../../data/models/learning_path.dart';
 import '../../../data/local/spaced_repetition_service.dart';
@@ -44,7 +45,9 @@ class RecommendationService {
               ? RecommendationPriority.high
               : RecommendationPriority.medium,
           title: 'Review ${entry.key}',
-          titleFilipino: 'Balikan ang ${entry.key}',
+          // The category's Filipino name: it said "Balikan ang Animals".
+          titleFilipino:
+              'Balikan ang ${_categoryByLabel(entry.key)?.labelFilipino ?? entry.key}',
           description:
               'Your progress is ${(entry.value * 100).round()}%. '
               'Let\'s practice to boost your score!',
@@ -320,7 +323,7 @@ class RecommendationService {
     LearningProgress progress,
     List<FlashcardCategory> interests,
   ) {
-    final unexplored = FlashcardCategory.values.where((cat) {
+    final unexplored = LearnerRestrictions.playableCategories.where((cat) {
       final p = progress.categoryProgress[cat.label] ?? 0.0;
       return p == 0.0;
     }).toList();

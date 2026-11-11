@@ -129,13 +129,13 @@ class _StoryFslButtonState extends State<StoryFslButton> {
         color: widget.color,
         loading: _loading,
         onTap: _play,
-        semanticLabel: 'Watch in Filipino Sign Language',
+        semanticLabel: _t(context).storyWatchInFsl,
       );
     }
 
     if (widget.compact) {
       return IconButton(
-          tooltip: 'Watch this choice in Filipino Sign Language',
+          tooltip: _t(context).storyWatchChoiceInFsl,
           onPressed: _loading ? null : _play,
           visualDensity: VisualDensity.compact,
           padding: EdgeInsets.zero,
@@ -155,45 +155,43 @@ class _StoryFslButtonState extends State<StoryFslButton> {
         );
     }
 
-    return Semantics(
-      button: true,
-      label: 'Watch in Filipino Sign Language',
-      child: ExcludeSemantics(
-        child: OutlinedButton.icon(
-          onPressed: _loading ? null : _play,
-          icon: _loading
-              ? SizedBox(
-                  width: context.scaleIcon(20),
-                  height: context.scaleIcon(20),
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(widget.color),
-                  ),
-                )
-              : Icon(Icons.sign_language_rounded, size: context.scaleIcon(22)),
-          label: Text(
-            _t(context).tcWatchFsl,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppTypography.titleMedium.copyWith(
-              color: widget.color,
-              fontWeight: FontWeight.w700,
-            ),
+    return OutlinedButton.icon(
+      onPressed: _loading ? null : _play,
+      icon: _loading
+          ? SizedBox(
+              width: context.scaleIcon(20),
+              height: context.scaleIcon(20),
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(widget.color),
+              ),
+            )
+          : Icon(Icons.sign_language_rounded, size: context.scaleIcon(22)),
+      label: Semantics(
+        label: _t(context).storyWatchInFsl,
+        excludeSemantics: true,
+        child: Text(
+          _t(context).tcWatchFsl,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTypography.titleMedium.copyWith(
+            color: widget.color,
+            fontWeight: FontWeight.w700,
           ),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: widget.color,
-            side: BorderSide(
-              color: widget.color.withValues(alpha: 0.6),
-              width: 1.5,
-            ),
-            // 56dp floor keeps the target above the 48dp accessibility minimum
-            // and matches the LanguageReplayBar buttons it sits beside.
-            minimumSize: const Size.fromHeight(56),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-          ),
+        ),
+      ),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: widget.color,
+        side: BorderSide(
+          color: widget.color.withValues(alpha: 0.6),
+          width: 1.5,
+        ),
+        // 56dp floor keeps the target above the 48dp accessibility minimum
+        // and matches the LanguageReplayBar buttons it sits beside.
+        minimumSize: const Size.fromHeight(56),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
         ),
       ),
     );

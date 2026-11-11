@@ -172,6 +172,10 @@ class HomeTile extends StatelessWidget {
                           fontWeight: FontWeight.w800,
                         ),
                 textAlign: TextAlign.center,
+                // Three lines: the cell grows with the text, and two cut
+                // "Mga Landas ng Pagkatuto" short on the tablet (Filipino,
+                // largest Font Size).
+                maxLines: 3,
               ),
             ),
             if (!compact && subtitle != null) ...[

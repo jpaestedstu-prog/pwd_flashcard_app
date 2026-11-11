@@ -1,5 +1,6 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import '../../../features/assessment/models/question_prompt.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
@@ -123,7 +124,18 @@ class LearningGainCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            SizedBox(
+            // Each category before and after: a reader was told cut-off names.
+            Semantics(
+              label: [
+                for (final e in gains.entries)
+                  _t(context).chartPrePost(
+                    QuestionPrompt.categoryName(e.key, _t(context)),
+                    (e.value.pre * 100).round(),
+                    (e.value.post * 100).round(),
+                  ),
+              ].join(', '),
+              excludeSemantics: true,
+              child: SizedBox(
               height: (gains.length * 36.0).clamp(100, 300),
               child: BarChart(
                 BarChartData(
@@ -161,7 +173,7 @@ class LearningGainCard extends StatelessWidget {
                                   ? '${name.substring(0, 7)}…'
                                   : name,
                               style: AppTypography.labelSmall.copyWith(
-                                fontSize: 8,
+                                fontSize: 10,
                                 color: hc.textSecondary,
                               ),
                               textAlign: TextAlign.center,
@@ -178,7 +190,7 @@ class LearningGainCard extends StatelessWidget {
                         getTitlesWidget: (value, meta) => Text(
                           '${value.toInt()}%',
                           style: AppTypography.labelSmall.copyWith(
-                            fontSize: 8,
+                            fontSize: 10,
                             color: hc.textSecondary,
                           ),
                         ),
@@ -225,7 +237,7 @@ class LearningGainCard extends StatelessWidget {
                   }).toList(),
                 ),
               ),
-            ),
+            )),
             const SizedBox(height: 8),
             // Legend
             Row(

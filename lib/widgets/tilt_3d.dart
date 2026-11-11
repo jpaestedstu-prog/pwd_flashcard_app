@@ -4,6 +4,7 @@ import 'package:flutter/gestures.dart' show kTouchSlop;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/utils/platform_caps.dart';
 import '../providers/app_providers.dart';
 
 /// 3D motion kit — shared perspective-tilt primitives.
@@ -69,6 +70,10 @@ class _Pressable3DState extends ConsumerState<Pressable3D>
   Offset _downPosition = Offset.zero;
   int _activePointers = 0;
 
+  /// A mouse is over it, in a browser: a slight lift, as a pressed key
+  /// goes down. Touch screens never hover.
+  bool _hovering = false;
+
   @override
   void dispose() {
     _controller.dispose();
@@ -110,9 +115,24 @@ class _Pressable3DState extends ConsumerState<Pressable3D>
     }
   }
 
+  void _setHover(bool hovering) {
+    if (hovering != _hovering) setState(() => _hovering = hovering);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Listener(
+    final hoverable = PlatformCaps.isWeb && widget.enabled;
+    // Hit as its child is hit, no more: `opaque: false` would answer "not
+    // hit" to every parent, and a GestureDetector above it that defers to
+    // its child then never saw a tap (the story covers, 8 Nov).
+    return MouseRegion(
+      hitTestBehavior: HitTestBehavior.deferToChild,
+      onEnter: hoverable ? (_) => _setHover(true) : null,
+      onExit: hoverable ? (_) => _setHover(false) : null,
+      child: AnimatedScale(
+        scale: _hovering && hoverable && _motionAllowed ? 1.02 : 1,
+        duration: const Duration(milliseconds: 120),
+        child: Listener(
       onPointerDown: _onPointerDown,
       onPointerMove: _onPointerMove,
       onPointerUp: _onPointerEnd,
@@ -145,6 +165,8 @@ class _Pressable3DState extends ConsumerState<Pressable3D>
           );
         },
         child: widget.child,
+      ),
+    ),
       ),
     );
   }

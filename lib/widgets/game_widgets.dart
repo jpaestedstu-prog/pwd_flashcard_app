@@ -1,6 +1,7 @@
 import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:pwdpwdpwd/core/widgets/fit_text.dart';
 import 'package:pwdpwdpwd/widgets/celebration_confetti.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
@@ -11,6 +12,7 @@ import '../../core/services/adaptive_difficulty_service.dart';
 import '../../core/services/game_session_service.dart';
 import '../features/gamepad/providers/gamepad_screen.dart';
 import '../features/gamepad/widgets/gamepad_screen_registrar.dart';
+import '../features/parent/services/learner_restrictions.dart';
 import '../l10n/app_localizations.dart';
 import 'animated_dialogs.dart';
 import 'animated_score_reveal.dart';
@@ -109,7 +111,7 @@ class _CategoryPickerSheetState extends State<_CategoryPickerSheet> {
         // enum, when an availability filter is in effect.
         final selectable =
             widget.availableCategories?.length ??
-            FlashcardCategory.values.length;
+            LearnerRestrictions.playableCategories.length;
         if (_selected.length == selectable) {
           _allSelected = true;
           _selected.clear();
@@ -143,7 +145,7 @@ class _CategoryPickerSheetState extends State<_CategoryPickerSheet> {
       items: [
         GamepadItem(label: startLabel, onActivate: _confirm),
         GamepadItem(label: l10n.allCategories, onActivate: _toggleAll),
-        for (final cat in FlashcardCategory.values)
+        for (final cat in LearnerRestrictions.playableCategories)
           GamepadItem(
             label: cat.labelOf(l10n),
             enabled: _isAvailable(cat),
@@ -232,7 +234,7 @@ class _CategoryPickerSheetState extends State<_CategoryPickerSheet> {
                   const SizedBox(height: 10),
 
                   // Individual categories
-                  ...FlashcardCategory.values.map((cat) {
+                  ...LearnerRestrictions.playableCategories.map((cat) {
                     final available = _isAvailable(cat);
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 10),
@@ -259,6 +261,9 @@ class _CategoryPickerSheetState extends State<_CategoryPickerSheet> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: _confirm,
+                // A D-pad starts here, as the controller does (see the item
+                // list): all categories is already chosen, so one OK plays.
+                autofocus: true,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
@@ -442,6 +447,7 @@ class _CategoryOptionCardState extends State<_CategoryOptionCard> {
         child: Semantics(
           label: '${widget.label}, ${widget.disabledLabel}',
           enabled: false,
+          excludeSemantics: true,
           child: card,
         ),
       );
@@ -452,24 +458,23 @@ class _CategoryOptionCardState extends State<_CategoryOptionCard> {
     // reaches a control on a route that publishes no gaze grid. The category
     // picker is the step straight after difficulty, so leaving it unreachable
     // would have stranded a hands-free learner one screen later.
+    //
+    // One focus node and one screen-reader node. It had a second focus
+    // node (FocusableActionDetector, under the DpadFocusable that does the
+    // same job), so the D-pad stopped on each card twice, and the label sat
+    // on a node apart from the press: a screen reader landed on a "button"
+    // a double-tap could not press.
     return Semantics(
+      container: true,
       button: true,
       selected: selected,
       label: widget.label,
-      child: FocusableActionDetector(
-        actions: <Type, Action<Intent>>{
-          ActivateIntent: CallbackAction<ActivateIntent>(
-            onInvoke: (_) {
-              widget.onTap();
-              return null;
-            },
-          ),
-        },
-        child: DpadFocusable(onActivate: widget.onTap, child: GestureDetector(
-          onTap: widget.onTap,
+      child: DpadFocusable(onActivate: widget.onTap, child: GestureDetector(
+        onTap: widget.onTap,
+        child: ExcludeSemantics(
           child: Pressable3D(maxTilt: 0.04, child: card),
-        )),
-      ),
+        ),
+      )),
     );
   }
 }
@@ -543,6 +548,12 @@ class _DifficultyPickerSheetState extends State<_DifficultyPickerSheet> {
     // The other gate every game passes through. The timed-mode switch is
     // offered as an item too, so a learner driving by ear can reach a control
     // that is otherwise a bare Switch with no reachable label.
+    //
+    // Where a D-pad starts: the level played last time, else Auto, else
+    // Easy. Never the timer switch at the top, the first control in reading
+    // order — an OK press there only toggled it.
+    final last = _lastSetup?.difficulty;
+    final autoShown = widget.profileId != null;
     return GamepadScreenRegistrar(
       title: widget.game.labelOf(l10n),
       narration: [widget.game.labelOf(l10n), l10n.chooseYourDifficulty],
@@ -585,10 +596,15 @@ class _DifficultyPickerSheetState extends State<_DifficultyPickerSheet> {
                   color: widget.game.color,
                 ),
                 const SizedBox(width: 10),
-                Text(
-                  widget.game.labelOf(l10n),
-                  style: AppTypography.headlineSmall.copyWith(
-                    fontWeight: FontWeight.w800,
+                // Two lines and smaller before it runs off the sheet: the
+                // Filipino game names ran 43 px past a phone's edge (3 Nov).
+                Flexible(
+                  child: FitText(
+                    widget.game.labelOf(l10n),
+                    textAlign: TextAlign.center,
+                    style: AppTypography.headlineSmall.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
               ],
@@ -601,9 +617,11 @@ class _DifficultyPickerSheetState extends State<_DifficultyPickerSheet> {
             ),
             const SizedBox(height: 16),
 
-            // Timed mode toggle
+            // Timed mode toggle — one screen-reader node with its words, so
+            // the switch is read by name ("Beat the Clock, off"), not as a
+            // bare "switch".
             if (widget.showTimedToggle)
-              Container(
+              MergeSemantics(child: Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 8,
@@ -658,7 +676,7 @@ class _DifficultyPickerSheetState extends State<_DifficultyPickerSheet> {
                     ),
                   ],
                 ),
-              ),
+              )),
             if (widget.showTimedToggle) const SizedBox(height: 16),
 
             // Adaptive _t(context).gwAuto difficulty card
@@ -668,6 +686,7 @@ class _DifficultyPickerSheetState extends State<_DifficultyPickerSheet> {
                 child: _AutoDifficultyCard(
                   profileId: widget.profileId!,
                   gameType: widget.game,
+                  autofocus: last == null,
                   onTap: (suggested) => Navigator.of(
                     context,
                   ).pop((difficulty: suggested, timedMode: _timedMode)),
@@ -685,6 +704,9 @@ class _DifficultyPickerSheetState extends State<_DifficultyPickerSheet> {
                     _DifficultyCard(
                           difficulty: diff,
                           lastPlayed: _lastSetup?.difficulty == diff,
+                          autofocus: last != null
+                              ? diff == last
+                              : !autoShown && diff == GameDifficulty.easy,
                           onTap: () => Navigator.of(
                             context,
                           ).pop((difficulty: diff, timedMode: _timedMode)),
@@ -713,10 +735,14 @@ class _DifficultyCard extends StatefulWidget {
 
   final VoidCallback onTap;
 
+  /// Where a D-pad starts on the sheet (see [_DifficultyPickerSheetState]).
+  final bool autofocus;
+
   const _DifficultyCard({
     required this.difficulty,
     this.lastPlayed = false,
     required this.onTap,
+    this.autofocus = false,
   });
 
   @override
@@ -735,21 +761,21 @@ class _DifficultyCardState extends State<_DifficultyCard> {
     // end for a hands-free learner. FocusableActionDetector supplies the focus
     // node and the ActivateIntent handling a commit needs, and changes nothing
     // visually. It also gives screen readers a real button to announce.
+    //
+    // DpadFocusable alone now: under FocusableActionDetector each card was
+    // two focus stops, and the label a node apart from the press.
     return Semantics(
+      container: true,
       button: true,
-      label: '${diff.labelOf(l10n)}. ${diff.descriptionOf(l10n)}',
-      child: FocusableActionDetector(
-        actions: <Type, Action<Intent>>{
-          ActivateIntent: CallbackAction<ActivateIntent>(
-            onInvoke: (_) {
-              widget.onTap();
-              return null;
-            },
-          ),
-        },
-        child: DpadFocusable(onActivate: widget.onTap, child: GestureDetector(
+      label: '${diff.labelOf(l10n)}. '
+          '${widget.lastPlayed ? '${l10n.lastPlayed}. ' : ''}'
+          '${diff.descriptionOf(l10n)}',
+      child: DpadFocusable(
+        onActivate: widget.onTap,
+        autofocus: widget.autofocus,
+        child: GestureDetector(
           onTap: widget.onTap,
-          child: Pressable3D(
+          child: ExcludeSemantics(child: Pressable3D(
             maxTilt: 0.04,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -858,8 +884,8 @@ class _DifficultyCardState extends State<_DifficultyCard> {
                 ],
               ),
             ),
-          ),
-        )),
+          )),
+        ),
       ),
     );
   }
@@ -879,10 +905,14 @@ class _AutoDifficultyCard extends StatelessWidget {
   final GameType gameType;
   final void Function(GameDifficulty suggested) onTap;
 
+  /// Where a D-pad starts on the sheet (see [_DifficultyPickerSheetState]).
+  final bool autofocus;
+
   const _AutoDifficultyCard({
     required this.profileId,
     required this.gameType,
     required this.onTap,
+    this.autofocus = false,
   });
 
   @override
@@ -913,94 +943,113 @@ class _AutoDifficultyCard extends StatelessWidget {
     };
     const autoColor = Color(0xFF7C4DFF);
 
-    return DpadFocusable(onActivate: () => onTap(suggested), child: GestureDetector(
-      onTap: () => onTap(suggested),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              autoColor.withValues(alpha: 0.08),
-              autoColor.withValues(alpha: 0.15),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: autoColor.withValues(alpha: 0.4), width: 2),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: context.responsiveSize(52),
-              height: context.responsiveSize(52),
+    // A label of its own: read as it stood, the card began with its robot
+    // emoji ("robot face, Auto, arrow, Hard…").
+    return Semantics(
+      container: true,
+      button: true,
+      label: '${_t(context).gwAuto}: ${suggested.labelOf(l10n)}. $reason',
+      child: DpadFocusable(
+        onActivate: () => onTap(suggested),
+        autofocus: autofocus,
+        child: GestureDetector(
+          onTap: () => onTap(suggested),
+          child: ExcludeSemantics(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               decoration: BoxDecoration(
-                color: autoColor.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Center(
-                child: Text(
-                  '🤖',
-                  style: TextStyle(fontSize: context.responsiveSize(26)),
+                gradient: LinearGradient(
+                  colors: [
+                    autoColor.withValues(alpha: 0.08),
+                    autoColor.withValues(alpha: 0.15),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: autoColor.withValues(alpha: 0.4), width: 2),
               ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      Text(
-                        _t(context).gwAuto,
-                        style: AppTypography.titleMedium.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: HCColor.of(context).readableOver(autoColor, autoColor.withValues(alpha: 0.15)),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: suggested.color.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          '→ ${suggested.labelOf(l10n)}',
-                          style: AppTypography.labelSmall.copyWith(
-                            color: HCColor.of(context).readableOver(suggested.color, suggested.color.withValues(alpha: 0.15)),
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    reason,
-                    style: AppTypography.bodySmall.copyWith(
-                      color: HCColor.of(context).textSecondary,
+                  Container(
+                    width: context.responsiveSize(52),
+                    height: context.responsiveSize(52),
+                    decoration: BoxDecoration(
+                      color: autoColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                    child: Center(
+                      child: Text(
+                        '🤖',
+                        style: TextStyle(fontSize: context.responsiveSize(26)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // The suggestion under the name when the two do not
+                        // fit on one line (a phone, in Filipino, 3 Nov).
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 4,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Text(
+                              _t(context).gwAuto,
+                              style: AppTypography.titleMedium.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: HCColor.of(context).readableOver(autoColor, autoColor.withValues(alpha: 0.15)),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: suggested.color.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                '→ ${suggested.labelOf(l10n)}',
+                                style: AppTypography.labelSmall.copyWith(
+                                  color: HCColor.of(context).readableOver(suggested.color, suggested.color.withValues(alpha: 0.15)),
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        // The whole reason, which the card has room for:
+                        // two lines cut it ("…easier questions to b…") at
+                        // the largest Font Size, on the tablet (30 Oct).
+                        FitText(
+                          reason,
+                          style: AppTypography.bodySmall.copyWith(
+                            color: HCColor.of(context).textSecondary,
+                          ),
+                          maxLines: 4,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    Icons.auto_awesome_rounded,
+                    size: context.scaleIcon(22),
+                    color: autoColor.withValues(alpha: 0.7),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 8),
-            Icon(
-              Icons.auto_awesome_rounded,
-              size: context.scaleIcon(22),
-              color: autoColor.withValues(alpha: 0.7),
-            ),
-          ],
+          ),
         ),
       ),
-    ));
+    );
   }
 }
 
@@ -1100,6 +1149,8 @@ class GameTimerWidget extends StatelessWidget {
           Center(
             child: Text(
               '$remainingSeconds',
+              semanticsLabel: AppLocalizations.of(context)
+                  ?.secondsLeftLabel(remainingSeconds),
               style: AppTypography.titleMedium.copyWith(
                 color: HCColor.of(context).readableOver(_timerColor, _timerColor.withValues(alpha: 0.15)),
                 fontWeight: FontWeight.w800,

@@ -23,6 +23,7 @@ import '../../../navigation/nav_extensions.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Dashboard for Parent/Teacher roles — provides an overview of the
 /// student's learning progress, weak areas, and recommendations.
@@ -122,7 +123,7 @@ class DashboardScreen extends ConsumerWidget {
               return true;
             },
           ),
-          title: Text(
+          title: AppBarTitle(
             viewingLabel,
             style: AppTypography.titleMedium.copyWith(
               fontWeight: FontWeight.w700,
@@ -395,9 +396,13 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      title,
-      style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w700),
+    return Semantics(
+      container: true,
+      header: true,
+      child: Text(
+        title,
+        style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w700),
+      ),
     );
   }
 }
@@ -495,53 +500,59 @@ class _MetricCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 12),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              color.withValues(alpha: 0.12),
-              color.withValues(alpha: 0.04),
+      child: Semantics(
+        // "Mastery: 0%" as one phrase; read as "0%, Mastery" it ran into the
+        // next card's "0%" and sounded like one number said twice.
+        label: '$label: $value',
+        excludeSemantics: true,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                color.withValues(alpha: 0.12),
+                color.withValues(alpha: 0.04),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: color.withValues(alpha: 0.3)),
+          ),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Icon(icon, color: color, size: 28),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                value,
+                style: AppTypography.titleLarge.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.2)),
+                ),
+              ),
+              // Three metric cards share the row, so each label gets a third
+              // of it: "Word / s" and "Badg / es".
+              FitText(
+                label,
+                maxLines: 1,
+                style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
+              ),
             ],
           ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-        ),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: color.withValues(alpha: 0.2),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Icon(icon, color: color, size: 28),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: AppTypography.titleLarge.copyWith(
-                fontWeight: FontWeight.w800,
-                color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.2)),
-              ),
-            ),
-            // Three metric cards share the row, so each label gets a third
-            // of it: "Word / s" and "Badg / es".
-            FitText(
-              label,
-              maxLines: 1,
-              style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
-            ),
-          ],
         ),
       ),
     );
@@ -574,27 +585,32 @@ class _MasterySection extends StatelessWidget {
               percent: masteryPct.clamp(0.0, 1.0),
               // Scaled to fit inside the ring: at 2x "Kahusayan" broke in two
               // and the pair ran 16 px out of the circle.
-              center: Padding(
-                padding: const EdgeInsets.all(14),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '${(masteryPct * 100).round()}%',
-                        style: AppTypography.titleLarge.copyWith(
-                          fontWeight: FontWeight.w900,
-                          color: HCColor.of(context).primary,
+              center: Semantics(
+                // "Mastery: 0%" as one phrase.
+                label: '${_t(context).dbMastery}: ${(masteryPct * 100).round()}%',
+                excludeSemantics: true,
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '${(masteryPct * 100).round()}%',
+                          style: AppTypography.titleLarge.copyWith(
+                            fontWeight: FontWeight.w900,
+                            color: HCColor.of(context).primary,
+                          ),
                         ),
-                      ),
-                      Text(
-                        _t(context).dbMastery,
-                        style: AppTypography.labelSmall.copyWith(
-                          color: HCColor.of(context).textSecondary,
+                        Text(
+                          _t(context).dbMastery,
+                          style: AppTypography.labelSmall.copyWith(
+                            color: HCColor.of(context).textSecondary,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -653,35 +669,41 @@ class _MiniMetric extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
-    return Row(
-      children: [
-        Icon(icon, color: color, size: 20),
-        const SizedBox(width: 8),
-        // Expanded, so the label has a width to fit: unbounded beside the
-        // ring, FitText never shrank and "Daily Challenge Streak" ran 31 px
-        // past a phone's edge even at the default text size.
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                value,
-                style: AppTypography.labelLarge.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: color,
+    return Semantics(
+      // "Recent Game Avg: 0%" as one phrase, not a number and a label.
+      label: '$label: $value',
+      excludeSemantics: true,
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 8),
+          // Expanded, so the label has a width to fit: unbounded beside the
+          // ring, FitText never shrank and "Daily Challenge Streak" ran 31 px
+          // past a phone's edge even at the default text size.
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  style: AppTypography.labelLarge.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
                 ),
-              ),
-              // Three metric cards share the row, so each label gets a third
-              // of it: "Word / s" and "Badg / es".
-              FitText(
-                label,
-                style:
-                    AppTypography.labelSmall.copyWith(color: hc.textSecondary),
-              ),
-            ],
+                // Three metric cards share the row, so each label gets a third
+                // of it: "Word / s" and "Badg / es".
+                FitText(
+                  label,
+                  maxLines: 3,
+                  style:
+                      AppTypography.labelSmall.copyWith(color: hc.textSecondary),
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -1081,7 +1103,7 @@ class _StudyTimeSection extends StatelessWidget {
                           '${entry.value}',
                           textAlign: TextAlign.center,
                           style: AppTypography.labelSmall.copyWith(
-                            fontSize: 9,
+                            fontSize: 11,
                             color: hc.textSecondary,
                           ),
                         ),
@@ -1117,7 +1139,7 @@ class _StudyTimeSection extends StatelessWidget {
                     dayLabel,
                     textAlign: TextAlign.center,
                     style: AppTypography.labelSmall.copyWith(
-                      fontSize: 9,
+                      fontSize: 11,
                       color: hc.textSecondary,
                     ),
                   ),

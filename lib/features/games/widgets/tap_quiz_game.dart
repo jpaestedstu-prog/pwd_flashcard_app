@@ -37,6 +37,7 @@ import 'pause_overlay.dart';
 import '../../../widgets/fullscreen_host.dart';
 import '../../../core/utils/seeded_random.dart';
 import '../../../widgets/dpad_focusable.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// One tappable answer in a [TapQuizRound].
 class TapChoice {
@@ -545,7 +546,7 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
             tooltip: l10n.close,
             onPressed: () => context.popOrGo('/games'),
           ),
-          title: Text(gameTitle(l10n)),
+          title: AppBarTitle(gameTitle(l10n)),
         ),
       ),
       body: Center(
@@ -627,9 +628,9 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
         ref.watch(gazeSettingsProvider.select((s) => s.enabled)) && !_answered;
 
     // Offer the round to the Bluetooth controller: the question as prose, the
-    // answers as items. A learner driving by ear hears the prompt on R2, steps
-    // the choices with ▲ ▼, and answers with R1 — the same three buttons they
-    // use everywhere else in the app.
+    // answers as items. A learner driving by ear hears the prompt on X, moves
+    // to a choice with the D-pad, and answers with A — the same three buttons
+    // they use everywhere else in the app.
     //
     // Withdrawn while answered, so the 1.2-second feedback pause cannot be
     // spent re-answering a round that is already scored.
@@ -665,8 +666,13 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
                     tooltip: l10n.close,
                     onPressed: pauseGame,
                   ),
-                  title: Text(
+                  title: AppBarTitle(
                     l10n.gameRoundHeader(
+                      gameTitle(l10n),
+                      _currentRound + 1,
+                      _rounds.length,
+                    ),
+                    semanticsLabel: l10n.gameRoundHeaderSpoken(
                       gameTitle(l10n),
                       _currentRound + 1,
                       _rounds.length,
@@ -710,6 +716,7 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
                               const SizedBox(width: 4),
                               Text(
                                 '$_score',
+                                semanticsLabel: l10n.gameScoreChip(_score),
                                 style: AppTypography.labelLarge.copyWith(
                                   color: HCColor.of(context).warningText,
                                 ),
@@ -722,11 +729,29 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
                   ],
                 ),
               ),
-              body: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  children: [
-                    Semantics(
+              body: LayoutBuilder(
+                builder: (context, box) {
+                  // A phone on its side: the prompt and the answers side by
+                  // side. Stacked, each got a sliver of the height and the
+                  // prompt was scaled to unreadable type.
+                  final sideBySide = box.maxWidth > box.maxHeight * 1.3 &&
+                      box.maxHeight < 520;
+                  final prompt = Semantics(
+                                label: promptSemantics(l10n, round),
+                                // The question says it all; the picture and
+                                // words of the prompt were read again under
+                                // it. No game's prompt has a control in it.
+                                excludeSemantics: true,
+                                child: buildPrompt(context, round),
+                              )
+                              .animate(key: ValueKey(_currentRound))
+                              .fadeIn(duration: 300.ms)
+                              .slideX(begin: 0.1, end: 0);
+                  final choices = _buildChoices(context, round, showCursor);
+                  final progress = Semantics(
+                      // The round in words; the bar's own percentage read as
+                      // "17.0. 17, Round 1 of 6".
+                      excludeSemantics: true,
                       label: l10n.resumeRoundProgress(
                         _currentRound + 1,
                         _rounds.length,
@@ -744,30 +769,41 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
                           ),
                         ),
                       ),
+                    );
+                  return Padding(
+                    padding: EdgeInsets.all(sideBySide ? 16 : 24),
+                    child: Column(
+                      children: [
+                        progress,
+                        SizedBox(height: sideBySide ? 12 : 28),
+                        Expanded(
+                          child: sideBySide
+                              ? Row(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    Expanded(flex: promptFlex, child: prompt),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      flex: choicesFlex,
+                                      child: choices,
+                                    ),
+                                  ],
+                                )
+                              : Column(
+                                  children: [
+                                    Expanded(flex: promptFlex, child: prompt),
+                                    const SizedBox(height: 24),
+                                    Expanded(
+                                      flex: choicesFlex,
+                                      child: choices,
+                                    ),
+                                  ],
+                                ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 28),
-
-                    // ─── Prompt ───────────────────────────
-                    Expanded(
-                      flex: promptFlex,
-                      child:
-                          Semantics(
-                                label: promptSemantics(l10n, round),
-                                child: buildPrompt(context, round),
-                              )
-                              .animate(key: ValueKey(_currentRound))
-                              .fadeIn(duration: 300.ms)
-                              .slideX(begin: 0.1, end: 0),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // ─── Answers ──────────────────────────
-                    Expanded(
-                      flex: choicesFlex,
-                      child: _buildChoices(context, round, showCursor),
-                    ),
-                  ],
-                ),
+                  );
+                },
               ),
             ),
             if (isPaused)
@@ -863,49 +899,55 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
 
     Widget card = Semantics(
       button: true,
+      // The second line too (the Filipino word under the English one), so
+      // what is drawn below can stay silent.
       label:
           '${l10n.answerSemantics(choice.textIn(l10n))}'
+          '${choice.sublabel == null ? '' : ', ${choice.sublabel}'}'
           '${showCorrect ? l10n.correctAnswerSuffix : ''}'
           '${showWrong ? l10n.wrongAnswerSuffix : ''}',
       child: DpadFocusable(onActivate: () => _selectAnswer(index), child: GestureDetector(
         onTap: () => _selectAnswer(index),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          decoration: BoxDecoration(
-            color: bgColor,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: borderColor, width: highlighted ? 4 : 2),
-            boxShadow: AppColors.softShadow,
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(8),
-            child: Center(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (choice.icon != null) ...[
-                      Icon(choice.icon, size: 34, color: textColor),
-                      const SizedBox(height: 4),
-                    ],
-                    Text(
-                      choice.textIn(l10n),
-                      style: AppTypography.titleMedium.copyWith(
-                        color: textColor,
-                        fontWeight: FontWeight.w700,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    if (choice.sublabel != null)
+        child: ExcludeSemantics(
+          // The label says the answer; the words drawn here were read again.
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: borderColor, width: highlighted ? 4 : 2),
+              boxShadow: AppColors.softShadow,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: Center(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (choice.icon != null) ...[
+                        Icon(choice.icon, size: 34, color: textColor),
+                        const SizedBox(height: 4),
+                      ],
                       Text(
-                        choice.sublabel!,
-                        style: AppTypography.bodySmall.copyWith(
-                          color: textColor.withValues(alpha: 0.7),
+                        choice.textIn(l10n),
+                        style: AppTypography.titleMedium.copyWith(
+                          color: textColor,
+                          fontWeight: FontWeight.w700,
                         ),
                         textAlign: TextAlign.center,
                       ),
-                  ],
+                      if (choice.sublabel != null)
+                        Text(
+                          choice.sublabel!,
+                          style: AppTypography.bodySmall.copyWith(
+                            color: textColor.withValues(alpha: 0.7),
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -933,17 +975,10 @@ abstract class TapQuizState<T extends TapQuizScreen> extends ConsumerState<T>
           );
     }
 
-    // The controller's own ring, so a teacher beside the learner can see which
-    // answer is about to be chosen. Distinct from the gaze cursor's border —
-    // the two inputs can be on different choices, and showing only one would
-    // mislead whoever is watching.
-    return GamepadFocusable(
-      index: index,
-      child: card
-          .animate(key: ValueKey('$_currentRound-$index'))
-          .fadeIn(duration: 300.ms, delay: (index * 80).ms)
-          .slideY(begin: 0.1, end: 0),
-    );
+    return card
+        .animate(key: ValueKey('$_currentRound-$index'))
+        .fadeIn(duration: 300.ms, delay: (index * 80).ms)
+        .slideY(begin: 0.1, end: 0);
   }
 
   /// Standard bordered prompt panel — matches the question area the other

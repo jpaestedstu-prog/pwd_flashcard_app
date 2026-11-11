@@ -12,6 +12,7 @@ import 'package:pwdpwdpwd/features/gaze_control/providers/gaze_settings_provider
 import 'package:pwdpwdpwd/features/home/screens/child_home_screen.dart';
 import 'package:pwdpwdpwd/features/home/screens/home_screen.dart';
 import 'package:pwdpwdpwd/features/home/screens/player_home_screen.dart';
+import 'package:pwdpwdpwd/features/mood_tracker/models/mood_models.dart';
 import 'package:pwdpwdpwd/features/progress/screens/progress_screen.dart';
 import 'package:pwdpwdpwd/l10n/app_localizations.dart';
 import 'package:pwdpwdpwd/providers/app_providers.dart';
@@ -139,7 +140,7 @@ void main() {
         // App-bar utilities (topmost gaze row).
         'Star Shop', 'Settings',
         // Banner-level entries.
-        'Player Profile', 'Daily Challenge',
+        'My Profile', 'Daily Challenge',
         // Core "Play & Learn" tiles.
         'Games', 'Words', 'Stories', 'Smart Review', 'Progress',
         // Grouped "More" sections, incl. the ones this task names.
@@ -162,12 +163,22 @@ void main() {
     // circle, shop, settings), then My Day, then Mood Check-In — each a
     // full-width card of its own.
     expect(gazeHomeGrid.rows.first.map((c) => c.label), [
-      'Player Profile',
+      'My Profile',
       'Star Shop',
       'Settings',
     ]);
     expect(gazeHomeGrid.rows[1].map((c) => c.label), ['My Day']);
     expect(gazeHomeGrid.rows[2].map((c) => c.label), ['Mood Check-In']);
+    // Then the Mood card's own controls: one stop per face, side by side, so
+    // a D-pad checks in on Home as a finger does. A Student's day runs on the
+    // clock, so My Day has no Done row above.
+    final faces = gazeHomeGrid.rows[3];
+    expect(faces.length, greaterThanOrEqualTo(3));
+    expect(
+      faces.map((c) => c.label),
+      everyElement(isIn([for (final m in MoodType.values) m.label])),
+    );
+    expect(faces.any((c) => c.opens), isFalse);
 
     await _unmount(tester);
   });

@@ -43,6 +43,7 @@ import '../../../widgets/fullscreen_host.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../../../core/utils/seeded_random.dart';
 import '../../../widgets/dpad_focusable.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Pronunciation Practice — an audio-first game.
 ///
@@ -636,8 +637,13 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
                     tooltip: l10n.close,
                     onPressed: pauseGame,
                   ),
-                  title: Text(
+                  title: AppBarTitle(
                     l10n.gameRoundHeader(
+                      l10n.listenAndPick,
+                      _currentRound + 1,
+                      _rounds.length,
+                    ),
+                    semanticsLabel: l10n.gameRoundHeaderSpoken(
                       l10n.listenAndPick,
                       _currentRound + 1,
                       _rounds.length,
@@ -681,6 +687,7 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
                               const SizedBox(width: 4),
                               Text(
                                 '$_score',
+                                semanticsLabel: l10n.gameScoreChip(_score),
                                 style: AppTypography.labelLarge.copyWith(
                                   color: HCColor.of(context).warningText,
                                 ),
@@ -959,68 +966,72 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
                                           : ''}',
                                   child: DpadFocusable(onActivate: () => _selectAnswer(index), child: GestureDetector(
                                     onTap: () => _selectAnswer(index),
-                                    child: AnimatedContainer(
-                                      duration: const Duration(milliseconds: 300),
-                                      decoration: BoxDecoration(
-                                        color: bgColor,
-                                        borderRadius: BorderRadius.circular(20),
-                                        border: Border.all(
-                                          color: borderColor,
-                                          width: highlighted ? 4 : 2,
-                                        ),
-                                        boxShadow: highlighted
-                                            ? [
-                                                BoxShadow(
-                                                  color: AppColors.accent.withValues(
-                                                    alpha: 0.5,
-                                                  ),
-                                                  blurRadius: 14,
-                                                  spreadRadius: 1,
-                                                ),
-                                              ]
-                                            : AppColors.softShadow,
-                                      ),
-                                      child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          // Shrinks instead of overflowing when the cell is short
-                                          // (a phone held sideways, the largest text); the word
-                                          // below keeps its size. The gap under the picture
-                                          // shrinks with it: on a 360 dp phone at the largest
-                                          // font a fixed gap left the cell 5 px short.
-                                          Flexible(
-                                            child: FittedBox(
-                                              fit: BoxFit.scaleDown,
-                                              child: Padding(
-                                                padding: const EdgeInsets.only(bottom: 8),
-                                                child: FlashcardPicture(card: choice, extent: 42),
-                                              ),
-                                            ),
+                                    child: ExcludeSemantics(
+                                      // The label already says the word; the text under it
+                                      // was read again ("Answer choice: Window, Window").
+                                      child: AnimatedContainer(
+                                        duration: const Duration(milliseconds: 300),
+                                        decoration: BoxDecoration(
+                                          color: bgColor,
+                                          borderRadius: BorderRadius.circular(20),
+                                          border: Border.all(
+                                            color: borderColor,
+                                            width: highlighted ? 4 : 2,
                                           ),
-                                          // Flexible as well: in the shortest cell
-                                          // (a phone held sideways, the largest
-                                          // font) a two-line word was 1 px taller
-                                          // than the cell once the picture had
-                                          // shrunk away.
-                                          Flexible(
-                                            child: Padding(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 8,
-                                              ),
-                                              // The answer word itself, in a fixed
-                                              // grid cell: it split "Maglaka / d".
-                                              child: FitText(
-                                                choiceText,
-                                                style: AppTypography.titleSmall
-                                                    .copyWith(
-                                                      color: textColor,
-                                                      fontWeight: FontWeight.w700,
+                                          boxShadow: highlighted
+                                              ? [
+                                                  BoxShadow(
+                                                    color: AppColors.accent.withValues(
+                                                      alpha: 0.5,
                                                     ),
-                                                textAlign: TextAlign.center,
+                                                    blurRadius: 14,
+                                                    spreadRadius: 1,
+                                                  ),
+                                                ]
+                                              : AppColors.softShadow,
+                                        ),
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            // Shrinks instead of overflowing when the cell is short
+                                            // (a phone held sideways, the largest text); the word
+                                            // below keeps its size. The gap under the picture
+                                            // shrinks with it: on a 360 dp phone at the largest
+                                            // font a fixed gap left the cell 5 px short.
+                                            Flexible(
+                                              child: FittedBox(
+                                                fit: BoxFit.scaleDown,
+                                                child: Padding(
+                                                  padding: const EdgeInsets.only(bottom: 8),
+                                                  child: FlashcardPicture(card: choice, extent: 42),
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                        ],
+                                            // Flexible as well: in the shortest cell
+                                            // (a phone held sideways, the largest
+                                            // font) a two-line word was 1 px taller
+                                            // than the cell once the picture had
+                                            // shrunk away.
+                                            Flexible(
+                                              child: Padding(
+                                                padding: const EdgeInsets.symmetric(
+                                                  horizontal: 8,
+                                                ),
+                                                // The answer word itself, in a fixed
+                                                // grid cell: it split "Maglaka / d".
+                                                child: FitText(
+                                                  choiceText,
+                                                  style: AppTypography.titleSmall
+                                                      .copyWith(
+                                                        color: textColor,
+                                                        fontWeight: FontWeight.w700,
+                                                      ),
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   )),
@@ -1051,20 +1062,15 @@ class _PronunciationScreenState extends ConsumerState<PronunciationScreen>
                                       );
                                 }
 
-                                // +1: the published item list puts "listen again"
-                                // first, so choice N is item N+1.
-                                return GamepadFocusable(
-                                  index: index + 1,
-                                  child: card
-                                      .animate(
-                                        key: ValueKey('$_currentRound-$index'),
-                                      )
-                                      .fadeIn(
-                                        duration: 300.ms,
-                                        delay: (index * 80).ms,
-                                      )
-                                      .slideY(begin: 0.1, end: 0),
-                                );
+                                return card
+                                    .animate(
+                                      key: ValueKey('$_currentRound-$index'),
+                                    )
+                                    .fadeIn(
+                                      duration: 300.ms,
+                                      delay: (index * 80).ms,
+                                    )
+                                    .slideY(begin: 0.1, end: 0);
                               },
                             ),
                           ),

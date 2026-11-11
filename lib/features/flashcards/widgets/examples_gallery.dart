@@ -127,7 +127,7 @@ class _ExamplesGallerySheetState extends State<_ExamplesGallerySheet> {
     return MediaSheetLayout(
       icon: Icons.photo_library_rounded,
       iconColor: AppColors.accentDark,
-      title: 'Examples — ${widget.card.wordEnglish}',
+      title: _t(context).egTitle(widget.card.wordEnglish),
       caption: widget.card.wordFilipino,
       mediaBuilder: (_) => _buildMedia(context),
       belowMedia: _buildDots(),
@@ -142,7 +142,7 @@ class _ExamplesGallerySheetState extends State<_ExamplesGallerySheet> {
     if (_images.isEmpty) {
       return Center(
         child: Text(
-          "These examples aren't available right now.",
+          _t(context).egUnavailable,
           style: AppTypography.bodyMedium.copyWith(color: hc.textSecondary),
           textAlign: TextAlign.center,
         ),

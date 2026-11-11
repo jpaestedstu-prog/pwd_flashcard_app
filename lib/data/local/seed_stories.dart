@@ -76,6 +76,10 @@ class Story {
   final String id;
   final String titleEn;
   final String titleFil;
+
+  /// The title in the language the app is in.
+  String titleIn({required bool filipino}) => filipino ? titleFil : titleEn;
+
   final List<String> sentencesEn;
   final List<String> sentencesFil;
   final List<String> vocabularyWordIds; // flashcard IDs used in this story

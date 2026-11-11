@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../core/widgets/fit_text.dart';
 
 /// A compact, overflow-safe statistic card shared across the Student and Child
 /// progress views (streak, stars, words, accuracy, …).
@@ -29,11 +30,20 @@ class ProgressStatCard extends StatelessWidget {
     required this.color,
   });
 
+  /// The style of the label and the suffix under the number.
+  static TextStyle get captionStyle => AppTypography.labelSmall;
+
+  /// How much narrower than the card its text is: the padding each side and
+  /// the border.
+  static const double horizontalInset = 2 * 12 + 2;
+
   @override
   Widget build(BuildContext context) {
     final textSecondary = HCColor.of(context).textSecondary;
     return Semantics(
       label: '$label: $value ${suffix.isNotEmpty ? suffix : ''}',
+      // The sentence says it; the number and words under it were read again.
+      excludeSemantics: true,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
         decoration: BoxDecoration(
@@ -106,20 +116,20 @@ class ProgressStatCard extends StatelessWidget {
                 ),
               ),
             ),
+            // Whole, a little smaller where it must: the grid takes a column
+            // away before that is too small ([ProgressStatGrid]).
             if (suffix.isNotEmpty)
-              Text(
+              FitText(
                 suffix,
                 maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
-                style: AppTypography.labelSmall.copyWith(color: textSecondary),
+                style: captionStyle.copyWith(color: textSecondary),
               ),
-            Text(
+            FitText(
               label,
               maxLines: 1,
-              overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              style: AppTypography.labelSmall.copyWith(color: textSecondary),
+              style: captionStyle.copyWith(color: textSecondary),
             ),
           ],
         ),

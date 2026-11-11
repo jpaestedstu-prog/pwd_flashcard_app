@@ -12,6 +12,7 @@ import '../../../providers/app_providers.dart';
 import '../models/smileyometer_models.dart';
 import '../services/smileyometer_service.dart';
 import '../../../navigation/nav_extensions.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Child-friendly Smileyometer feedback screen for learners.
 ///
@@ -67,7 +68,7 @@ class _SmileyometerScreenState extends ConsumerState<SmileyometerScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isFilipino ? 'Kumusta?' : 'How was it?'),
+        title: AppBarTitle(isFilipino ? 'Kumusta?' : 'How was it?'),
         centerTitle: true,
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -164,7 +165,9 @@ class _QuestionBlock extends StatelessWidget {
                     child: InkWell(
                       borderRadius: BorderRadius.circular(14),
                       onTap: () => onSelect(value),
-                      child: AnimatedContainer(
+                      // Said once, by the label (the face and its words were
+                      // read again).
+                      child: ExcludeSemantics(child: AnimatedContainer(
                         duration: 150.ms,
                         margin: const EdgeInsets.symmetric(horizontal: 4),
                         padding: const EdgeInsets.symmetric(vertical: 10),
@@ -199,7 +202,7 @@ class _QuestionBlock extends StatelessWidget {
                             ),
                           ],
                         ),
-                      ),
+                      )),
                     ),
                   ),
                 );

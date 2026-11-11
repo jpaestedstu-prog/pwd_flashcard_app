@@ -35,6 +35,8 @@ import '../widgets/tv_cast_remote_controls.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../core/utils/platform_caps.dart';
+import '../../../core/widgets/app_bar_title.dart';
+import '../../../core/widgets/fit_label.dart';
 
 /// Vertical gap above a section header, and between a header and its content.
 ///
@@ -199,6 +201,7 @@ class _TvCastScreenState extends ConsumerState<TvCastScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text(_t(context).tcStopTitle),
         content: Text(
           _t(context).tcStopBody,
@@ -255,7 +258,7 @@ class _TvCastScreenState extends ConsumerState<TvCastScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_t(context).tcTitle),
+        title: AppBarTitle(_t(context).tcTitle),
         actions: [
           if (state.isServerRunning) ...[
             // "Teacher is out" — keeps the cast alive so the TV can show the
@@ -778,7 +781,7 @@ class _ModeConfig extends ConsumerWidget {
           // a 600dp tablet, so the card count was cut off the end.
           isExpanded: true,
           decoration: InputDecoration(
-            labelText: _t(context).cfCategory,
+            label: FitLabel(_t(context).cfCategory),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             prefixIcon: const Icon(Icons.category_rounded),
           ),
@@ -847,7 +850,7 @@ class _ModeConfig extends ConsumerWidget {
           initialValue: state.storyId,
           isExpanded: true,
           decoration: InputDecoration(
-            labelText: _t(context).tcStory,
+            label: FitLabel(_t(context).tcStory),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             prefixIcon: const Icon(Icons.auto_stories_rounded),
           ),
@@ -855,10 +858,7 @@ class _ModeConfig extends ConsumerWidget {
               .map(
                 (s) => DropdownMenuItem(
                   value: s.id,
-                  child: Text(
-                    '${s.emoji}  ${s.titleEn}',
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  child: Text('${s.emoji}  ${_storyTitle(context, s)}'),
                 ),
               )
               .toList(),
@@ -881,12 +881,13 @@ class _ModeConfig extends ConsumerWidget {
             if (storyId != null)
               _PrewarmControl(
                 targetKey: 'story:$storyId',
-                targetLabel: all
-                    .firstWhere(
-                      (s) => s.id == storyId,
-                      orElse: () => all.first,
-                    )
-                    .titleEn,
+                targetLabel: _storyTitle(
+                  context,
+                  all.firstWhere(
+                    (s) => s.id == storyId,
+                    orElse: () => all.first,
+                  ),
+                ),
                 onStart: () => ref
                     .read(tvCastPrewarmProvider.notifier)
                     .warmStory(storyId),
@@ -1047,10 +1048,10 @@ class _PrefChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
     return Semantics(
+      container: true,
       button: true,
       selected: selected,
       label: label,
-      excludeSemantics: true,
       child: Material(
         color: selected
             ? hc.primary
@@ -1070,20 +1071,22 @@ class _PrefChip extends StatelessWidget {
         ),
         child: InkWell(
           onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.sm,
-              vertical: 12,
-            ),
-            child: Center(
-              child: Text(
-                label,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: AppTypography.labelMedium.copyWith(
-                  color: selected ? Colors.white : hc.primary,
-                  fontWeight: FontWeight.w700,
+          child: ExcludeSemantics(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: 12,
+              ),
+              child: Center(
+                child: Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.labelMedium.copyWith(
+                    color: selected ? Colors.white : hc.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
@@ -1434,6 +1437,7 @@ class _CastHistory extends ConsumerWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text(_t(context).tcClearTitle),
         content: Text(
           _t(context).tcClearBody,
@@ -1608,6 +1612,7 @@ class _SessionSummaryDialog extends StatelessWidget {
     ];
 
     return AlertDialog(
+      scrollable: true,
       title: Text(_t(context).tcLessonCast),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1766,7 +1771,7 @@ class _TimerControlState extends ConsumerState<_TimerControl> {
                   const SizedBox(width: AppSpacing.sm),
                   Flexible(
                     child: Text(
-                      'paused',
+                      _t(context).tcPaused,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppTypography.bodySmall.copyWith(
@@ -2765,10 +2770,10 @@ class _AudioTargetChip extends StatelessWidget {
     final hc = HCColor.of(context);
     final fg = selected ? Colors.white : hc.primary;
     return Semantics(
+      container: true,
       button: true,
       selected: selected,
       label: label,
-      excludeSemantics: true,
       child: Material(
         color: selected
             ? hc.primary
@@ -2788,32 +2793,34 @@ class _AudioTargetChip extends StatelessWidget {
         ),
         child: InkWell(
           onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.sm,
-              vertical: 12,
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, size: 18, color: fg),
-                const SizedBox(width: AppSpacing.sm),
-                // Flexible, not Expanded: the icon + label stay centred as a
-                // pair, and "This phone" still wraps inside its own cell at a
-                // 2.0x font instead of running under the icon.
-                Flexible(
-                  child: Text(
-                    label,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.labelMedium.copyWith(
-                      color: fg,
-                      fontWeight: FontWeight.w700,
+          child: ExcludeSemantics(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: 12,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, size: 18, color: fg),
+                  const SizedBox(width: AppSpacing.sm),
+                  // Flexible, not Expanded: the icon + label stay centred as a
+                  // pair, and "This phone" still wraps inside its own cell at a
+                  // 2.0x font instead of running under the icon.
+                  Flexible(
+                    child: Text(
+                      label,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.labelMedium.copyWith(
+                        color: fg,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -3042,7 +3049,7 @@ class _CastPreview extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    s.titleEn,
+                    _storyTitle(context, s),
                     style: AppTypography.titleMedium.copyWith(
                       fontWeight: FontWeight.w800,
                       color: hc.textPrimary,
@@ -3205,5 +3212,10 @@ class _FslReadyStatusState extends State<_FslReadyStatus> {
 
 /// `AppLocalizations.of` is nullable here, and a screen pumped in a test
 /// without the delegate would otherwise throw.
+/// A story's title in the language the app is in.
+String _storyTitle(BuildContext context, Story story) => story.titleIn(
+      filipino: _t(context).localeName.startsWith('fil'),
+    );
+
 AppLocalizations _t(BuildContext context) =>
     AppLocalizations.of(context) ?? AppLocalizationsEn();

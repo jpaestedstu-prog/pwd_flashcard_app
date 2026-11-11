@@ -12,6 +12,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../navigation/dpad_keys.dart';
 import '../../../widgets/dpad_focusable.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Full voice-guided navigation mode with a step-by-step guided tour
 /// and auto-reading of screen elements.
@@ -204,7 +205,7 @@ class _VoiceGuidedModeScreenState
       backgroundColor: hc.background,
       appBar: AppBar(
         leading: const AppBackButton(),
-        title: Text(
+        title: AppBarTitle(
           _t(context).vgTitle,
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
@@ -212,6 +213,9 @@ class _VoiceGuidedModeScreenState
         ),
       ),
       body: ListView(
+        // Rows come and go here: no row may stay "alive" in a place another
+        // has taken (see found_by_pressing_test: Scan Mode).
+        addAutomaticKeepAlives: false,
         padding: const EdgeInsets.all(20),
         children: [
           // ─── Main Toggle Card ─────────────────
@@ -245,11 +249,13 @@ class _VoiceGuidedModeScreenState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                // Said by the slider, which carries the name and the value.
+                ExcludeSemantics(child: Row(
                   children: [
                     Icon(Icons.speed_rounded, color: hc.primary, size: 22),
                     const SizedBox(width: 8),
-                    Flexible(
+                    // All the room the value leaves (a Spacer here took half).
+                    Expanded(
                       child: FitText(
                         _t(context).vgSpeed,
                         maxLines: 1,
@@ -259,7 +265,7 @@ class _VoiceGuidedModeScreenState
                         ),
                       ),
                     ),
-                    const Spacer(),
+                    const SizedBox(width: 8),
                     Text(
                       _speedLabel(settings.ttsSpeed),
                       style: AppTypography.labelSmall.copyWith(
@@ -268,26 +274,33 @@ class _VoiceGuidedModeScreenState
                       ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 8),
-                DpadSliderScope(child: Slider(
-                  value: settings.ttsSpeed,
-                  min: 0.1,
-                  divisions: 9,
-                  activeColor: hc.primary,
-                  onChanged: (value) {
-                    ref.read(settingsProvider.notifier).updateTtsSpeed(value);
-                  },
                 )),
-                Row(
+                const SizedBox(height: 8),
+                // It said "45%" with no name, and the next swipe's value
+                // was a percentage too.
+                DpadSliderScope(
+                  name: _t(context).vgSpeed,
+                  child: Slider(
+                    value: settings.ttsSpeed,
+                    min: 0.1,
+                    divisions: 9,
+                    activeColor: hc.primary,
+                    semanticFormatterCallback: _speedLabel,
+                    onChanged: (value) {
+                      ref.read(settingsProvider.notifier).updateTtsSpeed(value);
+                    },
+                  ),
+                ),
+                // The scale's two ends, for the eye.
+                ExcludeSemantics(child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(_t(context).vgSlow, style: AppTypography.labelSmall.copyWith(
-                      color: hc.textHint, fontSize: 10)),
+                      color: hc.textHint, fontSize: 11)),
                     Text(_t(context).vgFast, style: AppTypography.labelSmall.copyWith(
-                      color: hc.textHint, fontSize: 10)),
+                      color: hc.textHint, fontSize: 11)),
                   ],
-                ),
+                )),
               ],
             ),
           ).animate(delay: 100.ms).fadeIn(duration: 400.ms),
@@ -661,18 +674,19 @@ class _VoiceToggleCard extends StatelessWidget {
                 // column is narrow: "Na / vigation" and "announc / ements".
                 FitText(
                   _t(context).vgNav,
-                  maxLines: 1,
                   style: AppTypography.titleMedium.copyWith(
                     fontWeight: FontWeight.w700,
                     color: hc.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 2),
+                // Every line it needs, the card growing: three cut the
+                // Filipino short on a phone at the largest Font Size.
                 FitText(
                   isEnabled
                       ? _t(context).vgActive
                       : _t(context).vgTapEnable,
-                  maxLines: 3,
+                  maxLines: null,
                   style: AppTypography.bodySmall.copyWith(
                     color: hc.textSecondary,
                   ),
@@ -709,39 +723,49 @@ class _LanguageOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: DpadFocusable(onActivate: onTap, child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          decoration: BoxDecoration(
-            color: isSelected ? color.withValues(alpha: 0.12) : Colors.transparent,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isSelected ? color : AppColors.border,
-              width: isSelected ? 2 : 1,
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(emoji, style: const TextStyle(fontSize: 22)),
-              const SizedBox(width: 8),
-              Flexible(
-                child: FitText(
-                  label,
-                  maxLines: 1,
-                  style: AppTypography.labelMedium.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color:
-                        isSelected ? color : HCColor.of(context).textSecondary,
-                  ),
+      child: Semantics(
+        container: true,
+        // A choice: a screen reader says which, and which one is chosen.
+        button: true,
+        selected: isSelected,
+        label: label,
+        child: DpadFocusable(onActivate: onTap, child: GestureDetector(
+          onTap: onTap,
+          child: ExcludeSemantics(
+            // The label says the language; the flag was read as a country name.
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              decoration: BoxDecoration(
+                color: isSelected ? color.withValues(alpha: 0.12) : Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isSelected ? color : AppColors.border,
+                  width: isSelected ? 2 : 1,
                 ),
               ),
-            ],
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(emoji, style: const TextStyle(fontSize: 22)),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: FitText(
+                      label,
+                      maxLines: 1,
+                      style: AppTypography.labelMedium.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color:
+                            isSelected ? color : HCColor.of(context).textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
-      )),
+        )),
+      ),
     );
   }
 }
@@ -818,7 +842,7 @@ class _TourStepCard extends StatelessWidget {
                             _t(context).vgSpeaking,
                             style: AppTypography.labelSmall.copyWith(
                               color: hc.accent,
-                              fontSize: 10,
+                              fontSize: 11,
                             ),
                           ),
                         ],

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import '../../../core/widgets/app_bar_title.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -23,6 +24,7 @@ import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../providers/app_providers.dart';
+import '../../../widgets/dpad_focusable.dart';
 import '../../../providers/firestore_stream_helpers.dart'
     show homeGroupsByOwnerStreamProvider;
 import '../../gaze_control/services/gaze_detector.dart';
@@ -44,6 +46,8 @@ import '../widgets/message_media_view.dart';
 import '../widgets/composer_pickers.dart';
 import '../../../data/local/seed_data.dart';
 import '../../ai_tutor/services/tutor_sign_launcher.dart';
+import '../../../core/widgets/text_limits.dart';
+import '../../../core/widgets/stagger_in.dart';
 
 const _uuid = Uuid();
 
@@ -442,6 +446,7 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text(isFilipino ? 'Bawiin ang mensahe?' : 'Unsend message?'),
         content: Text(
           isFilipino
@@ -565,15 +570,18 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
                       style: const TextStyle(fontSize: 20),
                     ),
                     const SizedBox(width: 8),
+                    // Whole, on two lines if it must be, as any top bar.
                     Flexible(
-                      child: Text(
+                      child: AppBarTitle(
                         _activeConversation!.otherProfileName,
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
                 )
-              : Text(isFilipino ? '💬 Mga Mensahe' : '💬 Messages'),
+              : Text(
+                isFilipino ? '💬 Mga Mensahe' : '💬 Messages',
+                semanticsLabel: isFilipino ? 'Mga Mensahe' : 'Messages',
+              ),
           centerTitle: true,
           leading: _activeConversation != null
               ? IconButton(
@@ -758,6 +766,7 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
     await GazeKeyboard.show(
       context,
       controller: _textController,
+      maxLength: TextLimits.message,
       hint: isFilipino ? 'Mag-type ng mensahe...' : 'Type a message...',
     );
     // The keyboard writes through the controller, which does not run the
@@ -1174,7 +1183,7 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text('💬', style: TextStyle(fontSize: 56)),
+                        const ExcludeSemantics(child: Text('💬', style: TextStyle(fontSize: 56))),
                         const SizedBox(height: 16),
                         Text(
                           _emptyInboxCopy(kind, isFilipino, profile),
@@ -1193,15 +1202,19 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
                   separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (context, index) {
                     final convo = visible[index];
-                    return _ConversationTile(
+                    return StaggerIn(
+                      index: index,
+                      child: _ConversationTile(
                       conversation: convo,
                       isFilipino: isFilipino,
                       focused: gaze.isFocused(index, 0),
                       onTap: () => _openConversation(convo),
                       onLongPress: () => _showPeerActions(convo),
-                    ).animate().fadeIn(
+                    ),
+                      builder: (child, delay) => child.animate().fadeIn(
                       duration: 300.ms,
-                      delay: (index * 60).ms,
+                      delay: delay,
+                    ),
                     );
                   },
                 ),
@@ -1442,22 +1455,24 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
       if (gazeCell) toolCol++;
       return Padding(
         padding: const EdgeInsets.only(right: 6),
-        child: Semantics(
-          button: true,
-          label: semantics,
-          excludeSemantics: true,
-          child: Tooltip(
-            message: semantics,
-            child: OutlinedButton.icon(
-              onPressed: uploading == null ? onPressed : null,
-              icon: Icon(icon, color: hc.graphic(AppColors.primary)),
-              label: Text(label),
-              style: OutlinedButton.styleFrom(
-                side: focused
-                    ? const BorderSide(color: AppColors.accent, width: 3)
-                    : BorderSide(color: hc.border),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              ),
+        // The tool's full name on the button's own node, with its press and
+        // focus: excluded under a wrapper label, a screen reader could
+        // neither reach nor press it.
+        child: Tooltip(
+          message: semantics,
+          child: OutlinedButton.icon(
+            onPressed: uploading == null ? onPressed : null,
+            icon: Icon(icon, color: hc.graphic(AppColors.primary)),
+            label: Semantics(
+              label: semantics,
+              excludeSemantics: true,
+              child: Text(label),
+            ),
+            style: OutlinedButton.styleFrom(
+              side: focused
+                  ? const BorderSide(color: AppColors.accent, width: 3)
+                  : BorderSide(color: hc.border),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             ),
           ),
         ),
@@ -1570,6 +1585,8 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
                       label: isFilipino ? 'I-type ang mensahe' : 'Type a message',
                       child: TextField(
                         controller: _textController,
+                        maxLength: TextLimits.message,
+                        buildCounter: TextLimits.counter,
                         minLines: 1,
                         maxLines: 4,
                         onChanged: (_) => setState(() {}),
@@ -1611,32 +1628,35 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
                   ),
                   if (composer.dictation) ...[
                     const SizedBox(width: 6),
-                    Semantics(
-                      button: true,
-                      toggled: _dictating,
-                      label: _dictating
-                          ? (isFilipino
-                                ? 'Nakikinig. Pindutin para itigil'
-                                : 'Listening. Tap to stop')
-                          : (isFilipino
-                                ? 'Magsalita ng mensahe'
-                                : 'Speak a message'),
-                      excludeSemantics: true,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: micFocused
-                              ? Border.all(color: AppColors.accent, width: 3)
-                              : null,
-                        ),
-                        child: IconButton(
-                          tooltip: _dictating
-                              ? (isFilipino ? 'Itigil' : 'Stop')
+                    // The full name and the on/off state on the button's
+                    // own node, with its press and focus: excluded under a
+                    // wrapper label, the microphone could not be reached or
+                    // pressed by a screen reader.
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: micFocused
+                            ? Border.all(color: AppColors.accent, width: 3)
+                            : null,
+                      ),
+                      child: IconButton(
+                        tooltip: _dictating
+                            ? (isFilipino ? 'Itigil' : 'Stop')
+                            : (isFilipino
+                                  ? 'Magsalita ng mensahe'
+                                  : 'Speak a message'),
+                        onPressed: () => _toggleDictation(isFilipino),
+                        icon: Semantics(
+                          toggled: _dictating,
+                          label: _dictating
+                              ? (isFilipino
+                                    ? 'Nakikinig. Pindutin para itigil'
+                                    : 'Listening. Tap to stop')
                               : (isFilipino
                                     ? 'Magsalita ng mensahe'
                                     : 'Speak a message'),
-                          onPressed: () => _toggleDictation(isFilipino),
-                          icon: Icon(
+                          excludeSemantics: true,
+                          child: Icon(
                             _dictating
                                 ? Icons.stop_circle_rounded
                                 : Icons.mic_rounded,
@@ -1649,28 +1669,26 @@ class _MessagingScreenState extends ConsumerState<MessagingScreen> {
                     ),
                   ],
                   const SizedBox(width: 6),
-                  Semantics(
-                    button: true,
-                    label: isFilipino ? 'Ipadala' : 'Send',
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: sendFocused
-                            ? Border.all(color: AppColors.accent, width: 3)
-                            : null,
+                  // Named by its tooltip (a Semantics around it was a second,
+                  // dead "button").
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: sendFocused
+                          ? Border.all(color: AppColors.accent, width: 3)
+                          : null,
+                    ),
+                    child: IconButton.filled(
+                      tooltip: isFilipino ? 'Ipadala' : 'Send',
+                      onPressed: () => _sendMessage(
+                        _textController.text.trim(),
+                        MessageType.text,
+                        fromComposer: true,
                       ),
-                      child: IconButton.filled(
-                        tooltip: isFilipino ? 'Ipadala' : 'Send',
-                        onPressed: () => _sendMessage(
-                          _textController.text.trim(),
-                          MessageType.text,
-                          fromComposer: true,
-                        ),
-                        icon: const Icon(Icons.send_rounded),
-                        style: IconButton.styleFrom(
-                          backgroundColor: HCColor.of(context).primary,
-                          foregroundColor: HCColor.of(context).textOnPrimary,
-                        ),
+                      icon: const Icon(Icons.send_rounded),
+                      style: IconButton.styleFrom(
+                        backgroundColor: HCColor.of(context).primary,
+                        foregroundColor: HCColor.of(context).textOnPrimary,
                       ),
                     ),
                   ),
@@ -1806,121 +1824,138 @@ class _ConversationTile extends StatelessWidget {
         ? null
         : MessageWording.preview(last, isFilipino: isFilipino);
 
-    final tile = Semantics(
-      button: true,
-      // The row used to say only name, role and a count — a screen-reader
-      // user had to open every thread to learn what was in it.
-      label: [
-        conversation.otherProfileName,
-        _roleWord(conversation.otherProfileRole, isFilipino),
-        if (hasReport)
-          isFilipino ? 'may ulat pangkaligtasan' : 'safety report waiting',
-        if (hasUnread)
-          isFilipino
-              ? '$unread hindi pa nabasang mensahe'
-              : unread == 1
-              ? '1 unread message'
-              : '$unread unread messages',
-        if (preview != null)
-          '${isFilipino ? 'Huling mensahe' : 'Last message'}: $preview, '
-              '${MessageTime.relative(last!.timestamp, isFilipino: isFilipino)}',
-        if (!conversation.isConnected)
-          isFilipino ? 'hindi na makakapagpadala' : 'read only',
-      ].join(', '),
-      excludeSemantics: true,
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-        leading: Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Center(
-            child: Text(
-              conversation.roleEmoji,
-              style: const TextStyle(fontSize: 24),
-            ),
-          ),
-        ),
-        title: Text(
+    // One node: the row's label, with the ListTile's press, long press and
+    // focus merged into it; the words inside are excluded rather than the
+    // tile, which took the press and the focus with them.
+    final tile = MergeSemantics(
+      child: Semantics(
+        button: true,
+        // The row used to say only name, role and a count — a screen-reader
+        // user had to open every thread to learn what was in it.
+        label: [
           conversation.otherProfileName,
-          style: AppTypography.titleSmall.copyWith(
-            // Unread threads read heavier, so the badge isn't the only cue —
-            // a colour-blind or low-vision learner still sees the difference.
-            fontWeight: hasUnread ? FontWeight.w800 : FontWeight.w600,
-            color: hc.textPrimary,
+          _roleWord(conversation.otherProfileRole, isFilipino),
+          if (hasReport)
+            isFilipino ? 'may ulat pangkaligtasan' : 'safety report waiting',
+          if (hasUnread)
+            isFilipino
+                ? '$unread hindi pa nabasang mensahe'
+                : unread == 1
+                ? '1 unread message'
+                : '$unread unread messages',
+          if (preview != null)
+            '${isFilipino ? 'Huling mensahe' : 'Last message'}: $preview, '
+                '${MessageTime.relativeSpoken(last!.timestamp, isFilipino: isFilipino)}',
+          if (!conversation.isConnected)
+            isFilipino ? 'hindi na makakapagpadala' : 'read only',
+        ].join(', '),
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          leading: ExcludeSemantics(
+            child: Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Center(
+                child: Text(
+                  conversation.roleEmoji,
+                  style: const TextStyle(fontSize: 24),
+                ),
+              ),
           ),
-        ),
-        subtitle: preview != null
-            ? Text(
-                preview,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTypography.bodySmall.copyWith(
-                  color: hasUnread ? hc.textPrimary : hc.textSecondary,
-                  fontWeight: hasUnread ? FontWeight.w600 : FontWeight.normal,
-                ),
-              )
-            : Text(
-                isFilipino ? 'Walang mensahe pa' : 'No messages yet',
-                style: AppTypography.bodySmall.copyWith(
-                  color: hc.textSecondary,
-                ),
+          ),
+          title: ExcludeSemantics(
+            child: Text(
+              conversation.otherProfileName,
+              style: AppTypography.titleSmall.copyWith(
+                // Unread threads read heavier, so the badge isn't the only cue —
+                // a colour-blind or low-vision learner still sees the difference.
+                fontWeight: hasUnread ? FontWeight.w800 : FontWeight.w600,
+                color: hc.textPrimary,
               ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (last != null)
-              Text(
-                MessageTime.relative(last.timestamp, isFilipino: isFilipino),
-                style: AppTypography.labelSmall.copyWith(
-                  color: hasUnread ? HCColor.of(context).primary : hc.textSecondary,
-                  fontWeight: hasUnread ? FontWeight.w700 : FontWeight.normal,
-                ),
-              ),
-            if (hasUnread) ...[
-              const SizedBox(height: 4),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (hasReport) ...[
-                    Icon(
-                      Icons.flag_rounded,
-                      size: 16,
-                      color: hc.graphic(AppColors.error),
+          ),
+          ),
+          subtitle: ExcludeSemantics(
+            child: preview != null
+                ? Text(
+                    preview,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.bodySmall.copyWith(
+                      color: hasUnread ? hc.textPrimary : hc.textSecondary,
+                      fontWeight: hasUnread ? FontWeight.w600 : FontWeight.normal,
                     ),
-                    const SizedBox(width: 4),
-                  ],
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 7,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      // White on the raw lavender was under 3:1 — a count a
-                      // low-vision learner could not read.
-                      color: hc.fillFor(AppColors.primary),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      unread > 99 ? '99+' : '$unread',
-                      style: AppTypography.labelSmall.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                      ),
+                  )
+                : Text(
+                    isFilipino ? 'Walang mensahe pa' : 'No messages yet',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: hc.textSecondary,
                     ),
                   ),
+          ),
+          // Smaller rather than past the row's height, at the largest text
+          // size on a phone (it ran 6 px over).
+          trailing: ExcludeSemantics(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (last != null)
+                  Text(
+                    MessageTime.relative(last.timestamp, isFilipino: isFilipino),
+                    style: AppTypography.labelSmall.copyWith(
+                      color: hasUnread ? HCColor.of(context).primary : hc.textSecondary,
+                      fontWeight: hasUnread ? FontWeight.w700 : FontWeight.normal,
+                    ),
+                  ),
+                if (hasUnread) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (hasReport) ...[
+                        Icon(
+                          Icons.flag_rounded,
+                          size: 16,
+                          color: hc.graphic(AppColors.error),
+                        ),
+                        const SizedBox(width: 4),
+                      ],
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          // White on the raw lavender was under 3:1 — a count a
+                          // low-vision learner could not read.
+                          color: hc.fillFor(AppColors.primary),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          unread > 99 ? '99+' : '$unread',
+                          style: AppTypography.labelSmall.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
-              ),
-            ],
-          ],
+              ],
+            ),
+            ),
+          ),
+          onTap: onTap,
+          onLongPress: onLongPress,
         ),
-        onTap: onTap,
-        onLongPress: onLongPress,
       ),
     );
 
@@ -2123,7 +2158,7 @@ class _EducatorInboxFiltersState extends State<_EducatorInboxFilters> {
                     Padding(
                       padding: const EdgeInsets.only(right: 6),
                       child: ChoiceChip(
-                        avatar: Text(g.isHomeGroup ? '🏠' : '🏫'),
+                        avatar: ExcludeSemantics(child: Text(g.isHomeGroup ? '🏠' : '🏫')),
                         label: Text(g.name),
                         selected: widget.selectedGroupId == g.id,
                         onSelected: (on) => widget.onGroup(on ? g.id : null),
@@ -2349,7 +2384,6 @@ class _MessageBubbleMsgScreen extends StatelessWidget {
                 .isNotEmpty
         ? IconButton(
             tooltip: isFilipino ? 'Basahin nang malakas' : 'Read aloud',
-            visualDensity: VisualDensity.compact,
             icon: Icon(
               Icons.volume_up_rounded,
               size: 20,
@@ -2401,6 +2435,12 @@ class _MessageBubbleMsgScreen extends StatelessWidget {
               onLongPressHint: onUnsend == null
                   ? null
                   : (isFilipino ? 'Bawiin ang mensahe' : 'Unsend message'),
+              // Your own message is a D-pad stop too: Enter asks "Unsend
+              // this message?", as a long press does. A keyboard, the
+              // controller and gaze have no long press, so unsending was
+              // touch-only.
+              child: DpadFocusable(
+              onActivate: onUnsend,
               child: GestureDetector(
               onLongPress: onUnsend,
               child: Container(
@@ -2549,7 +2589,7 @@ class _MessageBubbleMsgScreen extends StatelessWidget {
                 ),
                 ),
               ),
-            ),
+            )),
             ),
           ),
           if (!isMine && speaker != null) speaker,
@@ -2609,12 +2649,11 @@ class _OutgoingRequestsStrip extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // A name on two lines before it is cut.
                       Text(
                         names[r.toProfileId] ??
                             '${isFilipino ? 'Gumagamit' : 'User'} '
                                 '${r.toProfileId.substring(0, r.toProfileId.length.clamp(0, 6))}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                         style: AppTypography.bodySmall.copyWith(
                           color: hc.textPrimary,
                         ),

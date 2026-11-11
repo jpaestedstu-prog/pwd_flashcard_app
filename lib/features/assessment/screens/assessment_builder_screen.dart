@@ -25,6 +25,8 @@ import '../../../l10n/app_localizations_en.dart';
 import '../../../l10n/app_localizations_fil.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../navigation/dpad_keys.dart';
+import '../../../core/widgets/fit_label.dart';
+import '../../../core/widgets/text_limits.dart';
 
 /// Screen for teachers to create custom assessments manually — or, given
 /// [editId], to change one they already saved.
@@ -226,6 +228,8 @@ class _AssessmentBuilderScreenState
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _titleController,
+                        maxLength: TextLimits.title,
+                        buildCounter: TextLimits.counter,
                         decoration: _inputDecor(hc, _t(context).abTitleField),
                         validator: (v) =>
                             v == null || v.trim().isEmpty ? _t(context).abTitleRequired : null,
@@ -234,6 +238,8 @@ class _AssessmentBuilderScreenState
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: _descriptionController,
+                        maxLength: TextLimits.paragraph,
+                        buildCounter: TextLimits.counter,
                         decoration: _inputDecor(hc, _t(context).abDescription),
                         maxLines: 2,
                         style: AppTypography.bodyMedium.copyWith(color: hc.textPrimary),
@@ -276,22 +282,32 @@ class _AssessmentBuilderScreenState
                       const SizedBox(height: 24),
 
                       // ─── Time Limit ──────────────────
-                      _buildSectionHeader(_t(context).abTimeLimit, Icons.timer_rounded),
+                      // The heading and the value are the slider's own
+                      // name and value: said again as stops of their own,
+                      // they read "Time Limit", "10 min", "10 min".
+                      ExcludeSemantics(
+                        child: _buildSectionHeader(
+                            _t(context).abTimeLimit, Icons.timer_rounded),
+                      ),
                       const SizedBox(height: 8),
                       Row(
                         children: [
                           Expanded(
-                            child: DpadSliderScope(child: Slider(
-                              value: _timeLimitMinutes.toDouble(),
-                              min: 3,
-                              max: 30,
-                              divisions: 9,
-                              label: _t(context).abMinutes(_timeLimitMinutes),
-                              onChanged: (v) =>
-                                  setState(() => _timeLimitMinutes = v.round()),
-                            )),
+                            child: DpadSliderScope(
+                              name: _t(context).abTimeLimit,
+                              child: Slider(
+                                value: _timeLimitMinutes.toDouble(),
+                                min: 3,
+                                max: 30,
+                                divisions: 9,
+                                semanticFormatterCallback: (v) =>
+                                    _t(context).abMinutes(v.round()),
+                                onChanged: (v) => setState(
+                                    () => _timeLimitMinutes = v.round()),
+                              ),
+                            ),
                           ),
-                          Container(
+                          ExcludeSemantics(child: Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
@@ -303,7 +319,7 @@ class _AssessmentBuilderScreenState
                               style: AppTypography.labelLarge
                                   .copyWith(color: hc.textPrimary),
                             ),
-                          ),
+                          )),
                         ],
                       ),
 
@@ -389,7 +405,7 @@ class _AssessmentBuilderScreenState
 
   InputDecoration _inputDecor(HCColor hc, String label) {
     return InputDecoration(
-      labelText: label,
+      label: FitLabel(label),
       labelStyle: AppTypography.bodyMedium.copyWith(color: hc.textHint),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -547,6 +563,7 @@ class _AssessmentBuilderScreenState
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text(
           _isEditing
               ? _t(context).assessEditDiscardTitle
@@ -649,6 +666,7 @@ class _QuestionCard extends StatelessWidget {
                   backgroundColor: AppColors.primary.withValues(alpha: 0.15),
                   child: Text(
                     '${index + 1}',
+                    semanticsLabel: _t(context).abQuestionNumber(index + 1),
                     style: AppTypography.labelSmall
                         .copyWith(color: HCColor.of(context).primary),
                   ),
@@ -740,7 +758,7 @@ class _MiniChip extends StatelessWidget {
         label,
         style: AppTypography.labelSmall.copyWith(
           color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.12)),
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -911,9 +929,9 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
                         if (f == QuestionFormat.trueFalse) {
                           _choiceControllers.clear();
                           _choiceControllers.add(
-                              TextEditingController(text: 'True'));
+                              TextEditingController(text: _t(context).qpTrue));
                           _choiceControllers.add(
-                              TextEditingController(text: 'False'));
+                              TextEditingController(text: _t(context).qpFalse));
                         } else if (f == QuestionFormat.fillInBlank ||
                             f == QuestionFormat.videoResponse) {
                           _choiceControllers.clear();
@@ -950,6 +968,8 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
                 // Question text
                 TextField(
                   controller: _questionTextController,
+                  maxLength: TextLimits.paragraph,
+                  buildCounter: TextLimits.counter,
                   maxLines: 3,
                   decoration: _inputDecor(hc, _t(context).abQuestionText),
                   style: AppTypography.bodyLarge
@@ -974,6 +994,8 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
                 // Correct answer
                 TextField(
                   controller: _correctAnswerController,
+                  maxLength: TextLimits.title,
+                  buildCounter: TextLimits.counter,
                   decoration: _inputDecor(
                     hc,
                     _format == QuestionFormat.videoResponse
@@ -1018,6 +1040,8 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
                           Expanded(
                             child: TextField(
                               controller: _choiceControllers[i],
+                              maxLength: TextLimits.title,
+                              buildCounter: TextLimits.counter,
                               decoration: _inputDecor(
                                   hc, _t(context).abChoiceN(String.fromCharCode(65 + i))),
                               style: AppTypography.bodyMedium
@@ -1074,13 +1098,14 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
                 // Category
                 DropdownButtonFormField<FlashcardCategory>(
                   initialValue: _selectedCategory,
+                  isExpanded: true,
                   decoration: _inputDecor(hc, _t(context).abCategory),
                   dropdownColor: hc.surface,
                   items: FlashcardCategory.values.map((cat) {
                     return DropdownMenuItem(
                       value: cat,
                       child: Text(
-                        cat.label,
+                        cat.labelOf(_t(context)),
                         style: AppTypography.bodyMedium
                             .copyWith(color: hc.textPrimary),
                       ),
@@ -1094,6 +1119,8 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
                 // Hint
                 TextField(
                   controller: _hintController,
+                  maxLength: TextLimits.sentence,
+                  buildCounter: TextLimits.counter,
                   decoration: _inputDecor(hc, _t(context).abHint),
                   style: AppTypography.bodyMedium
                       .copyWith(color: hc.textPrimary),
@@ -1130,7 +1157,7 @@ class _QuestionEditorSheetState extends State<_QuestionEditorSheet> {
 
   InputDecoration _inputDecor(HCColor hc, String label) {
     return InputDecoration(
-      labelText: label,
+      label: FitLabel(label),
       labelStyle: AppTypography.bodyMedium.copyWith(color: hc.textHint),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       enabledBorder: OutlineInputBorder(

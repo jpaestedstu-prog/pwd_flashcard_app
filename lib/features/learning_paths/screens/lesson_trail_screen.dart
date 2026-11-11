@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/widgets/app_bar_title.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -62,9 +63,8 @@ class LessonTrailScreen extends ConsumerWidget {
             Text(path.emoji, style: const TextStyle(fontSize: 24)),
             const SizedBox(width: 8),
             Flexible(
-              child: Text(
+              child: AppBarTitle(
                 path.titleOf(filipino: _t(context).localeName.startsWith('fil')),
-                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],

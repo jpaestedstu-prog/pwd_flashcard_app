@@ -49,6 +49,37 @@ class ReflowRow extends StatelessWidget {
       .split(RegExp(r'\s+'))
       .fold<int>(0, (max, w) => w.length > max ? w.length : max);
 
+  /// Whether a ReflowRow [width] wide, with these [labels], stacks its tiles:
+  /// the rule its own layout follows, for a parent that has to know ahead of
+  /// the layout (a grid whose rows have a fixed height). A parent that guessed
+  /// with a measurement of its own sized the deck templates' cards for one row
+  /// of buttons where the row stacked (10 Nov).
+  static bool stacksAt(
+    BuildContext context, {
+    required double width,
+    required List<String> labels,
+    double spacing = 12,
+    double labelFontSize = 12,
+    double tilePadding = 20,
+  }) {
+    final n = labels.length;
+    if (n == 0) return false;
+    final scale = MediaQuery.textScalerOf(context).scale(1.0);
+    final each = (width - spacing * (n - 1)) / n - tilePadding;
+    // Letter spacing is a flat number of logical pixels per character and
+    // does not scale with the font, so it is added per character rather
+    // than folded into the em estimate. The dyslexia theme sets 0.6 on
+    // every style, which is enough to push a label that "fits" on this
+    // estimate into breaking on screen.
+    final letterSpacing =
+        Theme.of(context).textTheme.labelMedium?.letterSpacing ?? 0;
+    final needed = labels
+        .map((l) =>
+            _longestWord(l) * (0.58 * labelFontSize * scale + letterSpacing))
+        .fold<double>(0, (a, b) => b > a ? b : a);
+    return each < needed;
+  }
+
   @override
   Widget build(BuildContext context) {
     assert(children.length == labels.length,
@@ -57,23 +88,17 @@ class ReflowRow extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final scale = MediaQuery.textScalerOf(context).scale(1.0);
         final n = children.length;
-        final each =
-            (constraints.maxWidth - spacing * (n - 1)) / n - tilePadding;
-        // Letter spacing is a flat number of logical pixels per character and
-        // does not scale with the font, so it is added per character rather
-        // than folded into the em estimate. The dyslexia theme sets 0.6 on
-        // every style, which is enough to push a label that "fits" on this
-        // estimate into breaking on screen.
-        final letterSpacing =
-            Theme.of(context).textTheme.labelMedium?.letterSpacing ?? 0;
-        final needed = labels
-            .map((l) =>
-                _longestWord(l) * (0.58 * labelFontSize * scale + letterSpacing))
-            .fold<double>(0, (a, b) => b > a ? b : a);
+        final stacks = stacksAt(
+          context,
+          width: constraints.maxWidth,
+          labels: labels,
+          spacing: spacing,
+          labelFontSize: labelFontSize,
+          tilePadding: tilePadding,
+        );
 
-        if (each >= needed) {
+        if (!stacks) {
           return Row(
             // Deliberately NOT `stretch`: these rows sit inside scroll views,
             // where stretching asks the children for an infinite height and

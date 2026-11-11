@@ -13,7 +13,7 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String greeting(String name) {
-    return 'Kamusta, $name! 👋';
+    return 'Kumusta, $name! 👋';
   }
 
   @override
@@ -742,7 +742,7 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String cards(int count) {
-    return '$count card';
+    return '$count kard';
   }
 
   @override
@@ -876,7 +876,7 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String get dragInstruction =>
-      'I-drag ang salitang Ingles sa tamang Filipino!';
+      'I-drag ang salitang Ingles sa tamang Filipino — o i-tap ito, saka i-tap ang katugma!';
 
   @override
   String get tracing => 'Pagsu-sulat';
@@ -2076,7 +2076,7 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String get gameDescDragAndDrop =>
-      'Hilahin ang bawat salita sa katugmang larawan!';
+      'Itugma ang bawat salitang Ingles sa katumbas nitong Filipino!';
 
   @override
   String get gameDescFlashcardQuiz =>
@@ -2166,6 +2166,11 @@ class AppLocalizationsFil extends AppLocalizations {
   }
 
   @override
+  String gameRoundHeaderSpoken(String game, int current, int total) {
+    return '$game, round $current sa $total';
+  }
+
+  @override
   String get findPictureFor => 'Hanapin ang larawan ng:';
 
   @override
@@ -2227,6 +2232,14 @@ class AppLocalizationsFil extends AppLocalizations {
   }
 
   @override
+  String sbSentenceSemantics(String sentence) {
+    return 'Pangungusap: $sentence';
+  }
+
+  @override
+  String get sbBlankWord => 'patlang';
+
+  @override
   String get correctAnswerSuffix => ', tamang sagot';
 
   @override
@@ -2248,9 +2261,8 @@ class AppLocalizationsFil extends AppLocalizations {
   }
 
   @override
-  String whichWordMatchesSemantics(String word) {
-    return 'Aling salita ang tugma sa larawang ito? $word';
-  }
+  String get whichWordMatchesPicture =>
+      'Aling salita ang tugma sa larawang ito?';
 
   @override
   String firstLetterQuestion(String word) {
@@ -2268,18 +2280,13 @@ class AppLocalizationsFil extends AppLocalizations {
   }
 
   @override
-  String flashcardProgressSemantics(
-    int current,
-    int total,
-    int known,
-    int learning,
-  ) {
-    return 'Card $current sa $total, $known alam, $learning pinag-aaralan pa';
+  String draggableWordSemantics(String word) {
+    return '$word. Pindutin para kunin, o hilahin sa katugmang salitang Filipino';
   }
 
   @override
-  String draggableWordSemantics(String word) {
-    return 'Salitang mahihila: $word, hilahin sa katugmang salitang Filipino';
+  String draggableWordPicked(String word) {
+    return '$word, nakuha na. Pindutin na ang katugmang salitang Filipino';
   }
 
   @override
@@ -2303,13 +2310,13 @@ class AppLocalizationsFil extends AppLocalizations {
   }
 
   @override
-  String letterAlreadyUsed(String letter) {
-    return 'Letrang $letter, nagamit na';
+  String letterAlreadyUsed(String letter, int position, int total) {
+    return 'Letrang $letter, $position sa $total, nagamit na';
   }
 
   @override
-  String letterTapToPlace(String letter) {
-    return 'Letrang $letter, pindutin para ilagay';
+  String letterTapToPlace(String letter, int position, int total) {
+    return 'Letrang $letter, $position sa $total, pindutin para ilagay';
   }
 
   @override
@@ -2323,6 +2330,11 @@ class AppLocalizationsFil extends AppLocalizations {
   @override
   String roundScoreSemantics(int current, int total, int score) {
     return 'Round $current sa $total, marka $score';
+  }
+
+  @override
+  String gameScoreChip(int score) {
+    return 'Marka: $score';
   }
 
   @override
@@ -2369,6 +2381,11 @@ class AppLocalizationsFil extends AppLocalizations {
   }
 
   @override
+  String dropTargetPlace(String filipino, String word) {
+    return '$filipino. Pindutin para ilagay dito ang $word';
+  }
+
+  @override
   String memoryCardMatched(String word) {
     return 'Natugmang card: $word';
   }
@@ -2379,8 +2396,9 @@ class AppLocalizationsFil extends AppLocalizations {
   }
 
   @override
-  String get memoryCardFaceDown =>
-      'Nakatiklop na card, pindutin para baliktarin';
+  String memoryCardFaceDown(int number) {
+    return 'Nakatiklop na card $number, pindutin para baliktarin';
+  }
 
   @override
   String get breakButton => 'Pahinga';
@@ -2828,18 +2846,18 @@ class AppLocalizationsFil extends AppLocalizations {
   String get settingVocabReviewTitle => 'Paalala sa Pagbabalik-aral';
 
   @override
-  String get settingSectionMyDay => 'Ang Araw Ko';
+  String get settingSectionMyDay => 'Ang Aking Araw';
 
   @override
-  String get settingRoutineTitle => 'Routine';
+  String get settingRoutineTitle => 'Ipakita sa Home';
 
   @override
   String get settingRoutineOnDesc =>
-      'Lalabas ang Ang Araw Ko sa home mo — planuhin ang araw mo, hakbang-hakbang';
+      'Nasa home mo ang “Ang Aking Araw” — planuhin ang araw mo, hakbang-hakbang';
 
   @override
   String get settingRoutineOffDesc =>
-      'Buksan ang Ang Araw Ko para planuhin ang araw mo, hakbang-hakbang';
+      'Buksan para makita sa home mo ang “Ang Aking Araw” — planuhin ang araw mo, hakbang-hakbang';
 
   @override
   String get settingSectionData => 'Datos';
@@ -2848,7 +2866,7 @@ class AppLocalizationsFil extends AppLocalizations {
   String get settingBackupRestoreTitle => 'Backup at Restore';
 
   @override
-  String get settingRecoveryCodeTitle => 'Cloud Recovery Code';
+  String get settingRecoveryCodeTitle => 'Recovery Code sa Cloud';
 
   @override
   String get settingCloudAccountTitle => 'Backup at Pag-link ng Account';
@@ -4615,6 +4633,14 @@ class AppLocalizationsFil extends AppLocalizations {
   }
 
   @override
+  String get gmSelectSeveral => 'Pumili ng ilan';
+
+  @override
+  String seasonalBannerHide(String event) {
+    return 'Itago ang banner ng $event';
+  }
+
+  @override
   String gmRemoveCount(int count) {
     return 'Alisin ($count)';
   }
@@ -5125,6 +5151,14 @@ class AppLocalizationsFil extends AppLocalizations {
   String get homeCollectStar => 'Kunin! 🌟';
 
   @override
+  String rewardStarsCount(int count) {
+    return '$count bituin';
+  }
+
+  @override
+  String get rewardCollected => 'nakuha na';
+
+  @override
   String get homeDailyChallengeChip => '🏆 Hamon ng Araw';
 
   @override
@@ -5350,11 +5384,6 @@ class AppLocalizationsFil extends AppLocalizations {
   }
 
   @override
-  String viewerButton(String label) {
-    return 'Button na $label';
-  }
-
-  @override
   String get viewerGazeStarting => 'Sinisimulan ang gaze…';
 
   @override
@@ -5380,13 +5409,16 @@ class AppLocalizationsFil extends AppLocalizations {
   }
 
   @override
-  String progAchievementUnlocked(String title) {
-    return 'Badge na $title, nakuha na';
+  String progBadgesSpoken(String names) {
+    return 'Nakuha: $names.';
   }
 
   @override
-  String progAchievementLocked(String title) {
-    return 'Badge na $title, hindi pa nakukuha';
+  String get progBadgesSpokenNone => 'Wala pang nakukuha.';
+
+  @override
+  String progBadgesSpokenLeft(int count) {
+    return '$count pa ang makukuha.';
   }
 
   @override
@@ -5434,6 +5466,46 @@ class AppLocalizationsFil extends AppLocalizations {
   @override
   String dcWordNofM(int index, int total) {
     return 'Salita $index sa $total';
+  }
+
+  @override
+  String obStepNofM(int current, int total) {
+    return 'Hakbang $current sa $total';
+  }
+
+  @override
+  String cardNofM(int index, int total) {
+    return 'Card $index sa $total';
+  }
+
+  @override
+  String ddMatchedOf(int matched, int total) {
+    return '$matched sa $total ang tugma';
+  }
+
+  @override
+  String secondsCount(int count) {
+    return '$count segundo';
+  }
+
+  @override
+  String secondsDecimal(String seconds) {
+    return '$seconds segundo';
+  }
+
+  @override
+  String hoursCount(int count) {
+    return '$count oras';
+  }
+
+  @override
+  String seasonDaysLeft(int count) {
+    return '$count araw na lang';
+  }
+
+  @override
+  String minutesCount(int count) {
+    return '$count minuto';
   }
 
   @override
@@ -5692,6 +5764,21 @@ class AppLocalizationsFil extends AppLocalizations {
   String get lpNodeLocked => 'Nakakandado';
 
   @override
+  String lpStepsDone(int done, int total) {
+    return 'Tapos na ang $done sa $total hakbang';
+  }
+
+  @override
+  String lpRegionsDone(int done, int total) {
+    return 'Tapos na ang $done sa $total rehiyon';
+  }
+
+  @override
+  String proNewCount(int count) {
+    return '$count bago';
+  }
+
+  @override
   String srEnglishWord(String word) {
     return 'Salitang Ingles: $word';
   }
@@ -5764,7 +5851,7 @@ class AppLocalizationsFil extends AppLocalizations {
       'Tip: hilingin sa iyong magulang na suriin ang kanilang internet, o subukan ulit maya-maya.';
 
   @override
-  String get scTitle => 'Kalendaryo ng Streak';
+  String get scTitle => 'Kalendaryo ng Sunod-sunod';
 
   @override
   String get scBestStreak => 'Pinakamahabang Streak';
@@ -5793,6 +5880,9 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String get calToday => ', ngayon';
+
+  @override
+  String get dcDayDone => ', tapos ang hamon';
 
   @override
   String get calM3 => '3 Araw';
@@ -6008,11 +6098,6 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String get goalsDeadline => 'Magtakda ng takdang araw';
-
-  @override
-  String goalsDaysShort(int days) {
-    return '${days}a';
-  }
 
   @override
   String get goalsCreate => 'Gumawa ng Layunin';
@@ -6507,11 +6592,6 @@ class AppLocalizationsFil extends AppLocalizations {
   @override
   String lbPts(int count) {
     return '$count puntos';
-  }
-
-  @override
-  String setProfileSemantics(String name, String role) {
-    return 'Profile: $name, $role. Pindutin ang palitan para magpalit ng profile.';
   }
 
   @override
@@ -7062,6 +7142,9 @@ class AppLocalizationsFil extends AppLocalizations {
   String tlNotice(int minutes) {
     return '$minutes minutong paunawa';
   }
+
+  @override
+  String get tlNoticeLength => 'Paunawa bago mag-lock';
 
   @override
   String get tlAlarm => 'Magpatunog ng alarma';
@@ -8268,7 +8351,7 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String rcRestoreFailed(String error) {
-    return 'May nangyaring mali habang ibinabalik ang iyong profile: $error';
+    return 'Hindi naibalik ang iyong profile: $error';
   }
 
   @override
@@ -8614,7 +8697,7 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String get gpPractiseHelp =>
-      'Pumindot ng kahit ano at pakinggan kung ano ang ginagawa nito. Walang gagalaw sa app habang nagsasanay.';
+      'Pumindot ng kahit ano para makita at marinig kung ano ang ginagawa nito. Walang gagalaw sa app habang nagsasanay.';
 
   @override
   String get gpEnable => 'Buksan ang controller';
@@ -8650,14 +8733,21 @@ class AppLocalizationsFil extends AppLocalizations {
       'Sinasabi ang pangalan at puwesto — “Mga Laro, 3 sa 8” — pagdating ng cursor dito.';
 
   @override
-  String get gpMoving => 'Paglipat sa mga section';
+  String get gpMoving => 'Paggalaw';
 
   @override
   String get gpAsk => 'Magtanong bago lumipat';
 
   @override
   String get gpAskHelp =>
-      'Nagtatanong ang kaliwa at kanan ng “Gusto mo bang pumunta sa section ng Mga Kard?” — A para sa oo, B para sa hindi. Isara para lumipat agad.';
+      'Nagtatanong ang L1 at R1 ng “Gusto mo bang pumunta sa section ng Mga Kard?” — A para sa oo, B para sa hindi. Isara para lumipat agad.';
+
+  @override
+  String get gpLeftStick => 'Gumagalaw din ang kaliwang joystick';
+
+  @override
+  String get gpLeftStickHelp =>
+      'Iginagalaw ng kaliwang joystick ang highlight tulad ng D-pad. Isara kung natatamaan ito nang hindi sinasadya.';
 
   @override
   String get gpComfort => 'Ginhawa';
@@ -8686,7 +8776,7 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String get gpHoldHelp =>
-      'Kapag pinindot nang matagal ang taas o baba, tuloy-tuloy ang paglipat sa mga item sa halip na isang pindot bawat hakbang. Hindi umuulit ang pagbukas, pagbalik at paglipat ng section.';
+      'Kapag pinindot nang matagal ang D-pad, ang kaliwang joystick, L2 o R2, tuloy-tuloy ang paggalaw sa halip na isang pindot bawat hakbang. Hindi umuulit ang pagpili, pagbalik at paglipat ng section.';
 
   @override
   String get gpWait => 'Maghintay bago umulit';
@@ -8707,7 +8797,7 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String get gpSwapHelp =>
-      'Kung baligtad lang ang “oo” at “hindi” — may mga controller na B ang tawag sa ibabang button sa halip na A.';
+      'Kung baligtad lang ang A at B — bumabalik ang A at pumipili ang B. May mga controller na B ang tawag sa ibabang button sa halip na A.';
 
   @override
   String get gpGuide => 'Gabay sa mga button';
@@ -8766,7 +8856,7 @@ class AppLocalizationsFil extends AppLocalizations {
   String get gppStartOver => 'Magsimula ulit';
 
   @override
-  String get gppLeave => 'Pindutin ang L1 nang dalawang beses para umalis.';
+  String get gppLeave => 'Pindutin ang B nang dalawang beses para umalis.';
 
   @override
   String get hfReasonSign =>
@@ -9149,6 +9239,17 @@ class AppLocalizationsFil extends AppLocalizations {
   String get mqTitle => 'Multiplayer Quiz';
 
   @override
+  String get mqWrong => 'Mali!';
+
+  @override
+  String mqAnswerIs(String answer) {
+    return 'Sagot: $answer';
+  }
+
+  @override
+  String get mqPoints => 'puntos';
+
+  @override
   String get mqStart => 'Simulan ang Laban!';
 
   @override
@@ -9478,7 +9579,7 @@ class AppLocalizationsFil extends AppLocalizations {
   String get sqListenEn => 'Pakinggan ang sagot na ito sa Ingles';
 
   @override
-  String get sqListenTl => 'Pakinggan ang sagot na ito sa Tagalog';
+  String get sqListenTl => 'Pakinggan ang sagot na ito sa Filipino';
 
   @override
   String get sqSeeResults => 'Tingnan ang Resulta';
@@ -10625,7 +10726,7 @@ class AppLocalizationsFil extends AppLocalizations {
   String get alLabel => 'Pangalan';
 
   @override
-  String get alEnabled => 'Naka-on';
+  String get alEnabled => 'Gamitin ang alarmang ito';
 
   @override
   String get alUnnamed => 'Alarma';
@@ -10710,7 +10811,7 @@ class AppLocalizationsFil extends AppLocalizations {
   String get sqEnglish => 'Ingles';
 
   @override
-  String get sqTagalog => 'Tagalog';
+  String get sqTagalog => 'Filipino';
 
   @override
   String get srPrevPage => 'Nakaraang pahina';
@@ -10720,6 +10821,9 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String get taAvgAccuracy => 'Avg na Katumpakan';
+
+  @override
+  String get taNoAccuracyYet => 'Wala pang laro';
 
   @override
   String get nfIllustration => 'Larawan ng nawawalang pahina';
@@ -10777,7 +10881,7 @@ class AppLocalizationsFil extends AppLocalizations {
   String get ctSeasonal => 'Pampanahon';
 
   @override
-  String get ctHighContrast => 'High contrast';
+  String get ctHighContrast => 'Mataas na Contrast';
 
   @override
   String get ctDyslexia => 'Angkop sa dyslexia';
@@ -11190,6 +11294,13 @@ class AppLocalizationsFil extends AppLocalizations {
   String get tcWatchFsl => 'Panoorin sa FSL';
 
   @override
+  String get storyWatchInFsl => 'Panoorin sa Filipino Sign Language';
+
+  @override
+  String get storyWatchChoiceInFsl =>
+      'Panoorin ang pagpipiliang ito sa Filipino Sign Language';
+
+  @override
   String get tcFslPlaying =>
       'Tumutugtog ang video ng senyas sa TV. I-tap para bumalik sa kuwento.';
 
@@ -11429,7 +11540,7 @@ class AppLocalizationsFil extends AppLocalizations {
   String get tcNounSign => 'senyas';
 
   @override
-  String get tcNounCard => 'card';
+  String get tcNounCard => 'kard';
 
   @override
   String tcFlipWord(String word) {
@@ -13174,7 +13285,7 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String get webControllerNeedsApp =>
-      'Gumagana ang mga game controller sa Android app.';
+      'Hindi nababasa ng browser na ito ang game controller. Gamitin ang pinakabagong Chrome o Edge, o ang Android app.';
 
   @override
   String get webMediaNeedsApp =>
@@ -13319,5 +13430,315 @@ class AppLocalizationsFil extends AppLocalizations {
       'other': 'Binago ng iyong guro ang iyong mga setting sa aksesibilidad.',
     });
     return '$_temp0';
+  }
+
+  @override
+  String chartActiveDays(int count) {
+    return '$count aktibong araw';
+  }
+
+  @override
+  String chartReviewHeatmapSubtitle(int weeks) {
+    return 'Aktibidad sa pag-aaral nitong huling $weeks linggo';
+  }
+
+  @override
+  String chartCellSessions(String date, int count) {
+    return '$date: $count sesyon';
+  }
+
+  @override
+  String get achUnlockedBanner => '🏆 Nakakuha ka ng Badge!';
+
+  @override
+  String get achNextButton => 'Susunod na Badge';
+
+  @override
+  String get achDoneButton => 'Ang galing! 🎉';
+
+  @override
+  String achCountOf(int index, int total) {
+    return '$index sa $total';
+  }
+
+  @override
+  String get fvTitle => 'Walang boses na Filipino sa device na ito';
+
+  @override
+  String get fvBodyAndroid =>
+      'Boses na Ingles ang bumabasa sa mga salitang Filipino, sa app at sa TalkBack. Magdagdag ng boses na Filipino sa mga setting ng pananalita ng device.';
+
+  @override
+  String get fvBodyOther =>
+      'Boses na Ingles ang bumabasa sa mga salitang Filipino. Magdagdag ng boses na Filipino sa mga setting ng pananalita ng computer o telepono.';
+
+  @override
+  String get fvOpenSettings => 'Buksan ang setting ng boses';
+
+  @override
+  String get fvSetting => 'Boses na Filipino';
+
+  @override
+  String get fvSettingInstalled =>
+      'Naka-install: may boses na Filipino ang mga salitang Filipino';
+
+  @override
+  String get fvSettingMissing =>
+      'Wala sa device na ito: boses na Ingles ang gamit sa mga salitang Filipino';
+
+  @override
+  String get gpPairBrowser =>
+      'Ikonekta ito sa computer o teleponong ito, saka pindutin ang alinman sa mga button nito: nakikita lang ng browser ang controller pagkatapos ng isang pindot.';
+
+  @override
+  String fieldCountOf(int count, int max) {
+    return '$count sa $max na letra';
+  }
+
+  @override
+  String get alThisAlarm => 'Itong alarma';
+
+  @override
+  String get fvTalkBackWords => 'Mga salita ng TalkBack';
+
+  @override
+  String get fvTalkBackWordsDesc =>
+      'Sariling salita ng TalkBack ang “naka-on,” “naka-off” at “napili.” Sumusunod ang mga ito sa wika ng TalkBack, karaniwang ang wika ng tablet. Pindutin para buksan ang mga setting ng wika.';
+
+  @override
+  String get breakAlwaysOkay =>
+      'Laging ayos lang ang pahinga. Babalik ka agad sa kung nasaan ka kanina.';
+
+  @override
+  String get btCalmTitle => 'Magpahinga tayo nang kalmado';
+
+  @override
+  String get btTakeYourTime => 'Dahan-dahan lang. Bumalik kapag handa ka na.';
+
+  @override
+  String get crbStillOffline =>
+      'Offline pa rin. Tingnan ang koneksyon at subukan ulit.';
+
+  @override
+  String get crbRetrying => 'Sinusubukan ulit…';
+
+  @override
+  String get crbRetryNow => 'Subukan ulit ngayon';
+
+  @override
+  String exFeaturesCount(int on, int total) {
+    return '$on/$total na feature';
+  }
+
+  @override
+  String egTitle(String word) {
+    return 'Mga Halimbawa — $word';
+  }
+
+  @override
+  String get egUnavailable => 'Hindi available ang mga halimbawang ito ngayon.';
+
+  @override
+  String get smClipUnavailable => 'Hindi available ang clip na ito ngayon.';
+
+  @override
+  String mqPlusPoints(int points) {
+    return '+$points puntos!';
+  }
+
+  @override
+  String mqWins(String name) {
+    return 'Panalo si $name!';
+  }
+
+  @override
+  String get mqHome => 'Home';
+
+  @override
+  String get alTitle => 'Mga Alarma';
+
+  @override
+  String alTitleFor(String name) {
+    return 'Mga Alarma — $name';
+  }
+
+  @override
+  String alLastSynced(String when) {
+    return 'Huling na-sync: $when';
+  }
+
+  @override
+  String tlLastSaved(String when) {
+    return 'Huling na-save: $when';
+  }
+
+  @override
+  String tlOnlyBetween(String start, String end) {
+    return '$start – $end lang';
+  }
+
+  @override
+  String get lcVisibleDesc => 'Nakikita ng mga miyembro ang ranggo.';
+
+  @override
+  String get lcHiddenDesc =>
+      'Nakatago — “hindi pa naka-enable” ang makikita ng mga miyembro.';
+
+  @override
+  String get lcRankNote =>
+      'Ayon sa kamakailang aktibidad ang ranggo sa Lingguhan/Buwanan at sa mga season. Laging ipinapakita ang kabuuang bituin bilang sanggunian.';
+
+  @override
+  String chartTotalStars(int count) {
+    return 'Kabuuan: $count ⭐';
+  }
+
+  @override
+  String get hwCorrect => 'tama';
+
+  @override
+  String get tcPaused => 'naka-pause';
+
+  @override
+  String fwsSignN(int n) {
+    return 'Senyas $n';
+  }
+
+  @override
+  String scNamesPortfolio(String name) {
+    return 'Portfolio ni $name';
+  }
+
+  @override
+  String rtMoreSteps(int count) {
+    return '$count pa';
+  }
+
+  @override
+  String secondsLeftLabel(int count) {
+    return '$count segundo pa';
+  }
+
+  @override
+  String get collabBlank => 'blanko';
+
+  @override
+  String get gameGo => 'TARA!';
+
+  @override
+  String get stickerNotYet => 'Hindi pa nakukuha';
+
+  @override
+  String get btBreatheIn => 'Huminga nang malalim…';
+
+  @override
+  String get btHold => 'Pigilin…';
+
+  @override
+  String get btBreatheOut => 'Dahan-dahang ibuga…';
+
+  @override
+  String get vcMicUnavailable => 'Hindi magamit ang mikropono';
+
+  @override
+  String get vcPausedDictation => 'Naka-pause habang sinasabi mo ang mensahe';
+
+  @override
+  String get vcListening => 'Nakikinig…';
+
+  @override
+  String get vcReady => 'Handa ang boses';
+
+  @override
+  String get pcTo => 'hanggang';
+
+  @override
+  String get fslLoadingVideo => 'Nilo-load ang video…';
+
+  @override
+  String get plComfortable => 'Maluwag';
+
+  @override
+  String get plComfortableBlurb => 'Maluwag at madaling basahin';
+
+  @override
+  String get plCompact => 'Siksik';
+
+  @override
+  String get plCompactBlurb => 'Mas marami ang kasya';
+
+  @override
+  String get plShowcase => 'Showcase';
+
+  @override
+  String get plShowcaseBlurb => 'Malalaki at matitingkad';
+
+  @override
+  String get ptClassic => 'Klasiko';
+
+  @override
+  String get ptOcean => 'Karagatan';
+
+  @override
+  String get ptSunset => 'Takipsilim';
+
+  @override
+  String get ptForest => 'Kagubatan';
+
+  @override
+  String get ptCandy => 'Kendi';
+
+  @override
+  String get ptNight => 'Gabi';
+
+  @override
+  String get ptGalaxy => 'Kalawakan';
+
+  @override
+  String get ptAutumn => 'Taglagas';
+
+  @override
+  String get ptRainbow => 'Bahaghari';
+
+  @override
+  String get ptCocoa => 'Kakaw';
+
+  @override
+  String abQuestionNumber(int n) {
+    return 'Tanong $n';
+  }
+
+  @override
+  String get dcStreakTomorrow =>
+      'Sagutin nang tama ang misyon bukas para magsimula ng sunod-sunod';
+
+  @override
+  String chartWordsLearnedSummary(int total, int recent) {
+    return '$total salitang natutunan lahat, $recent dito sa huling 30 araw';
+  }
+
+  @override
+  String chartPercentOf(String name, int percent) {
+    return '$name: $percent porsiyento';
+  }
+
+  @override
+  String chartActivitySummary(int days, int minutes) {
+    return 'Aktibo sa $days sa huling 56 araw, $minutes minuto lahat';
+  }
+
+  @override
+  String chartScoresSummary(int count, int average, int latest) {
+    return '$count resulta, karaniwan $average porsiyento, pinakabago $latest porsiyento';
+  }
+
+  @override
+  String chartStudySummary(int minutes) {
+    return '$minutes minuto sa huling 30 araw';
+  }
+
+  @override
+  String chartPrePost(String name, int before, int after) {
+    return '$name: bago $before porsiyento, pagkatapos $after porsiyento';
   }
 }

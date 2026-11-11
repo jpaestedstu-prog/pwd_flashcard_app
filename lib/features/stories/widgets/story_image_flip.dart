@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../../core/services/story_image_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/fit_text.dart';
 import '../../../data/local/seed_stories.dart' show StoryImagePair;
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
@@ -236,7 +237,8 @@ class _StoryImageFlipState extends State<StoryImageFlip> {
           ),
         ),
         SizedBox(height: widget.compact ? 8 : 12),
-        _tapHintPill(),
+        // For the eye: the picture's own label ends with the same hint.
+        ExcludeSemantics(child: _tapHintPill()),
       ],
     );
   }
@@ -351,8 +353,10 @@ class _StoryImageFlipState extends State<StoryImageFlip> {
             color: textColor,
           ),
           const SizedBox(width: 8),
+          // Shrinks to two lines rather than cutting the hint short (a
+          // phone at the largest Font Size, 30 Oct).
           Flexible(
-            child: Text(
+            child: FitText(
               StoryImageFlip.tapHint(
                 showingReal: _showReal,
                 l10n: _t(context),
@@ -366,8 +370,6 @@ class _StoryImageFlipState extends State<StoryImageFlip> {
                         fontWeight: FontWeight.w700,
                       ),
               textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],

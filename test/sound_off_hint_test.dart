@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pwdpwdpwd/core/accessibility/device_sound.dart';
@@ -174,6 +177,72 @@ void main() {
 
       expect(note, findsOneWidget);
       expect(find.text('Your device sound is off'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a screen reader hears it once', (tester) async {
+      // TalkBack on the tablet read it three times in a row: the
+      // announcement, and the note again as a live region as it slid in.
+      final sent = <Object?>[];
+      final messenger = tester.binding.defaultBinaryMessenger;
+      messenger.setMockDecodedMessageHandler<Object?>(
+          SystemChannels.accessibility, (message) async {
+        sent.add(message);
+        return null;
+      });
+      addTearDown(() => messenger.setMockDecodedMessageHandler<Object?>(
+          SystemChannels.accessibility, null));
+      final semantics = tester.ensureSemantics();
+      await pumpHost(tester);
+
+      await speak(tester);
+
+      final announced = [
+        for (final m in sent)
+          if (m is Map && m['type'] == 'announce') (m['data'] as Map)['message'],
+      ];
+      expect(announced, ['Your device sound is off. Turn the volume up to hear the words.']);
+      expect(
+        tester.getSemantics(note).getSemanticsData().flagsCollection.isLiveRegion,
+        isFalse,
+        reason: 'a live region is read again on top of the announcement',
+      );
+      semantics.dispose();
+    });
+
+    testWidgets('leaves when the next profile has speech off', (tester) async {
+      // On the tablet: it went up as one profile spoke and stayed over a deaf
+      // learner's, with speech off: "Turn the volume up to hear the words".
+      await pumpHost(tester);
+      await speak(tester);
+      expect(note, findsOneWidget);
+
+      container
+          .read(settingsProvider.notifier)
+          .update(const AppSettings(ttsEnabled: false));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(note, findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('is not put up for someone who moved on while it asked',
+        (tester) async {
+      final answer = Completer<bool?>();
+      DeviceSound.debugIsOff = () => answer.future;
+      await pumpHost(tester);
+      TtsService.requests.value++;
+      await tester.pump();
+
+      container
+          .read(settingsProvider.notifier)
+          .update(const AppSettings(ttsEnabled: false));
+      answer.complete(true);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(note, findsNothing);
       expect(tester.takeException(), isNull);
     });
 

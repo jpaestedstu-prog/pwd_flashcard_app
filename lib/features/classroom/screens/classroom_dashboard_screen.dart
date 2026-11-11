@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/widgets/stats_across.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -12,6 +13,8 @@ import '../../../widgets/app_back_button.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../widgets/cloud_sync_error_view.dart';
+import '../../../core/widgets/app_bar_title.dart';
+import '../../../core/widgets/stagger_in.dart';
 
 /// Real-time classroom monitoring screen for teachers.
 ///
@@ -54,7 +57,7 @@ class _ClassroomDashboardScreenState
     return Scaffold(
       appBar: AppBar(
         leading: const AppBackButton(),
-        title: Text(
+        title: AppBarTitle(
           AppLocalizations.of(context)!.classroomView,
           style:
               AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w700),
@@ -137,12 +140,17 @@ class _ClassroomDashboardScreenState
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
                         final student = snapshot.students[index];
-                        return _StudentCard(student: student)
-                            .animate()
+                        return StaggerIn(
+                          index: index,
+                          base: const Duration(milliseconds: 100),
+                          step: const Duration(milliseconds: 80),
+                          child: _StudentCard(student: student),
+                          builder: (child, delay) => child.animate()
                             .fadeIn(
                                 duration: 400.ms,
-                                delay: (100 + index * 80).ms)
-                            .slideY(begin: 0.08, end: 0);
+                                delay: delay)
+                            .slideY(begin: 0.08, end: 0),
+                        );
                       },
                       childCount: snapshot.students.length,
                     ),
@@ -195,7 +203,7 @@ class _AggregateRow extends StatelessWidget {
             hc.hc ? Border.all(color: AppColors.hcPrimary, width: 2) : null,
         boxShadow: AppColors.cardShadow,
       ),
-      child: Row(
+      child: StatsAcross(
         children: [
           _StatTile(
             icon: Icons.school_rounded,
@@ -243,20 +251,23 @@ class _StatTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: 6),
-          // Stat captions in a shared row: "Accurac / y", "Word / s".
-          FitText(value,
-              maxLines: 1,
-              style: AppTypography.titleMedium
-                  .copyWith(fontWeight: FontWeight.w800)),
-          FitText(label,
-              maxLines: 1,
-              style: AppTypography.labelSmall
-                  .copyWith(color: HCColor.of(context).textSecondary)),
-        ],
+      child: MergeSemantics(
+        // One phrase ("12 Words"): the number alone was a stop that said only "12".
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 24),
+            const SizedBox(height: 6),
+            // Stat captions in a shared row: "Accurac / y", "Word / s".
+            FitText(value,
+                maxLines: 1,
+                style: AppTypography.titleMedium
+                    .copyWith(fontWeight: FontWeight.w800)),
+            FitText(label,
+                maxLines: 1,
+                style: AppTypography.labelSmall
+                    .copyWith(color: HCColor.of(context).textSecondary)),
+          ],
+        ),
       ),
     );
   }
@@ -308,9 +319,11 @@ class _StudentCard extends StatelessWidget {
                   : null,
             ),
             child: Center(
-              child: Text(
-                student.avatarEmoji ?? '👤',
-                style: const TextStyle(fontSize: 24),
+              child: ExcludeSemantics(
+                child: Text(
+                  student.avatarEmoji ?? '👤',
+                  style: const TextStyle(fontSize: 24),
+                ),
               ),
             ),
           ),
@@ -322,12 +335,13 @@ class _StudentCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
+                    // The whole name, on two lines if it needs them: a
+                    // thirty-letter name lost its end on a phone (3 Nov).
                     Flexible(
-                      child: Text(
+                      child: FitText(
                         student.name,
                         style: AppTypography.titleSmall
                             .copyWith(fontWeight: FontWeight.w700),
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     if (student.isActive) ...[
@@ -367,6 +381,7 @@ class _StudentCard extends StatelessWidget {
                       size: 16, color: HCColor.of(context).graphic(AppColors.warning)),
                   const SizedBox(width: 2),
                   Flexible(child: Text('${student.starsEarned}',
+                      semanticsLabel: '${student.starsEarned} ${_t(context).stars}',
                       style: AppTypography.labelMedium,
   maxLines: 2,
   overflow: TextOverflow.ellipsis,
@@ -379,7 +394,9 @@ class _StudentCard extends StatelessWidget {
                 children: [
                   Icon(Icons.percent_rounded, size: 14, color: HCColor.of(context).graphic(AppColors.info)),
                   const SizedBox(width: 2),
-                  Flexible(child: Text('$accuracy%', style: AppTypography.labelMedium,
+                  Flexible(child: Text('$accuracy%',
+                      semanticsLabel: '${_t(context).accuracy} $accuracy%',
+                      style: AppTypography.labelMedium,
   maxLines: 2,
   overflow: TextOverflow.ellipsis,
 )),

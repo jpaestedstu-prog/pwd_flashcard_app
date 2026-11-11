@@ -15,6 +15,7 @@ import '../models/mood_models.dart';
 import '../models/mood_presentation.dart';
 import '../widgets/mood_face.dart';
 import '../../../navigation/nav_extensions.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 class MoodCheckInScreen extends ConsumerStatefulWidget {
   /// The moment being checked in on. Persisted with the entry so the Mood
@@ -94,7 +95,7 @@ class _MoodCheckInScreenState extends ConsumerState<MoodCheckInScreen> {
       final spoken = isFilipino
           ? 'Na-save. Ang pakiramdam mo ay $moodLabel.'
           : 'Saved. You are feeling $moodLabel.';
-      ref.read(ttsServiceProvider).speak(spoken);
+      ref.read(ttsServiceProvider).speakIn(spoken, filipino: isFilipino);
     }
 
     AppSnackBar.success(
@@ -133,7 +134,7 @@ class _MoodCheckInScreenState extends ConsumerState<MoodCheckInScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isFilipino ? 'Paano ang Pakiramdam Mo?' : 'How Are You Feeling?'),
+        title: AppBarTitle(isFilipino ? 'Paano ang Pakiramdam Mo?' : 'How Are You Feeling?'),
         centerTitle: true,
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -240,25 +241,28 @@ class _MoodCheckInScreenState extends ConsumerState<MoodCheckInScreen> {
                 SizedBox(
                   width: double.infinity,
                   height: 56,
-                  child: Semantics(
-                    button: true,
-                    label: _editing != null
+                  child: ElevatedButton.icon(
+                    onPressed: _saving ? null : _saveMood,
+                    icon: _saving
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        // Shown, not read: the label says what it does.
+                        : ExcludeSemantics(
+                            child: Text(_selectedMood!.emoji,
+                                style: const TextStyle(fontSize: 22)),
+                          ),
+                    label: Semantics(
+                      label: _editing != null
                         ? (isFilipino ? 'I-update ang mood' : 'Update mood')
                         : (isFilipino ? 'I-save ang mood' : 'Save mood'),
-                    child: ElevatedButton.icon(
-                      onPressed: _saving ? null : _saveMood,
-                      icon: _saving
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : Text(_selectedMood!.emoji,
-                              style: const TextStyle(fontSize: 22)),
-                      label: Text(
+                      excludeSemantics: true,
+                      child: Text(
                         _editing != null
                             ? (isFilipino ? 'I-update ang Mood' : 'Update My Mood')
                             : (isFilipino ? 'I-save ang Mood' : 'Save My Mood'),
@@ -267,18 +271,18 @@ class _MoodCheckInScreenState extends ConsumerState<MoodCheckInScreen> {
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      style: ElevatedButton.styleFrom(
-                        // `darkColor`, not `color`: the label is white, and
-                        // white on the pale happy / tired swatches fails
-                        // contrast badly on exactly the profiles that can
-                        // least afford it.
-                        backgroundColor: _selectedMood!.darkColor,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        elevation: 0,
-                        shadowColor: Colors.transparent,
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      // `darkColor`, not `color`: the label is white, and
+                      // white on the pale happy / tired swatches fails
+                      // contrast badly on exactly the profiles that can
+                      // least afford it.
+                      backgroundColor: _selectedMood!.darkColor,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
                       ),
+                      elevation: 0,
+                      shadowColor: Colors.transparent,
                     ),
                   ),
                 ).animate(target: presentation.animate ? 1 : 0).fadeIn(duration: 300.ms, delay: 100.ms),

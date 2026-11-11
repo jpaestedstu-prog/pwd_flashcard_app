@@ -33,6 +33,19 @@ class LearningLevelService {
     return LearningLevel.advanced;
   }
 
+  /// The level to save with a learner's profile on [birthDate]: the one they
+  /// have, or, with none yet, the one first-time setup would have given them.
+  ///
+  /// A level read as "beginner" when missing, whatever the learner's age: a
+  /// parent opening a child from a list used to erase both the level and the
+  /// birth date, and entering the date again now brings the level back. An
+  /// educator has neither.
+  static LearningLevel? levelToSave(UserProfile profile, DateTime? birthDate) {
+    if (profile.learningLevel != null) return profile.learningLevel;
+    if (birthDate == null || !profile.role.isLearner) return null;
+    return suggestLevelFromBirthDate(birthDate);
+  }
+
   /// Convenience: derive a level from an optional birth date. Returns
   /// [LearningLevel.beginner] when the birth date is missing.
   static LearningLevel suggestLevelFromBirthDate(DateTime? birthDate) {

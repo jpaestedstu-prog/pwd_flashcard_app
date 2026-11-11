@@ -23,6 +23,7 @@ import '../../gamepad/providers/gamepad_screen.dart';
 import '../../gamepad/widgets/gamepad_screen_registrar.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../navigation/nav_extensions.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Paginated story reader with TTS and vocabulary highlights.
 class StoryReaderScreen extends ConsumerStatefulWidget {
@@ -132,7 +133,7 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
       return Scaffold(
         appBar: fullscreenBar(
           ref,
-          AppBar(title: Text(AppLocalizations.of(context)!.storyNotFound)),
+          AppBar(title: AppBarTitle(AppLocalizations.of(context)!.storyNotFound)),
         ),
         body: Center(
           child: Column(
@@ -185,10 +186,14 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
     //
     // This is the clearest case for the narration half of the bridge: the
     // page *is* prose, and a learner who cannot see it has no way to reach the
-    // sentence by stepping through buttons. R2 reads the page; the items are
-    // only the ways to leave it.
+    // sentence by stepping through buttons. X reads the page; the items name
+    // the buttons the D-pad reaches — the replay pair only while it is on
+    // screen, and by the names it announces itself with.
+    final titleInMyLanguage = _story!.titleIn(
+      filipino: _t(context).localeName.startsWith('fil'),
+    );
     return GamepadScreenRegistrar(
-      title: _story!.titleEn,
+      title: titleInMyLanguage,
       narration: [
         '${_t(context).srPageNofM(_currentSentence + 1, _story!.sentencesEn.length)}.',
         sentenceEn,
@@ -201,16 +206,18 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
           ),
         if (!_isLastSentence)
           GamepadItem(label: _t(context).srNextPage, onActivate: _nextSentence),
-        GamepadItem(
-          label: _t(context).srReadPage,
-          detail: sentenceEn,
-          onActivate: () => _speakLang(sentenceEn, filipino: false),
-        ),
-        GamepadItem(
-          label: 'Read in Filipino',
-          detail: sentenceFil,
-          onActivate: () => _speakLang(sentenceFil, filipino: true),
-        ),
+        if (ttsEnabled) ...[
+          GamepadItem(
+            label: '${_t(context).replay}, ${_t(context).english}',
+            detail: sentenceEn,
+            onActivate: () => _speakLang(sentenceEn, filipino: false),
+          ),
+          GamepadItem(
+            label: '${_t(context).replay}, ${_t(context).filipino}',
+            detail: sentenceFil,
+            onActivate: () => _speakLang(sentenceFil, filipino: true),
+          ),
+        ],
         if (_isLastSentence)
           GamepadItem(label: _t(context).srGoQuiz, onActivate: _goToQuiz),
       ],
@@ -223,7 +230,9 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
             tooltip: _t(context).close,
             onPressed: () => context.popOrGo('/stories'),
           ),
-          title: Text(_story!.titleEn),
+          // In the reader's language, as on the quiz: the pages below carry
+          // both.
+          title: AppBarTitle(titleInMyLanguage),
         ),
       ),
       body: SafeArea(
@@ -380,19 +389,21 @@ class _StoryReaderScreenState extends ConsumerState<StoryReaderScreen> {
                                               ),
                                             ],
                                           ),
-                                          child: Text(
-                                            _story!.emoji,
-                                            style: TextStyle(
-                                              fontSize: context
-                                                  .scaledHeightCapped(
-                                                    kidMode
-                                                        ? (context.isTablet
-                                                              ? 72
-                                                              : 60)
-                                                        : (context.isTablet
-                                                              ? 56
-                                                              : 48),
-                                                  ),
+                                          child: ExcludeSemantics(
+                                            child: Text(
+                                              _story!.emoji,
+                                              style: TextStyle(
+                                                fontSize: context
+                                                    .scaledHeightCapped(
+                                                      kidMode
+                                                          ? (context.isTablet
+                                                                ? 72
+                                                                : 60)
+                                                          : (context.isTablet
+                                                                ? 56
+                                                                : 48),
+                                                    ),
+                                              ),
                                             ),
                                           ),
                                         ).animate().scale(

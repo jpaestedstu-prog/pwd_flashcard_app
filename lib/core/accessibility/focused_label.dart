@@ -32,10 +32,57 @@ abstract final class FocusedLabel {
   static const int labelTextHops = 3;
 
   /// The name for the control whose element is [context], or null when it
-  /// has none a voice could say.
+  /// has none a voice could say — and for a slider, its value after it
+  /// ("Voice Speed. Slow").
+  ///
+  /// A slider named by `DpadSliderScope(name:)` has only its name in its
+  /// label: its value is in its formatter, where a screen reader reads it.
+  /// Without the value here, a turn would sound like a press at the end.
   static String? of(BuildContext? context) {
     if (context is! Element) return null;
+    final name = _nameOf(context);
+    final slider = sliderAt(context);
+    if (slider == null) return name;
+    final value =
+        (slider.semanticFormatterCallback?.call(slider.value) ?? slider.label)
+            ?.trim();
+    if (value == null || value.isEmpty) return name;
+    if (name == null) return value;
+    return name.contains(value) ? name : '$name. $value';
+  }
 
+  /// The [Slider] the control at [context] is — focus usually sits *inside*
+  /// it (its own internal focus node), so looked for up as well as down —
+  /// or null.
+  static Slider? sliderAt(BuildContext? context) {
+    if (context is! Element) return null;
+    Slider? found;
+    void visit(Element element, int depth) {
+      if (found != null || depth > 12) return;
+      final widget = element.widget;
+      if (widget is Slider) {
+        found = widget;
+        return;
+      }
+      element.visitChildren((child) => visit(child, depth + 1));
+    }
+
+    visit(context, 0);
+    if (found != null) return found;
+    var hops = 0;
+    context.visitAncestorElements((ancestor) {
+      if (hops++ >= 12) return false;
+      final widget = ancestor.widget;
+      if (widget is Slider) {
+        found = widget;
+        return false;
+      }
+      return true;
+    });
+    return found;
+  }
+
+  static String? _nameOf(Element context) {
     // The focused widget itself is the best answer when it has one. Searched
     // deep: a Material control's subtree (InkWell → Semantics → Padding → Row →
     // Text …) routinely runs fifteen elements or more before reaching its

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../core/services/xp_level_service.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
+import '../core/widgets/auto_fit.dart';
 import '../data/models/models.dart';
 import '../l10n/app_localizations.dart';
 import '../l10n/app_localizations_en.dart';
@@ -93,21 +94,26 @@ class XpLevelBar extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
+                          // Takes the room the XP count does not need,
+                          // and wraps before it shrinks. With a Spacer beside
+                          // it, it had half that room and was scaled to 6 px
+                          // on a phone.
                           Flexible(
-                            child: Text(
-                              'Lv.${level.level} '
-                              '${level.titleOf(filipino: filipino)}',
-                              style: AppTypography.titleSmall.copyWith(
-                                fontWeight: FontWeight.w800,
-                                color: hc.textPrimary,
+                            child: AutoFit(
+                              alignment: AlignmentDirectional.centerStart,
+                              child: Text(
+                                'Lv.${level.level} '
+                                '${level.titleOf(filipino: filipino)}',
+                                style: AppTypography.titleSmall.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  color: hc.textPrimary,
+                                ),
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           const SizedBox(width: 8),
-                          const Spacer(),
                           Text(
                             span != null ? '$into / $span XP' : '$xp XP ✨',
                             style: AppTypography.labelSmall.copyWith(

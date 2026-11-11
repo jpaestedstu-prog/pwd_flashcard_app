@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import '../../../core/widgets/whole_month_title.dart';
 
 import '../../../core/services/fsl_assets_service.dart';
 import '../../../core/services/shared_media_service.dart';
@@ -18,6 +19,8 @@ import '../services/routine_sign_launcher.dart';
 import '../widgets/routine_media.dart';
 import '../widgets/routine_step_card.dart';
 import '../../../navigation/dpad_keys.dart';
+import '../../../core/widgets/fit_label.dart';
+import '../../../core/widgets/text_limits.dart';
 
 /// Opens the step editor and returns the edited step, or null if cancelled.
 Future<RoutineStep?> openRoutineStepEditor(
@@ -123,6 +126,28 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
           ? step.copyWith(durationMinutes: kRoutineDefaultStepMinutes)
           : step;
 
+  /// The step's length in words, at [minutes]: the line above its slider,
+  /// and what a screen reader hears the slider move to.
+  String _lengthText(bool l, int minutes) {
+    final step = _draft.copyWith(durationMinutes: minutes);
+    if (_locks(step)) {
+      return l
+          ? 'Tatagal $minutes minuto — bubukas ang app sa '
+                '${formatStepEnd(step)}'
+          : 'Lasts $minutes min — the app unlocks at ${formatStepEnd(step)}';
+    }
+    if (minutes == 0) return l ? 'Walang timer' : 'No timer';
+    return l ? 'Timer: $minutes minuto' : 'Timer: $minutes min';
+  }
+
+  /// The reminder in words, at [minutes] before the step.
+  String _remindText(bool l, int minutes) {
+    if (minutes == 0) return l ? 'Paalala sa mismong oras' : 'Remind at the time';
+    return l
+        ? 'Paalala $minutes minuto bago ang oras'
+        : 'Remind $minutes min before';
+  }
+
   @override
   void dispose() {
     for (final c in [
@@ -167,6 +192,7 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
     final now = TimeOfDay.now();
     final picked = await showTimePicker(
       context: context,
+      builder: wholeTimePicker,
       initialTime: _draft.isScheduled
           ? TimeOfDay(hour: _draft.hour!, minute: _draft.minute!)
           : now,
@@ -251,9 +277,11 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
                   _SectionLabel(l ? 'Pangalan' : 'Name'),
                   TextField(
                     controller: _title,
+                    maxLength: TextLimits.label,
+                    buildCounter: TextLimits.counter,
                     textCapitalization: TextCapitalization.sentences,
                     decoration: InputDecoration(
-                      labelText: l ? 'Pangalan (English)' : 'Title',
+                      label: FitLabel(l ? 'Pangalan (English)' : 'Title'),
                       hintText: isCustom
                           ? (l
                                 ? 'hal. Pagdidilig ng halaman'
@@ -265,9 +293,11 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
                   const SizedBox(height: 10),
                   TextField(
                     controller: _titleFil,
+                    maxLength: TextLimits.label,
+                    buildCounter: TextLimits.counter,
                     textCapitalization: TextCapitalization.sentences,
                     decoration: InputDecoration(
-                      labelText: l ? 'Pangalan sa Filipino' : 'Filipino title',
+                      label: FitLabel(l ? 'Pangalan sa Filipino' : 'Filipino title'),
                       hintText: info.labelFilipino,
                       border: const OutlineInputBorder(),
                     ),
@@ -278,7 +308,7 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
                     maxLength: 4,
                     onChanged: (_) => setState(() {}),
                     decoration: InputDecoration(
-                      labelText: l ? 'Emoji' : 'Emoji',
+                      label: FitLabel(l ? 'Emoji' : 'Emoji'),
                       hintText: info.emoji,
                       helperText: l
                           ? 'Ito ang malaking larawan kapag walang photo.'
@@ -324,91 +354,82 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
                     ),
                   ),
                   const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Icon(Icons.timer_rounded, size: 18, color: hc.primary),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _locks(_draft)
-                              ? (l
-                                    ? 'Tatagal ${_draft.durationMinutes} minuto '
-                                          '— bubukas ang app sa '
-                                          '${formatStepEnd(_draft)}'
-                                    : 'Lasts ${_draft.durationMinutes} min — '
-                                          'the app unlocks at '
-                                          '${formatStepEnd(_draft)}')
-                              : _draft.durationMinutes == 0
-                              ? (l ? 'Walang timer' : 'No timer')
-                              : (l
-                                    ? 'Timer: ${_draft.durationMinutes} minuto'
-                                    : 'Timer: ${_draft.durationMinutes} min'),
-                          style: AppTypography.bodyMedium.copyWith(
-                            color: hc.textPrimary,
+                  // Said by the slider, which carries the name and the
+                  // value (its bubble had said a bare "15").
+                  ExcludeSemantics(
+                    child: Row(
+                      children: [
+                        Icon(Icons.timer_rounded, size: 18, color: hc.primary),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _lengthText(l, _draft.durationMinutes),
+                            style: AppTypography.bodyMedium.copyWith(
+                              color: hc.textPrimary,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                   // A locking step must end, so its length starts at five
                   // minutes; any other step may have no timer at all.
-                  DpadSliderScope(child: Slider(
-                    value: _draft.durationMinutes.toDouble().clamp(
-                      _locks(_draft) ? 5 : 0,
-                      60,
-                    ),
-                    min: _locks(_draft) ? 5 : 0,
-                    max: 60,
-                    divisions: _locks(_draft) ? 11 : 12,
-                    label: _draft.durationMinutes == 0
-                        ? (l ? 'wala' : 'off')
-                        : '${_draft.durationMinutes}',
-                    onChanged: (v) => setState(
-                      () =>
-                          _draft = _draft.copyWith(durationMinutes: v.round()),
-                    ),
-                  )),
-
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.notifications_active_rounded,
-                        size: 18,
-                        color: hc.primary,
+                  DpadSliderScope(
+                    name: l ? 'Haba ng hakbang' : 'Step length',
+                    child: Slider(
+                      value: _draft.durationMinutes.toDouble().clamp(
+                        _locks(_draft) ? 5 : 0,
+                        60,
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _draft.remindMinutesBefore == 0
-                              ? (l
-                                    ? 'Paalala sa mismong oras'
-                                    : 'Remind at the time')
-                              : (l
-                                    ? 'Paalala ${_draft.remindMinutesBefore} '
-                                          'minuto bago ang oras'
-                                    : 'Remind ${_draft.remindMinutesBefore} min '
-                                          'before'),
-                          style: AppTypography.bodyMedium.copyWith(
-                            color: hc.textPrimary,
-                          ),
+                      min: _locks(_draft) ? 5 : 0,
+                      max: 60,
+                      divisions: _locks(_draft) ? 11 : 12,
+                      semanticFormatterCallback: (v) =>
+                          _lengthText(l, v.round()),
+                      onChanged: (v) => setState(
+                        () => _draft = _draft.copyWith(
+                          durationMinutes: v.round(),
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                  DpadSliderScope(child: Slider(
-                    value: _draft.remindMinutesBefore.toDouble().clamp(0, 30),
-                    max: 30,
-                    divisions: 6,
-                    label: _draft.remindMinutesBefore == 0
-                        ? (l ? 'sa oras' : 'on time')
-                        : '${_draft.remindMinutesBefore}',
-                    onChanged: (v) => setState(
-                      () => _draft = _draft.copyWith(
-                        remindMinutesBefore: v.round(),
+
+                  const SizedBox(height: 4),
+                  ExcludeSemantics(
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.notifications_active_rounded,
+                          size: 18,
+                          color: hc.primary,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _remindText(l, _draft.remindMinutesBefore),
+                            style: AppTypography.bodyMedium.copyWith(
+                              color: hc.textPrimary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  DpadSliderScope(
+                    name: l ? 'Paalala' : 'Reminder',
+                    child: Slider(
+                      value: _draft.remindMinutesBefore.toDouble().clamp(0, 30),
+                      max: 30,
+                      divisions: 6,
+                      semanticFormatterCallback: (v) =>
+                          _remindText(l, v.round()),
+                      onChanged: (v) => setState(
+                        () => _draft = _draft.copyWith(
+                          remindMinutesBefore: v.round(),
+                        ),
                       ),
                     ),
-                  )),
+                  ),
                   Text(
                     l
                         ? 'Ang maagang babala ay mas madaling sundan kaysa sa '
@@ -585,10 +606,12 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
                   _SectionLabel(l ? 'Tala at Binibigkas na Paalala' : 'Note & spoken cue'),
                   TextField(
                     controller: _note,
+                    maxLength: TextLimits.sentence,
+                    buildCounter: TextLimits.counter,
                     maxLines: 2,
                     textCapitalization: TextCapitalization.sentences,
                     decoration: InputDecoration(
-                      labelText: l ? 'Tala (English)' : 'Note',
+                      label: FitLabel(l ? 'Tala (English)' : 'Note'),
                       hintText: info.audioCue,
                       helperText: l
                           ? 'Ito rin ang binabasa nang malakas sa bata.'
@@ -599,10 +622,12 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
                   const SizedBox(height: 10),
                   TextField(
                     controller: _noteFil,
+                    maxLength: TextLimits.sentence,
+                    buildCounter: TextLimits.counter,
                     maxLines: 2,
                     textCapitalization: TextCapitalization.sentences,
                     decoration: InputDecoration(
-                      labelText: l ? 'Tala sa Filipino' : 'Filipino note',
+                      label: FitLabel(l ? 'Tala sa Filipino' : 'Filipino note'),
                       hintText: info.audioCueFilipino,
                       border: const OutlineInputBorder(),
                     ),
@@ -683,11 +708,13 @@ class _RoutineStepEditorSheetState extends State<RoutineStepEditorSheet> {
                     ),
                   TextField(
                     controller: _sign,
+                    maxLength: TextLimits.label,
+                    buildCounter: TextLimits.counter,
                     onChanged: (_) => _checkSign(),
                     decoration: InputDecoration(
-                      labelText: l
+                      label: FitLabel(l
                           ? 'Palitan ng ibang salitang senyas'
-                          : 'Override with one sign word',
+                          : 'Override with one sign word'),
                       hintText: l ? 'hal. Water' : 'e.g. Water',
                       helperText: l
                           ? 'Iwanang blangko para gamitin ang nakahandang senyas.'
@@ -877,7 +904,7 @@ class _MediaFieldState extends State<_MediaField> {
             onChanged: (_) => widget.onChanged(),
             decoration: InputDecoration(
               prefixIcon: Icon(style.icon, color: style.color),
-              labelText: style.labelOf(filipino: filipino),
+              label: FitLabel(style.labelOf(filipino: filipino)),
               hintText: filipino
                   ? 'https://… o assets/…'
                   : 'https://… or assets/…',

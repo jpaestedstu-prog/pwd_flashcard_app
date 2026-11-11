@@ -269,26 +269,32 @@ class SectionHeader extends StatelessWidget {
         AppColors.textPrimary;
     final label = actionLabel ??
         (AppLocalizations.of(context) ?? AppLocalizationsEn()).assessSeeAll;
-    final heading = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (icon != null) ...[
-          Icon(icon, size: 20, color: textColor),
-          const SizedBox(width: 8),
-        ],
-        // FitText: at 2x on a phone "Communication" and "Vocabulary" were
-        // wider than the row and broke mid-word.
-        Flexible(
-          child: FitText(
-            title,
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: textColor,
+    // A heading to a screen reader as well as to the eye: NVDA's "next
+    // heading" found only the greeting on Home (4 Nov).
+    final heading = Semantics(
+      container: true,
+      header: true,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 20, color: textColor),
+            const SizedBox(width: 8),
+          ],
+          // FitText: at 2x on a phone "Communication" and "Vocabulary" were
+          // wider than the row and broke mid-word.
+          Flexible(
+            child: FitText(
+              title,
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: textColor,
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
     final action = onSeeAll == null
         ? null
@@ -358,69 +364,70 @@ class FeatureBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: semanticLabel ?? '$title. $subtitle',
-      child: Card(
-        elevation: 0,
-        margin: EdgeInsets.zero,
-        clipBehavior: Clip.antiAlias,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+    return Card(
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      // Inside the Card, beside the InkWell, so the label lands on the node
+      // that has the tap: around the Card it made a second "button" that
+      // could not be pressed.
+      child: Semantics(
+        button: true,
+        label: semanticLabel ?? '$title. $subtitle',
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(20),
-          child: Ink(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: gradientColors,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+          child: ExcludeSemantics(
+            child: Ink(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: gradientColors,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
               ),
-            ),
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(12),
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: Text(emoji, style: const TextStyle(fontSize: 24)),
+                    ),
                   ),
-                  child: Center(
-                    child: Text(emoji, style: const TextStyle(fontSize: 24)),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: AppTypography.titleSmall.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: AppTypography.titleSmall.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        subtitle,
-                        style: AppTypography.bodySmall.copyWith(
-                          color: Colors.white.withValues(alpha: 0.85),
+                        Text(
+                          subtitle,
+                          style: AppTypography.bodySmall.copyWith(
+                            color: Colors.white.withValues(alpha: 0.85),
+                          ),
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                Icon(
-                  Icons.arrow_forward_rounded,
-                  color: Colors.white.withValues(alpha: 0.8),
-                ),
-              ],
+                  Icon(
+                    Icons.arrow_forward_rounded,
+                    color: Colors.white.withValues(alpha: 0.8),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -477,6 +484,12 @@ class AppCard extends StatelessWidget {
     final shape = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(borderRadius),
     );
+    // A card with its own label says it once. Its texts and emoji joined
+    // that label in one description, so TalkBack read Home's tiles twice
+    // ("Games. Play & learn, game controller, Games, Play & learn, button").
+    // Hidden inside the InkWell, so its press and focus stay on the card.
+    final Widget content =
+        semanticLabel == null ? child : ExcludeSemantics(child: child);
 
     Widget card;
     if (depth && gradient != null) {
@@ -519,7 +532,7 @@ class AppCard extends StatelessWidget {
                     const Positioned.fill(child: GlossySheen()),
                     Padding(
                       padding: padding ?? const EdgeInsets.all(16),
-                      child: child,
+                      child: content,
                     ),
                     Positioned.fill(child: RimLight(radius: borderRadius)),
                   ],
@@ -542,7 +555,7 @@ class AppCard extends StatelessWidget {
           child: Ink(
             decoration: BoxDecoration(gradient: gradient),
             padding: padding ?? const EdgeInsets.all(16),
-            child: child,
+            child: content,
           ),
         ),
       );
@@ -558,7 +571,7 @@ class AppCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(borderRadius),
           child: Padding(
             padding: padding ?? const EdgeInsets.all(16),
-            child: child,
+            child: content,
           ),
         ),
       );

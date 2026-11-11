@@ -2,6 +2,7 @@ package com.example.pwdpwdpwd
 
 import android.app.ActivityManager
 import android.app.KeyguardManager
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.media.AudioManager
 import android.media.MediaCodecInfo
@@ -14,10 +15,14 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.speech.tts.TextToSpeech
 import android.util.Log
 import android.view.KeyEvent
 import android.view.MotionEvent
+import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager
+import android.view.accessibility.AccessibilityEvent
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -50,6 +55,9 @@ class MainActivity : FlutterActivity() {
         /** Mirrors `DeviceVideoSupport._channel` on the Dart side. */
         private const val MEDIA_CHANNEL = "flashlearn/media"
 
+        /** Mirrors `ScreenAwake._channel` on the Dart side. */
+        private const val SCREEN_CHANNEL = "flashlearn/screen"
+
         /**
          * True while FlashLearn is the app in front. [RoutineAlarms] reads it
          * so it never throws an overlay over the app's own lock, which already
@@ -78,12 +86,16 @@ class MainActivity : FlutterActivity() {
     /**
      * Gives the Flutter view Android-level focus if it lost it.
      *
-     * In touch mode Android treats Space and Enter as navigation keys: when
-     * nothing in the window holds focus, the FIRST such key is spent giving
-     * focus (ViewRootImpl leaving touch mode) and never reaches the app. A
-     * switch interface sends exactly those keys, so a learner's first press
-     * after anyone touched the screen could vanish. With the view focused the
-     * key goes through.
+     * In touch mode Android treats the arrows, the D-pad, Space and Enter as
+     * navigation keys: when nothing in the window holds focus, the FIRST such
+     * key is spent giving focus (ViewRootImpl leaving touch mode) and never
+     * reaches the app — only its release does. And since Android 9 nothing
+     * holds focus when the window opens in touch mode. So after anyone had
+     * touched the screen, the first press of a switch interface, a keyboard's
+     * arrows, a TV remote or a controller that sends its D-pad as keys simply
+     * vanished (found on the tablet: one of four D-pad presses on the profile
+     * list, every time the screen had been touched first). With the view
+     * focused the key goes through.
      */
     private fun focusFlutterView() {
         val root = window?.decorView ?: return
@@ -102,7 +114,8 @@ class MainActivity : FlutterActivity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus && switchKeysToApp) window?.decorView?.post { focusFlutterView() }
+        // For everyone, not only a switch learner: see [focusFlutterView].
+        if (hasFocus) window?.decorView?.post { focusFlutterView() }
     }
 
     /** The routine channel, once the engine exists. */
@@ -149,6 +162,26 @@ class MainActivity : FlutterActivity() {
         // only the current offset, and the `timezone` package defaults its
         // local zone to UTC — which scheduled every reminder, check-in and
         // alarm eight hours late on a Philippine device.
+        // Whether the display stays on: while the learner steers hands-free
+        // (Gaze Control's head tracking or voice commands, which make no
+        // touches or key presses), else the device's own screen timeout.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SCREEN_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                if (call.method == "keepOn") {
+                    val on = call.arguments as? Boolean ?: true
+                    runOnUiThread {
+                        if (on) {
+                            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        } else {
+                            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        }
+                    }
+                    result.success(null)
+                } else {
+                    result.notImplemented()
+                }
+            }
+
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, TIMEZONE_CHANNEL)
             .setMethodCallHandler { call, result ->
                 if (call.method == "getLocalTimezone") {
@@ -237,6 +270,66 @@ class MainActivity : FlutterActivity() {
                 val audio = getSystemService(AudioManager::class.java)
                 val stream = AudioManager.STREAM_MUSIC
                 when {
+                    // "No Filipino voice on this device": the speech engine's
+                    // own "install voice data" screen, where a Filipino voice
+                    // is added (TalkBack then has it too), or else the
+                    // device's text-to-speech settings. Only on a tap.
+                    call.method == "openVoiceSettings" -> {
+                        val opened = listOf(
+                            Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA),
+                            Intent("com.android.settings.TTS_SETTINGS"),
+                        ).any { intent ->
+                            try {
+                                startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                                true
+                            } catch (e: ActivityNotFoundException) {
+                                false
+                            } catch (e: SecurityException) {
+                                false
+                            }
+                        }
+                        Log.i("DeviceSound", "open voice settings: $opened")
+                        result.success(opened)
+                    }
+                    // TalkBack's own words ("Button", "In list") follow
+                    // TalkBack's language, not the app's. Android 13 and up
+                    // has a language per app: its screen for TalkBack, or else
+                    // the device's languages. Only on a tap.
+                    call.method == "openTalkBackLanguage" -> {
+                        // Android's page for one app's language opens and closes at
+                        // once for an app that does not declare its languages, and
+                        // TalkBack does not (the Honor, 4 Nov): the tablet's own
+                        // languages are then the way.
+                        val talkBackId = "com.google.android.marvin.talkback"
+                        val talkBack = Uri.parse("package:$talkBackId")
+                        val hasOwnLanguagePage = Build.VERSION.SDK_INT >= 33 && try {
+                            val config = android.app.LocaleConfig(
+                                createPackageContext(talkBackId, 0),
+                            )
+                            config.status == android.app.LocaleConfig.STATUS_SUCCESS &&
+                                config.supportedLocales?.isEmpty == false
+                        } catch (e: Exception) {
+                            false
+                        }
+                        val candidates = buildList {
+                            if (hasOwnLanguagePage) {
+                                add(Intent("android.settings.APP_LOCALE_SETTINGS", talkBack))
+                            }
+                            add(Intent(Settings.ACTION_LOCALE_SETTINGS))
+                        }
+                        val opened = candidates.any { intent ->
+                            try {
+                                startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                                true
+                            } catch (e: ActivityNotFoundException) {
+                                false
+                            } catch (e: SecurityException) {
+                                false
+                            }
+                        }
+                        Log.i("DeviceSound", "open TalkBack language: $opened")
+                        result.success(opened)
+                    }
                     audio == null -> result.success(null)
                     call.method == "mediaVolume" -> {
                         val level = audio.getStreamVolume(stream)
@@ -504,37 +597,95 @@ class MainActivity : FlutterActivity() {
         super.onPause()
     }
 
+    /**
+     * TalkBack started every slider twice: "4 words per day, 4 words per day,
+     * Daily Mission Size, slider". Right after telling TalkBack that a slider
+     * has its focus, Flutter's engine sends a "selected" event as well ("SeekBars
+     * only announce themselves after this event", for the TalkBack of years
+     * ago), and today's TalkBack speaks for each, the second cutting the first
+     * short (read in its log, 4 Nov).
+     *
+     * Only that echo is dropped: sent in the same breath as the focus event,
+     * with no words of its own. The "selected" that says a slider's new value
+     * comes later and on its own, and goes through. And only on the TalkBack
+     * this was checked on: an older one may need it, and stutters no worse
+     * than it did.
+     */
+    private fun quietSliderEcho() {
+        val content = findViewById<ViewGroup>(android.R.id.content) ?: return
+        val checkedTalkBack by lazy {
+            try {
+                val version = packageManager
+                    .getPackageInfo("com.google.android.marvin.talkback", 0)
+                    .versionName
+                (version?.substringBefore('.')?.toIntOrNull() ?: 0) >= 17
+            } catch (_: Exception) {
+                false
+            }
+        }
+        val main = Handler(Looper.getMainLooper())
+        var focusJustSent = false
+        content.accessibilityDelegate = object : View.AccessibilityDelegate() {
+            override fun onRequestSendAccessibilityEvent(
+                host: ViewGroup,
+                child: View,
+                event: AccessibilityEvent,
+            ): Boolean {
+                when (event.eventType) {
+                    AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUSED -> {
+                        focusJustSent = true
+                        main.post { focusJustSent = false }
+                    }
+                    AccessibilityEvent.TYPE_VIEW_SELECTED ->
+                        if (focusJustSent && event.text.isEmpty() && checkedTalkBack) {
+                            return false
+                        }
+                }
+                return super.onRequestSendAccessibilityEvent(host, child, event)
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        quietSliderEcho()
         captureRoutineLaunch(intent, running = false)
         // The routine and "needs help" channels must exist before the first
         // push arrives, which can be long before any routine alarm fires.
         RoutineAlarms.ensureChannels(applicationContext)
-        // Keep the display awake while the app is in the foreground. Learners
+        // Keep the display awake until the app knows who is using it. Learners
         // using Gaze Control / voice commands never touch the screen, so the
         // normal touch-based screen timeout would blank the display mid-use —
         // and aggressive OEM power managers (e.g. Honor) then freeze the whole
-        // process, killing the camera and microphone loops. Foreground-only:
-        // the flag has no effect once the app is backgrounded.
+        // process, killing the camera and microphone loops. The app then lets
+        // go of it for everyone else (SCREEN_CHANNEL, `ScreenAwake`): kept on
+        // for every learner, a tablet left open on a desk never slept.
+        // Foreground-only: the flag has no effect once the app is backgrounded.
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         // Request the highest available display refresh rate (120 Hz on
         // Honor Pad X8a NDL-W09). On Android 14 the preferred mode is
         // respected by the compositor when the window is in the foreground.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val display = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                display
-            } else {
-                @Suppress("DEPRECATION")
-                windowManager.defaultDisplay
-            }
-            display?.let { d ->
-                val modes = d.supportedModes
-                val best = modes.maxByOrNull { it.refreshRate }
-                best?.let { mode ->
-                    val params: WindowManager.LayoutParams = window.attributes
-                    params.preferredDisplayModeId = mode.modeId
-                    window.attributes = params
+        // (minSdk 29 always has display modes.) Only modes at the current
+        // resolution: on a screen whose fastest mode is a lower resolution, the
+        // fastest of all would have blurred the app to get there.
+        val display = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            display
+        } else {
+            @Suppress("DEPRECATION")
+            windowManager.defaultDisplay
+        }
+        display?.let { d ->
+            val current = d.mode
+            val best = d.supportedModes
+                .filter {
+                    it.physicalWidth == current.physicalWidth &&
+                        it.physicalHeight == current.physicalHeight
                 }
+                .maxByOrNull { it.refreshRate }
+            best?.let { mode ->
+                val params: WindowManager.LayoutParams = window.attributes
+                params.preferredDisplayModeId = mode.modeId
+                window.attributes = params
             }
         }
     }

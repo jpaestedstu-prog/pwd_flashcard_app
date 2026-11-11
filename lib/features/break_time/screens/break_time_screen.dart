@@ -204,8 +204,6 @@ class _TopBar extends StatelessWidget {
           Expanded(
             child: Text(
               _t(context).btTitle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
               style: AppTypography.titleLarge.copyWith(
                 fontWeight: FontWeight.w800,
                 color: hc.textPrimary,
@@ -259,6 +257,7 @@ class _CountdownChip extends StatelessWidget {
           ),
           Text(
             '$remaining',
+            semanticsLabel: _t(context).secondsLeftLabel(remaining),
             style: AppTypography.labelSmall.copyWith(
               color: hc.textPrimary,
               fontWeight: FontWeight.w700,
@@ -292,7 +291,7 @@ class _ChooserView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            "Let's take a calm break",
+            _t(context).btCalmTitle,
             textAlign: TextAlign.center,
             style: AppTypography.headlineSmall.copyWith(
               fontWeight: FontWeight.w800,
@@ -355,7 +354,7 @@ class _ChooserView extends StatelessWidget {
               const SizedBox(width: 6),
               Flexible(
                 child: Text(
-                  "Breaks are always okay. You'll go right back to where you were.",
+                  AppLocalizations.of(context)!.breakAlwaysOkay,
                   textAlign: TextAlign.center,
                   style:
                       AppTypography.bodySmall.copyWith(color: hc.textSecondary),
@@ -394,7 +393,7 @@ class _ActivityChooserCard extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
-          child: Container(
+          child: ExcludeSemantics(child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 22),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(22),
@@ -461,7 +460,7 @@ class _ActivityChooserCard extends StatelessWidget {
                 Icon(Icons.chevron_right_rounded, color: hc.textSecondary),
               ],
             ),
-          ),
+          )),
         ),
       ),
     );
@@ -583,7 +582,7 @@ class _ReturnPrompt extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      "Take your time. Head back when you're ready.",
+                      _t(context).btTakeYourTime,
                       textAlign: TextAlign.center,
                       style: AppTypography.bodyMedium.copyWith(
                         color: hc.textSecondary,

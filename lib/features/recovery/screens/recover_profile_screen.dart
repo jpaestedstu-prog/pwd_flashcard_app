@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../classroom/widgets/cloud_sync_error_view.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -15,6 +16,7 @@ import '../../../widgets/app_back_button.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Steps the redemption flow walks through. Surfaced as a progress
 /// indicator so the user understands what's happening across the
@@ -130,7 +132,8 @@ class _RecoverProfileScreenState extends ConsumerState<RecoverProfileScreen> {
     } on RecoveryCodeException catch (e) {
       _fail(e.localizedMessage(t));
     } catch (e) {
-      _fail(t.rcRestoreFailed('$e'));
+      debugPrint('recover profile failed: $e');
+      _fail(t.rcRestoreFailed(cloudSyncErrorMessage(e, t).title));
     }
   }
 
@@ -147,7 +150,7 @@ class _RecoverProfileScreenState extends ConsumerState<RecoverProfileScreen> {
     return Scaffold(
       appBar: AppBar(
         leading: const AppBackButton(),
-        title: Text(_t(context).rcTitle),
+        title: AppBarTitle(_t(context).rcTitle),
       ),
       body: SafeArea(
         child: SingleChildScrollView(

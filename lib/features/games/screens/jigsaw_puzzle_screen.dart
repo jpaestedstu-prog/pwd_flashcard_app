@@ -34,6 +34,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../core/utils/seeded_random.dart';
 import '../unfinished_round_stars.dart';
 import '../../../widgets/dpad_focusable.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 class JigsawPuzzleScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
@@ -432,8 +433,13 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
                   tooltip: l10n.close,
                   onPressed: pauseGame,
                 ),
-                title: Text(
+                title: AppBarTitle(
                   l10n.gameRoundHeader(
+                    GameType.jigsawPuzzle.labelOf(l10n),
+                    _currentPuzzle + 1,
+                    _totalPuzzles,
+                  ),
+                  semanticsLabel: l10n.gameRoundHeaderSpoken(
                     GameType.jigsawPuzzle.labelOf(l10n),
                     _currentPuzzle + 1,
                     _totalPuzzles,
@@ -477,6 +483,7 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
                             const SizedBox(width: 4),
                             Text(
                               '$_score',
+                              semanticsLabel: l10n.gameScoreChip(_score),
                               style: AppTypography.labelLarge.copyWith(
                                 color: HCColor.of(context).warningText,
                               ),
@@ -517,9 +524,10 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
 
                   // ─── Word hint ────────────────────────
                   Semantics(
-                        label: l10n.jigsawCompleteFor(
-                          '${card.wordEnglish}, ${card.wordFilipino}',
-                        ),
+                        label: l10n.jigsawCompleteFor(card.spokenWords()),
+                        // The label says both words; the words drawn here
+                        // were read again under it.
+                        excludeSemantics: true,
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 20,
@@ -605,10 +613,11 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
                   // ─── Puzzle Grid (target) ─────────────
                   Expanded(flex: 5, child: _buildPuzzleGrid(card)),
                   const SizedBox(height: 12),
-                  Text(
+                  // Two lines: one cut the instruction short in Filipino
+                  // on a phone at the largest Font Size (30 Oct).
+                  FitText(
                     l10n.jigsawHowTo,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
                     style: AppTypography.labelSmall.copyWith(
                       color: HCColor.of(context).textSecondary,
                     ),
@@ -658,8 +667,13 @@ class _JigsawPuzzleScreenState extends ConsumerState<JigsawPuzzleScreen>
             ],
           ),
         ),
+        // The guide and every placed piece are cut from this panel; the
+        // puzzle's own label names the word ("Complete the puzzle for:
+        // Chicken"), so the picture saying it again was a second stop.
         child: Center(
-          child: FlashcardPicture(card: card, extent: extent * 0.6),
+          child: ExcludeSemantics(
+            child: FlashcardPicture(card: card, extent: extent * 0.6),
+          ),
         ),
       ),
     );

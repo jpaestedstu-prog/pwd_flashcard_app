@@ -9,6 +9,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../../core/widgets/auto_fit.dart';
 import '../../../core/accessibility/haptic_service.dart';
 import '../../../core/accessibility/sound_service.dart';
 import '../../../core/services/celebration_service.dart';
@@ -34,6 +35,7 @@ import '../../gamepad/widgets/gamepad_screen_registrar.dart';
 import '../../../core/utils/seeded_random.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Lifecycle of the front camera used for the practice mirror.
 enum _CamStatus { initializing, ready, noCamera, permissionDenied, failed }
@@ -589,7 +591,7 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
             tooltip: _t(context).close,
             onPressed: _exit,
           ),
-          title: Text(_t(context).siTitle),
+          title: AppBarTitle(_t(context).siTitle),
         ),
         body: const ShimmerPageSkeleton(),
       );
@@ -649,7 +651,7 @@ class _SignItScreenState extends ConsumerState<SignItScreen>
           tooltip: _t(context).close,
           onPressed: _exit,
         ),
-        title: Text(_t(context).siTitleRound(_currentRound + 1, _rounds)),
+        title: AppBarTitle(_t(context).siTitleRound(_currentRound + 1, _rounds)),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
@@ -833,8 +835,7 @@ class _WordPrompt extends StatelessWidget {
             style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
           ),
           const SizedBox(height: 2),
-          FittedBox(
-            fit: BoxFit.scaleDown,
+          AutoFit(
             child: Text(
               card.wordEnglish,
               style: AppTypography.headlineSmall.copyWith(

@@ -182,8 +182,6 @@ class ChildDetailSheet extends ConsumerWidget {
                         children: [
                           Text(
                             child.name,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
                             style: AppTypography.titleMedium.copyWith(
                               fontWeight: FontWeight.w800,
                               color: hc.textPrimary,
@@ -201,8 +199,6 @@ class ChildDetailSheet extends ConsumerWidget {
                                 Flexible(
                                   child: Text(
                                     child.disabilityType.labelOf(AppLocalizations.of(context)),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
                                     style: AppTypography.labelSmall.copyWith(
                                       color: hc.textSecondary,
                                     ),
@@ -644,6 +640,7 @@ class _QuickStatsGrid extends ConsumerWidget {
             icon: Icons.timer_rounded,
             label: _t(context).dbStudyTime,
             value: '${child.studyMinutesThisWeek}m',
+            spokenValue: _t(context).minutesCount(child.studyMinutesThisWeek),
             caption: _t(context).cdsThisWeek,
             accent: AppColors.success,
           ),

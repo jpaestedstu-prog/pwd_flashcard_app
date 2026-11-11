@@ -109,6 +109,8 @@ class _CelebrationOverlayWidgetState
         child: Semantics(
           liveRegion: true,
           label: text,
+          // Said once: the words drawn below were read after the label.
+          excludeSemantics: true,
           child: Material(
             color: Colors.transparent,
             child: Container(

@@ -78,7 +78,8 @@ class WeeklySummary {
       words += row['words'] ?? 0;
       if ((row['games'] ?? 0) > 0 ||
           (row['stars'] ?? 0) > 0 ||
-          (row['words'] ?? 0) > 0) {
+          (row['words'] ?? 0) > 0 ||
+          (row['activities'] ?? 0) > 0) {
         active.add(key);
       }
     }

@@ -4,7 +4,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
-import '../../../data/local/seed_data.dart';
 import '../../../data/models/enums.dart';
 import '../../../widgets/flashcard_image.dart';
 import '../models/tutor_media_policy.dart';
@@ -88,7 +87,7 @@ class _StatPill extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 13)),
+          ExcludeSemantics(child: Text(emoji, style: const TextStyle(fontSize: 13))),
           const SizedBox(width: 6),
           Text(label,
               style: AppTypography.labelSmall.copyWith(color: hc.textPrimary)),
@@ -127,27 +126,31 @@ class TutorQuickChip extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
-        child: Container(
-          // 48 dp, a finger's minimum (these were 39).
-          constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
-          alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: hc.surface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: hc.border),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(emoji, style: const TextStyle(fontSize: 14)),
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style:
-                    AppTypography.labelMedium.copyWith(color: hc.textPrimary),
-              ),
-            ],
+        child: ExcludeSemantics(
+          // The label names it; the emoji and words drawn here were read
+          // again under it.
+          child: Container(
+            // 48 dp, a finger's minimum (these were 39).
+            constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: hc.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: hc.border),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(emoji, style: const TextStyle(fontSize: 14)),
+                const SizedBox(width: 4),
+                Text(
+                  label,
+                  style:
+                      AppTypography.labelMedium.copyWith(color: hc.textPrimary),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -258,7 +261,12 @@ class TutorMessageBubble extends StatelessWidget {
                           child: ExcludeSemantics(
                             // The bubble text already names the word; a second
                             // announcement would just be noise for TalkBack.
-                            child: _CardPicture(cardId: mediaCardId),
+                            child: FlashcardPictureById(
+                              cardId: mediaCardId,
+                              fallback: '📘',
+                              extent: 64,
+                              borderRadius: 14,
+                            ),
                           ),
                         ),
                       Text(
@@ -320,28 +328,31 @@ class TutorMessageBubble extends StatelessWidget {
                                   ? null
                                   : () => onQuizAnswer?.call(option),
                               borderRadius: BorderRadius.circular(12),
-                              child: Container(
-                                // 48 dp, like every other answer button.
-                                constraints:
-                                    const BoxConstraints(minHeight: 48),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: AppColors.secondary
-                                      .withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
+                              child: ExcludeSemantics(
+                                // The label is the answer; the words drawn here were read again.
+                                child: Container(
+                                  // 48 dp, like every other answer button.
+                                  constraints:
+                                      const BoxConstraints(minHeight: 48),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 14, vertical: 8),
+                                  decoration: BoxDecoration(
                                     color: AppColors.secondary
-                                        .withValues(alpha: 0.3),
+                                        .withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: AppColors.secondary
+                                          .withValues(alpha: 0.3),
+                                    ),
                                   ),
-                                ),
-                                child: Center(
-                                  widthFactor: 1,
-                                  heightFactor: 1,
-                                  child: Text(
-                                    option,
-                                    style: AppTypography.labelMedium
-                                        .copyWith(color: hc.textPrimary),
+                                  child: Center(
+                                    widthFactor: 1,
+                                    heightFactor: 1,
+                                    child: Text(
+                                      option,
+                                      style: AppTypography.labelMedium
+                                          .copyWith(color: hc.textPrimary),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -432,39 +443,6 @@ class TutorMessageBubble extends StatelessWidget {
   }
 }
 
-/// The flashcard picture for [cardId], in a square that grows with the text
-/// scale, falling back to a glyph when the id resolves to no seed card.
-///
-/// Built on [FlashcardImage] directly rather than a higher-level helper: the
-/// convenience wrappers for "picture by id" live in a version of
-/// `flashcard_image.dart` that is not on this branch, and the tutor must not
-/// depend on code it cannot see. [FlashcardImage] handles the photo-to-emoji
-/// fallback internally, which is the common path — the whole Actions category
-/// has no photographs.
-class _CardPicture extends StatelessWidget {
-  final String cardId;
-
-  /// Box side at 1.0 text scale.
-  static const double extent = 64;
-
-  const _CardPicture({required this.cardId});
-
-  @override
-  Widget build(BuildContext context) {
-    final side = MediaQuery.textScalerOf(context).scale(extent);
-    for (final card in SeedData.allFlashcards) {
-      if (card.id == cardId) {
-        return SizedBox(
-          width: side,
-          height: side,
-          child: FlashcardImage(card: card, expand: true, borderRadius: 14),
-        );
-      }
-    }
-    return Text('📘', style: TextStyle(fontSize: side * 0.85, height: 1.15));
-  }
-}
-
 /// A small icon+label control under a tutor bubble ("Listen", "Watch the
 /// sign"). Kept compact so several fit inside the bubble's width, and marked
 /// as a button for screen readers.
@@ -488,22 +466,25 @@ class _BubbleAction extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
         // 48 dp tall: "Listen" was a 22 dp strip of text.
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
-          child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 16, color: HCColor.of(context).primary),
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style:
-                    AppTypography.labelSmall.copyWith(color: HCColor.of(context).primary),
-              ),
-            ],
-          ),
+        child: ExcludeSemantics(
+          // The label names it; the word under the icon was read again.
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
+            child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 16, color: HCColor.of(context).primary),
+                const SizedBox(width: 4),
+                Text(
+                  label,
+                  style:
+                      AppTypography.labelSmall.copyWith(color: HCColor.of(context).primary),
+                ),
+              ],
+            ),
+            ),
           ),
         ),
       ),
@@ -534,33 +515,37 @@ class _InterestChip extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
-        child: Container(
-          // 48 dp: a topic chip is a learner's answer, not a decoration.
-          constraints: const BoxConstraints(minHeight: 48),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: AppColors.primary.withValues(alpha: 0.3),
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(category.emoji, style: const TextStyle(fontSize: 14)),
-              const SizedBox(width: 4),
-              // A topic chip in a wrapped row: the category name grows with
-              // the font while the chip does not.
-              Flexible(
-                child: FitText(
-                  label,
-                  maxLines: 1,
-                  style:
-                      AppTypography.labelMedium.copyWith(color: hc.textPrimary),
-                ),
+        child: ExcludeSemantics(
+          // The label names it; the emoji and words drawn here were read
+          // again under it.
+          child: Container(
+            // 48 dp: a topic chip is a learner's answer, not a decoration.
+            constraints: const BoxConstraints(minHeight: 48),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.3),
               ),
-            ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(category.emoji, style: const TextStyle(fontSize: 14)),
+                const SizedBox(width: 4),
+                // A topic chip in a wrapped row: the category name grows with
+                // the font while the chip does not.
+                Flexible(
+                  child: FitText(
+                    label,
+                    maxLines: 1,
+                    style:
+                        AppTypography.labelMedium.copyWith(color: hc.textPrimary),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/widgets/fit_text.dart';
 
 import '../../../data/models/models.dart';
 import '../../../widgets/flashcard_image.dart';
@@ -99,30 +100,26 @@ class PhotoResultsPanel extends StatelessWidget {
               HuntTargetStrip(targets: targets),
               const SizedBox(height: 12),
             ],
-            Semantics(
-              button: true,
-              label: l10n.wordHuntRetake,
-              child: SizedBox(
-                width: double.infinity,
-                height: scaledControlHeight(context, 56),
-                child: FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: HCColor.of(
-                      context,
-                    ).fillFor(AppColors.bannerWordHuntStart),
-                    foregroundColor: Colors.white,
-                    textStyle: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
+            SizedBox(
+              width: double.infinity,
+              height: scaledControlHeight(context, 56),
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: HCColor.of(
+                    context,
+                  ).fillFor(AppColors.bannerWordHuntStart),
+                  foregroundColor: Colors.white,
+                  textStyle: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
                   ),
-                  onPressed: onRetake,
-                  icon: const Icon(Icons.camera_alt_rounded, size: 26),
-                  label: Text(l10n.wordHuntRetake),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
                 ),
+                onPressed: onRetake,
+                icon: const Icon(Icons.camera_alt_rounded, size: 26),
+                label: Text(l10n.wordHuntRetake),
               ),
             ),
           ],
@@ -187,7 +184,7 @@ class _WordCard extends StatelessWidget {
     return Semantics(
       button: true,
       label:
-          '${card.wordEnglish}, ${card.wordFilipino}'
+          '${card.spokenWords()}'
           '${isNew ? ', ${l10n.wordHuntNewBadge}' : ''}',
       child: Material(
         color: Colors.white,
@@ -207,24 +204,20 @@ class _WordCard extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      FitText(
                         card.wordEnglish,
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                           color: AppColors.textPrimary,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
-                      Text(
+                      FitText(
                         card.wordFilipino,
                         style: const TextStyle(
                           fontSize: 16,
                           color: AppColors.textSecondary,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),

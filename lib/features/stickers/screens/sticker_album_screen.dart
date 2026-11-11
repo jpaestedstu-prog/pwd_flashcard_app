@@ -1,4 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import '../../../core/widgets/auto_fit.dart';
+import '../../../l10n/app_localizations.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
@@ -14,6 +18,7 @@ import '../models/sticker_progress.dart';
 import '../widgets/sticker_unlocked_overlay.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../../../widgets/dpad_focusable.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 class StickerAlbumScreen extends ConsumerStatefulWidget {
   const StickerAlbumScreen({super.key});
@@ -90,7 +95,7 @@ class _StickerAlbumScreenState extends ConsumerState<StickerAlbumScreen>
       children: [
         Scaffold(
           appBar: AppBar(
-            title: Text(isFilipino ? 'Album ng Sticker' : 'Sticker Album'),
+            title: AppBarTitle(isFilipino ? 'Album ng Sticker' : 'Sticker Album'),
             centerTitle: true,
             elevation: 0,
             backgroundColor: Colors.transparent,
@@ -123,11 +128,13 @@ class _StickerAlbumScreenState extends ConsumerState<StickerAlbumScreen>
                         CircularPercentIndicator(
                           radius: 32,
                           percent: percent.clamp(0.0, 1.0),
-                          center: Text(
-                            '$ownedCount',
-                            style: AppTypography.titleMedium.copyWith(
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textOnPrimary,
+                          center: ExcludeSemantics(
+                            child: Text(
+                              '$ownedCount',
+                              style: AppTypography.titleMedium.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textOnPrimary,
+                              ),
                             ),
                           ),
                           progressColor: AppColors.textOnPrimary,
@@ -148,8 +155,15 @@ class _StickerAlbumScreenState extends ConsumerState<StickerAlbumScreen>
                                   fontWeight: FontWeight.w800,
                                 ),
                               ),
+                              // In Filipino too: "0 / 24 stickers" was the
+                              // one English line on the album (3 Nov).
                               Text(
-                                '$ownedCount / $total stickers',
+                                isFilipino
+                                    ? '$ownedCount / $total na sticker'
+                                    : '$ownedCount / $total stickers',
+                                semanticsLabel: isFilipino
+                                    ? '$ownedCount sa $total na sticker'
+                                    : '$ownedCount of $total stickers',
                                 style: AppTypography.bodySmall.copyWith(
                                   color: AppColors.textOnPrimary
                                       .withValues(alpha: 0.85),
@@ -158,7 +172,7 @@ class _StickerAlbumScreenState extends ConsumerState<StickerAlbumScreen>
                             ],
                           ),
                         ),
-                        const Text('🎉', style: TextStyle(fontSize: 32)),
+                        const ExcludeSemantics(child: Text('🎉', style: TextStyle(fontSize: 32))),
                       ],
                     ),
                   ).animate().fadeIn(duration: 400.ms),
@@ -177,7 +191,7 @@ class _StickerAlbumScreenState extends ConsumerState<StickerAlbumScreen>
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(cat.emoji, style: const TextStyle(fontSize: 16)),
+                          ExcludeSemantics(child: Text(cat.emoji, style: const TextStyle(fontSize: 16))),
                           const SizedBox(width: 6),
                           Text(cat.labelOf(isFilipino: isFilipino)),
                         ],
@@ -192,13 +206,28 @@ class _StickerAlbumScreenState extends ConsumerState<StickerAlbumScreen>
                     controller: _tabController,
                     children: StickerCategory.values.map((cat) {
                       final stickers = StickerData.byCategory(cat);
+                      final columns = context.isTablet ? 4 : 3;
+                      final cellWidth = (MediaQuery.sizeOf(context).width -
+                              2 * padding -
+                              14 * (columns - 1)) /
+                          columns;
+                      final scale =
+                          MediaQuery.textScalerOf(context).scale(1);
                       return GridView.builder(
                         padding: EdgeInsets.all(padding),
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: context.isTablet ? 4 : 3,
+                          crossAxisCount: columns,
                           mainAxisSpacing: 14,
                           crossAxisSpacing: 14,
-                          childAspectRatio: 0.85,
+                          // The old shape, or what the tile's words need at
+                          // this text size, whichever is taller: tied to the
+                          // width alone, a tile had no room for bigger text.
+                          mainAxisExtent: math.max(
+                            cellWidth / 0.85,
+                            // Picture, name, then the stars or the goal.
+                            16 + 36 + 6 + 13 * 1.4 * scale + 2 +
+                                7 + 11 * 1.4 * scale + 8,
+                          ),
                         ),
                         itemCount: stickers.length,
                         itemBuilder: (context, index) {
@@ -288,7 +317,9 @@ class _StickerAlbumScreenState extends ConsumerState<StickerAlbumScreen>
           color: hc.surface,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        child: Column(
+        // Scrolls on a short screen (8 px past it on a phone).
+        child: SingleChildScrollView(
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
@@ -332,6 +363,9 @@ class _StickerAlbumScreenState extends ConsumerState<StickerAlbumScreen>
             const SizedBox(height: 16),
             Text(
               isOwned ? sticker.nameOf(isFilipino: isFilipino) : '???',
+              semanticsLabel: isOwned
+                  ? null
+                  : AppLocalizations.of(context)?.stickerNotYet,
               style: AppTypography.titleMedium.copyWith(
                 fontWeight: FontWeight.w800,
                 color: hc.textPrimary,
@@ -404,6 +438,7 @@ class _StickerAlbumScreenState extends ConsumerState<StickerAlbumScreen>
             ],
             const SizedBox(height: 20),
           ],
+          ),
         ),
       ),
     );
@@ -543,6 +578,9 @@ class _StickerTile extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 6),
                     child: Text(
                       isOwned ? name : '???',
+                      semanticsLabel: isOwned
+                          ? null
+                          : AppLocalizations.of(context)?.stickerNotYet,
                       style: AppTypography.labelSmall.copyWith(
                         color: isOwned ? hc.textPrimary : hc.textSecondary,
                         fontWeight: FontWeight.w600,
@@ -590,11 +628,16 @@ class _StickerTile extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 3),
-                            Text(
-                              progress.label,
-                              style: AppTypography.labelSmall.copyWith(
-                                color: hc.textHint,
-                                fontSize: 10,
+                            // One line, a little smaller in a narrow tile:
+                            // the tile's height is set for one.
+                            AutoFit(
+                              child: Text(
+                                progress.label,
+                                maxLines: 1,
+                                style: AppTypography.labelSmall.copyWith(
+                                  color: hc.textHint,
+                                  fontSize: 11,
+                                ),
                               ),
                             ),
                           ],
@@ -621,7 +664,7 @@ class _StickerTile extends StatelessWidget {
                     style: AppTypography.labelSmall.copyWith(
                       color: AppColors.textOnPrimary,
                       fontWeight: FontWeight.w800,
-                      fontSize: 9,
+                      fontSize: 11,
                     ),
                   ),
                 ),

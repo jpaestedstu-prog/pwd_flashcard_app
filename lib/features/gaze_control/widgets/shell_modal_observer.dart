@@ -24,6 +24,9 @@ import 'package:flutter/material.dart';
 class ShellModalObserver extends NavigatorObserver {
   int _depth = 0;
 
+  /// The pop-ups among them: a sheet, a dialog, a menu.
+  int _popups = 0;
+
   /// True while at least one route is stacked above the shell's base page.
   ///
   /// The inner navigator always holds exactly one route — the current tab's
@@ -40,30 +43,61 @@ class ShellModalObserver extends NavigatorObserver {
   /// call setState would throw.
   final ValueNotifier<bool> covering = ValueNotifier<bool>(false);
 
+  /// Whether a pop-up (a sheet, a dialog, a menu) is open on this navigator:
+  /// a modal layer with a barrier over the page and the bar beside it.
+  ///
+  /// Narrower than [covering], which also counts a full page pushed inside the
+  /// shell (Settings opened from Home's gear). Such a page is no pop-up: the
+  /// tab bar stays live under it, so the bar must stay readable by a screen
+  /// reader. It was hidden from TalkBack there (10 Nov). The AI Buddy's
+  /// floating button steps aside while a pop-up is open, so that it never
+  /// floats over a sheet's options. The D-pad still asks [covering]: the hub
+  /// underneath keeps its tile grid published, and must not be driven while
+  /// another page is on top of it.
+  final ValueNotifier<bool> popupCovering = ValueNotifier<bool>(false);
+
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
     // The base page arrives with no previous route; everything after it is a
     // layer on top.
-    if (previousRoute != null) {
-      _depth++;
-      _sync();
+    if (previousRoute == null) {
+      _freshNavigator();
+      return;
     }
+    _depth++;
+    if (route is PopupRoute) _popups++;
+    _sync();
+  }
+
+  /// A route with nothing under it is a navigator's first: nothing can be on
+  /// top of it yet, so any count left over belongs to a navigator that is
+  /// gone. A navigator taken down while a page was pushed on it never
+  /// reports that page leaving: Settings opened from Home, then Switch
+  /// profile, left the count at one, and the next learner's hub stayed
+  /// "covered" until the app restarted: no AI buddy, the D-pad standing
+  /// down, and the tabs hidden from TalkBack (Villaon phone, 9 Nov).
+  void _freshNavigator() {
+    if (_depth == 0 && _popups == 0 && !covering.value) return;
+    _depth = 0;
+    _popups = 0;
+    _sync();
   }
 
   @override
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    if (_depth > 0) {
-      _depth--;
-      _sync();
-    }
+    _leave(route);
   }
 
   @override
   void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    if (_depth > 0) {
-      _depth--;
-      _sync();
-    }
+    _leave(route);
+  }
+
+  void _leave(Route<dynamic> route) {
+    if (_depth == 0) return;
+    _depth--;
+    if (route is PopupRoute && _popups > 0) _popups--;
+    _sync();
   }
 
   /// A replace swaps one layer for another, so the depth is unchanged.
@@ -73,6 +107,7 @@ class ShellModalObserver extends NavigatorObserver {
   void _sync() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       covering.value = isCovering;
+      popupCovering.value = _popups > 0;
     });
     WidgetsBinding.instance.scheduleFrame();
   }
@@ -81,7 +116,9 @@ class ShellModalObserver extends NavigatorObserver {
   @visibleForTesting
   void reset() {
     _depth = 0;
+    _popups = 0;
     covering.value = false;
+    popupCovering.value = false;
   }
 }
 
@@ -93,6 +130,10 @@ class ShellModalObserver extends NavigatorObserver {
 class PopupObserver extends ShellModalObserver {
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (previousRoute == null) {
+      _freshNavigator();
+      return;
+    }
     if (route is PopupRoute) {
       _depth++;
       _sync();

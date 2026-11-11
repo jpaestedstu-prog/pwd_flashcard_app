@@ -221,8 +221,6 @@ class _FslVideoSheetState extends State<FslVideoSheet> {
                         Text(
                           'FSL — ${widget.wordEnglish}',
                           style: AppTypography.titleLarge,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
                         // Callers that know the Filipino gloss (the Dictionary,
                         // Stories) show it under the English so a learner sees the
@@ -233,8 +231,6 @@ class _FslVideoSheetState extends State<FslVideoSheet> {
                             style: AppTypography.bodySmall.copyWith(
                               color: hc.textSecondary,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
                       ],
                     ),
@@ -295,12 +291,15 @@ class _FslVideoSheetState extends State<FslVideoSheet> {
                               Positioned(
                                 right: 2,
                                 bottom: 2,
+                                // One node: the name, with the press and the
+                                // D-pad's focus (excluding everything under
+                                // the name dropped those too).
                                 child: Semantics(
+                                  container: true,
                                   button: true,
                                   label: AppLocalizations.of(context)
                                           ?.tuFullScreen ??
                                       'Watch in full screen',
-                                  excludeSemantics: true,
                                   child: DpadGestureDetector(
                                   behavior: HitTestBehavior.opaque,
                                   onTap: () async {
@@ -323,7 +322,7 @@ class _FslVideoSheetState extends State<FslVideoSheet> {
                                       _controller.play();
                                     }
                                   },
-                                  child: SizedBox(
+                                  child: ExcludeSemantics(child: SizedBox(
                                     width: 48,
                                     height: 48,
                                     child: Center(
@@ -344,7 +343,7 @@ class _FslVideoSheetState extends State<FslVideoSheet> {
                                         ),
                                       ),
                                     ),
-                                  ),
+                                  )),
                                 ),
                                 ),
                               ),
@@ -426,7 +425,7 @@ class _FslVideoSheetState extends State<FslVideoSheet> {
                         child: Text(
                           '${speed}x',
                           style: AppTypography.labelSmall.copyWith(
-                            fontSize: 10,
+                            fontSize: 11,
                             fontWeight: isActive
                                 ? FontWeight.w700
                                 : FontWeight.w500,

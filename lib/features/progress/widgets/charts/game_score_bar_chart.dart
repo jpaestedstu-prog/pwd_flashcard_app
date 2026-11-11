@@ -80,7 +80,18 @@ class GameScoreBarChart extends StatelessWidget {
             style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
           ),
           const SizedBox(height: 20),
-          SizedBox(
+          // Each game and its score: a reader was told the games and the scale,
+          // and never how any game went.
+          Semantics(
+            label: [
+              for (final e in entries)
+                l10n.chartPercentOf(
+                  e.key.labelOf(l10n),
+                  (e.value.reduce((a, b) => a + b) / e.value.length).round(),
+                ),
+            ].join(', '),
+            excludeSemantics: true,
+            child: SizedBox(
             height: 200,
             child: BarChart(
               BarChartData(
@@ -115,7 +126,7 @@ class GameScoreBarChart extends StatelessWidget {
                           child: Text(
                             _shortLabel(l10n, gameType),
                             style: AppTypography.labelSmall.copyWith(
-                              fontSize: 8,
+                              fontSize: 10,
                               color: hc.textSecondary,
                             ),
                             textAlign: TextAlign.center,
@@ -134,7 +145,7 @@ class GameScoreBarChart extends StatelessWidget {
                         return Text(
                           '${value.toInt()}%',
                           style: AppTypography.labelSmall.copyWith(
-                            fontSize: 9,
+                            fontSize: 10,
                             color: hc.textSecondary,
                           ),
                         );
@@ -175,7 +186,7 @@ class GameScoreBarChart extends StatelessWidget {
                 }).toList(),
               ),
             ),
-          ),
+          )),
         ],
       ),
     );

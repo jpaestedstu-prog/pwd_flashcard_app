@@ -3,6 +3,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../../../core/widgets/text_limits.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -21,6 +22,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/dpad_focusable.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Enhanced flashcard creator with image attachment and voice recording.
 ///
@@ -198,7 +200,7 @@ class _EnhancedCreateFlashcardScreenState
       backgroundColor: hc.background,
       appBar: AppBar(
         leading: const AppBackButton(fallbackRoute: '/flashcards'),
-        title: Text(
+        title: AppBarTitle(
           _isEditing ? _t(context).cfEditTitle : _t(context).cfCreateTitle,
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
@@ -214,7 +216,7 @@ class _EnhancedCreateFlashcardScreenState
                   _t(context).cfVoiceReady,
                   style: AppTypography.labelSmall.copyWith(
                     color: hc.success,
-                    fontSize: 10,
+                    fontSize: 11,
                   ),
                 ),
                 backgroundColor: hc.success.withValues(alpha: 0.1),
@@ -302,6 +304,7 @@ class _EnhancedCreateFlashcardScreenState
                 hint: _t(context).cfHintEn,
                 icon: Icons.abc_rounded,
                 controller: _wordEnController,
+                maxLength: TextLimits.label,
                 hc: hc,
                 isListening: _activeTarget == _DictationTarget.english,
                 speechAvailable: _speechAvailable,
@@ -322,6 +325,7 @@ class _EnhancedCreateFlashcardScreenState
                 hint: _t(context).cfHintFil,
                 icon: Icons.translate_rounded,
                 controller: _wordFlController,
+                maxLength: TextLimits.label,
                 hc: hc,
                 isListening: _activeTarget == _DictationTarget.filipino,
                 speechAvailable: _speechAvailable,
@@ -344,6 +348,7 @@ class _EnhancedCreateFlashcardScreenState
                 hint: _t(context).cfExampleHint,
                 icon: Icons.short_text_rounded,
                 controller: _exampleController,
+                maxLength: TextLimits.sentence,
                 hc: hc,
                 isListening: _activeTarget == _DictationTarget.example,
                 speechAvailable: _speechAvailable,
@@ -425,11 +430,13 @@ class _SectionLabel extends StatelessWidget {
       children: [
         Icon(icon, color: hc.primary, size: 18),
         const SizedBox(width: 6),
-        Text(
-          label,
-          style: AppTypography.labelMedium.copyWith(
-            fontWeight: FontWeight.w700,
-            color: hc.textPrimary,
+        Flexible(
+          child: Text(
+            label,
+            style: AppTypography.labelMedium.copyWith(
+              fontWeight: FontWeight.w700,
+              color: hc.textPrimary,
+            ),
           ),
         ),
       ],
@@ -482,10 +489,15 @@ class _ImagePickerArea extends StatelessWidget {
       );
     }
 
-    return DpadFocusable(onActivate: onPick, child: GestureDetector(
-      onTap: onPick,
-      child: _placeholder(context),
-    ));
+    return Semantics(
+      container: true,
+      // Opens the picture picker: a screen reader says "button".
+      button: true,
+      child: DpadFocusable(onActivate: onPick, child: GestureDetector(
+        onTap: onPick,
+        child: _placeholder(context),
+      )),
+    );
   }
 
   Widget _placeholder(BuildContext context) {
@@ -548,6 +560,7 @@ class _VoiceTextField extends StatelessWidget {
   final VoidCallback onChanged;
   final String? Function(String?)? validator;
   final int maxLines;
+  final int maxLength;
 
   const _VoiceTextField({
     required this.label,
@@ -561,6 +574,7 @@ class _VoiceTextField extends StatelessWidget {
     required this.onChanged,
     this.validator,
     this.maxLines = 1,
+    required this.maxLength,
   });
 
   @override
@@ -568,21 +582,27 @@ class _VoiceTextField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // The label takes what the Dictate button leaves, and wraps: at the
+        // largest text size on a phone "Halimbawang Pangungusap (opsyonal)"
+        // pushed the button 144 px off the screen.
         Row(
           children: [
-            _SectionLabel(label: label, icon: icon, hc: hc),
-            const Spacer(),
-            if (speechAvailable)
+            Expanded(child: _SectionLabel(label: label, icon: icon, hc: hc)),
+            if (speechAvailable) ...[
+              const SizedBox(width: 8),
               _MicButton(
                 isListening: isListening,
                 hc: hc,
                 onPressed: onMicPressed,
               ),
+            ],
           ],
         ),
         const SizedBox(height: 6),
         TextFormField(
           controller: controller,
+          maxLength: maxLength,
+          buildCounter: TextLimits.counter,
           style: AppTypography.bodyLarge.copyWith(color: hc.textPrimary),
           decoration: InputDecoration(
             hintText: isListening ? _t(context).cfListening : hint,

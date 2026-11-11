@@ -85,6 +85,7 @@ class HandoffTarget {
         preferredName: limit?.guardianPreferredName ?? '',
         stampedHonorific: stamped,
         role: role,
+        filipino: filipino,
       ),
       setterRole: role,
       figure: figure,

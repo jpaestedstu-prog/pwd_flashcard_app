@@ -16,7 +16,10 @@ import 'package:pwdpwdpwd/features/progress/models/weekly_summary.dart';
 /// leaves its Future pending and hangs `deleteFromDisk` at teardown.
 void main() {
   const profileId = 'p_week';
-  final now = DateTime(2026, 8, 15, 12);
+  // Today at noon, not a fixed date: the ledgers keep 90 days counted from the
+  // real clock, so a fixed date stops working as it ages (15 Aug did, 7 Nov).
+  final today = DateTime.now();
+  final now = DateTime(today.year, today.month, today.day, 12);
 
   setUpAll(() async {
     const dir = './build/test_cache/weekly_summary';
@@ -38,6 +41,26 @@ void main() {
     await Hive.box('sessions').clear();
   });
   tearDownAll(() async => Hive.deleteFromDisk());
+
+  test('learning that is not a game notes its day, and a game keeps it',
+      () async {
+    // A story or the daily challenge keeps the streak, so the Streak
+    // Calendar has to know its day.
+    await HiveService.addDailyActivity(profileId, activities: 1, on: now);
+    expect(HiveService.getDailyActivity(profileId)[HiveService.dayKey(now)],
+        {'games': 0, 'stars': 0, 'words': 0, 'activities': 1});
+
+    await HiveService.addDailyActivity(profileId, games: 1, stars: 2, on: now);
+    expect(HiveService.getDailyActivity(profileId)[HiveService.dayKey(now)],
+        {'games': 1, 'stars': 2, 'words': 0, 'activities': 1});
+    expect(WeeklySummary.forProfile(profileId, now: now).daysActive, 1);
+  });
+
+  test('a day of games alone carries no activities count', () async {
+    await HiveService.addDailyActivity(profileId, games: 1, on: now);
+    expect(HiveService.getDailyActivity(profileId)[HiveService.dayKey(now)],
+        {'games': 1, 'stars': 0, 'words': 0});
+  });
 
   test('an untouched profile reports an empty week', () {
     final week = WeeklySummary.forProfile(profileId, now: now);

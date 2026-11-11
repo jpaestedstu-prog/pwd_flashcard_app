@@ -2,11 +2,13 @@
 // uncovered_screens_test.dart and feature_screens_overflow_test.dart, plus the
 // main hubs. Keep it in step when a screen is added there.
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:pwdpwdpwd/core/services/sync_queue/sync_queue_storage.dart';
+import 'package:pwdpwdpwd/data/local/hive_service.dart';
 import 'package:pwdpwdpwd/data/models/enums.dart';
 import 'package:pwdpwdpwd/data/models/models.dart';
 import 'package:pwdpwdpwd/providers/app_providers.dart';
@@ -230,7 +232,9 @@ final Map<String, (Widget Function(), UserRole)> kAllScreens = {
 /// chat as the sweep did, so a 48 dp topic chip was only ever measured half
 /// off screen (182 x 18). Every screen is judged from the same fresh start.
 Future<void> openSweepBoxes(String folder) async {
-  final store = Directory('./build/test_cache/$folder');
+  // By process: a run in shards opens the same test file several times at once,
+  // and Hive's lock on a box's file then fails the second one.
+  final store = Directory('./build/test_cache/$folder-$pid');
   try {
     if (store.existsSync()) store.deleteSync(recursive: true);
   } on FileSystemException {
@@ -251,6 +255,32 @@ Future<void> openSweepBoxes(String folder) async {
     }
   }
   await SyncQueueStorage.init();
+  // Home's first-visit tour covers Home, for a screen reader too: past it.
+  await HiveService.markTutorialSeen('sweep-profile');
+}
+
+/// The same boxes held in memory, for tests that PRESS things. A save reaches
+/// real files through real input and output, which does not finish in a
+/// widget test's fake time, and every later save then waits on it for good
+/// (see the note on `testWidgets` and Hive writes). In memory, a save is done
+/// at once, and nothing touches the disk.
+Future<void> openMemoryBoxes(String folder) async {
+  Hive.init('./build/test_cache/$folder');
+  for (final name in const <String>[
+    'active_time_logs', 'alerts', 'child_alarms', 'child_time_limits',
+    'classroom_members', 'classrooms', 'custom_cards', 'error_logs',
+    'friend_directory_cache', 'friend_requests_cache', 'friends_cache',
+    'goals', 'home_group_members', 'home_groups', 'leaderboard_config',
+    'mood_entries', 'notebook', 'profiles', 'progress', 'sessions',
+    'settings', 'routines', 'routine_logs', 'sync_queue',
+  ]) {
+    if (!Hive.isBoxOpen(name)) {
+      await Hive.openBox(name, bytes: Uint8List(0));
+    }
+  }
+  await SyncQueueStorage.init();
+  // Home's first-visit tour covers Home, for a screen reader too: past it.
+  await HiveService.markTutorialSeen('sweep-profile');
 }
 
 Future<void> closeSweepBoxes() async {

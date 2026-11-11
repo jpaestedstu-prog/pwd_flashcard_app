@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import '../../data/local/hive_service.dart';
 
@@ -37,6 +39,22 @@ class SessionTracker with WidgetsBindingObserver {
   /// minute is fine-grained enough for every report that reads either.
   static const Duration checkpointInterval = Duration(minutes: 1);
 
+  /// A sitting stops counting this long after the last sign of use — a
+  /// touch, a key, a controller press, a focus move (the D-pad and Gaze
+  /// Control move focus). The tablet left open on Home overnight counted
+  /// seven idle hours as study time (30 Oct): every report of minutes
+  /// studied, the parent dashboard and the research export read this log.
+  /// The next sign of use after a longer pause starts a new sitting.
+  /// Screen-time limits ([ActiveTimeTracker]) still count the time open.
+  static const Duration idleAfter = Duration(minutes: 5);
+
+  /// The clock, so a test can move time on.
+  @visibleForTesting
+  static DateTime Function() clock = DateTime.now;
+
+  /// The last sign of use in this sitting; its start until there is one.
+  late DateTime _lastActivity;
+
   /// The tracker for the profile that is signed in, if any.
   ///
   /// Exists so the code that *knows* a game finished — `ProgressNotifier` —
@@ -46,9 +64,13 @@ class SessionTracker with WidgetsBindingObserver {
   static SessionTracker? get active => _active;
 
   SessionTracker({required this.profileId})
-      : _sessionStart = DateTime.now() {
+      : _sessionStart = clock() {
     _sessionId = _sessionStart.toIso8601String();
+    _lastActivity = _sessionStart;
     WidgetsBinding.instance.addObserver(this);
+    GestureBinding.instance.pointerRouter.addGlobalRoute(_onPointer);
+    HardwareKeyboard.instance.addHandler(_onKey);
+    FocusManager.instance.addListener(noteActivity);
     _checkpoint = Timer.periodic(checkpointInterval, (_) => _write());
     _active = this;
   }
@@ -60,7 +82,36 @@ class SessionTracker with WidgetsBindingObserver {
   void recordCardsReviewed(int count) => _cardsReviewed += count;
 
   /// Seconds the current sitting has been running. Zero once it has ended.
-  int get elapsedSeconds => DateTime.now().difference(_sessionStart).inSeconds;
+  int get elapsedSeconds => _countedUntil().difference(_sessionStart).inSeconds;
+
+  /// Where the sitting's time ends: now, or [idleAfter] past the last sign
+  /// of use, whichever is earlier.
+  DateTime _countedUntil() {
+    final now = clock();
+    final cap = _lastActivity.add(idleAfter);
+    return now.isAfter(cap) ? cap : now;
+  }
+
+  void _onPointer(PointerEvent event) {
+    if (event is! PointerHoverEvent) noteActivity();
+  }
+
+  bool _onKey(KeyEvent event) {
+    noteActivity();
+    return false;
+  }
+
+  /// Someone is using the app. After a pause longer than [idleAfter] the
+  /// sitting before it is written, ending where the pause began counting
+  /// out, and a new one starts now.
+  void noteActivity() {
+    final now = clock();
+    if (now.difference(_lastActivity) > idleAfter) {
+      _endSession();
+      _startNewSession();
+    }
+    _lastActivity = now;
+  }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -76,7 +127,8 @@ class SessionTracker with WidgetsBindingObserver {
   }
 
   void _startNewSession() {
-    _sessionStart = DateTime.now();
+    _sessionStart = clock();
+    _lastActivity = _sessionStart;
     _sessionId = _sessionStart.toIso8601String();
     _gamesPlayed = 0;
     _cardsReviewed = 0;
@@ -86,7 +138,7 @@ class SessionTracker with WidgetsBindingObserver {
   /// keyed by [_sessionId], so it replaces rather than accumulates.
   void _write({bool force = false}) {
     if (!force && _state != AppLifecycleState.resumed) return;
-    final duration = DateTime.now().difference(_sessionStart);
+    final duration = _countedUntil().difference(_sessionStart);
     // Only log sessions > 5 seconds (ignore accidental opens)
     if (duration.inSeconds < 5) return;
 
@@ -114,7 +166,7 @@ class SessionTracker with WidgetsBindingObserver {
   /// every test of the write path would have to wait out real wall-clock time.
   @visibleForTesting
   void debugBackdateStart(Duration ago) {
-    _sessionStart = DateTime.now().subtract(ago);
+    _sessionStart = clock().subtract(ago);
     // Deliberately *not* re-deriving `_sessionId` — the id identifies the
     // sitting, and backdating is meant to age the one already in flight.
   }
@@ -130,6 +182,9 @@ class SessionTracker with WidgetsBindingObserver {
     _checkpoint = null;
     if (identical(_active, this)) _active = null;
     WidgetsBinding.instance.removeObserver(this);
+    GestureBinding.instance.pointerRouter.removeGlobalRoute(_onPointer);
+    HardwareKeyboard.instance.removeHandler(_onKey);
+    FocusManager.instance.removeListener(noteActivity);
   }
 
   // ─── Analytics Queries ─────────────────────────────

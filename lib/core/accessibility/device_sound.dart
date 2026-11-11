@@ -48,6 +48,46 @@ class DeviceSound {
     }
   }
 
+  /// Whether the app can open the device's own voice settings, where a
+  /// Filipino voice is added ([openVoiceSettings]). Android only.
+  static bool get canOpenVoiceSettings =>
+      debugCanOpenVoiceSettings ??
+      (!kIsWeb && defaultTargetPlatform == TargetPlatform.android);
+
+  /// Opens the speech engine's "install voice data" screen, or else the
+  /// device's text-to-speech settings. True when one opened. Only on a tap.
+  static Future<bool> openVoiceSettings() async {
+    final probe = debugOpenVoiceSettings;
+    if (probe != null) return probe();
+    try {
+      return await _channel.invokeMethod<bool>('openVoiceSettings') ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Opens Android's language screen for TalkBack, or else the device's
+  /// languages: TalkBack's own words ("Button") follow its language, not the
+  /// app's. True when one opened. Only on a tap.
+  static Future<bool> openTalkBackLanguage() async {
+    final probe = debugOpenTalkBackLanguage;
+    if (probe != null) return probe();
+    try {
+      return await _channel.invokeMethod<bool>('openTalkBackLanguage') ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @visibleForTesting
+  static Future<bool> Function()? debugOpenTalkBackLanguage;
+
+  @visibleForTesting
+  static bool? debugCanOpenVoiceSettings;
+
+  @visibleForTesting
+  static Future<bool> Function()? debugOpenVoiceSettings;
+
   @visibleForTesting
   static Future<bool?> Function()? debugIsOff;
 

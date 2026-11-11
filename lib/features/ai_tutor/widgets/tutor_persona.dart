@@ -118,7 +118,11 @@ class TutorAvatar extends StatelessWidget {
         ],
       ),
       alignment: Alignment.center,
-      child: Text(persona.emoji, style: TextStyle(fontSize: size * 0.52)),
+      // A face, not a word: read aloud it put "robot" before every tutor
+      // message and the screen's title. Whatever holds it names it.
+      child: ExcludeSemantics(
+        child: Text(persona.emoji, style: TextStyle(fontSize: size * 0.52)),
+      ),
     );
 
     switch (state) {

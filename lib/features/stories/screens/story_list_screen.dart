@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../features/parent/services/learner_restrictions.dart';
+import '../../../core/widgets/fit_text.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -14,6 +16,8 @@ import '../../gaze_control/providers/gaze_home_grid.dart';
 import '../../../providers/tile_grid_active_provider.dart';
 import '../../gaze_control/widgets/gaze_home_tiles.dart';
 import '../widgets/story_cover_card.dart';
+import '../../companion/widgets/companion_clearance.dart';
+import '../../../core/widgets/stagger_in.dart';
 
 /// Lists all stories grouped by category as a responsive grid of themed
 /// cover cards. Stories unlock based on wordsLearned progress, and each card
@@ -76,7 +80,9 @@ class StoryListScreen extends ConsumerWidget {
             ),
 
             // ─── Story grid per category ────────────
-            ...FlashcardCategory.values.map((category) {
+            ...LearnerRestrictions.categoriesFor(
+              ref.watch(profileProvider)?.role,
+            ).map((category) {
               final stories = SeedStories.getByCategory(category);
               if (stories.isEmpty) return const SliverToBoxAdapter();
               return SliverToBoxAdapter(
@@ -104,11 +110,13 @@ class StoryListScreen extends ConsumerWidget {
                             child: Icon(category.icon, color: category.color, size: 20),
                           ),
                           const SizedBox(width: 10),
+                          // Two lines before it is cut: "Mga Bahagi ng
+                          // Katawan" lost its end on a phone (3 Nov).
                           Expanded(
-                            child: Text(category.labelOf(AppLocalizations.of(context)!),
-                                style: AppTypography.titleMedium,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis),
+                            child: FitText(
+                              category.labelOf(AppLocalizations.of(context)!),
+                              style: AppTypography.titleMedium,
+                            ),
                           ),
                         ],
                       ).animate().fadeIn(duration: 300.ms),
@@ -141,7 +149,10 @@ class StoryListScreen extends ConsumerWidget {
                                   _wordsToUnlock(story) - wordsLearned,
                                 );
                                 return (
-                                  tile: StoryCoverCard(
+                                  tile: StaggerIn(
+                                    index: index,
+                                    step: const Duration(milliseconds: 80),
+                                    child: StoryCoverCard(
                                     story: story,
                                     unlocked: unlocked,
                                     read: progress.completedStoryIds
@@ -154,21 +165,30 @@ class StoryListScreen extends ConsumerWidget {
                                             .push('/stories/read/${story.id}')
                                         : null,
                                     onLockedTap: lockedHint,
-                                  )
-                                      .animate()
+                                  ),
+                                    builder: (child, delay) => child.animate()
                                       .fadeIn(
                                         duration: 350.ms,
-                                        delay: (80 * index).ms,
+                                        delay: delay,
                                       )
                                       .slideY(begin: 0.08, end: 0),
+                                  ),
                                   // Locked covers stay focusable for consistent
                                   // navigation, are named as locked (spoken
                                   // highlights), and say what opens them.
                                   cell: GazeTileCell(
                                     label: unlocked
-                                        ? story.titleEn
+                                        ? story.titleIn(
+                                            filipino: AppLocalizations.of(context)!
+                                                .localeName
+                                                .startsWith('fil'),
+                                          )
                                         : AppLocalizations.of(context)!
-                                            .storyLocked(story.titleEn),
+                                            .storyLocked(story.titleIn(
+                                            filipino: AppLocalizations.of(context)!
+                                                .localeName
+                                                .startsWith('fil'),
+                                          )),
                                     onActivate: unlocked
                                         ? () => context
                                             .push('/stories/read/${story.id}')
@@ -185,7 +205,8 @@ class StoryListScreen extends ConsumerWidget {
               );
             }),
 
-            const SliverToBoxAdapter(child: SizedBox(height: 24)),
+            // The last story clear of the floating AI Buddy.
+            const CompanionClearanceSliver(),
           ],
         ),
       ),

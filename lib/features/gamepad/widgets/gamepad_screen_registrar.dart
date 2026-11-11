@@ -4,12 +4,14 @@ import 'package:flutter/material.dart';
 
 import '../providers/gamepad_screen.dart';
 
-/// Wraps a screen so a Bluetooth controller can drive and read it.
+/// Wraps a screen so a Bluetooth controller can read it.
 ///
-/// Adding it is the whole adoption cost for a screen: supply [items] (the
-/// controls) and [narration] (the prose), and the controller can walk, open and
-/// read the screen — with the same announcements and the same buttons as
-/// everywhere else in the app.
+/// Supply [narration] (the prose) and [items] (the controls, by name), and X
+/// reads the screen — the question first, then what can be chosen — and Start
+/// names it. The controls themselves are the screen's own buttons, which the
+/// D-pad reaches by focus exactly as a keyboard's arrows do; [items] only
+/// says what they are, so the list a learner hears matches what they can
+/// reach.
 ///
 /// ```dart
 /// GamepadScreenRegistrar(
@@ -32,7 +34,7 @@ import '../providers/gamepad_screen.dart';
 /// [GamepadScreenContent] is a [ChangeNotifier]: notifying while the tree is
 /// still building would mark the host dirty mid-build.
 class GamepadScreenRegistrar extends StatefulWidget {
-  /// The controls, in reading order.
+  /// The controls, in reading order — each one a button on the screen.
   final List<GamepadItem> items;
 
   /// The readable prose, in reading order.
@@ -127,113 +129,4 @@ class _GamepadScreenRegistrarState extends State<GamepadScreenRegistrar> {
 
   @override
   Widget build(BuildContext context) => widget.child;
-}
-
-/// Draws the controller's focus ring around one published item.
-///
-/// The hub tiles get this from `GazeFocusable`; screens that publish through
-/// [GamepadScreenRegistrar] use this instead. Laid out as an [IgnorePointer]
-/// overlay in a [Stack] so it never changes the child's size or intercepts a
-/// touch — the screen behaves exactly as before, just with a ring when focused.
-class GamepadFocusable extends StatefulWidget {
-  final int index;
-  final Widget child;
-
-  /// True (the default) passes the parent's constraints straight through
-  /// ([StackFit.passthrough]): a grid cell's tight size makes the child and
-  /// ring fill the cell, while an unbounded list row lets the child pick its
-  /// own height. ([StackFit.expand] used to be the default, and it turned a
-  /// list row into an infinitely tall box: the Word → Sign answers broke as
-  /// soon as their videos loaded, found on the small iPhone simulator.)
-  /// False sizes the ring to the child even when the parent is bounded.
-  final bool expand;
-
-  /// Ring colour. Defaults to a high-contrast amber that reads against both the
-  /// game palettes and the hub backgrounds.
-  final Color? color;
-
-  const GamepadFocusable({
-    super.key,
-    required this.index,
-    required this.child,
-    this.expand = true,
-    this.color,
-  });
-
-  @override
-  State<GamepadFocusable> createState() => _GamepadFocusableState();
-}
-
-class _GamepadFocusableState extends State<GamepadFocusable> {
-  bool _focused = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _focused = gamepadScreen.isFocused(widget.index);
-    gamepadScreen.addListener(_onChanged);
-  }
-
-  @override
-  void didUpdateWidget(covariant GamepadFocusable oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.index != widget.index) {
-      _focused = gamepadScreen.isFocused(widget.index);
-    }
-  }
-
-  @override
-  void dispose() {
-    gamepadScreen.removeListener(_onChanged);
-    super.dispose();
-  }
-
-  void _onChanged() {
-    final focused = gamepadScreen.isFocused(widget.index);
-    if (focused == _focused || !mounted) return;
-    setState(() => _focused = focused);
-    if (focused) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _ensureVisible());
-    }
-  }
-
-  void _ensureVisible() {
-    if (!mounted) return;
-    if (Scrollable.maybeOf(context) == null) return;
-    Scrollable.ensureVisible(
-      context,
-      alignment: 0.5,
-      duration: const Duration(milliseconds: 280),
-      curve: Curves.easeOutCubic,
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final color = widget.color ?? const Color(0xFFFFB300);
-    return Stack(
-      fit: widget.expand ? StackFit.passthrough : StackFit.loose,
-      children: [
-        widget.child,
-        if (_focused)
-          Positioned.fill(
-            child: IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: color, width: 3.5),
-                  boxShadow: [
-                    BoxShadow(
-                      color: color.withValues(alpha: 0.55),
-                      blurRadius: 16,
-                      spreadRadius: 1,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
 }

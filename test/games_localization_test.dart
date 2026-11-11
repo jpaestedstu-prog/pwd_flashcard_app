@@ -92,9 +92,10 @@ const _gamesFlowKeys = <String>[
   // Screen-reader labels — what a Visual-Impairment learner actually hears.
   'answerChoiceSemantics', 'answerSemantics', 'correctAnswerSuffix',
   'wrongAnswerSuffix', 'questionEnglishFor', 'findPictureForSemantics',
-  'pictureOfSemantics', 'whichWordMatchesSemantics', 'firstLetterQuestion',
-  'yesNoQuestion', 'flashcardSemantics', 'flashcardProgressSemantics',
-  'draggableWordSemantics', 'slotFilled', 'slotEmpty', 'letterAlreadyUsed',
+  'pictureOfSemantics', 'whichWordMatchesPicture', 'firstLetterQuestion',
+  'yesNoQuestion', 'flashcardSemantics', 'knownCount', 'stillLearningCount',
+  'draggableWordSemantics', 'draggableWordPicked', 'dropTargetPlace',
+  'slotFilled', 'slotEmpty', 'letterAlreadyUsed',
   'letterTapToPlace', 'roundScoreSemantics', 'spelledSoFar', 'wordComplete',
   'oddOneOutQuestion', 'oddOneOutHintSpoken',
   'fslWatchAndChoose', 'fslWhatWordIsThisSign', 'fslWhichSignMeans',

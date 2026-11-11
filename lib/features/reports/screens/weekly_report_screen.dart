@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../../core/utils/responsive_utils.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/share_file.dart';
@@ -19,6 +20,7 @@ import '../../../widgets/app_back_button.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../widgets/dpad_focusable.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Screen for generating, previewing and sharing weekly progress reports.
 ///
@@ -52,7 +54,7 @@ class _WeeklyReportScreenState extends ConsumerState<WeeklyReportScreen> {
             return true;
           },
         ),
-        title: Text(
+        title: AppBarTitle(
           _t(context).wrsTitle,
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
@@ -61,14 +63,23 @@ class _WeeklyReportScreenState extends ConsumerState<WeeklyReportScreen> {
         ),
         actions: [
           if (snapshot.children.length > 1)
-            TextButton.icon(
-              onPressed: _isGenerating ? null : () => _generateFamilyReport(snapshot.children),
-              icon: Icon(Icons.family_restroom_rounded, color: hc.primary),
-              label: Text(
-                _t(context).wrsFamily,
-                style: TextStyle(color: hc.primary),
+            // Its name beside the icon left a phone's title about 60 px:
+            // "Weekly Reports" was drawn at 6 px at the largest Font Size.
+            if (context.isPhone)
+              IconButton(
+                tooltip: _t(context).wrsFamily,
+                onPressed: _isGenerating ? null : () => _generateFamilyReport(snapshot.children),
+                icon: Icon(Icons.family_restroom_rounded, color: hc.primary),
+              )
+            else
+              TextButton.icon(
+                onPressed: _isGenerating ? null : () => _generateFamilyReport(snapshot.children),
+                icon: Icon(Icons.family_restroom_rounded, color: hc.primary),
+                label: Text(
+                  _t(context).wrsFamily,
+                  style: TextStyle(color: hc.primary),
+                ),
               ),
-            ),
         ],
       ),
       body: snapshot.children.isEmpty
@@ -374,10 +385,8 @@ class ReportPreviewScreen extends StatelessWidget {
       backgroundColor: hc.background,
       appBar: AppBar(
         leading: const AppBackButton(),
-        title: Text(
+        title: AppBarTitle(
           title,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
         ),
         actions: [
           IconButton(
@@ -478,175 +487,185 @@ class _ChildReportCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DpadFocusable(onActivate: onTap, child: GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? hc.primary.withValues(alpha: 0.08)
-              : hc.cardBackground,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? hc.primary : hc.border,
-            width: isSelected ? 2 : 1,
+    return Semantics(
+      container: true,
+      // Picks this learner: a screen reader says so, and which is picked.
+      button: true,
+      selected: isSelected,
+      child: DpadFocusable(onActivate: onTap, child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? hc.primary.withValues(alpha: 0.08)
+                : hc.cardBackground,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isSelected ? hc.primary : hc.border,
+              width: isSelected ? 2 : 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: (isSelected ? hc.primary : Colors.black)
+                    .withValues(alpha: isSelected ? 0.1 : 0.04),
+                blurRadius: isSelected ? 12 : 6,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
-          boxShadow: [
-            BoxShadow(
-              color: (isSelected ? hc.primary : Colors.black)
-                  .withValues(alpha: isSelected ? 0.1 : 0.04),
-              blurRadius: isSelected ? 12 : 6,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                // Avatar with accuracy indicator
-                SizedBox(
-                  width: 50,
-                  height: 50,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      SizedBox(
-                        width: 50,
-                        height: 50,
-                        child: CircularProgressIndicator(
-                          value: child.averageAccuracy,
-                          strokeWidth: 2.5,
-                          backgroundColor: hc.border.withValues(alpha: 0.15),
-                          valueColor: AlwaysStoppedAnimation(
-                            isSelected ? hc.primary : hc.primary.withValues(alpha: 0.5),
-                          ),
-                        ),
-                      ),
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: hc.primary.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(child.avatarEmoji, style: const TextStyle(fontSize: 22)),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 14),
-                // Name & Stats
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        child.name,
-                        style: AppTypography.titleMedium.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: hc.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 4,
-                        children: [
-                          _ReportStatChip(
-                            icon: Icons.star_rounded,
-                            text: '${child.totalStars}',
-                            color: AppColors.warning,
-                          ),
-                          _ReportStatChip(
-                            icon: Icons.auto_stories_rounded,
-                            text: '${child.wordsLearned}',
-                            color: AppColors.primary,
-                          ),
-                          _ReportStatChip(
-                            icon: Icons.local_fire_department_rounded,
-                            text: _t(context).wrsStreakDays(child.streakDays),
-                            color: AppColors.error,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                // Selection indicator
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 250),
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isSelected ? hc.primary : Colors.transparent,
-                    border: Border.all(
-                      color: isSelected ? hc.primary : hc.textHint,
-                      width: 2,
-                    ),
-                  ),
-                  child: isSelected
-                      ? const Icon(Icons.check, size: 14, color: Colors.white)
-                      : null,
-                ),
-              ],
-            ),
-
-            // Action buttons (visible when selected)
-            if (isSelected) ...[
-              const SizedBox(height: 14),
+          child: Column(
+            children: [
               Row(
                 children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: isGenerating ? null : onPreview,
-                      icon: isGenerating
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.preview_rounded, size: 18),
-                      label: Text(_t(context).dtPreview),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                  // Avatar with accuracy indicator
+                  SizedBox(
+                    width: 50,
+                    height: 50,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        SizedBox(
+                          width: 50,
+                          height: 50,
+                          child: CircularProgressIndicator(
+                            value: child.averageAccuracy,
+                            strokeWidth: 2.5,
+                            backgroundColor: hc.border.withValues(alpha: 0.15),
+                            valueColor: AlwaysStoppedAnimation(
+                              isSelected ? hc.primary : hc.primary.withValues(alpha: 0.5),
+                            ),
+                          ),
                         ),
-                      ),
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: hc.primary.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          alignment: Alignment.center,
+                          child: ExcludeSemantics(child: Text(child.avatarEmoji, style: const TextStyle(fontSize: 22))),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 14),
+                  // Name & Stats
                   Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: isGenerating ? null : onGenerate,
-                      icon: isGenerating
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white),
-                            )
-                          : const Icon(Icons.share_rounded, size: 18),
-                      label: Text(_t(context).wrsSharePdf),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          child.name,
+                          style: AppTypography.titleMedium.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: hc.textPrimary,
+                          ),
                         ),
+                        const SizedBox(height: 4),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          children: [
+                            _ReportStatChip(
+                              icon: Icons.star_rounded,
+                              text: '${child.totalStars}',
+                              spoken: '${child.totalStars} ${_t(context).stars}',
+                              color: AppColors.warning,
+                            ),
+                            _ReportStatChip(
+                              icon: Icons.auto_stories_rounded,
+                              text: '${child.wordsLearned}',
+                              spoken: '${child.wordsLearned} ${_t(context).words}',
+                              color: AppColors.primary,
+                            ),
+                            _ReportStatChip(
+                              icon: Icons.local_fire_department_rounded,
+                              text: _t(context).wrsStreakDays(child.streakDays),
+                              spoken:
+                                  '${child.streakDays} ${_t(context).dayStreak}',
+                              color: AppColors.error,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Selection indicator
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isSelected ? hc.primary : Colors.transparent,
+                      border: Border.all(
+                        color: isSelected ? hc.primary : hc.textHint,
+                        width: 2,
                       ),
                     ),
+                    child: isSelected
+                        ? const Icon(Icons.check, size: 14, color: Colors.white)
+                        : null,
                   ),
                 ],
               ),
+  
+              // Action buttons (visible when selected)
+              if (isSelected) ...[
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: isGenerating ? null : onPreview,
+                        icon: isGenerating
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.preview_rounded, size: 18),
+                        label: Text(_t(context).dtPreview),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: isGenerating ? null : onGenerate,
+                        icon: isGenerating
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Icon(Icons.share_rounded, size: 18),
+                        label: Text(_t(context).wrsSharePdf),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
-          ],
+          ),
         ),
-      ),
-    ));
+      )),
+    );
   }
 }
 
@@ -655,10 +674,15 @@ class _ReportStatChip extends StatelessWidget {
   final String text;
   final Color color;
 
+  /// The number with its meaning, for a screen reader: the icon is silent,
+  /// so "12" alone (or "3d") meant nothing.
+  final String spoken;
+
   const _ReportStatChip({
     required this.icon,
     required this.text,
     required this.color,
+    required this.spoken,
   });
 
   @override
@@ -676,9 +700,10 @@ class _ReportStatChip extends StatelessWidget {
           const SizedBox(width: 3),
           Text(
             text,
+            semanticsLabel: spoken,
             style: AppTypography.labelSmall.copyWith(
               color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.1)),
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: FontWeight.w600,
             ),
           ),

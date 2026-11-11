@@ -39,6 +39,7 @@ import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/fullscreen_host.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../core/utils/seeded_random.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// FSL Sign → Word game.
 ///
@@ -463,7 +464,7 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
               tooltip: l10n.close,
               onPressed: () => context.popOrGo('/games/fsl-practice'),
             ),
-            title: Text(l10n.fslSignToWord),
+            title: AppBarTitle(l10n.fslSignToWord),
           ),
         ),
         body: const ShimmerPageSkeleton(),
@@ -554,8 +555,13 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
                     tooltip: l10n.close,
                     onPressed: pauseGame,
                   ),
-                  title: Text(
+                  title: AppBarTitle(
                     l10n.gameRoundHeader(
+                      l10n.fslSignToWord,
+                      _currentRound + 1,
+                      _rounds.length,
+                    ),
+                    semanticsLabel: l10n.gameRoundHeaderSpoken(
                       l10n.fslSignToWord,
                       _currentRound + 1,
                       _rounds.length,
@@ -590,6 +596,7 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
                               const SizedBox(width: 4),
                               Text(
                                 '$_score',
+                                semanticsLabel: l10n.gameScoreChip(_score),
                                 style: AppTypography.labelLarge.copyWith(
                                   color: HCColor.of(context).warningText,
                                 ),
@@ -608,6 +615,9 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
                   builder: (context, box) {
                     // Progress bar
                     final progress = Semantics(
+                      // The round in words; the bar's own percentage read as
+                      // "17.0. 17, Round 1 of 6".
+                      excludeSemantics: true,
                       label: l10n.resumeRoundProgress(
                         _currentRound + 1,
                         _rounds.length,
@@ -925,20 +935,15 @@ class _FslSignToWordScreenState extends ConsumerState<FslSignToWordScreen>
                                   );
                             }
 
-                            // +1: the published item list puts "replay" first,
-                            // so choice N is item N+1.
-                            return GamepadFocusable(
-                              index: index + 1,
-                              child: card
-                                  .animate(
-                                    key: ValueKey('$_currentRound-$index'),
-                                  )
-                                  .fadeIn(
-                                    duration: 300.ms,
-                                    delay: (index * 80).ms,
-                                  )
-                                  .slideY(begin: 0.1, end: 0),
-                            );
+                            return card
+                                .animate(
+                                  key: ValueKey('$_currentRound-$index'),
+                                )
+                                .fadeIn(
+                                  duration: 300.ms,
+                                  delay: (index * 80).ms,
+                                )
+                                .slideY(begin: 0.1, end: 0);
                           },
                         );
 

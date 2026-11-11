@@ -37,7 +37,8 @@ class SquareActionButton extends StatelessWidget {
   /// clip is resolving). The button still reads as enabled to screen readers.
   final bool loading;
 
-  /// Spoken description for screen readers. Defaults to "<label> button".
+  /// Spoken description for screen readers. Defaults to [label]; the role
+  /// says "button".
   final String? semanticLabel;
 
   const SquareActionButton({
@@ -60,13 +61,22 @@ class SquareActionButton extends StatelessWidget {
     // strip never balloons; a 54dp base keeps it comfortably above the 48dp
     // accessibility floor for child / motor-impaired users.
     final box = context.scaledHeightCapped(54, max: 1.3);
-    return Semantics(
+    final press = (enabled && !loading) ? onTap : null;
+    // The D-pad's focus directly on the labelled node, and the press on it:
+    // both were inside the excluded part, so a browser's screen reader could
+    // neither land on the button nor press it.
+    return DpadFocusable(
+      onActivate: press,
+      child: Semantics(
       button: true,
       enabled: enabled,
-      label: semanticLabel ?? '$label button',
+      // The role says "button": with it in the label as well TalkBack said
+      // "Back button, button", and in Filipino "Bumalik button, button".
+      label: semanticLabel ?? label,
+      onTap: press,
       child: ExcludeSemantics(
-        child: DpadFocusable(onActivate: (enabled && !loading) ? onTap : null, child: GestureDetector(
-          onTap: (enabled && !loading) ? onTap : null,
+        child: GestureDetector(
+          onTap: press,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -138,7 +148,8 @@ class SquareActionButton extends StatelessWidget {
               ),
             ],
           ),
-        )),
+        ),
+      ),
       ),
     );
   }

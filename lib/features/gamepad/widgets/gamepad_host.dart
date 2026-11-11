@@ -9,7 +9,14 @@ import '../../../core/accessibility/haptic_service.dart'
     show hapticServiceProvider;
 import '../../../core/accessibility/focused_label.dart';
 import '../../../core/accessibility/tts_service.dart';
+import '../../../core/utils/input_trace.dart';
 import '../../../navigation/app_router.dart' show rootNavigatorKey;
+import '../../../navigation/dpad_keys.dart'
+    show
+        DpadDirectionalFocusAction,
+        dpadDismiss,
+        isInTextField,
+        leaveTextField;
 import '../../../providers/app_providers.dart' show settingsProvider;
 import '../../gaze_control/logic/gaze_focus_driver.dart';
 import '../../gaze_control/providers/gaze_home_grid.dart';
@@ -51,12 +58,15 @@ import '../services/gamepad_key_injector.dart';
 ///
 /// ## The two modes
 /// * **Grid mode** — a hub has published tiles and nothing is layered over it.
-///   Up/down walk the tiles in reading order, and the tile draws the same focus
-///   ring gaze uses.
-/// * **Traversal mode** — a dialog, a game, a pushed screen. The same buttons
-///   drive Flutter's directional focus traversal instead, which every Material
-///   control supports out of the box. Without this, opening anything from a hub
-///   would strand a learner who cannot see the screen.
+///   The D-pad moves over the tiles by direction, as gaze does, and the tile
+///   draws the same focus ring gaze uses; L2 and R2 walk them one at a time
+///   in reading order.
+/// * **Traversal mode** — a dialog, a game, a pushed screen. The D-pad is
+///   handed to the app's own arrow-key handling, so it moves exactly where a
+///   keyboard's arrows do; L2 and R2 step the focus in reading order. A screen
+///   that publishes itself ([gamepadScreen]) adds its prose and title, which X
+///   reads and Start names — its controls are the ones the D-pad already
+///   reaches, highlighted by the same ring.
 class GamepadHost extends ConsumerStatefulWidget {
   final Widget child;
 
@@ -69,13 +79,6 @@ class GamepadHost extends ConsumerStatefulWidget {
 class _GamepadHostState extends ConsumerState<GamepadHost> {
   final GamepadDebouncer _debouncer = GamepadDebouncer();
   final GamepadCursor _cursor = GamepadCursor();
-
-  /// Separate cursor for a pushed screen's own published items.
-  ///
-  /// Kept apart from the hub-grid cursor so returning from a game lands the
-  /// learner back on the tile they opened it from, rather than wherever they
-  /// happened to be inside it.
-  final GamepadCursor _screenCursor = GamepadCursor();
   final SectionConfirm _confirm = SectionConfirm();
   GamepadAnnouncer? _announcer;
 
@@ -119,16 +122,6 @@ class _GamepadHostState extends ConsumerState<GamepadHost> {
   /// When back was first pressed inside the practice screen, so a second press
   /// within a few seconds leaves.
   DateTime? _practiceExitArmedAt;
-
-  /// True while left/right are nudging a value rather than walking sections.
-  ///
-  /// A slider cannot be *pressed*; it has to be moved a step at a time, and
-  /// left/right are the only pair that reads as "less / more". Rather than
-  /// steal them permanently — which would cost the learner section navigation
-  /// everywhere — they change meaning only inside this mode, which is entered
-  /// deliberately, announced on the way in and on the way out, and left by the
-  /// same R1 that entered it.
-  bool _adjusting = false;
 
   @override
   void initState() {
@@ -182,6 +175,9 @@ class _GamepadHostState extends ConsumerState<GamepadHost> {
     if (!mounted) return;
     final settings = ref.read(gamepadSettingsProvider);
     final service = ref.read(gamepadServiceProvider);
+    // Gaze Control can borrow the controller as its switch; the stick the
+    // learner turned off stays off there too.
+    GazeSwitchInput.instance.leftStickSteers = settings.leftStickMoves;
 
     if (!settings.enabled) {
       _buttonSub?.cancel();
@@ -323,21 +319,6 @@ class _GamepadHostState extends ConsumerState<GamepadHost> {
     // A change to the floating list re-shapes the *hub* cursor as well — that
     // is where floating items live.
     _cursor.setRows(_gridRows());
-
-    // Re-shape the reading cursor. Clamped rather than reset, so a screen
-    // rebuilding (a timer tick, an animation) does not throw the learner back
-    // to the first choice mid-round.
-    final count = gamepadScreen.items.length;
-    _screenCursor.setRows([count]);
-    if (count == 0) {
-      _screenCursor.first();
-      return;
-    }
-    // A fresh publication with no focus yet starts at the top.
-    if (gamepadScreen.focusedIndex == null) {
-      _screenCursor.first();
-      gamepadScreen.setFocus(0);
-    }
   }
 
   void _onSectionsChanged() {
@@ -352,11 +333,20 @@ class _GamepadHostState extends ConsumerState<GamepadHost> {
   // ── Input ───────────────────────────────────────────────────────────────
 
   void _onButton(GamepadEvent event) {
+    InputTrace.log(
+      'Gamepad in ${event.button.name} ${event.pressed ? 'down' : 'up'}'
+      '${mounted ? '' : ' (host gone)'}',
+    );
     if (!mounted) return;
     // A learner scanning with Gaze Control is using the controller as a
     // switch: that press picks the lit item, and must not also move this
     // host's own cursor.
-    if (GazeSwitchInput.instance.claiming.value) return;
+    if (GazeSwitchInput.instance.claiming.value) {
+      if (event.pressed) {
+        InputTrace.log('Gamepad ${event.button.name}: Gaze Control has it');
+      }
+      return;
+    }
 
     // Releases are read *before* the debouncer, which reports them as "no
     // action". Hold-to-repeat needs to see them: the release is the only signal
@@ -366,30 +356,31 @@ class _GamepadHostState extends ConsumerState<GamepadHost> {
       _debouncer.accept(event);
       return;
     }
-    if (!_debouncer.accept(event)) return;
+    if (!_debouncer.accept(event)) {
+      InputTrace.log('Gamepad ${event.button.name}: a repeat, dropped');
+      return;
+    }
 
     final settings = ref.read(gamepadSettingsProvider);
     // Some pads report the bottom face button as B rather than A, which would
     // silently turn "press A for yes" into "no".
     final button = settings.swapConfirmButtons
-        ? _swapAB(event.button)
+        ? swapConfirmButton(event.button)
         : event.button;
 
     final action = resolveGamepadAction(
       button,
       awaitingAnswer: _confirm.awaitingAnswer && settings.confirmSectionChange,
-      adjusting: _adjusting,
+      leftStickMoves: settings.leftStickMoves,
     );
 
-    if (kDebugMode) {
-      debugPrint('Gamepad ${button.name} -> ${action.name}');
-    }
+    InputTrace.log('Gamepad ${button.name} -> ${action.name}');
 
     // The practice screen wants the raw presses so it can name them, without
     // the app navigating underneath.
     if (gamepadPractice.value) {
       // Back is the exception, but it takes **two** presses there. Once, and a
-      // learner exploring what L1 does would be ejected by the very press they
+      // learner exploring what B does would be ejected by the very press they
       // were trying to learn about — which is the one thing practice mode
       // exists to make safe. The count lives here rather than in the practice
       // screen because the host is always alive: the screen announces the
@@ -459,12 +450,6 @@ class _GamepadHostState extends ConsumerState<GamepadHost> {
     _repeatsFired = 0;
   }
 
-  static GamepadButton _swapAB(GamepadButton b) => switch (b) {
-        GamepadButton.a => GamepadButton.b,
-        GamepadButton.b => GamepadButton.a,
-        _ => b,
-      };
-
   void _run(GamepadAction action, bool confirmSections) {
     // Any action that is not an answer abandons a pending question, so a stale
     // "do you want to go to Games?" can never be answered by an A press the
@@ -484,25 +469,15 @@ class _GamepadHostState extends ConsumerState<GamepadHost> {
       _confirm.cancel();
     }
 
-    // Doing anything unrelated leaves adjust mode, so left/right can never
-    // still be nudging a slider the learner has walked away from. Silent on
-    // purpose: the action they just asked for announces itself, and that is
-    // what tells them the mode is over.
-    const keepsAdjusting = {
-      GamepadAction.decrease,
-      GamepadAction.increase,
-      GamepadAction.finishAdjust,
-      GamepadAction.repeatLast,
-      GamepadAction.buttonGuide,
-      GamepadAction.stopSpeech,
-      GamepadAction.none,
-    };
-    if (_adjusting && !keepsAdjusting.contains(action)) {
-      _adjusting = false;
-      _stopRepeat();
-    }
-
     switch (action) {
+      case GamepadAction.moveUp:
+        _move(TraversalDirection.up);
+      case GamepadAction.moveDown:
+        _move(TraversalDirection.down);
+      case GamepadAction.moveLeft:
+        _move(TraversalDirection.left);
+      case GamepadAction.moveRight:
+        _move(TraversalDirection.right);
       case GamepadAction.previousSection:
         _offerSection(-1, confirmSections);
       case GamepadAction.nextSection:
@@ -512,9 +487,9 @@ class _GamepadHostState extends ConsumerState<GamepadHost> {
       case GamepadAction.answerNo:
         _declineSection();
       case GamepadAction.previousItem:
-        _moveItem(-1);
+        _stepItem(-1);
       case GamepadAction.nextItem:
-        _moveItem(1);
+        _stepItem(1);
       case GamepadAction.firstItem:
         _jumpItem(first: true);
       case GamepadAction.lastItem:
@@ -528,7 +503,11 @@ class _GamepadHostState extends ConsumerState<GamepadHost> {
       case GamepadAction.whereAmI:
         _whereAmI();
       case GamepadAction.buttonGuide:
-        _say(_phrases.buttonGuide);
+        _say(
+          _phrases.buttonGuideFor(
+            leftStickMoves: ref.read(gamepadSettingsProvider).leftStickMoves,
+          ),
+        );
       case GamepadAction.repeatLast:
         final announcer = _announcer;
         if (announcer?.lastMessage == null) {
@@ -544,81 +523,77 @@ class _GamepadHostState extends ConsumerState<GamepadHost> {
         _scroll(-1);
       case GamepadAction.scrollDown:
         _scroll(1);
-      case GamepadAction.decrease:
-        _adjust(TraversalDirection.left);
-      case GamepadAction.increase:
-        _adjust(TraversalDirection.right);
-      case GamepadAction.finishAdjust:
-        _endAdjust();
       case GamepadAction.none:
         break;
     }
   }
 
-  // ── Adjusting a value ───────────────────────────────────────────────────
+  // ── Sliders ─────────────────────────────────────────────────────────────
 
-  /// Whether the focused control is something left/right can nudge.
+  /// Whether the focused control is something left and right turn.
+  ///
+  /// There is no "adjust mode" any more. Left and right on a slider change
+  /// its value exactly as a keyboard's arrows do, and up and down leave it
+  /// (`DpadSliderScope`) — so the same press means the same thing with every
+  /// input, and nothing has to be entered or left first.
   ///
   /// Detected from the widget tree rather than declared per screen: the app
   /// has sliders in half a dozen places and gains more over time, and a
   /// slider that nobody remembered to mark up would simply be unusable.
-  bool get _focusedIsAdjustable {
+  bool get _focusedIsAdjustable =>
+      FocusedLabel.sliderAt(GazeFocusDriver.focused?.context) != null;
+
+  /// The state of the switch or tick box under the highlight — a
+  /// [SwitchListTile], a bare [Switch], a [CheckboxListTile] — or null when
+  /// the focused control is none of those (or a tick box that is neither).
+  ///
+  /// Found from the widget tree, like [_focusedIsAdjustable]: the app has
+  /// fifty-odd switch rows, and reading the state here gives every one of
+  /// them, present and future, a spoken state with no work on the screen.
+  bool? get _toggleOfFocused {
     final context = GazeFocusDriver.focused?.context;
-    if (context is! Element) return false;
-    // Focus usually sits *inside* the Slider (its own internal focus node), so
-    // look up as well as down.
+    if (context is! Element) return null;
+    bool? state;
     var found = false;
-    void visit(Element element, int depth) {
-      if (found || depth > 12) return;
-      if (element.widget is Slider) {
-        found = true;
-        return;
+    bool take(Widget widget) {
+      if (widget is Switch) {
+        state = widget.value;
+      } else if (widget is Checkbox) {
+        state = widget.value;
+      } else {
+        return false;
       }
+      found = true;
+      return true;
+    }
+
+    void visit(Element element, int depth) {
+      if (found || depth > 40) return;
+      if (take(element.widget)) return;
       element.visitChildren((child) => visit(child, depth + 1));
     }
 
     visit(context, 0);
-    if (found) return true;
+    if (found) return state;
     var hops = 0;
     context.visitAncestorElements((ancestor) {
-      if (hops++ >= 12) return false;
-      if (ancestor.widget is Slider) {
-        found = true;
-        return false;
-      }
-      return true;
+      if (hops++ >= 6) return false;
+      return !take(ancestor.widget);
     });
-    return found;
+    return state;
   }
 
-  void _beginAdjust() {
-    _adjusting = true;
-    final label = _labelOfFocused();
-    _say(_phrases.adjustEnter(label ?? _phrases.unnamedItem));
-  }
-
-  void _endAdjust() {
-    if (!_adjusting) return;
-    _adjusting = false;
-    _stopRepeat();
-    final label = _labelOfFocused();
-    _say(_phrases.adjustDone(label ?? ''));
-  }
-
-  /// Nudges the focused control one step, then reads it back.
+  /// Reads a slider back after left or right turned it.
   ///
   /// The read-back is [_labelOfFocused] rather than a value the host tracks:
   /// a settings row's own label already carries its value ("Speech Speed.
   /// Normal"), so the learner hears exactly what a sighted user sees, and the
-  /// host never has to know what any particular slider measures.
-  void _adjust(TraversalDirection direction) {
-    final before = _labelOfFocused();
-    if (!GamepadKeyInjector.sendArrow(direction)) {
-      _say(_phrases.adjustUnavailable);
-      _adjusting = false;
-      return;
-    }
-    // Read back after the frame the adjustment lands in.
+  /// host never has to know what any particular slider measures. Every
+  /// reachable slider changes its spoken label on every step, so an unchanged
+  /// label means the value really is at its end — worth saying, because
+  /// otherwise the learner hears the same words twice and cannot tell a limit
+  /// from a dead button.
+  void _announceValue(String? before) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final after = _labelOfFocused();
@@ -626,10 +601,6 @@ class _GamepadHostState extends ConsumerState<GamepadHost> {
         _say(_phrases.unnamedItem);
         return;
       }
-      // Every reachable slider now changes its spoken label on every step, so
-      // an unchanged label means the value really is at its end — worth
-      // saying, because otherwise the learner hears the same words twice and
-      // cannot tell a limit from a dead button.
       _say(after == before ? _phrases.adjustAtLimitFor(after) : after);
     });
     WidgetsBinding.instance.scheduleFrame();
@@ -715,6 +686,10 @@ class _GamepadHostState extends ConsumerState<GamepadHost> {
   /// inner navigator, which the root one cannot see.
   bool get _gridMode {
     if (!gazeHomeGrid.hasGrid) return false;
+    // A screen that published itself is on top of the hub (a registrar
+    // withdraws the moment it is covered), so its buttons are what the D-pad
+    // moves over — even in the frame before its route or region registers.
+    if (_screenMode) return false;
     if (shellModalObserver.isCovering) return false;
     if (_anythingPushed) return false;
     // A celebration, a first-visit tour or the AI Buddy's panel drawn over
@@ -779,21 +754,64 @@ class _GamepadHostState extends ConsumerState<GamepadHost> {
     return floating[col];
   }
 
-  /// Screen items exist to be walked, as opposed to a screen that published
-  /// only prose (a story page with nothing to press).
-  bool get _screenHasItems =>
-      _screenMode && gamepadScreen.items.isNotEmpty;
-
-  void _moveItem(int delta) {
-    if (_screenHasItems) {
-      // Published items draw their own ring (GamepadFocusable).
+  /// The D-pad: one step that way.
+  ///
+  /// On a hub, over the published tile grid by direction — the grid, and the
+  /// ring, gaze moves over too. Anywhere else the press is handed to the
+  /// app's own arrow-key handling ([GamepadKeyInjector]), so the controller
+  /// moves exactly where a keyboard's arrows do: rows a focus search would
+  /// skip, the tab bar under a page, a slider turned by left and right, a
+  /// one-line text box left by up and down. One model, nothing of its own to
+  /// drift from it.
+  void _move(TraversalDirection direction) {
+    final vertical = direction == TraversalDirection.up ||
+        direction == TraversalDirection.down;
+    final forward = direction == TraversalDirection.down ||
+        direction == TraversalDirection.right;
+    if (_gridMode) {
       DpadFocusRing.controllerStopped();
-      _screenCursor.setRows([gamepadScreen.items.length]);
-      delta > 0 ? _screenCursor.next() : _screenCursor.previous();
-      gamepadScreen.setFocus(_screenCursor.index);
-      _announceScreenItem();
+      _cursor.setRows(_gridRows());
+      if (_cursor.isEmpty) {
+        _say(_phrases.nothingHere);
+        return;
+      }
+      vertical
+          ? _cursor.moveVertical(forward ? 1 : -1)
+          : _cursor.moveHorizontal(forward ? 1 : -1);
+      _publishCursor();
+      _announceCurrentItem();
       return;
     }
+    final before = GazeFocusDriver.focused;
+    final beforeLabel = _labelOfFocused();
+    final turnsValue = !vertical && _focusedIsAdjustable;
+    final delivery = GamepadKeyInjector.sendArrow(direction);
+    if (delivery == ArrowDelivery.failed) {
+      _say(_phrases.nothingHere);
+      return;
+    }
+    // Nothing in the app took the arrow, whatever the reason: a controller's
+    // arrow is never at the mercy of the key system, because a learner with
+    // no other way to steer has nothing to fall back on. The move itself, the
+    // same one the key would have made. (L2 and R2 never depended on keys,
+    // and went on working when the arrows did not: the tablet, 29 Oct, 4 Nov.)
+    if (delivery == ArrowDelivery.ignored && !turnsValue) {
+      InputTrace.log('Gamepad ${direction.name}: no one took the arrow');
+      DpadDirectionalFocusAction().invoke(DirectionalFocusIntent(direction));
+    }
+    // Nothing else marks focus here for a learner who can see the screen.
+    DpadFocusRing.controllerMoved();
+    if (turnsValue) {
+      _announceValue(beforeLabel);
+    } else {
+      _announceFocused(unmovedFrom: before);
+    }
+  }
+
+  /// L2 and R2: one control at a time in reading order — the alternative to
+  /// moving by direction, for a learner who needs a single, predictable
+  /// "next", wrapping at the end so an overshoot is never a dead press.
+  void _stepItem(int delta) {
     if (_gridMode) {
       DpadFocusRing.controllerStopped();
       _cursor.setRows(_gridRows());
@@ -806,13 +824,9 @@ class _GamepadHostState extends ConsumerState<GamepadHost> {
       _announceCurrentItem();
       return;
     }
-    // One control at a time in reading order, as the published lists step:
-    // left and right are the sections', so a move by direction would leave
-    // the rest of a row out of reach (see [GazeFocusDriver.step]).
     final moved = GazeFocusDriver.step(forward: delta > 0) ||
         GazeFocusDriver.moveFirst();
     if (moved) {
-      // Nothing else marks focus here for a learner who can see the screen.
       DpadFocusRing.controllerMoved();
       _announceFocused();
     } else {
@@ -820,41 +834,28 @@ class _GamepadHostState extends ConsumerState<GamepadHost> {
     }
   }
 
+  /// The right stick's left and right: straight to the first or last control.
   void _jumpItem({required bool first}) {
-    if (_screenHasItems) {
-      _screenCursor.setRows([gamepadScreen.items.length]);
-      first ? _screenCursor.first() : _screenCursor.last();
-      gamepadScreen.setFocus(_screenCursor.index);
-      _announceScreenItem();
+    if (_gridMode) {
+      _cursor.setRows(_gridRows());
+      if (_cursor.isEmpty) {
+        _say(_phrases.nothingHere);
+        return;
+      }
+      first ? _cursor.first() : _cursor.last();
+      _publishCursor();
+      _announceCurrentItem();
       return;
     }
-    if (!_gridMode) {
+    final moved = first
+        ? GazeFocusDriver.moveToStart()
+        : GazeFocusDriver.moveToEnd();
+    if (moved) {
+      DpadFocusRing.controllerMoved();
+      _announceFocused();
+    } else {
       _say(_phrases.nothingHere);
-      return;
     }
-    _cursor.setRows(_gridRows());
-    if (_cursor.isEmpty) {
-      _say(_phrases.nothingHere);
-      return;
-    }
-    first ? _cursor.first() : _cursor.last();
-    _publishCursor();
-    _announceCurrentItem();
-  }
-
-  void _announceScreenItem() {
-    if (!ref.read(gamepadSettingsProvider).announceItems) return;
-    final item = gamepadScreen.itemAt(_screenCursor.index);
-    if (item == null) return;
-    _say(
-      _phrases.item(
-        item.label,
-        _screenCursor.index + 1,
-        gamepadScreen.items.length,
-        detail: item.detail,
-        unavailable: !item.enabled,
-      ),
-    );
   }
 
   void _publishCursor() {
@@ -890,14 +891,35 @@ class _GamepadHostState extends ConsumerState<GamepadHost> {
   /// Deferred a frame because Flutter applies a focus change asynchronously —
   /// reading the focused node immediately after moving still returns the node
   /// the learner just left, which would announce the wrong control.
-  void _announceFocused() {
+  ///
+  /// With "Read each item" on, it is counted too ("Games, 3 of 12"), the way
+  /// the hub grid counts. [unmovedFrom] is the control the press started on:
+  /// still holding the focus afterwards, nothing lay that way, and the
+  /// learner is told they are still where they were rather than hearing the
+  /// same name as if they had moved.
+  void _announceFocused({FocusNode? unmovedFrom}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      final node = GazeFocusDriver.focused;
       final label = _labelOfFocused();
       // Never leave a press silent. A control Flutter can focus but the app
       // cannot name still has to make a sound, or the learner reads the
       // silence as a broken button.
-      _say(label == null || label.isEmpty ? _phrases.unnamedItem : label);
+      final named = label == null || label.isEmpty ? _phrases.unnamedItem : label;
+      final toggle = _toggleOfFocused;
+      final name = toggle == null ? named : _phrases.withState(named, toggle);
+      if (unmovedFrom != null && identical(node, unmovedFrom)) {
+        _say(_phrases.stillOn(name));
+        return;
+      }
+      final at = node == null ? null : GazeFocusDriver.readingPosition(node);
+      _say(
+        at != null && ref.read(gamepadSettingsProvider).announceItems
+            ? _phrases.item(name, at.position, at.total)
+            : name,
+        // The input focus moved there: a screen reader reads it itself.
+        readByScreenReader: node != null,
+      );
     });
     // [addPostFrameCallback] does **not** request a frame — it only queues work
     // for the next one that happens anyway. Moving focus does not always dirty
@@ -915,23 +937,6 @@ class _GamepadHostState extends ConsumerState<GamepadHost> {
   // ── Acting ──────────────────────────────────────────────────────────────
 
   void _activate() {
-    if (_screenHasItems) {
-      _screenCursor.setRows([gamepadScreen.items.length]);
-      final item = gamepadScreen.itemAt(_screenCursor.index);
-      if (item != null) {
-        if (!item.enabled) {
-          _say(_phrases.notAvailable(item.label));
-          return;
-        }
-        // Only the name, not "Opening …". On a hub that phrasing is right
-        // because a screen is about to appear; inside a quiz the same words
-        // would talk over the game announcing whether the answer was correct.
-        _say(item.label);
-        _hapticSuccess();
-        item.onActivate();
-        return;
-      }
-    }
     if (_gridMode) {
       _cursor.setRows(_gridRows());
       final floating = _floatingAt(_cursor.row, _cursor.col);
@@ -953,17 +958,18 @@ class _GamepadHostState extends ConsumerState<GamepadHost> {
         return;
       }
     }
-    // A slider is not something to press — pressing it is how the learner asks
-    // to *change* it.
+    // A slider is not something to press: left and right turn it, as they do
+    // for a keyboard, and the press says so.
     if (_focusedIsAdjustable) {
-      _beginAdjust();
+      _say(_phrases.sliderHint(_labelOfFocused() ?? _phrases.unnamedItem));
       return;
     }
     final before = GazeFocusDriver.focused;
     final beforeLabel = _labelOfFocused();
+    final beforeToggle = _toggleOfFocused;
     if (GazeFocusDriver.activate()) {
       _hapticSuccess();
-      _announceChangedLabel(before, beforeLabel);
+      _announceChangedLabel(before, beforeLabel, beforeToggle);
       return;
     }
     // A freshly-opened dialog often has focus resting on its bare scope node
@@ -984,15 +990,27 @@ class _GamepadHostState extends ConsumerState<GamepadHost> {
   /// announce anything when the press *navigated* — the focus node will have
   /// changed — because the screen that just opened is about to introduce
   /// itself, and two voices at once is worse than one.
-  void _announceChangedLabel(FocusNode? before, String? beforeLabel) {
+  void _announceChangedLabel(
+    FocusNode? before,
+    String? beforeLabel,
+    bool? beforeToggle,
+  ) {
     if (before == null) return;
     final saidBefore = _saidSeq;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (!identical(GazeFocusDriver.focused, before)) return;
       final after = _labelOfFocused();
-      if (after == null || after.isEmpty || after == beforeLabel) return;
-      _say(after);
+      if (after == null || after.isEmpty) return;
+      if (after != beforeLabel) {
+        _say(after);
+        return;
+      }
+      // A switch row whose label never mentions its state: say the state.
+      final toggle = _toggleOfFocused;
+      if (toggle != null && toggle != beforeToggle) {
+        _say(_phrases.withState(after, toggle));
+      }
     });
     WidgetsBinding.instance.scheduleFrame();
     _breakArrivalSilence(saidBefore, beforeLabel);
@@ -1018,7 +1036,7 @@ class _GamepadHostState extends ConsumerState<GamepadHost> {
       // Something spoke — the screen introduced itself, or the control read
       // itself back. Either way the learner is not sitting in silence.
       if (_saidSeq != saidBefore) return;
-      // A screen that published its own content is read by R2 and stepped
+      // A screen that published its own content is read by X and stepped
       // through with the D-pad; it is not silent, it is waiting.
       if (_screenMode) return;
 
@@ -1067,6 +1085,22 @@ class _GamepadHostState extends ConsumerState<GamepadHost> {
   Timer? _arrival;
 
   void _back() {
+    // In a text box B only leaves the box, as Escape and a phone's Back do
+    // first: a learner halfway through a message keeps the screen.
+    final focused = GazeFocusDriver.focused;
+    if (focused != null && isInTextField(focused)) {
+      leaveTextField(focused);
+      DpadFocusRing.controllerMoved();
+      _say(_phrases.leftTextBox);
+      return;
+    }
+    // A pop-up that is no route — the AI Buddy's panel — closes as Escape
+    // closes it (see [dpadDismiss]).
+    final context = focused?.context;
+    if (context != null && context.mounted && dpadDismiss(context)) {
+      _say(_phrases.closing);
+      return;
+    }
     final nav = _activeNavigator;
     if (nav == null || !nav.canPop()) {
       _say(_phrases.cannotGoBack);
@@ -1085,18 +1119,36 @@ class _GamepadHostState extends ConsumerState<GamepadHost> {
     // is the whole point of the narration half of the bridge; without it the
     // controller could operate a quiz without ever saying what it asked.
     if (_screenMode) {
+      final phrases = _phrases;
       _say(
-        _phrases.screenReading(
+        phrases.screenReading(
           gamepadScreen.title ?? section,
           gamepadScreen.narration,
-          [for (final item in gamepadScreen.items) item.label],
+          [
+            for (final item in gamepadScreen.items)
+              item.enabled
+                  ? item.label
+                  : phrases.unavailableChoice(item.label),
+          ],
         ),
       );
       return;
     }
     if (!_gridMode) {
-      final label = _labelOfFocused();
-      _say(label == null ? _phrases.traversalMode : '$label. ${_phrases.traversalMode}');
+      // Every control on the surface, in the order the D-pad and L2/R2 reach
+      // them — what the button guide promises X does. It used to say only
+      // the focused control's name and how to move, so on Settings, a dialog
+      // or a game picker a learner had no way to hear what was there without
+      // walking the whole screen.
+      final node = GazeFocusDriver.focused;
+      final names = <String>[
+        if (node != null)
+          for (final control in GazeFocusDriver.readingOrderOf(node))
+            if (FocusedLabel.of(control.context) case final label?
+                when label.trim().isNotEmpty)
+              _headline(label),
+      ];
+      _say(names.isEmpty ? _phrases.nothingHere : _phrases.screenItems(names));
       return;
     }
     final labels = <String>[
@@ -1110,10 +1162,7 @@ class _GamepadHostState extends ConsumerState<GamepadHost> {
   void _whereAmI() {
     if (_screenMode) {
       final title = gamepadScreen.title ?? gamepadSections.currentLabel ?? '';
-      final item = _screenHasItems
-          ? gamepadScreen.itemAt(_screenCursor.index)?.label
-          : null;
-      _say(_phrases.whereAmI(title, item));
+      _say(_phrases.whereAmI(title, _labelOfFocused()));
       return;
     }
     final section = gamepadSections.currentLabel;
@@ -1143,9 +1192,9 @@ class _GamepadHostState extends ConsumerState<GamepadHost> {
 
   // ── Output ──────────────────────────────────────────────────────────────
 
-  void _say(String text) {
+  void _say(String text, {bool readByScreenReader = false}) {
     _saidSeq++;
-    _announcer?.say(text);
+    _announcer?.say(text, readByScreenReader: readByScreenReader);
   }
 
   /// Counts everything spoken, so a later check can ask "has anything been

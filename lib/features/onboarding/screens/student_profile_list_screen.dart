@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../classroom/widgets/cloud_sync_error_view.dart';
 import '../../../core/utils/localized_date.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,6 +17,7 @@ import '../../../providers/app_providers.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../widgets/dpad_focusable.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Chooses which profiles a device-scoped "Manage Profiles" list may show.
 ///
@@ -93,6 +95,7 @@ class _StudentProfileListScreenState
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text(_t(context).splDeleteTitle),
         content: Text(
           '${_t(context).splDeleteBody(student.name)}'
@@ -129,7 +132,7 @@ class _StudentProfileListScreenState
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
+        title: AppBarTitle(
             widget.deviceScope ? _t(context).splManageProfiles : _t(context).splStudentProfiles),
         actions: [
           IconButton(
@@ -153,7 +156,9 @@ class _StudentProfileListScreenState
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Text(
-                  _t(context).splLoadError('${snap.error}'),
+                  _t(context).splLoadError(
+                    cloudSyncErrorMessage(snap.error!, _t(context)).title,
+                  ),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -232,18 +237,24 @@ class _StudentProfileListScreenState
                     child: Icon(Icons.delete_rounded,
                         color: HCColor.of(context).graphic(AppColors.error), size: 28),
                   ),
-                  child: DpadFocusable(onActivate: () => context.push( '/student-profile-detail', extra: student, ), child: GestureDetector(
-                    onTap: () => context.push(
-                      '/student-profile-detail',
-                      extra: student,
-                    ),
-                    child: _StudentProfileCard(
-                      profile: student,
-                      avatar: avatar,
-                      isDark: isDark,
-                      onDelete: () => _confirmDelete(student),
-                    ),
-                  )),
+                  child: Semantics(
+                    container: true,
+                    // Opens the learner's details: a screen reader says "button",
+                    // which a bare GestureDetector does not.
+                    button: true,
+                    child: DpadFocusable(onActivate: () => context.push( '/student-profile-detail', extra: student, ), child: GestureDetector(
+                      onTap: () => context.push(
+                        '/student-profile-detail',
+                        extra: student,
+                      ),
+                      child: _StudentProfileCard(
+                        profile: student,
+                        avatar: avatar,
+                        isDark: isDark,
+                        onDelete: () => _confirmDelete(student),
+                      ),
+                    )),
+                  ),
                 )
                     .animate()
                     .fadeIn(
@@ -304,8 +315,10 @@ class _StudentProfileCard extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             child: Center(
-              child: Text(avatar.emoji,
-                  style: const TextStyle(fontSize: 28)),
+              child: ExcludeSemantics(
+                child: Text(avatar.emoji,
+                    style: const TextStyle(fontSize: 28)),
+              ),
             ),
           ),
           const SizedBox(width: 14),

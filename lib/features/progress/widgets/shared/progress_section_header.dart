@@ -14,12 +14,19 @@ class ProgressSectionHeader extends StatelessWidget {
   final Color? iconColor;
   final Widget? trailing;
 
+  /// Whether the title is a stop of its own. False inside a panel read as
+  /// one stop with its title (the Progress tab's "This Week"): the stop
+  /// itself becomes the heading, and the title is still read first. As a stop
+  /// of its own there it came after the panel's words (4 Nov).
+  final bool ownStop;
+
   const ProgressSectionHeader({
     super.key,
     required this.title,
     this.icon,
     this.iconColor,
     this.trailing,
+    this.ownStop = true,
   });
 
   @override
@@ -31,12 +38,16 @@ class ProgressSectionHeader extends StatelessWidget {
           const SizedBox(width: 8),
         ],
         Expanded(
-          child: Text(
-            title,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: AppTypography.titleMedium.copyWith(
-              fontWeight: FontWeight.w700,
+          child: Semantics(
+            container: ownStop,
+            header: true,
+            child: Text(
+              title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.titleMedium.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ),

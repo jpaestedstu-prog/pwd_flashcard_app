@@ -278,7 +278,11 @@ class _GameLaunchTransitionState extends State<GameLaunchTransition>
                           Transform.scale(
                             scale: scale,
                             child: Text(
-                              _showGo ? 'GO!' : '$_countdownValue',
+                              _showGo
+                                  ? (AppLocalizations.of(context)?.gameGo ?? 'GO!')
+                                  : '$_countdownValue',
+                              // Three seconds for the eye: not a stop to read.
+                              semanticsLabel: '',
                               style: AppTypography.gameScore.copyWith(
                                 fontSize: _showGo ? 48 : 64,
                                 color: AppColors.textOnPrimary,

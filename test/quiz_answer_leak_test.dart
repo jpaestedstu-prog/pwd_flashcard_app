@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pwdpwdpwd/core/constants/flashcard_emojis.dart';
 import 'package:pwdpwdpwd/data/local/seed_data.dart';
 import 'package:pwdpwdpwd/widgets/flashcard_image.dart';
 
@@ -45,14 +46,16 @@ void main() {
       );
       await tester.pump();
 
-      // A pattern, not an exact string: the emoji fallback merges the glyph
-      // into the same node, so the label is "Picture clue" plus the picture.
-      expect(find.bySemanticsLabel(RegExp(FlashcardImage.answerSafeLabel)),
+      // Exactly the clue: the emoji used to merge into the same node, and a
+      // screen reader names an emoji — "Picture clue, dog" for the word Dog.
+      expect(find.bySemanticsLabel(FlashcardImage.answerSafeLabel),
           findsOneWidget);
       expect(find.bySemanticsLabel(RegExp(card.wordEnglish)), findsNothing,
           reason: 'the English word is the answer in Word Match');
       expect(find.bySemanticsLabel(RegExp(card.wordFilipino)), findsNothing,
           reason: 'the Filipino word is the answer in the Daily Challenge');
+      expect(find.bySemanticsLabel(RegExp(FlashcardEmojis.forId(card.id))), findsNothing,
+          reason: 'a screen reader says an emoji by name');
       handle.dispose();
     });
 
@@ -63,11 +66,12 @@ void main() {
       );
       await tester.pump();
 
-      // A pattern, not an exact string: the emoji fallback merges the glyph
-      // into the same node, so the label is "Picture clue" plus the picture.
-      expect(find.bySemanticsLabel(RegExp(FlashcardImage.answerSafeLabel)),
+      // Exactly the clue: the emoji used to merge into the same node, and a
+      // screen reader names an emoji — "Picture clue, dog" for the word Dog.
+      expect(find.bySemanticsLabel(FlashcardImage.answerSafeLabel),
           findsOneWidget);
       expect(find.bySemanticsLabel(RegExp(card.wordEnglish)), findsNothing);
+      expect(find.bySemanticsLabel(RegExp(FlashcardEmojis.forId(card.id))), findsNothing);
       handle.dispose();
     });
   });
@@ -104,6 +108,20 @@ void main() {
                 'reader before the learner has answered');
       });
     }
+  });
+
+  test('a picture question never names its word', () {
+    // Picture Word's picture-to-word rounds asked "Which word matches this
+    // picture? Hair" — and "Hair" was the right answer among the buttons.
+    final source = File('lib/features/games/screens/picture_word_screen.dart')
+        .readAsStringSync();
+    final at = source.indexOf('prompt: Semantics(');
+    expect(at, isNot(-1), reason: 'the picture prompt moved');
+    final call = _enclosingCall(source, at + 'prompt: Semantics('.length);
+    expect(call, isNot(contains('correctCard.word')),
+        reason: 'the prompt would say the answer');
+    expect(call, contains('excludeSemantics: true'),
+        reason: 'the picture inside would be read out under the question');
   });
 }
 

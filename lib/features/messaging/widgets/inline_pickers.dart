@@ -360,9 +360,9 @@ class _GazeTileState extends State<GazeTile> {
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
     return Semantics(
+      container: true,
       button: true,
       label: widget.semanticsLabel,
-      excludeSemantics: true,
       child: Material(
         color: hc.cardBackground,
         shape: RoundedRectangleBorder(
@@ -374,11 +374,13 @@ class _GazeTileState extends State<GazeTile> {
         child: InkWell(
           onTap: widget.onTap,
           borderRadius: BorderRadius.circular(14),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 56),
-            child: Padding(
-              padding: const EdgeInsets.all(8),
-              child: Center(child: widget.child),
+          child: ExcludeSemantics(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 56),
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Center(child: widget.child),
+              ),
             ),
           ),
         ),

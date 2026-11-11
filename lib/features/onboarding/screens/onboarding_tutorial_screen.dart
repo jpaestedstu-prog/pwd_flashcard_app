@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/widgets/capped_width.dart';
 import '../../../core/constants/avatar_data.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -242,7 +243,7 @@ class _OnboardingTutorialScreenState
                   ),
                 ),
                 child: Text(
-                  '${_currentPage + 1} of ${pages.length}',
+                  _t(context).obStepNofM(_currentPage + 1, pages.length),
                   style: AppTypography.bodySmall.copyWith(
                     color: HCColor.of(context).readableOver(
                       page.color,
@@ -269,7 +270,7 @@ class _OnboardingTutorialScreenState
                       ),
                     ],
                   ),
-                  child: SizedBox(
+                  child: CappedWidth(child: SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: _next,
@@ -292,7 +293,7 @@ class _OnboardingTutorialScreenState
                         ),
                       ),
                     ),
-                  ),
+                  )),
                 ),
               ),
 
@@ -406,9 +407,12 @@ class _OnboardingPageWidget extends StatelessWidget {
       ),
       child: Center(
         child: page.emoji != null
-            ? Text(
-                page.emoji!,
-                style: TextStyle(fontSize: page.emojiSize * scale),
+            // A picture: the page's title and words below say it.
+            ? ExcludeSemantics(
+                child: Text(
+                  page.emoji!,
+                  style: TextStyle(fontSize: page.emojiSize * scale),
+                ),
               )
             : Icon(
                 page.icon,

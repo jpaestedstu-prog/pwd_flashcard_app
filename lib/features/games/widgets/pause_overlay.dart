@@ -135,6 +135,7 @@ class PauseOverlay extends ConsumerWidget {
                             showDialog<void>(
                               context: context,
                               builder: (ctx) => AlertDialog(
+                                scrollable: true,
                                 title: Text(l10n.restartGameTitle),
                                 content: Text(l10n.restartGameBody),
                                 actions: [
@@ -230,12 +231,12 @@ class _OverlayButton extends StatelessWidget {
         ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
       ),
     );
-    return Semantics(
-      button: true,
-      label: label,
-      child: primary
-          ? FilledButton(onPressed: onTap, style: style, child: child)
-          : OutlinedButton(onPressed: onTap, style: style, child: child),
-    );
+    // The spoken name on the button's own node, with its press and focus: a
+    // Semantics around the button made a second "button" with nothing to
+    // press.
+    final named = Semantics(label: label, excludeSemantics: true, child: child);
+    return primary
+        ? FilledButton(onPressed: onTap, style: style, child: named)
+        : OutlinedButton(onPressed: onTap, style: style, child: named);
   }
 }

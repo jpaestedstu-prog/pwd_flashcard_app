@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme/app_colors.dart';
 import '../data/models/enums.dart';
+import '../data/models/models.dart' show AppSettings;
 import '../providers/app_providers.dart';
 import '../core/utils/reduced_motion.dart';
 import '../l10n/app_localizations.dart';
@@ -42,6 +43,15 @@ class AnimatedMascotBuddy extends ConsumerStatefulWidget {
     this.initialOffset = const Offset(16, 100),
     this.size = 64,
   });
+
+  /// Whether the owl floats over Home and Games: never with reduced motion,
+  /// and never for a learner whose AI Buddy is on (the buddy's floating button
+  /// has that corner then). Turning the buddy off brings the owl back as the
+  /// lightweight fallback mascot. One rule for the owl and for the room the
+  /// hubs leave it (companionClearance).
+  static bool shownFor(AppSettings settings, UserRole? role) =>
+      !settings.reducedMotion &&
+      !(settings.aiCompanionEnabled && (role?.isLearner ?? false));
 
   @override
   ConsumerState<AnimatedMascotBuddy> createState() =>
@@ -125,13 +135,9 @@ class _AnimatedMascotBuddyState extends ConsumerState<AnimatedMascotBuddy>
     final settings = ref.watch(settingsProvider);
     // Before the early return — the hidden mascot's bob kept ticking.
     _floatController.syncMotionLoop(settings.reducedMotion, reverse: true);
-    if (settings.reducedMotion) return const SizedBox.shrink();
-
-    // Defer to the floating AI Companion when it's active for this learner, so
-    // the two buddies never overlap in the bottom-right. Turning the companion
-    // off brings the standalone owl back as the lightweight fallback mascot.
+    // Defer to the AI Buddy when it is on for this learner (see [shownFor]).
     final role = ref.watch(profileProvider.select((p) => p?.role));
-    if (settings.aiCompanionEnabled && (role?.isLearner ?? false)) {
+    if (!AnimatedMascotBuddy.shownFor(settings, role)) {
       return const SizedBox.shrink();
     }
 

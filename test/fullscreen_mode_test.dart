@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -9,6 +10,7 @@ import 'package:pwdpwdpwd/data/models/models.dart';
 import 'package:pwdpwdpwd/features/settings/screens/settings_screen.dart';
 import 'package:pwdpwdpwd/l10n/app_localizations.dart';
 import 'package:pwdpwdpwd/navigation/bottom_nav_shell.dart';
+import 'package:pwdpwdpwd/features/gaze_control/widgets/shell_modal_observer.dart';
 import 'package:pwdpwdpwd/providers/app_providers.dart';
 import 'package:pwdpwdpwd/providers/fullscreen_provider.dart';
 import 'package:pwdpwdpwd/widgets/fullscreen_host.dart';
@@ -407,6 +409,66 @@ void main() {
       expect(tester.getSize(navBar).height, greaterThan(0));
 
       await tester.pumpWidget(const SizedBox.shrink());
+    });
+
+    testWidgets('a pop-up over the page hides the tabs from a screen reader',
+        (tester) async {
+      // Found with TalkBack on the tablet: a game's difficulty sheet is modal,
+      // but next-item walked out of it into the tabs behind it, one double
+      // tap from leaving the game with the sheet still open.
+      final semantics = tester.ensureSemantics();
+      final container = ProviderContainer(overrides: [
+        profileProvider.overrideWith(() => _StubProfileNotifier(UserRole.student)),
+      ]);
+      addTearDown(container.dispose);
+      // A pop-up (a sheet, a dialog), not any page pushed in the shell: a
+      // page such as Settings keeps the bar live and readable.
+      addTearDown(() => shellModalObserver.popupCovering.value = false);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(
+            debugShowCheckedModeBanner: false,
+            locale: const Locale('en'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            routerConfig: buildRouter(),
+          ),
+        ),
+      );
+      // What a screen reader is handed: the live tree, not a node an
+      // excluded widget still remembers.
+      bool spoken(String label) {
+        var found = false;
+        bool visit(SemanticsNode node) {
+          if (node.label == label) found = true;
+          node.visitChildren(visit);
+          return !found;
+        }
+
+        for (final view in tester.binding.renderViews) {
+          final root = view.owner?.semanticsOwner?.rootSemanticsNode;
+          if (root != null) visit(root);
+        }
+        return found;
+      }
+
+      await tester.pumpAndSettle();
+      expect(spoken('Cards'), isTrue);
+
+      shellModalObserver.popupCovering.value = true;
+      await tester.pump();
+      expect(spoken('Cards'), isFalse);
+      expect(find.text('Cards'), findsOneWidget,
+          reason: 'still drawn — only the screen reader skips it');
+
+      shellModalObserver.popupCovering.value = false;
+      await tester.pump();
+      expect(spoken('Cards'), isTrue);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      semantics.dispose();
     });
   });
 

@@ -1,14 +1,22 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/services/join_code_service.dart';
+import '../../../core/services/firebase_service.dart';
 import '../../../core/widgets/safe_scaffold.dart';
+import '../../../data/remote/firestore_repository.dart';
+import '../../../data/models/enums.dart';
 import '../../../features/onboarding/screens/post_join_setup_screen.dart';
 import '../../../providers/home_group_join_provider.dart';
+import '../../../providers/app_providers.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
+import '../../../core/widgets/fit_label.dart';
 
 /// Child-side screen: enter a 6-character home-group code.
 ///
@@ -17,6 +25,10 @@ import '../../../l10n/app_localizations_en.dart';
 /// cancel here leaves no partial profile in Firestore or Hive.
 class JoinHomeGroupScreen extends ConsumerStatefulWidget {
   const JoinHomeGroupScreen({super.key});
+
+  /// Stands in for the cloud in tests.
+  @visibleForTesting
+  static Future<String?> Function(String profileId)? debugMemberLookup;
 
   @override
   ConsumerState<JoinHomeGroupScreen> createState() =>
@@ -31,8 +43,36 @@ class _JoinHomeGroupScreenState extends ConsumerState<JoinHomeGroupScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) ref.read(homeGroupJoinProvider.notifier).reset();
+      if (!mounted) return;
+      ref.read(homeGroupJoinProvider.notifier).reset();
+      unawaited(_relinkIfStillAMember());
     });
+  }
+
+  /// A child whose group still lists them needs no code: this tablet's copy
+  /// lost the link (a parent opening them from a list erased it, until 1.4.4).
+  /// When it cannot be told (offline), the page stays as it is.
+  Future<void> _relinkIfStillAMember() async {
+    final child = ref.read(profileProvider);
+    if (child == null ||
+        child.role != UserRole.child ||
+        child.homeGroupId != null) {
+      return;
+    }
+    final String? groupId;
+    try {
+      final lookup = JoinHomeGroupScreen.debugMemberLookup ??
+          (FirebaseService.isConfigured
+              ? const FirestoreRepository().homeGroupIdOfMember
+              : null);
+      groupId = await lookup?.call(child.id);
+    } catch (e) {
+      debugPrint('JoinHomeGroup: could not look for the group: $e');
+      return;
+    }
+    if (groupId == null || !mounted) return;
+    await ref.read(profileProvider.notifier).restoreHomeGroupLink(groupId);
+    if (mounted) context.go('/home');
   }
 
   @override
@@ -60,7 +100,7 @@ class _JoinHomeGroupScreenState extends ConsumerState<JoinHomeGroupScreen> {
 
     return SafeScaffold(
       appBar: AppBar(
-        title: Text(_t(context).joinGroupTitle),
+        title: AppBarTitle(_t(context).joinGroupTitle),
         leading: IconButton(
           tooltip: _t(context).back,
           icon: const Icon(Icons.arrow_back),
@@ -68,7 +108,7 @@ class _JoinHomeGroupScreenState extends ConsumerState<JoinHomeGroupScreen> {
             if (Navigator.of(context).canPop()) {
               Navigator.of(context).pop();
             } else {
-              context.go('/profile');
+              context.go('/profile-switcher');
             }
           },
         ),
@@ -76,7 +116,8 @@ class _JoinHomeGroupScreenState extends ConsumerState<JoinHomeGroupScreen> {
           IconButton(
             icon: const Icon(Icons.switch_account_rounded),
             tooltip: _t(context).childSwitchProfile,
-            onPressed: () => context.go('/profile'),
+            // The list of profiles: it opened the page for making a new one.
+            onPressed: () => context.go('/profile-switcher'),
           ),
         ],
       ),
@@ -101,7 +142,7 @@ class _JoinHomeGroupScreenState extends ConsumerState<JoinHomeGroupScreen> {
                     _UpperCaseFormatter(),
                   ],
                   decoration: InputDecoration(
-                    labelText: _t(context).joinGroupCode,
+                    label: FitLabel(_t(context).joinGroupCode),
                     hintText: 'ABC123',
                     border: const OutlineInputBorder(),
                   ),

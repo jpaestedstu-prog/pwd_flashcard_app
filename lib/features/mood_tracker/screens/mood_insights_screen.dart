@@ -12,6 +12,7 @@ import '../../../widgets/shared_widgets.dart';
 import '../models/mood_context.dart';
 import '../models/mood_models.dart';
 import '../models/mood_summary.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Mood-Activity Correlation Dashboard for thesis research.
 ///
@@ -47,7 +48,7 @@ class MoodInsightsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isFilipino ? 'Mood Insights' : 'Mood Insights'),
+        title: AppBarTitle(isFilipino ? 'Pagsusuri ng Damdamin' : 'Mood Insights'),
         centerTitle: true,
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -159,7 +160,7 @@ class MoodInsightsScreen extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('📊', style: TextStyle(fontSize: 64)),
+                  const ExcludeSemantics(child: Text('📊', style: TextStyle(fontSize: 64))),
                   const SizedBox(height: 16),
                   Text(
                     isFilipino
@@ -436,10 +437,12 @@ class _InsightsBanner extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('• ',
-                        style: TextStyle(
-                            color: Colors.deepPurple.shade600,
-                            fontWeight: FontWeight.bold)),
+                    ExcludeSemantics(
+                      child: Text('• ',
+                          style: TextStyle(
+                              color: Colors.deepPurple.shade600,
+                              fontWeight: FontWeight.bold)),
+                    ),
                     Expanded(
                       child: Text(
                         insight,
@@ -509,7 +512,9 @@ class _MoodStudyTimeChart extends StatelessWidget {
                         .where((m) => m.numericValue == value.toInt())
                         .firstOrNull;
                     if (mood == null) return const SizedBox();
-                    return Text(mood.emoji, style: const TextStyle(fontSize: 14));
+                    return Text(mood.emoji,
+                        semanticsLabel: mood.labelOf(isFilipino: isFilipino),
+                        style: const TextStyle(fontSize: 14));
                   },
                 ),
               ),
@@ -610,7 +615,9 @@ class _MoodGamesChart extends StatelessWidget {
                         .where((m) => m.numericValue == value.toInt())
                         .firstOrNull;
                     if (mood == null) return const SizedBox();
-                    return Text(mood.emoji, style: const TextStyle(fontSize: 14));
+                    return Text(mood.emoji,
+                        semanticsLabel: mood.labelOf(isFilipino: isFilipino),
+                        style: const TextStyle(fontSize: 14));
                   },
                 ),
               ),
@@ -716,7 +723,9 @@ class _ActivityContextChart extends StatelessWidget {
                         .where((m) => m.numericValue == value.toInt())
                         .firstOrNull;
                     if (mood == null) return const SizedBox();
-                    return Text(mood.emoji, style: const TextStyle(fontSize: 14));
+                    return Text(mood.emoji,
+                        semanticsLabel: mood.labelOf(isFilipino: isFilipino),
+                        style: const TextStyle(fontSize: 14));
                   },
                 ),
               ),
@@ -771,7 +780,7 @@ class _ActivityContextChart extends StatelessWidget {
                   final entry = sorted[group.x.toInt()];
                   return BarTooltipItem(
                     '${entry.value.average.toStringAsFixed(1)}/6\n'
-                    '(${entry.value.count} ${entry.value.count == 1 ? 'entry' : 'entries'})',
+                    '(${entry.value.count} ${isFilipino ? 'tala' : entry.value.count == 1 ? 'entry' : 'entries'})',
                     AppTypography.labelSmall
                         .copyWith(color: Colors.white),
                   );
@@ -813,16 +822,17 @@ class _MoodDistribution extends StatelessWidget {
       title: isFilipino
           ? 'Distribusyon ng Mood (30 Araw)'
           : 'Mood Distribution (30 Days)',
-      subtitle: '$total ${isFilipino ? "entries" : "entries"}',
+      subtitle: '$total ${isFilipino ? "tala" : "entries"}',
       child: Column(
         children: sorted.map((mood) {
           final count = counts[mood] ?? 0;
           final pct = total > 0 ? count / total : 0.0;
           return Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: Row(
+            // One stop: "Masaya 33%", not the name and a bare number apart.
+            child: MergeSemantics(child: Row(
               children: [
-                Text(mood.emoji, style: const TextStyle(fontSize: 20)),
+                ExcludeSemantics(child: Text(mood.emoji, style: const TextStyle(fontSize: 20))),
                 const SizedBox(width: 8),
                 SizedBox(
                   width: 75,
@@ -855,7 +865,7 @@ class _MoodDistribution extends StatelessWidget {
                   ),
                 ),
               ],
-            ),
+            )),
           );
         }).toList(),
       ),
@@ -901,7 +911,7 @@ class _ChartCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          child,
+          ExcludeSemantics(child: child),
         ],
       ),
     );
@@ -1012,8 +1022,6 @@ class _StepMoodRow extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                       color: hc.textPrimary,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
                   Text(
                     isFilipino
@@ -1022,8 +1030,6 @@ class _StepMoodRow extends StatelessWidget {
                     style: AppTypography.bodySmall.copyWith(
                       color: hc.textSecondary,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),

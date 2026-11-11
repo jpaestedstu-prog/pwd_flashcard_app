@@ -68,7 +68,9 @@ class MoodFace extends StatelessWidget {
       label: isFilipino ? 'Pakiramdam na $label' : '$label mood',
       child: DpadFocusable(onActivate: onTap, child: GestureDetector(
         onTap: onTap,
-        child: AnimatedContainer(
+        // Said once, by the label: "Happy mood" was followed by the face and
+        // "Happy".
+        child: ExcludeSemantics(child: AnimatedContainer(
           duration: const Duration(milliseconds: 250),
           curve: Curves.easeOutCubic,
           width: width,
@@ -139,7 +141,7 @@ class MoodFace extends StatelessWidget {
               ),
             ],
           ),
-        ),
+        )),
       )),
     );
   }

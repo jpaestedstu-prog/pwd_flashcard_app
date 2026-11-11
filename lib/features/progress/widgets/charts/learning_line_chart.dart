@@ -80,7 +80,14 @@ class LearningLineChart extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          SizedBox(
+          // What the line comes to, not the dates and the scale around it.
+          Semantics(
+            label: l10n.chartWordsLearnedSummary(
+              currentWordsLearned,
+              dailyWords.values.fold<int>(0, (a, b) => a + b),
+            ),
+            excludeSemantics: true,
+            child: SizedBox(
             height: 180,
             child: LineChart(
               LineChartData(
@@ -124,7 +131,7 @@ class LearningLineChart extends StatelessWidget {
                           child: Text(
                             '${date.month}/${date.day}',
                             style: AppTypography.labelSmall.copyWith(
-                              fontSize: 9,
+                              fontSize: 10,
                               color: hc.textSecondary,
                             ),
                           ),
@@ -141,7 +148,7 @@ class LearningLineChart extends StatelessWidget {
                         return Text(
                           '${value.toInt()}',
                           style: AppTypography.labelSmall.copyWith(
-                            fontSize: 9,
+                            fontSize: 10,
                             color: hc.textSecondary,
                           ),
                         );
@@ -171,7 +178,7 @@ class LearningLineChart extends StatelessWidget {
                 ],
               ),
             ),
-          ),
+          )),
         ],
       ),
     );

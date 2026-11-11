@@ -58,7 +58,7 @@ BAD_TEXT = ("Something went wrong",)
 # Home from /tv-cast; test/browser_limits_test.dart checks its notice.)
 EXPECTED_TEXT = {
     "/backup": "Backup files work in the Android app",
-    "/gamepad-settings": "Game controllers work in the Android app",
+    "/gamepad-settings": "Game Controller",
 }
 
 
@@ -171,6 +171,9 @@ class Smoke:
         self.n = 0
         self.failures = []
         self.visited = []
+        # Called in place of a tap on the Daily Reward's "Collect", for a
+        # check that answers it another way (the keyboard).
+        self.on_reward = None
         os.makedirs(out, exist_ok=True)
 
     def shot(self, name):
@@ -378,6 +381,12 @@ class Smoke:
         time.sleep(3)
         return self._reach_home()
 
+    def _collect(self):
+        if self.on_reward:
+            self.on_reward()
+        else:
+            self.click("Collect")
+
     def _reach_home(self):
         """Through whatever comes between the form and Home (setup, the
         tour, the first Daily Reward) to the tab bar."""
@@ -392,7 +401,7 @@ class Smoke:
                 # The first visit's Daily Reward sits over Home and hides the
                 # tab bar from the accessibility tree.
                 self.shot("daily_reward")
-                self.click("Collect")
+                self._collect()
                 # A press while the dialog is still opening can miss, and
                 # without a pause every retry fell inside that same moment
                 # (Mobile Safari on GitHub, once in four runs).
@@ -410,7 +419,7 @@ class Smoke:
         time.sleep(2)
         if self.find("Collect"):
             self.shot("daily_reward")
-            self.click("Collect")
+            self._collect()
         self.shot("home")
         errs = self.page_errors()
         for e in errs:

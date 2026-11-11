@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// A calm guided-breathing animation for the "I Need a Break" screen.
 ///
@@ -75,12 +76,21 @@ class _BreathingBreakState extends State<BreathingBreak>
   ({double scale, String cue}) _phase(double t) {
     if (t < _inhaleEnd) {
       final p = Curves.easeInOut.transform(t / _inhaleEnd);
-      return (scale: 0.55 + 0.45 * p, cue: 'Breathe in…');
+      return (
+        scale: 0.55 + 0.45 * p,
+        cue: AppLocalizations.of(context)?.btBreatheIn ?? 'Breathe in…',
+      );
     } else if (t < _holdEnd) {
-      return (scale: 1.0, cue: 'Hold…');
+      return (
+        scale: 1.0,
+        cue: AppLocalizations.of(context)?.btHold ?? 'Hold…',
+      );
     } else {
       final p = Curves.easeInOut.transform((t - _holdEnd) / (1 - _holdEnd));
-      return (scale: 1.0 - 0.45 * p, cue: 'Breathe out…');
+      return (
+        scale: 1.0 - 0.45 * p,
+        cue: AppLocalizations.of(context)?.btBreatheOut ?? 'Breathe out…',
+      );
     }
   }
 
@@ -88,12 +98,19 @@ class _BreathingBreakState extends State<BreathingBreak>
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Reserve room for the cue text under the disc; bound the ring so it
+        // Reserve room for the cue text under the disc, as tall as the reader's
+        // Font Size makes it, and for the gap above it; bound the ring so it
         // stays comfortable on small phones and doesn't get huge on tablets.
-        final maxD = math.min(constraints.maxWidth, constraints.maxHeight - 64);
-        final ring = maxD.clamp(140.0, 360.0);
+        final cueHeight =
+            MediaQuery.textScalerOf(context).scale(26) * 1.4 + 28;
+        final maxD =
+            math.min(constraints.maxWidth, constraints.maxHeight - cueHeight);
+        final ring = maxD.clamp(96.0, 360.0);
+        // Scrolls in the last resort: a phone on its side at the largest Font
+        // Size was a pixel short with a cue on two lines.
         return Center(
-          child: Column(
+          child: SingleChildScrollView(
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               AnimatedBuilder(
@@ -179,6 +196,7 @@ class _BreathingBreakState extends State<BreathingBreak>
                 },
               ),
             ],
+          ),
           ),
         );
       },

@@ -1,5 +1,8 @@
 import 'dart:io';
 
+import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:pwdpwdpwd/core/services/session_tracker.dart';
@@ -134,6 +137,85 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect(HiveService.getSessionLogs(profileId), hasLength(1));
+      tracker.dispose();
+    });
+  });
+
+  // Found on the tablet (30 Oct): left open on Home overnight, a learner's
+  // week went from 984 to 1,446 minutes studied.
+  group('idle time is not study time', () {
+    late DateTime now;
+    setUp(() {
+      now = DateTime(2026, 10, 30, 9);
+      SessionTracker.clock = () => now;
+    });
+    tearDown(() => SessionTracker.clock = DateTime.now);
+
+    List<Object?> minutes() => [
+          for (final s in HiveService.getSessionLogs(profileId))
+            (s['durationSeconds'] as int) / 60,
+        ];
+
+    test('a sitting stops counting five minutes after the last use',
+        () async {
+      final tracker = SessionTracker(profileId: profileId);
+      now = now.add(const Duration(minutes: 2));
+      tracker.noteActivity();
+      now = now.add(const Duration(hours: 7)); // left open overnight
+      tracker.debugCheckpoint();
+      await Future<void>.delayed(Duration.zero);
+      expect(minutes(), [7]); // two minutes used, five more to count out
+      tracker.dispose();
+    });
+
+    test('the first use after a pause starts a new sitting', () async {
+      final tracker = SessionTracker(profileId: profileId);
+      now = now.add(const Duration(minutes: 30));
+      tracker.noteActivity();
+      now = now.add(const Duration(minutes: 3));
+      tracker.endCurrentSession();
+      await Future<void>.delayed(Duration.zero);
+      expect(minutes(), [5, 3]);
+      tracker.dispose();
+    });
+
+    test('steady use keeps counting', () async {
+      final tracker = SessionTracker(profileId: profileId);
+      for (var i = 0; i < 20; i++) {
+        now = now.add(const Duration(minutes: 1));
+        tracker.noteActivity();
+      }
+      tracker.endCurrentSession();
+      await Future<void>.delayed(Duration.zero);
+      expect(minutes(), [20]);
+      tracker.dispose();
+    });
+
+    test('a touch, a key and a focus move are each use', () async {
+      final tracker = SessionTracker(profileId: profileId);
+      void pause() => now = now.add(const Duration(minutes: 10));
+
+      pause();
+      GestureBinding.instance.pointerRouter
+          .route(const PointerDownEvent(position: Offset(5, 5)));
+      pause();
+      HardwareKeyboard.instance.handleKeyEvent(const KeyDownEvent(
+        physicalKey: PhysicalKeyboardKey.arrowDown,
+        logicalKey: LogicalKeyboardKey.arrowDown,
+        timeStamp: Duration.zero,
+      ));
+      HardwareKeyboard.instance.handleKeyEvent(const KeyUpEvent(
+        physicalKey: PhysicalKeyboardKey.arrowDown,
+        logicalKey: LogicalKeyboardKey.arrowDown,
+        timeStamp: Duration.zero,
+      ));
+      pause();
+      final node = FocusNode();
+      FocusManager.instance.rootScope.requestFocus(node);
+      await Future<void>.delayed(Duration.zero);
+      // Each pause ended a sitting at five minutes; the last is still open.
+      expect(minutes(), [5, 5, 5]);
+      node.dispose();
       tracker.dispose();
     });
   });

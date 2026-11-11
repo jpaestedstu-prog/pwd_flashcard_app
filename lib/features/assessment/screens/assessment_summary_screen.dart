@@ -9,6 +9,7 @@ import '../../../core/utils/responsive_utils.dart';
 import '../../../core/utils/score_utils.dart';
 import '../models/assessment_models.dart';
 import '../models/question_prompt.dart';
+import '../../../core/utils/localized_date.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../navigation/nav_extensions.dart';
@@ -160,6 +161,10 @@ class AssessmentSummaryScreen extends ConsumerWidget {
                       _StatCard(
                         icon: Icons.timer_rounded,
                         value: _formatDuration(result.durationSeconds),
+                        spokenValue: LocalizedDuration.long(
+                          Duration(seconds: result.durationSeconds),
+                          _t(context),
+                        ),
                         label: _t(context).sumTime,
                         color: hc.info,
                       ),
@@ -333,12 +338,17 @@ class AssessmentSummaryScreen extends ConsumerWidget {
 class _StatCard extends StatelessWidget {
   final IconData icon;
   final String value;
+
+  /// [value] as it is said, when its short form would be misread ("2m 30s"
+  /// is "2 meters 30 s").
+  final String? spokenValue;
   final String label;
   final Color color;
 
   const _StatCard({
     required this.icon,
     required this.value,
+    this.spokenValue,
     required this.label,
     required this.color,
   });
@@ -346,7 +356,12 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
-    return Container(
+    // One stop, name first: "Time, 2 minutes 30 seconds".
+    return Semantics(
+      container: true,
+      label: '$label, ${spokenValue ?? value}',
+      excludeSemantics: true,
+      child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
@@ -370,6 +385,7 @@ class _StatCard extends StatelessWidget {
             style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
           ),
         ],
+      ),
       ),
     );
   }

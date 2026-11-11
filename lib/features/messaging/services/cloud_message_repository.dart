@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/services/firebase_service.dart';
 import '../../../core/utils/error_handler.dart';
+import '../../../core/utils/retrying_listener.dart';
 import '../../../data/local/hive_service.dart';
 import '../models/messaging_models.dart';
 
@@ -234,13 +235,6 @@ class CloudMessageRepository {
       return Stream.value(const <LocalMessage>[]);
     }
 
-    final sent = _col
-        .where('sender_profile_id', isEqualTo: profileId)
-        .snapshots();
-    final received = _col
-        .where('recipient_profile_id', isEqualTo: profileId)
-        .snapshots();
-
     final controller = StreamController<List<LocalMessage>>.broadcast();
     List<LocalMessage> sentBuf = const [];
     List<LocalMessage> recvBuf = const [];
@@ -265,25 +259,39 @@ class CloudMessageRepository {
       emitted = true;
     }
 
-    final subA = sent.listen(
-      (snap) {
+    final subA = RetryingListener<QuerySnapshot<Map<String, dynamic>>>(
+      open: () =>
+          _col.where('sender_profile_id', isEqualTo: profileId).snapshots(),
+      onData: (snap) {
         sentBuf = snap.docs.map(_decode).toList();
         emit();
       },
       onError: (e, stack) {
-        ErrorHandler.report(e, stack, 'CloudMessageRepository.watch.sent');
+        // Logged, never shown: a live listener behind every Home's Messages
+        // tile, which nobody asked for (see ErrorHandler._silentSources).
+        ErrorHandler.report(
+          e,
+          stack,
+          'CloudMessageRepository.watch.sent:silent',
+        );
         // Surface a best-effort emission so the UI doesn't hang on the
         // initial load when the second listener has data.
         if (!emitted) emit();
       },
     );
-    final subB = received.listen(
-      (snap) {
+    final subB = RetryingListener<QuerySnapshot<Map<String, dynamic>>>(
+      open: () =>
+          _col.where('recipient_profile_id', isEqualTo: profileId).snapshots(),
+      onData: (snap) {
         recvBuf = snap.docs.map(_decode).toList();
         emit();
       },
       onError: (e, stack) {
-        ErrorHandler.report(e, stack, 'CloudMessageRepository.watch.received');
+        ErrorHandler.report(
+          e,
+          stack,
+          'CloudMessageRepository.watch.received:silent',
+        );
         if (!emitted) emit();
       },
     );

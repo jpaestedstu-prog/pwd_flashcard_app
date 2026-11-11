@@ -244,6 +244,7 @@ class _RoutineStepActionBarState extends ConsumerState<RoutineStepActionBar> {
         final minutes = await showDialog<int>(
           context: context,
           builder: (ctx) => AlertDialog(
+            scrollable: true,
             title: Text(
               l ? 'Magdagdag ng oras sa $_title?' : 'Add time to $_title?',
             ),
@@ -451,6 +452,7 @@ Future<bool> confirmRoutineAction(
   final ok = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
+      scrollable: true,
       title: Text(title),
       content: Text(body),
       actions: [

@@ -38,6 +38,7 @@ import '../../../widgets/fullscreen_host.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../core/utils/seeded_random.dart';
 import '../../../widgets/dpad_focusable.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Picture-Word Association Game
 ///
@@ -408,33 +409,36 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
     return LottieCelebrationOverlay(
       show: true,
       lottieAsset: celebration.lottieAssetFor(celebType),
-      child: Stack(
-        children: [
-          CelebrationOverlay(
-            show: true,
-            child: Scaffold(
-              body: Center(
-                child: GameResultDialog(
-                  score: _score,
-                  total: _rounds.length,
-                  starsEarned: _starsEarned,
-                  onPlayAgain: _restart,
-                  onExit: () => context.popOrGo('/games'),
-                  onReview: () => showGameReview(
-                    context,
-                    items: _reviewItems,
-                    gameTitle: GameType.pictureWord.labelOf(l10n),
+      child: ExcludeSemantics(
+        // The label says the answer; what is drawn here was read again.
+        child: Stack(
+          children: [
+            CelebrationOverlay(
+              show: true,
+              child: Scaffold(
+                body: Center(
+                  child: GameResultDialog(
+                    score: _score,
+                    total: _rounds.length,
+                    starsEarned: _starsEarned,
+                    onPlayAgain: _restart,
+                    onExit: () => context.popOrGo('/games'),
+                    onReview: () => showGameReview(
+                      context,
+                      items: _reviewItems,
+                      gameTitle: GameType.pictureWord.labelOf(l10n),
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-          if (_newAchievements.isNotEmpty)
-            AchievementUnlockedOverlay(
-              achievements: _newAchievements,
-              onDismiss: () => setState(() => _newAchievements = []),
-            ),
-        ],
+            if (_newAchievements.isNotEmpty)
+              AchievementUnlockedOverlay(
+                achievements: _newAchievements,
+                onDismiss: () => setState(() => _newAchievements = []),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -467,8 +471,13 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
                     tooltip: l10n.close,
                     onPressed: pauseGame,
                   ),
-                  title: Text(
+                  title: AppBarTitle(
                     l10n.gameRoundHeader(
+                      GameType.pictureWord.labelOf(l10n),
+                      _currentRound + 1,
+                      _rounds.length,
+                    ),
+                    semanticsLabel: l10n.gameRoundHeaderSpoken(
                       GameType.pictureWord.labelOf(l10n),
                       _currentRound + 1,
                       _rounds.length,
@@ -512,6 +521,7 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
                               const SizedBox(width: 4),
                               Text(
                                 '$_score',
+                                semanticsLabel: l10n.gameScoreChip(_score),
                                 style: AppTypography.labelLarge.copyWith(
                                   color: HCColor.of(context).warningText,
                                 ),
@@ -530,6 +540,9 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
                   children: [
                     // ─── Progress bar ─────────────────────
                     Semantics(
+                      // The round in words; the bar's own percentage read as
+                      // "17.0. 17, Round 1 of 6".
+                      excludeSemantics: true,
                       label: l10n.resumeRoundProgress(
                         _currentRound + 1,
                         _rounds.length,
@@ -590,9 +603,13 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Semantics(
+                        // Both words, as the prompt shows them; nothing in
+                        // the prompt is pressed, so it is read once.
                         label: l10n.findPictureForSemantics(
-                          round.correctCard.wordEnglish,
+                          '${round.correctCard.wordEnglish}, '
+                          '${round.correctCard.wordFilipino}',
                         ),
+                        excludeSemantics: true,
                         child: Container(
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(vertical: 20),
@@ -678,36 +695,39 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
                             '${showWrong ? l10n.wrongAnswerSuffix : ''}',
                         child: DpadFocusable(onActivate: () => _selectAnswer(index), child: GestureDetector(
                           onTap: () => _selectAnswer(index),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 300),
-                            decoration: BoxDecoration(
-                              color: showCorrect
-                                  ? AppColors.successLight
-                                  : showWrong
-                                  ? AppColors.errorLight
-                                  : HCColor.of(context).surface,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: borderColor,
-                                width: highlighted ? 4 : 3,
-                              ),
-                              boxShadow: [
-                                if ((isSelected || highlighted) && !_answered)
-                                  BoxShadow(
-                                    color: AppColors.primary.withValues(
-                                      alpha: highlighted ? 0.35 : 0.2,
+                          child: ExcludeSemantics(
+                            // The label says the answer; what is drawn here was read again.
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 300),
+                              decoration: BoxDecoration(
+                                color: showCorrect
+                                    ? AppColors.successLight
+                                    : showWrong
+                                    ? AppColors.errorLight
+                                    : HCColor.of(context).surface,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: borderColor,
+                                  width: highlighted ? 4 : 3,
+                                ),
+                                boxShadow: [
+                                  if ((isSelected || highlighted) && !_answered)
+                                    BoxShadow(
+                                      color: AppColors.primary.withValues(
+                                        alpha: highlighted ? 0.35 : 0.2,
+                                      ),
+                                      blurRadius: highlighted ? 14 : 8,
+                                      offset: const Offset(0, 4),
                                     ),
-                                    blurRadius: highlighted ? 14 : 8,
-                                    offset: const Offset(0, 4),
-                                  ),
-                              ],
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(10),
-                              child: FlashcardImage(
-                                card: choice,
-                                expand: true,
-                                borderRadius: 16,
+                                ],
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(10),
+                                child: FlashcardImage(
+                                  card: choice,
+                                  expand: true,
+                                  borderRadius: 16,
+                                ),
                               ),
                             ),
                           ),
@@ -735,9 +755,11 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
               promptFlex: 3,
               answersFlex: 3,
               prompt: Semantics(
-                          label: l10n.whichWordMatchesSemantics(
-                            round.correctCard.wordEnglish,
-                          ),
+                          // Never the word: it is the answer among the
+                          // buttons below. Said with it, a screen reader gave
+                          // every round away.
+                          label: l10n.whichWordMatchesPicture,
+                          excludeSemantics: true,
                           child: Container(
                             width: double.infinity,
                             decoration: BoxDecoration(
@@ -830,12 +852,13 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
                       return Semantics(
                         button: true,
                         label:
-                            '${l10n.answerSemantics(choice.wordEnglish)}'
+                            '${l10n.answerSemantics(choice.wordEnglish)}, '
+                            '${choice.wordFilipino}'
                             '${showCorrect ? l10n.correctAnswerSuffix : ''}'
                             '${showWrong ? l10n.wrongAnswerSuffix : ''}',
                         child: DpadFocusable(onActivate: () => _selectAnswer(index), child: GestureDetector(
                           onTap: () => _selectAnswer(index),
-                          child: AnimatedContainer(
+                          child: ExcludeSemantics(child: AnimatedContainer(
                             duration: const Duration(milliseconds: 300),
                             decoration: BoxDecoration(
                               color: bgColor,
@@ -865,7 +888,7 @@ class _PictureWordScreenState extends ConsumerState<PictureWordScreen>
                                 ],
                               ),
                             ),
-                          ),
+                          )),
                         )),
                       );
                     },

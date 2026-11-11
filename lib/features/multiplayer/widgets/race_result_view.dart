@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/auto_fit.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../models/multiplayer_models.dart';
@@ -50,8 +51,7 @@ class RaceResultView extends StatelessWidget {
             const SizedBox(height: 16),
             Text(isDraw ? '🤝' : '🏆', style: const TextStyle(fontSize: 72)),
             const SizedBox(height: 12),
-            FittedBox(
-              fit: BoxFit.scaleDown,
+            AutoFit(
               child: Text(
                 isDraw
                     ? (isFilipino ? 'Tabla!' : "It's a draw!")
@@ -181,8 +181,6 @@ class _ScoreCard extends StatelessWidget {
             name,
             style: AppTypography.titleSmall
                 .copyWith(fontWeight: FontWeight.w800, color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.12))),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),

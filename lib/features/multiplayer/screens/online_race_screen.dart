@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/widgets/auto_fit.dart';
 import '../../../core/accessibility/tts_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
@@ -25,6 +26,7 @@ import '../widgets/race_sign_launcher.dart';
 import '../widgets/scramble_race_player.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Online "Play with a Friend" race over Firestore.
 ///
@@ -365,7 +367,7 @@ class _OnlineRaceScreenState extends ConsumerState<OnlineRaceScreen>
         Scaffold(
           backgroundColor: HCColor.of(context).background,
           appBar: AppBar(
-            title: Text('${widget.room.mode.emoji} '
+            title: AppBarTitle('${widget.room.mode.emoji} '
                 '${isFilipino ? widget.room.mode.labelFilipino : widget.room.mode.label}'),
             backgroundColor: Colors.transparent,
             elevation: 0,
@@ -605,8 +607,7 @@ class _OnlineRaceScreenState extends ConsumerState<OnlineRaceScreen>
           children: [
             Text(emoji, style: const TextStyle(fontSize: 64)),
             const SizedBox(height: 16),
-            FittedBox(
-              fit: BoxFit.scaleDown,
+            AutoFit(
               child: Text(
                 title,
                 style: AppTypography.titleLarge
@@ -688,8 +689,6 @@ class _OpponentStrip extends StatelessWidget {
                         name,
                         style: AppTypography.labelLarge
                             .copyWith(fontWeight: FontWeight.w700),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     const SizedBox(width: 8),

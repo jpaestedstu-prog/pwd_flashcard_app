@@ -22,6 +22,7 @@ import '../widgets/learner_support_picker.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../progress/models/category_mastery.dart';
 import '../../../data/local/seed_data.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Shows full profile information and learning progress for a student.
 ///
@@ -50,6 +51,10 @@ class StudentProfileDetailScreen extends ConsumerWidget {
     };
     final achievements = HiveService.getUnlockedAchievements(profile.id);
 
+    // Edit Profile edits whoever is signed in. A teacher or parent looking at a
+    // learner here pressed "Edit profile" and was editing their own profile.
+    final isOwnProfile = ref.watch(profileProvider)?.id == profile.id;
+
     // ─── This profile's skin + layout (yield to accessibility modes) ───
     final theme = ref.watch(progressThemeForProvider(profile.id));
     final layout = ref.watch(progressLayoutForProvider(profile.id));
@@ -70,7 +75,7 @@ class StudentProfileDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(profile.name),
+        title: AppBarTitle(profile.name),
         actions: [
           IconButton(
             icon: const Icon(Icons.palette_rounded),
@@ -85,11 +90,12 @@ class StudentProfileDetailScreen extends ConsumerWidget {
                   selectProgressLayoutFor(ref, profile.id, id),
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.edit_rounded),
-            tooltip: _t(context).spdEditProfile,
-            onPressed: () => context.push('/edit-profile'),
-          ),
+          if (isOwnProfile)
+            IconButton(
+              icon: const Icon(Icons.edit_rounded),
+              tooltip: _t(context).spdEditProfile,
+              onPressed: () => context.push('/edit-profile'),
+            ),
         ],
       ),
       body: SingleChildScrollView(
@@ -558,7 +564,6 @@ class _CategoryRow extends StatelessWidget {
                           fontWeight: FontWeight.w700,
                           color: catDarkColor,
                         ),
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     Container(
@@ -960,8 +965,9 @@ class _TagsRow extends StatelessWidget {
               color: HCColor.of(context).textSecondary,
             ),
           ),
-          const Spacer(),
-          Flexible(
+          // All the room the label leaves: a Spacer beside it took half.
+          const SizedBox(width: 12),
+          Expanded(
             child: Wrap(
               spacing: 6,
               runSpacing: 4,

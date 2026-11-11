@@ -18,6 +18,7 @@ import '../../../widgets/fsl_video_sheet.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Where an educator checks a learner's "I can sign this" claims.
 ///
@@ -158,7 +159,7 @@ class _SignCheckScreenState extends ConsumerState<SignCheckScreen> {
     return Stack(
       children: [
         SafeScaffold(
-          appBar: AppBar(title: Text(_t(context).scTitleCheck)),
+          appBar: AppBar(title: AppBarTitle(_t(context).scTitleCheck)),
           // The body is already a ListView, so opt out of SafeScaffold's own
           // SingleChildScrollView — nesting the two gives the list unbounded
           // height and the Scaffold fails layout entirely, leaving a blank
@@ -313,8 +314,6 @@ class _ClaimRow extends StatelessWidget {
                         style: AppTypography.titleSmall.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
                       Text(
                         // The learner's own words, quoted back — the educator

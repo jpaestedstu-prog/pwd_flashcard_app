@@ -1,6 +1,9 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
-/// Text that steps its own size down until its longest **word** fits on a line.
+/// Text that steps its own size down until its longest **word** fits on a line
+/// and the whole text fits in [maxLines].
 ///
 /// Flutter breaks *inside* a word once the word alone is wider than the line,
 /// which is how the app was showing learners "Kuman / ta", "Bahagha / ri" and
@@ -15,17 +18,23 @@ import 'package:flutter/material.dart';
 ///
 /// A low-vision learner asked for bigger text, so taking size away is a cost.
 /// [minScale] floors how far it will go, and the step only happens when the word
-/// genuinely would not fit. Whole word slightly smaller beats half a word at
-/// full size; below the floor it stops shrinking and lets the text wrap, on the
-/// grounds that a layout that broken needs a layout fix, not a smaller font.
+/// genuinely would not fit, or the text would be cut short with "…". Whole word
+/// slightly smaller beats half a word at full size. Below the floor the type
+/// stays at the floor and the whole text is drawn smaller, laid out as
+/// narrow as its longest word allows: it used to wrap there, splitting words
+/// ("Kamak / ailang", "Experi / ment" at 2x, 3 Nov). A layout that tight
+/// still wants a layout fix; this keeps it readable meanwhile.
 ///
-/// ### Why an estimate rather than a `TextPainter`
+/// ### Measured, and measured again when the font arrives
 ///
-/// Measuring looks exact and is not: these labels render in a Google font that
-/// is not resolved at measure time, so the painter returns fallback metrics,
-/// reports a fit, and the real face breaks anyway. 0.58 em per character is a
-/// safe average for the app's faces.
-class FitText extends StatelessWidget {
+/// It used to estimate 0.58 em a letter, because a measurement taken before
+/// the app's Google font has loaded uses fallback metrics. The estimate cut
+/// text all the same: "Mga Salita" became "Mga Sal…" in one line, and the
+/// Games hub's descriptions ran past three, at the largest Font Size in
+/// Filipino (30 Oct). So it measures with a [TextPainter] in the text's own
+/// style, and measures again when a font finishes loading (Flutter announces
+/// that through [PaintingBinding.systemFonts]).
+class FitText extends StatefulWidget {
   const FitText(
     this.text, {
     super.key,
@@ -33,10 +42,14 @@ class FitText extends StatelessWidget {
     this.maxLines = 2,
     this.textAlign,
     this.minScale = 0.7,
+    this.semanticsLabel,
   });
 
   final String text;
   final TextStyle? style;
+
+  /// What a screen reader says instead of [text], as [Text.semanticsLabel].
+  final String? semanticsLabel;
 
   /// Null for a paragraph: as many lines as it takes, never cut short.
   final int? maxLines;
@@ -45,61 +58,260 @@ class FitText extends StatelessWidget {
   /// Smallest fraction of the original size this will use.
   final double minScale;
 
+  /// Whether [text], drawn as a [FitText] with these settings would draw it,
+  /// fits whole in a column of a given width: every word on a line, within
+  /// [maxLines], at no smaller than the floor.
+  ///
+  /// Read from [context] now and measured later, so that a layout can ask
+  /// while it lays out where the text is to go ([BesideOrBelow]).
+  static bool Function(double width) measurer(
+    BuildContext context,
+    String text, {
+    TextStyle? style,
+    int? maxLines = 2,
+    double minScale = 0.7,
+    TextAlign? textAlign,
+  }) {
+    final fit = _Fit(
+      context,
+      style: style,
+      textAlign: textAlign,
+      maxLines: maxLines,
+      minScale: minScale,
+    );
+    return (width) => !fit.measure(text, width, double.infinity).$2;
+  }
+
+  @override
+  State<FitText> createState() => _FitTextState();
+}
+
+class _FitTextState extends State<FitText> {
+  @override
+  void initState() {
+    super.initState();
+    PaintingBinding.instance.systemFonts.addListener(_fontsChanged);
+  }
+
+  @override
+  void dispose() {
+    PaintingBinding.instance.systemFonts.removeListener(_fontsChanged);
+    super.dispose();
+  }
+
+  void _fontsChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
-    final base = style ?? DefaultTextStyle.of(context).style;
-    final baseSize = base.fontSize ?? 14.0;
+    final fit = _Fit(
+      context,
+      style: widget.style,
+      textAlign: widget.textAlign,
+      maxLines: widget.maxLines,
+      minScale: widget.minScale,
+    );
+    final base = fit.base;
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        var size = baseSize;
-        if (constraints.maxWidth.isFinite) {
-          final scale = MediaQuery.textScalerOf(context).scale(1.0);
-          final longest = text
-              .split(RegExp(r'\s+'))
-              .fold<int>(0, (max, w) => w.length > max ? w.length : max);
-          if (longest > 0) {
-            // Bold runs wider: at 0.58 em a bold "Kategorya" (1.4x) and
-            // "Pagkasensitibo" (2x) still came out a few pixels too wide.
-            final perChar =
-                (base.fontWeight ?? FontWeight.normal).value >= 600
-                    ? 0.62
-                    : 0.58;
-            final needed = longest * perChar * scale;
-            if (needed > 0) {
-              // Letter spacing is a flat number of logical pixels per
-              // character and does *not* scale with the font, so it cannot be
-              // folded into `needed` — it comes off the available width
-              // instead. The dyslexia theme sets 0.6 on every style, which is
-              // what let "Happy" split as "Happ / y" in an 84dp mood tile
-              // while this estimate still reported a comfortable fit.
-              final spacing = longest * (base.letterSpacing ?? 0);
-              final room = constraints.maxWidth - spacing;
-              // Largest size at which the longest word still fits one line.
-              final fits = room / needed;
-              // The floor deepens as the scale rises. A flat 0.7 still split
-              // "Crea / te" at 2x, and it did not need to: shrinking to 0.5
-              // there still renders the word at its *unscaled* size, which is
-              // what every learner at 1.0x reads happily. Never below that.
-              final floor =
-                  baseSize * (scale >= 1.8 ? 0.5 : minScale);
-              // Never `clamp`: when the word cannot fit even at the floor, the
-              // upper bound drops below the lower one and clamp throws.
-              size = fits >= baseSize
-                  ? baseSize
-                  : (fits < floor ? floor : fits);
-            }
-          }
-        }
-        return Text(
-          text,
-          style: base.copyWith(fontSize: size),
-          maxLines: maxLines,
-          overflow: maxLines == null ? null : TextOverflow.ellipsis,
-          textAlign: textAlign,
+        final (size, belowFloor, wrapWidth) = fit.measureWithWrap(
+          widget.text,
+          constraints.maxWidth,
+          constraints.maxHeight,
         );
+        final text = Text(
+          widget.text,
+          style: base.copyWith(fontSize: size),
+          maxLines: widget.maxLines,
+          overflow: widget.maxLines == null ? null : TextOverflow.ellipsis,
+          textAlign: widget.textAlign,
+          // Wrapping as it was measured: an app bar turns it off for its
+          // title, and the second line measured for it never came.
+          softWrap: true,
+          semanticsLabel: widget.semanticsLabel,
+        );
+        // Not even the floor fits: the whole text, smaller still, rather
+        // than "Nasasa…" on one line (a mood, a stat, a word — a phone at the
+        // largest Font Size, 30 Oct) or a word split across two ("Kamak /
+        // ailang", 3 Nov). Laid out as narrow as its longest word allows, so
+        // it shrinks as little as it can.
+        if (belowFloor) {
+          final alignment = switch (widget.textAlign) {
+            TextAlign.center => Alignment.center,
+            TextAlign.right || TextAlign.end => AlignmentDirectional.centerEnd,
+            _ => AlignmentDirectional.centerStart,
+          };
+          return FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: alignment,
+            child: widget.maxLines == 1
+                ? text
+                : SizedBox(width: wrapWidth, child: text),
+          );
+        }
+        return text;
       },
     );
+  }
+}
+
+/// What [FitText] measures with, read from the context at build time so that
+/// the measuring itself can run later, in layout ([FitText.measurer]).
+class _Fit {
+  _Fit(
+    BuildContext context, {
+    required TextStyle? style,
+    required this.textAlign,
+    required this.maxLines,
+    required this.minScale,
+  })  : defaults = DefaultTextStyle.of(context),
+        scaler = MediaQuery.textScalerOf(context),
+        direction = Directionality.of(context),
+        locale = Localizations.maybeLocaleOf(context) {
+    base = style == null
+        ? defaults.style
+        : style.inherit
+        ? defaults.style.merge(style)
+        : style;
+  }
+
+  final DefaultTextStyle defaults;
+  final TextScaler scaler;
+  final TextDirection direction;
+  final Locale? locale;
+  final TextAlign? textAlign;
+  final int? maxLines;
+  final double minScale;
+  late final TextStyle base;
+
+  /// The font size [text] is drawn at in a box [width] wide and [maxHeight]
+  /// high, and whether even the floor was too big for it — and then the
+  /// width to lay it out in, every word whole, before it is drawn smaller to
+  /// fit (see [FitText]).
+  (double, bool) measure(String text, double width, double maxHeight) {
+    final (size, belowFloor, _) = measureWithWrap(text, width, maxHeight);
+    return (size, belowFloor);
+  }
+
+  (double, bool, double) measureWithWrap(
+    String text,
+    double width,
+    double maxHeight,
+  ) {
+    final baseSize = base.fontSize ?? 14.0;
+    var size = baseSize;
+    var belowFloor = false;
+    var wrapWidth = width;
+    // The column's own width, as [fits] is asked about it by default.
+    final width0 = width;
+    if (width.isFinite && text.trim().isNotEmpty) {
+      // How wide [piece] is on one line at [fontSize].
+      double lineWidth(String piece, double fontSize) {
+        final painter = TextPainter(
+          text: TextSpan(text: piece, style: base.copyWith(fontSize: fontSize)),
+          textDirection: direction,
+          textScaler: scaler,
+          locale: locale,
+        )..layout();
+        final w = painter.width;
+        painter.dispose();
+        return w;
+      }
+
+      // The widest word, measured on its own: a paragraph's
+      // minIntrinsicWidth is no guide (centred, it said "Disagree" fitted
+      // a column it was split in). A line may end after a hyphen, so
+      // "Sunod-sunod" is two pieces, "Sunod-" and "sunod".
+      var widest = '';
+      var widestWidth = 0.0;
+      for (final m in RegExp(r'[^\s-]+-?').allMatches(text)) {
+        final word = m.group(0)!;
+        final w = lineWidth(word, baseSize);
+        if (w > widestWidth) {
+          widest = word;
+          widestWidth = w;
+        }
+      }
+
+      // Whether the text, at [fontSize], keeps every word whole and
+      // ends within [maxLines].
+      bool fits(double fontSize, [double? inWidth]) {
+        final width = inWidth ?? width0;
+        // Exactly: a word 0.13 px too wide for its column was split
+        // ("Disagre / e") when this allowed half a pixel.
+        if (lineWidth(widest, fontSize) > width) return false;
+        final painter = TextPainter(
+          text: TextSpan(text: text, style: base.copyWith(fontSize: fontSize)),
+          textDirection: direction,
+          textAlign: textAlign ?? defaults.textAlign ?? TextAlign.start,
+          textScaler: scaler,
+          maxLines: maxLines,
+          locale: locale,
+          textWidthBasis: defaults.textWidthBasis,
+          textHeightBehavior: defaults.textHeightBehavior,
+        )..layout(maxWidth: width);
+        // And within the height it was given, when it was given one (a
+        // Flexible in a card): past it the last line was clipped.
+        // (Not the height, once the text is to be drawn smaller as a whole:
+        // that scales the height down with it.)
+        final whole = !painter.didExceedMaxLines &&
+            (inWidth != null ||
+                !maxHeight.isFinite ||
+                painter.height <= maxHeight);
+        painter.dispose();
+        return whole;
+      }
+
+      if (!fits(baseSize)) {
+        // The floor deepens as the scale rises. A flat 0.7 still split
+        // "Crea / te" at 2x, and it did not need to: shrinking to 0.5
+        // there still renders the word at its *unscaled* size, which is
+        // what every learner at 1.0x reads happily. Never below that.
+        final floor = baseSize * (scaler.scale(1.0) >= 1.8 ? 0.5 : minScale);
+        // The largest size that fits, to a tenth of a pixel; the floor
+        // when even that does not.
+        var low = floor;
+        var high = baseSize;
+        if (fits(floor)) {
+          while (high - low > 0.1) {
+            final mid = (low + high) / 2;
+            if (fits(mid)) {
+              low = mid;
+            } else {
+              high = mid;
+            }
+          }
+        } else {
+          belowFloor = true;
+          // The narrowest width that holds the text, at the floor, in its
+          // lines with every word whole: from the longest word (never
+          // narrower than the column itself — a text too tall for its box
+          // only needs drawing smaller) up to the whole text on one line.
+          var narrow = math.max(width, lineWidth(widest, floor).ceilToDouble());
+          var wide = math.max(narrow, lineWidth(text, floor).ceilToDouble());
+          if (maxLines == null || fits(floor, narrow)) {
+            wide = narrow;
+          } else {
+            // To within a pixel. Halved every time (no rounding inside the
+            // loop: a rounded middle could equal an end, and the search
+            // never ended — a test hung on it, 4 Nov).
+            for (var i = 0; i < 24 && wide - narrow > 1; i++) {
+              final mid = (narrow + wide) / 2;
+              if (fits(floor, mid)) {
+                wide = mid;
+              } else {
+                narrow = mid;
+              }
+            }
+          }
+          wrapWidth = wide.ceilToDouble();
+        }
+        size = low;
+      }
+    }
+    return (size, belowFloor, wrapWidth);
   }
 }
 

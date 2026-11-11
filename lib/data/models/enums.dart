@@ -587,7 +587,7 @@ extension GameTypeX on GameType {
     GameType.wordMatch => 'Match the picture to the correct word!',
     GameType.spellingBee => 'Unscramble the letters to spell the word!',
     GameType.memoryMatch => 'Find matching pairs of cards!',
-    GameType.dragAndDrop => 'Drag each word to its matching picture!',
+    GameType.dragAndDrop => 'Match each English word to its Filipino word!',
     GameType.flashcardQuiz => 'Swipe right if you know it, left to learn!',
     GameType.pronunciation => 'Listen and pick the correct word!',
     GameType.sentenceBuilder => 'Fill in the missing word in the sentence!',

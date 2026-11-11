@@ -1,8 +1,12 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/semantics.dart';
+import 'package:flutter/widgets.dart' show WidgetsBinding;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../utils/input_trace.dart';
 import '../../features/parent/models/educator_audience.dart';
 import '../../providers/app_providers.dart';
 import '../../providers/parent_provider.dart';
+import 'spoken_words.dart';
 import 'tts_service.dart';
 
 /// Service that provides voice-guided navigation for visually impaired users.
@@ -78,13 +82,35 @@ class VoiceNavigationService {
     await _speak(event);
   }
 
+  /// Whether a screen reader (TalkBack, VoiceOver, a browser's reader) is
+  /// reading the screen.
+  @visibleForTesting
+  static bool Function() screenReaderOn = () => WidgetsBinding
+      .instance.platformDispatcher.accessibilityFeatures.accessibleNavigation;
+
+  /// [screenReaderOn], for the other voices in the app (the controller's).
+  static bool get isScreenReaderOn => screenReaderOn();
+
   Future<void> _speak(String text) async {
+    // Without its emoji, which a voice reads by name ([SpokenWords]).
+    text = SpokenWords.withoutPictures(text);
     // Debug builds log what was spoken. The device cannot be asked what it
     // said — a phone mic does not pick up its own speaker, and TTS engines log
     // utterance ids rather than text — so this line is the only way to verify
     // announcements on hardware. Matches the existing `VoiceCmd` / `SttService`
     // debug logging.
-    if (kDebugMode) debugPrint('VoiceNav speak [$_currentLocale]: $text');
+    InputTrace.log('VoiceNav speak [$_currentLocale]: $text');
+    // With a screen reader on, it speaks for the app. Found with TalkBack on
+    // the tablet: opening Home, the app announced the screen while TalkBack
+    // read the first control — two voices at once, neither understood. Handed
+    // to the reader, the announcement joins its own queue instead.
+    if (screenReaderOn()) {
+      final view = WidgetsBinding.instance.platformDispatcher.implicitView;
+      if (view != null) {
+        await SemanticsService.sendAnnouncement(view, text, TextDirection.ltr);
+      }
+      return;
+    }
     if (_currentLocale == 'fil') {
       await _tts.speakFilipino(text);
     } else {

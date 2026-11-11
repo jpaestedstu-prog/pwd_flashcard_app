@@ -18,6 +18,7 @@ import '../../../widgets/app_back_button.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../navigation/nav_extensions.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Dashboard visualizing pre-test vs post-test learning gains
 class LearningGainScreen extends ConsumerWidget {
@@ -52,7 +53,7 @@ class LearningGainScreen extends ConsumerWidget {
           backgroundColor: Colors.transparent,
           elevation: 0,
           leading: const AppBackButton(),
-          title: Text(
+          title: AppBarTitle(
             _t(context).homeLearningGains,
             style: AppTypography.titleMedium.copyWith(
               fontWeight: FontWeight.w700,
@@ -95,7 +96,7 @@ class LearningGainScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: const AppBackButton(fallbackRoute: '/progress'),
-        title: Text(
+        title: AppBarTitle(
           _t(context).homeLearningGains,
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
@@ -360,7 +361,7 @@ class _AverageScoresCard extends StatelessWidget {
                         e.key.labelOf(_t(context)),
                         style: AppTypography.labelSmall.copyWith(
                           color: hc.textSecondary,
-                          fontSize: 10,
+                          fontSize: 11,
                         ),
                         textAlign: TextAlign.center,
                         overflow: TextOverflow.ellipsis,
@@ -454,7 +455,7 @@ class _AssessmentHistoryCard extends StatelessWidget {
                           LocalizedDate.monthDayYear(r.completedAt, _t(context)),
                           style: AppTypography.labelSmall.copyWith(
                             color: hc.textHint,
-                            fontSize: 10,
+                            fontSize: 11,
                           ),
                         ),
                       ],

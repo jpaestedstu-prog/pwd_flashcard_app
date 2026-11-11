@@ -9,6 +9,8 @@ import '../../../core/services/join_code_service.dart';
 import '../../../providers/join_code_provider.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
+import '../../../core/widgets/fit_label.dart';
 
 /// Student-side screen: enter a 6-character classroom code.
 ///
@@ -62,7 +64,7 @@ class _JoinClassScreenState extends ConsumerState<JoinClassScreen> {
 
     return SafeScaffold(
       appBar: AppBar(
-        title: Text(_t(context).joinClassTitle),
+        title: AppBarTitle(_t(context).joinClassTitle),
         leading: IconButton(
           tooltip: _t(context).back,
           icon: const Icon(Icons.arrow_back),
@@ -96,7 +98,7 @@ class _JoinClassScreenState extends ConsumerState<JoinClassScreen> {
                     _UpperCaseFormatter(),
                   ],
                   decoration: InputDecoration(
-                    labelText: _t(context).joinClassCode,
+                    label: FitLabel(_t(context).joinClassCode),
                     hintText: 'ABC123',
                     border: const OutlineInputBorder(),
                   ),

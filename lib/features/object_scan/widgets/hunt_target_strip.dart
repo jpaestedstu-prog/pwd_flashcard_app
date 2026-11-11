@@ -65,7 +65,7 @@ class _TargetChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: '${card.wordEnglish}, ${card.wordFilipino}',
+      label: card.spokenWords(),
       child: Container(
         padding: const EdgeInsets.fromLTRB(6, 5, 12, 5),
         decoration: BoxDecoration(

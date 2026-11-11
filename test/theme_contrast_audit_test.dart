@@ -118,6 +118,17 @@ class _Panel extends StatelessWidget {
                 subtitle: Text('Tile subtitle'),
               ),
             ),
+            // Colours ThemeData works out from the brightness, which screens
+            // also use: the controller screens' notes are in hintColor, the
+            // template preview sheet is painted in cardColor.
+            Text(
+              'Hint colour',
+              style: TextStyle(color: Theme.of(context).hintColor),
+            ),
+            ColoredBox(
+              color: Theme.of(context).cardColor,
+              child: const Text('On card colour'),
+            ),
           ],
         ),
         bottomNavigationBar: NavigationBar(
@@ -154,6 +165,8 @@ const _labels = [
   'Field label',
   'Tile title',
   'Tile subtitle',
+  'Hint colour',
+  'On card colour',
   'Nav on',
   'Nav off',
 ];
@@ -186,6 +199,45 @@ void main() {
         final reading = readLabel(tester, label);
         if (!reading.passes) failures.add(reading.toString());
       }
+      expect(failures, isEmpty, reason: failures.join('\n'));
+    });
+
+    // Found on the tablet (30 Oct): high contrast is the light theme copied
+    // with dark colours, and the copy kept the menu colour Flutter had worked
+    // out for a light theme. The Language menu was white words on white.
+    testWidgets('${entry.key}: an open dropdown menu is readable',
+        (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: entry.value(),
+          home: Scaffold(
+            body: Center(
+              child: DropdownButton<int>(
+                value: 1,
+                items: const [
+                  DropdownMenuItem(value: 1, child: Text('Menu chosen')),
+                  DropdownMenuItem(value: 2, child: Text('Menu other')),
+                ],
+                onChanged: (_) {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('Menu chosen'));
+      await tester.pumpAndSettle();
+
+      final menu = [
+        for (final r in readAllText(tester))
+          if (r.text.startsWith('Menu ')) r,
+      ];
+      // The button's own copy, and both rows of the open menu.
+      expect(menu.length, greaterThanOrEqualTo(3));
+      final failures = [
+        for (final r in menu)
+          if (!r.passes) r.toString(),
+      ];
       expect(failures, isEmpty, reason: failures.join('\n'));
     });
 

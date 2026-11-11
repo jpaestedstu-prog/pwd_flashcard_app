@@ -471,7 +471,7 @@
   "total": "Total",
   "reviewAgain": "Review Again",
   "done": "Done",
-  "dragInstruction": "Drag the English word to its Filipino match!",
+  "dragInstruction": "Drag the English word to its Filipino match — or tap it, then tap the match!",
   "tracing": "Tracing",
   "traceWord": "Trace: {word}",
   "@traceWord": {
@@ -1153,7 +1153,7 @@
   "gameDescWordMatch": "Match the picture to the correct word!",
   "gameDescSpellingBee": "Unscramble the letters to spell the word!",
   "gameDescMemoryMatch": "Find matching pairs of cards!",
-  "gameDescDragAndDrop": "Drag each word to its matching picture!",
+  "gameDescDragAndDrop": "Match each English word to its Filipino word!",
   "gameDescFlashcardQuiz": "Swipe right if you know it, left to learn!",
   "gameDescPronunciation": "Listen and pick the correct word!",
   "gameDescSentenceBuilder": "Fill in the missing word in the sentence!",
@@ -1201,6 +1201,21 @@
   "suggestTierHard": "You're doing great — time for a real challenge!",
   "gameRoundHeader": "{game}  •  {current}/{total}",
   "@gameRoundHeader": {
+    "placeholders": {
+      "game": {
+        "type": "String"
+      },
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "gameRoundHeaderSpoken": "{game}, round {current} of {total}",
+  "@gameRoundHeaderSpoken": {
+    "description": "Spoken for the game title bar (shown as gameRoundHeader).",
     "placeholders": {
       "game": {
         "type": "String"
@@ -1280,6 +1295,16 @@
     }
   },
   "answerSemantics": "Answer: {answer}",
+  "sbSentenceSemantics": "Sentence: {sentence}",
+  "@sbSentenceSemantics": {
+    "description": "Spoken for the Sentence Builder sentence; the gap is said as sbBlankWord.",
+    "placeholders": {
+      "sentence": {
+        "type": "String"
+      }
+    }
+  },
+  "sbBlankWord": "blank",
   "@answerSemantics": {
     "placeholders": {
       "answer": {
@@ -1313,14 +1338,7 @@
       }
     }
   },
-  "whichWordMatchesSemantics": "Which word matches this picture? {word}",
-  "@whichWordMatchesSemantics": {
-    "placeholders": {
-      "word": {
-        "type": "String"
-      }
-    }
-  },
+  "whichWordMatchesPicture": "Which word matches this picture?",
   "firstLetterQuestion": "Question: which letter does the word {word} start with?",
   "@firstLetterQuestion": {
     "placeholders": {
@@ -1357,25 +1375,17 @@
       }
     }
   },
-  "flashcardProgressSemantics": "Card {current} of {total}, {known} known, {learning} still learning",
-  "@flashcardProgressSemantics": {
+  "draggableWordSemantics": "{word}. Press to pick it up, or drag it to its Filipino match",
+  "@draggableWordSemantics": {
     "placeholders": {
-      "current": {
-        "type": "int"
-      },
-      "total": {
-        "type": "int"
-      },
-      "known": {
-        "type": "int"
-      },
-      "learning": {
-        "type": "int"
+      "word": {
+        "type": "String"
       }
     }
   },
-  "draggableWordSemantics": "Draggable word: {word}, drag to matching Filipino word",
-  "@draggableWordSemantics": {
+  "draggableWordPicked": "{word}, picked up. Now press its Filipino match",
+  "@draggableWordPicked": {
+    "description": "A word the learner picked up by pressing it rather than dragging it — keys, a switch, a controller, gaze or a screen reader.",
     "placeholders": {
       "word": {
         "type": "String"
@@ -1420,19 +1430,33 @@
       }
     }
   },
-  "letterAlreadyUsed": "Letter {letter}, already used",
+  "letterAlreadyUsed": "Letter {letter}, {position} of {total}, already used",
   "@letterAlreadyUsed": {
+    "description": "A Spelling Bee tile already placed. The position tells two tiles with the same letter apart.",
     "placeholders": {
       "letter": {
         "type": "String"
+      },
+      "position": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
       }
     }
   },
-  "letterTapToPlace": "Letter {letter}, tap to place",
+  "letterTapToPlace": "Letter {letter}, {position} of {total}, tap to place",
   "@letterTapToPlace": {
+    "description": "A Spelling Bee tile. A word with a letter twice had two tiles that said exactly the same.",
     "placeholders": {
       "letter": {
         "type": "String"
+      },
+      "position": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
       }
     }
   },
@@ -1447,6 +1471,15 @@
       "total": {
         "type": "int"
       },
+      "score": {
+        "type": "int"
+      }
+    }
+  },
+  "gameScoreChip": "Score: {score}",
+  "@gameScoreChip": {
+    "description": "Spoken for the star score chip at the top of a game (the chip shows only the number).",
+    "placeholders": {
       "score": {
         "type": "int"
       }
@@ -1510,6 +1543,18 @@
       }
     }
   },
+  "dropTargetPlace": "{filipino}. Press to put {word} here",
+  "@dropTargetPlace": {
+    "description": "A Filipino row while a word is picked up: pressing it places the word there.",
+    "placeholders": {
+      "filipino": {
+        "type": "String"
+      },
+      "word": {
+        "type": "String"
+      }
+    }
+  },
   "memoryCardMatched": "Matched card: {word}",
   "@memoryCardMatched": {
     "placeholders": {
@@ -1526,7 +1571,15 @@
       }
     }
   },
-  "memoryCardFaceDown": "Face-down card, tap to flip",
+  "memoryCardFaceDown": "Face-down card {number}, tap to flip",
+  "@memoryCardFaceDown": {
+    "description": "Screen-reader label of an unturned card; the number tells one card from the next, which otherwise all said the same.",
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
   "breakButton": "Break",
   "iNeedABreakTooltip": "I need a break",
   "replayVideo": "Replay",
@@ -1831,7 +1884,7 @@
   "settingCompanionTitle": "AI Companion",
   "settingVocabReviewTitle": "Vocab Review Reminder",
   "settingSectionMyDay": "My Day",
-  "settingRoutineTitle": "Routine",
+  "settingRoutineTitle": "Show on Home",
   "settingRoutineOnDesc": "My Day shows on your home — plan your day, step by step",
   "settingRoutineOffDesc": "Turn on My Day to plan your day, step by step",
   "settingSectionData": "Data",
@@ -3007,6 +3060,15 @@
       }
     }
   },
+  "gmSelectSeveral": "Select several",
+  "seasonalBannerHide": "Hide the {event} banner",
+  "@seasonalBannerHide": {
+    "placeholders": {
+      "event": {
+        "type": "String"
+      }
+    }
+  },
   "gmRemoveCount": "Remove ({count})",
   "@gmRemoveCount": {
     "placeholders": {
@@ -3344,7 +3406,7 @@
   "clipFailedBody": "Connect to the internet and try again, or answer from what you already know.",
   "navGoBack": "Go back",
   "offlineBanner": "You’re offline — everything still works!",
-  "homePlayerProfile": "Player Profile",
+  "homePlayerProfile": "My Profile",
   "homeMyDay": "My Day",
   "homeMoodCheckIn": "Mood Check-In",
   "homeDailyChallenge": "Daily Challenge",
@@ -3436,6 +3498,15 @@
   "homeComeBackTomorrow": "Come back tomorrow for more!",
   "homeCollect": "Collect",
   "homeCollectStar": "Collect! 🌟",
+  "rewardStarsCount": "{count, plural, =1{1 star} other{{count} stars}}",
+  "@rewardStarsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "rewardCollected": "collected",
   "homeDailyChallengeChip": "🏆 Daily Challenge",
   "homeDayStreak": "{count, plural, =1{1 day streak} other{{count} day streak}}",
   "@homeDayStreak": {
@@ -3466,7 +3537,7 @@
       }
     }
   },
-  "homeLevelSemantics": "Player Profile. Level {level} {title}, {xp} XP total, {next}. Opens your stats, rewards and achievements.",
+  "homeLevelSemantics": "My Profile. Level {level} {title}, {xp} XP total, {next}. Opens your stats, rewards and achievements.",
   "@homeLevelSemantics": {
     "placeholders": {
       "level": {
@@ -3709,14 +3780,6 @@
       }
     }
   },
-  "viewerButton": "{label} button",
-  "@viewerButton": {
-    "placeholders": {
-      "label": {
-        "type": "String"
-      }
-    }
-  },
   "viewerGazeStarting": "Starting gaze…",
   "viewerGazeLook": "Look at the screen",
   "viewerGazeChoose": "Look ◀ ▶ to choose · blink to open",
@@ -3750,19 +3813,21 @@
       }
     }
   },
-  "progAchievementUnlocked": "{title} achievement, unlocked",
-  "@progAchievementUnlocked": {
+  "progBadgesSpoken": "Earned: {names}.",
+  "@progBadgesSpoken": {
+    "description": "What a screen reader says for the achievement badges on Progress, in place of each badge: the earned ones by name.",
     "placeholders": {
-      "title": {
+      "names": {
         "type": "String"
       }
     }
   },
-  "progAchievementLocked": "{title} achievement, locked",
-  "@progAchievementLocked": {
+  "progBadgesSpokenNone": "None earned yet.",
+  "progBadgesSpokenLeft": "{count} more to earn.",
+  "@progBadgesSpokenLeft": {
     "placeholders": {
-      "title": {
-        "type": "String"
+      "count": {
+        "type": "int"
       }
     }
   },
@@ -3829,6 +3894,87 @@
         "type": "int"
       },
       "total": {
+        "type": "int"
+      }
+    }
+  },
+  "obStepNofM": "Step {current} of {total}",
+  "@obStepNofM": {
+    "description": "The first-visit tour's page counter. It said \"1 of 6\" in English whatever the language.",
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "cardNofM": "Card {index} of {total}",
+  "@cardNofM": {
+    "description": "Spoken for a card counter (shown as 3 / 12).",
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "ddMatchedOf": "{matched} of {total} matched",
+  "@ddMatchedOf": {
+    "description": "Spoken for the Drag and Drop counter (shown as 3 / 5).",
+    "placeholders": {
+      "matched": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "secondsCount": "{count, plural, =1{1 second} other{{count} seconds}}",
+  "@secondsCount": {
+    "description": "Spoken for a seconds timer (shown as 12s).",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "secondsDecimal": "{seconds} seconds",
+  "@secondsDecimal": {
+    "description": "Spoken for a time with tenths of a second (shown as 12.5s).",
+    "placeholders": {
+      "seconds": {
+        "type": "String"
+      }
+    }
+  },
+  "hoursCount": "{count, plural, =1{1 hour} other{{count} hours}}",
+  "@hoursCount": {
+    "description": "Spoken for an hours value (shown as 2h).",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "seasonDaysLeft": "{count, plural, =1{1 day left} other{{count} days left}}",
+  "@seasonDaysLeft": {
+    "description": "The seasonal banner's countdown (it read \"3d left\", in English, which a voice says as \"3 D left\").",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "minutesCount": "{count, plural, =1{1 minute} other{{count} minutes}}",
+  "@minutesCount": {
+    "description": "Spoken for a minutes value (shown as 12m).",
+    "placeholders": {
+      "count": {
         "type": "int"
       }
     }
@@ -4080,6 +4226,38 @@
   "lpNodeCurrent": "Current",
   "lpNodeAvailable": "Available",
   "lpNodeLocked": "Locked",
+  "lpStepsDone": "{done} of {total} steps done",
+  "@lpStepsDone": {
+    "description": "Spoken by a screen reader on a learning-path region: how far the learner is.",
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "lpRegionsDone": "{done} of {total} regions done",
+  "@lpRegionsDone": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "proNewCount": "{count} new",
+  "@proNewCount": {
+    "description": "Spoken after an educator tile name: how many new items wait (messages, alerts).",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "srEnglishWord": "English word: {word}",
   "@srEnglishWord": {
     "placeholders": {
@@ -4155,6 +4333,7 @@
   },
   "calStudied": ", studied",
   "calToday": ", today",
+  "dcDayDone": ", challenge done",
   "calM3": "3 Days",
   "calW1": "1 Week",
   "calW2": "2 Weeks",
@@ -4377,7 +4556,6 @@
   "goalsWhichCategory": "Which category?",
   "goalsTarget": "Target",
   "goalsDeadline": "Set a deadline",
-  "goalsDaysShort": "{days}d",
   "@goalsDaysShort": {
     "placeholders": {
       "days": {
@@ -4711,17 +4889,6 @@
     "placeholders": {
       "count": {
         "type": "int"
-      }
-    }
-  },
-  "setProfileSemantics": "Profile: {name}, {role}. Tap switch to change profile.",
-  "@setProfileSemantics": {
-    "placeholders": {
-      "name": {
-        "type": "String"
-      },
-      "role": {
-        "type": "String"
       }
     }
   },
@@ -5132,6 +5299,10 @@
         "type": "int"
       }
     }
+  },
+  "tlNoticeLength": "Notice before the lock",
+  "@tlNoticeLength": {
+    "description": "Screen-reader name of the slider that sets how many minutes of warning come before the lock; its value says the minutes."
   },
   "tlAlarm": "Play an alarm sound",
   "tlAlarmBody": "Also alerts the adult in the room, so it stays on for learners who are deaf or hard of hearing.",
@@ -5848,7 +6019,7 @@
       }
     }
   },
-  "rcRestoreFailed": "Something went wrong while restoring your profile: {error}",
+  "rcRestoreFailed": "Your profile could not be restored: {error}",
   "@rcRestoreFailed": {
     "placeholders": {
       "error": {
@@ -6013,7 +6184,7 @@
   "gpGazeUsesPractice": "Right now a button press picks what is lit (such as Back), so it is not practised here. To practise these buttons, first turn off picking with a switch in Gaze Control.",
   "gpPractise": "Practise the controller",
   "gpPractiseButtons": "Practise the buttons",
-  "gpPractiseHelp": "Press anything and hear what it does. Nothing in the app moves while practising.",
+  "gpPractiseHelp": "Press anything to see and hear what it does. Nothing in the app moves while practising.",
   "gpEnable": "Enable controller",
   "gpEnabledOn": "A paired controller can drive the app",
   "gpEnabledOff": "Off — touch only",
@@ -6024,9 +6195,11 @@
   "gpSpeedHelp": "Experienced listeners often want this faster than it starts. It sets the speaking speed for the whole app, so stories and vocabulary read at the same pace.",
   "gpReadItem": "Read each item",
   "gpReadItemHelp": "Says the name and position — “Games, 3 of 8” — as the cursor lands on it.",
-  "gpMoving": "Moving between sections",
+  "gpMoving": "Moving around",
   "gpAsk": "Ask before switching",
-  "gpAskHelp": "Left and right ask “Do you want to go to the Cards section?” — A for yes, B for no. Turn off to switch straight away.",
+  "gpAskHelp": "L1 and R1 ask “Do you want to go to the Cards section?” — A for yes, B for no. Turn off to switch straight away.",
+  "gpLeftStick": "Left joystick moves too",
+  "gpLeftStickHelp": "The left joystick moves the highlight just like the D-pad. Turn it off if it gets knocked by accident.",
   "gpComfort": "Comfort",
   "gpVibrate": "Vibrate on each press",
   "gpVibrateHelp": "A silent confirmation that the press registered, even while a previous sentence is still finishing.",
@@ -6041,13 +6214,13 @@
   },
   "gpDedupeHelp": "Raise this for a learner whose grip produces extra presses. Lower it if deliberate quick presses are being missed.",
   "gpHold": "Hold to keep moving",
-  "gpHoldHelp": "Holding up or down keeps stepping through items, instead of one press per step. Opening, going back and switching section never repeat.",
+  "gpHoldHelp": "Holding the D-pad, the left joystick, L2 or R2 keeps moving, instead of one press per step. Choosing, going back and switching section never repeat.",
   "gpWait": "Wait before repeating",
   "gpWaitHelp": "Long enough that an ordinary press never starts a repeat.",
   "gpRepeat": "Repeat every",
   "gpRepeatHelp": "Slow enough that each item is still announced in full.",
   "gpSwap": "Swap A and B",
-  "gpSwapHelp": "Only if “yes” and “no” come out backwards — some controllers label the bottom button B rather than A.",
+  "gpSwapHelp": "Only if A and B work the wrong way round — A going back and B choosing. Some controllers label the bottom button B rather than A.",
   "gpGuide": "Button guide",
   "gpGuideHelp": "The learner can hear this list at any time by pressing Select.",
   "gpVerySlow": "Very slow",
@@ -6081,7 +6254,7 @@
     }
   },
   "gppStartOver": "Start over",
-  "gppLeave": "Press L1 twice to leave.",
+  "gppLeave": "Press B twice to leave.",
   "hfReasonSign": "This activity records you signing, so it needs the camera to itself. Head control will pause while it is open.",
   "hfVoiceHint": "You can still say “go back” to leave at any time.",
   "hfUsesCamera": "{activity} uses the camera",
@@ -6245,6 +6418,16 @@
     }
   },
   "mqTitle": "Multiplayer Quiz",
+  "mqWrong": "Wrong!",
+  "mqAnswerIs": "Answer: {answer}",
+  "@mqAnswerIs": {
+    "placeholders": {
+      "answer": {
+        "type": "String"
+      }
+    }
+  },
+  "mqPoints": "points",
   "mqStart": "Start Battle!",
   "mqTurn": "{name}’s Turn!",
   "@mqTurn": {
@@ -6500,7 +6683,7 @@
   "sqSeeScore": "See my score",
   "sqNextQuestion": "Next question",
   "sqListenEn": "Listen to this choice in English",
-  "sqListenTl": "Listen to this choice in Tagalog",
+  "sqListenTl": "Listen to this choice in Filipino",
   "sqSeeResults": "See Results",
   "sqNextQuestionCap": "Next Question",
   "sqNotQuite": "Not quite. {answer}.",
@@ -7364,7 +7547,7 @@
     }
   },
   "alLabel": "Label",
-  "alEnabled": "Enabled",
+  "alEnabled": "Use this alarm",
   "alUnnamed": "Alarm",
   "tlEnforce": "Enforce a daily limit",
   "tlSaved": "Saved.",
@@ -7404,10 +7587,11 @@
     }
   },
   "sqEnglish": "English",
-  "sqTagalog": "Tagalog",
+  "sqTagalog": "Filipino",
   "srPrevPage": "Previous page",
   "scmpKeyMetrics": "Key Metrics",
   "taAvgAccuracy": "Avg Accuracy",
+  "taNoAccuracyYet": "No games yet",
   "nfIllustration": "Lost page illustration",
   "nfTitle": "Oops! Page not found",
   "nfBody": "It looks like this page has wandered off.\nLet’s get you back on track!",
@@ -7550,6 +7734,8 @@
   "tcCartoonShowing": "The TV is showing the cartoon. Tap to flip to the real picture on the TV.",
   "tcHideFsl": "Hide FSL",
   "tcWatchFsl": "Watch in FSL",
+  "storyWatchInFsl": "Watch in Filipino Sign Language",
+  "storyWatchChoiceInFsl": "Watch this choice in Filipino Sign Language",
   "tcFslPlaying": "Playing the sign-language video on the TV. Tap to go back to the story.",
   "tcReadyToPlay": "Ready to play",
   "tcPreparingVideo": "Preparing video…",
@@ -9010,7 +9196,7 @@
   "webRemindersNeedApp": "Reminders work in the Android app: a browser cannot send them while FlashLearn is closed.",
   "webMyDayNote": "In a browser, My Day shows the plan, but it cannot ring or lock the screen when a step starts. The Android app can.",
   "webBackupNeedsApp": "Backup files work in the Android app. Here, this browser keeps your data on this device. To be able to bring a profile back, use the Cloud Recovery Code.",
-  "webControllerNeedsApp": "Game controllers work in the Android app.",
+  "webControllerNeedsApp": "This browser can’t read a game controller. Use the latest Chrome or Edge, or the Android app.",
   "webMediaNeedsApp": "Photos and videos can be added in the Android app.",
   "webMediaOpensInApp": "Open this in the Android app to see the photo or video.",
   "webRecordNeedsApp": "Recording your own sign works in the Android app. Here, watch the sign and practise it.",
@@ -9048,5 +9234,113 @@
   "@settingManagedAccessibilityTitle": {"placeholders": {"type": {"type": "String"}}},
   "@settingManagedAccessibilityDesc": {"placeholders": {"audience": {"type": "String"}}},
   "@epAccessManaged": {"placeholders": {"audience": {"type": "String"}}},
-  "@assignedAccessibilityNotice": {"placeholders": {"audience": {"type": "String"}}}
+  "@assignedAccessibilityNotice": {"placeholders": {"audience": {"type": "String"}}},
+  "chartActiveDays": "{count, plural, =1{1 active day} other{{count} active days}}",
+  "@chartActiveDays": {"placeholders": {"count": {"type": "int"}}},
+  "chartReviewHeatmapSubtitle": "Last {weeks} weeks of learning activity",
+  "@chartReviewHeatmapSubtitle": {"placeholders": {"weeks": {"type": "int"}}},
+  "chartCellSessions": "{date}: {count, plural, =1{1 session} other{{count} sessions}}",
+  "@chartCellSessions": {"placeholders": {"date": {"type": "String"}, "count": {"type": "int"}}},
+  "achUnlockedBanner": "🏆 Achievement Unlocked!",
+  "achNextButton": "Next Achievement",
+  "achDoneButton": "Awesome! 🎉",
+  "achCountOf": "{index} of {total}",
+  "@achCountOf": {"placeholders": {"index": {"type": "int"}, "total": {"type": "int"}}},
+  "fvTitle": "No Filipino voice on this device",
+  "fvBodyAndroid": "Filipino words are read with the English voice, by the app and by TalkBack. Add a Filipino voice in the device’s speech settings.",
+  "fvBodyOther": "Filipino words are read with the English voice. Add a Filipino voice in this computer’s or phone’s speech settings.",
+  "fvOpenSettings": "Open voice settings",
+  "fvSetting": "Filipino voice",
+  "fvSettingInstalled": "Installed: Filipino words have a Filipino voice",
+  "fvSettingMissing": "Not on this device: Filipino words use the English voice",
+  "gpPairBrowser": "Connect it to this computer or phone, then press any of its buttons: a browser finds a controller only after a press.",
+  "fieldCountOf": "{count} of {max} letters",
+  "@fieldCountOf": {"placeholders": {"count": {"type": "int"}, "max": {"type": "int"}}},
+  "alThisAlarm": "This alarm",
+  "fvTalkBackWords": "TalkBack’s own words",
+  "fvTalkBackWordsDesc": "“On”, “Off” and “selected” are TalkBack’s own words. They follow the language of TalkBack, usually the tablet’s. Tap to open the language settings.",
+  "breakAlwaysOkay": "Breaks are always okay. You’ll go right back to where you were.",
+  "btCalmTitle": "Let’s take a calm break",
+  "btTakeYourTime": "Take your time. Head back when you’re ready.",
+  "crbStillOffline": "Still offline. Check the connection and try again.",
+  "crbRetrying": "Retrying…",
+  "crbRetryNow": "Retry now",
+  "exFeaturesCount": "{on}/{total} features",
+  "@exFeaturesCount": {"placeholders": {"on": {"type": "int"}, "total": {"type": "int"}}},
+  "egTitle": "Examples — {word}",
+  "@egTitle": {"placeholders": {"word": {"type": "String"}}},
+  "egUnavailable": "These examples aren’t available right now.",
+  "smClipUnavailable": "This clip isn’t available right now.",
+  "mqPlusPoints": "+{points} points!",
+  "@mqPlusPoints": {"placeholders": {"points": {"type": "int"}}},
+  "mqWins": "{name} Wins!",
+  "@mqWins": {"placeholders": {"name": {"type": "String"}}},
+  "mqHome": "Home",
+  "alTitle": "Alarms",
+  "alTitleFor": "Alarms — {name}",
+  "@alTitleFor": {"placeholders": {"name": {"type": "String"}}},
+  "alLastSynced": "Last synced {when}",
+  "@alLastSynced": {"placeholders": {"when": {"type": "String"}}},
+  "tlLastSaved": "Last saved {when}",
+  "@tlLastSaved": {"placeholders": {"when": {"type": "String"}}},
+  "tlOnlyBetween": "Only {start} – {end}",
+  "@tlOnlyBetween": {"placeholders": {"start": {"type": "String"}, "end": {"type": "String"}}},
+  "lcVisibleDesc": "Members can see the rankings.",
+  "lcHiddenDesc": "Hidden — members see “not enabled yet”.",
+  "lcRankNote": "Weekly/Monthly and seasons rank by recent activity. Lifetime stars are always shown for reference.",
+  "chartTotalStars": "Total: {count} ⭐",
+  "@chartTotalStars": {"placeholders": {"count": {"type": "int"}}},
+  "hwCorrect": "correct",
+  "tcPaused": "paused",
+  "fwsSignN": "Sign {n}",
+  "@fwsSignN": {"placeholders": {"n": {"type": "int"}}},
+  "scNamesPortfolio": "{name}’s Portfolio",
+  "@scNamesPortfolio": {"placeholders": {"name": {"type": "String"}}},
+  "rtMoreSteps": "{count} more",
+  "@rtMoreSteps": {"placeholders": {"count": {"type": "int"}}},
+  "secondsLeftLabel": "{count} seconds left",
+  "@secondsLeftLabel": {"placeholders": {"count": {"type": "int"}}},
+  "collabBlank": "blank",
+  "gameGo": "GO!",
+  "stickerNotYet": "Not collected yet",
+  "btBreatheIn": "Breathe in…",
+  "btHold": "Hold…",
+  "btBreatheOut": "Breathe out…",
+  "vcMicUnavailable": "Microphone unavailable",
+  "vcPausedDictation": "Paused while you speak your message",
+  "vcListening": "Listening…",
+  "vcReady": "Voice ready",
+  "pcTo": "to",
+  "fslLoadingVideo": "Loading video…",
+  "plComfortable": "Comfortable",
+  "plComfortableBlurb": "Roomy & easy to read",
+  "plCompact": "Compact",
+  "plCompactBlurb": "Tighter, fits more",
+  "plShowcase": "Showcase",
+  "plShowcaseBlurb": "Big & bold visuals",
+  "ptClassic": "Classic",
+  "ptOcean": "Ocean",
+  "ptSunset": "Sunset",
+  "ptForest": "Forest",
+  "ptCandy": "Candy",
+  "ptNight": "Night",
+  "ptGalaxy": "Galaxy",
+  "ptAutumn": "Autumn",
+  "ptRainbow": "Rainbow",
+  "ptCocoa": "Cocoa",
+  "abQuestionNumber": "Question {n}",
+  "@abQuestionNumber": {"placeholders": {"n": {"type": "int"}}},
+  "dcStreakTomorrow": "Get tomorrow’s mission right to start a streak",
+  "chartWordsLearnedSummary": "{total} words learned in all, {recent} of them in the last 30 days",
+  "@chartWordsLearnedSummary": {"placeholders": {"total": {"type": "int"}, "recent": {"type": "int"}}},
+  "chartPercentOf": "{name}: {percent} percent",
+  "@chartPercentOf": {"placeholders": {"name": {"type": "String"}, "percent": {"type": "int"}}},
+  "chartActivitySummary": "Active on {days} of the last 56 days, {minutes} minutes in all",
+  "@chartActivitySummary": {"placeholders": {"days": {"type": "int"}, "minutes": {"type": "int"}}},
+  "chartScoresSummary": "{count} results, average {average} percent, latest {latest} percent",
+  "@chartScoresSummary": {"placeholders": {"count": {"type": "int"}, "average": {"type": "int"}, "latest": {"type": "int"}}},
+  "chartStudySummary": "{minutes} minutes in the last 30 days",
+  "@chartStudySummary": {"placeholders": {"minutes": {"type": "int"}}},
+  "chartPrePost": "{name}: before {before} percent, after {after} percent",
+  "@chartPrePost": {"placeholders": {"name": {"type": "String"}, "before": {"type": "int"}, "after": {"type": "int"}}}
 }

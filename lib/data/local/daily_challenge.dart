@@ -1,4 +1,6 @@
 import 'dart:math';
+import 'package:flutter/foundation.dart';
+import '../../features/parent/services/learner_restrictions.dart';
 import '../models/models.dart';
 import 'seed_data.dart';
 import 'hive_service.dart';
@@ -8,10 +10,18 @@ import 'hive_service.dart';
 class DailyChallenge {
   DailyChallenge._();
 
+  /// Stands in for the day's words in tests: what any day shows, on this day.
+  /// Each day shows other words, so a word too long for its button only fails
+  /// on its own day ("Magandang Umaga", 5 Nov, at midnight, mid test run).
+  @visibleForTesting
+  static List<Flashcard>? debugTodaysWords;
+
   /// Returns a deterministic daily word based on the date.
   /// Uses a hash of year+month+day so every user sees the same word each day.
   static Flashcard todaysWord() {
-    final all = SeedData.allFlashcards;
+    final forced = debugTodaysWords;
+    if (forced != null) return forced.first;
+    final all = LearnerRestrictions.visibleCards(SeedData.allFlashcards);
     final now = DateTime.now();
     final seed = now.year * 10000 + now.month * 100 + now.day;
     final index = seed % all.length;
@@ -26,7 +36,9 @@ class DailyChallenge {
   /// to the available card pool. The list preserves a stable order so callers
   /// can index into it across rebuilds.
   static List<Flashcard> todaysWords(int count) {
-    final all = SeedData.allFlashcards;
+    final forced = debugTodaysWords;
+    if (forced != null) return forced;
+    final all = LearnerRestrictions.visibleCards(SeedData.allFlashcards);
     if (all.isEmpty || count <= 0) return const [];
     final now = DateTime.now();
     final seed = now.year * 10000 + now.month * 100 + now.day;
@@ -41,7 +53,7 @@ class DailyChallenge {
   /// are drawn from other cards and never duplicate the correct answer's
   /// Filipino word, so a 50/50 hint can always remove genuinely wrong options.
   static List<String> generateChoices(Flashcard correct, {int count = 3}) {
-    final pool = SeedData.allFlashcards
+    final pool = LearnerRestrictions.visibleCards(SeedData.allFlashcards)
         .where((c) => c.id != correct.id && c.wordFilipino != correct.wordFilipino)
         .toList();
     final rng = Random(correct.id.hashCode);

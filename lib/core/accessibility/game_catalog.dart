@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/enums.dart';
+import '../../features/parent/services/learner_restrictions.dart';
 import '../../providers/app_providers.dart';
 import 'accessibility_content_policy.dart';
 
@@ -182,11 +183,38 @@ class GameHubCatalog {
 /// Student / Child → their accessibility category's roster of ten, under that
 /// category's heading. Everyone else (Player guest, Player with progress,
 /// educators previewing, no profile) → every game, uncategorised.
+///
+/// Less the games a parent blocked in Parental Controls.
 final gameHubCatalogProvider = Provider<GameHubCatalog>((ref) {
   final profile = ref.watch(profileProvider);
+  ref.watch(parentalControlsRevisionProvider);
+  List<GameType> allowed(List<GameType> games) =>
+      LearnerRestrictions.visibleGames(games, profile?.role);
   if (!GameCatalog.isCategorised(profile?.role)) {
-    return GameHubCatalog(games: GameCatalog.combined, category: null);
+    return GameHubCatalog(games: allowed(GameCatalog.combined), category: null);
   }
   final type = profile!.disabilityType;
-  return GameHubCatalog(games: GameCatalog.forCategory(type), category: type);
+  return GameHubCatalog(
+    games: allowed(GameCatalog.forCategory(type)),
+    category: type,
+  );
 });
+
+/// The route that plays [game].
+String gameRouteOf(GameType game) => switch (game) {
+      GameType.wordMatch => '/games/word-match',
+      GameType.spellingBee => '/games/spelling-bee',
+      GameType.memoryMatch => '/games/memory-match',
+      GameType.dragAndDrop => '/games/drag-drop',
+      GameType.flashcardQuiz => '/games/flashcard-quiz',
+      GameType.pronunciation => '/games/pronunciation',
+      GameType.sentenceBuilder => '/games/sentence-builder',
+      GameType.tracing => '/games/tracing',
+      GameType.storyQuiz => '/stories',
+      GameType.fslPractice => '/games/fsl-practice',
+      GameType.jigsawPuzzle => '/games/jigsaw-puzzle',
+      GameType.pictureWord => '/games/picture-word',
+      GameType.yesOrNo => '/games/yes-or-no',
+      GameType.oddOneOut => '/games/odd-one-out',
+      GameType.firstLetter => '/games/first-letter',
+    };

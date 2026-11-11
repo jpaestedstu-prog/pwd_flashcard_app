@@ -178,19 +178,26 @@ class _StudentFilterBarState extends ConsumerState<StudentFilterBar> {
                       .copyWith(color: hc.textSecondary),
                 ),
                 const Spacer(),
-                DpadGestureDetector(
+                Semantics(container: true, button: true, child: DpadGestureDetector(
                   onTap: () {
                     _searchController.clear();
                     ref.read(studentFilterProvider.notifier).clearFilters();
                   },
-                  child: Text(
-                    _t(context).sfClearAll,
-                    style: AppTypography.labelSmall.copyWith(
-                      color: HCColor.of(context).primary,
-                      fontWeight: FontWeight.w600,
+                  // As big as a finger needs: the words alone were 27 dp high.
+                  child: ConstrainedBox(
+                    constraints:
+                        const BoxConstraints(minWidth: 48, minHeight: 48),
+                    child: Center(
+                      child: Text(
+                        _t(context).sfClearAll,
+                        style: AppTypography.labelSmall.copyWith(
+                          color: HCColor.of(context).primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                )),
               ],
             ),
           ),
@@ -207,71 +214,79 @@ class _SortButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return PopupMenuButton<StudentSortField>(
-      onSelected: (field) =>
-          ref.read(studentFilterProvider.notifier).setSortField(field),
-      itemBuilder: (_) => StudentSortField.values
-          .map((f) => PopupMenuItem(
-                value: f,
-                child: Row(
-                  children: [
-                    Icon(f.icon, size: 18,
-                        color: f == filter.sortField
-                            ? HCColor.of(context).primary
-                            : null),
-                    const SizedBox(width: 8),
-                    Text(_sortLabel(_t(context), f),
-                        style: f == filter.sortField
-                            ? const TextStyle(fontWeight: FontWeight.w700)
-                            : null),
-                    if (f == filter.sortField) ...[
-                      const Spacer(),
-                      Icon(
-                        filter.sortAscending
-                            ? Icons.arrow_upward_rounded
-                            : Icons.arrow_downward_rounded,
-                        size: 16,
-                        color: HCColor.of(context).primary,
+    return Semantics(
+      container: true,
+      // Opens a menu: a screen reader says "button", which the chip
+      // alone did not.
+      button: true,
+      child: PopupMenuButton<StudentSortField>(
+        onSelected: (field) =>
+            ref.read(studentFilterProvider.notifier).setSortField(field),
+        itemBuilder: (_) => StudentSortField.values
+            .map((f) => PopupMenuItem(
+                  value: f,
+                  child: Row(
+                    children: [
+                      Icon(f.icon, size: 18,
+                          color: f == filter.sortField
+                              ? HCColor.of(context).primary
+                              : null),
+                      const SizedBox(width: 8),
+                      // Wraps inside the menu's width (56 px over on a phone).
+                      Expanded(
+                        child: Text(_sortLabel(_t(context), f),
+                            style: f == filter.sortField
+                                ? const TextStyle(fontWeight: FontWeight.w700)
+                                : null),
                       ),
+                      if (f == filter.sortField) ...[
+                        Icon(
+                          filter.sortAscending
+                              ? Icons.arrow_upward_rounded
+                              : Icons.arrow_downward_rounded,
+                          size: 16,
+                          color: HCColor.of(context).primary,
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
+                ))
+            .toList(),
+        // "Name" alone did not say what the button does.
+        tooltip: _t(context).sfSortBy(_sortLabel(_t(context), filter.sortField)),
+        child: Container(
+          // 48 dp, like the filter chips beside it (this was 34).
+          constraints: const BoxConstraints(minHeight: 48),
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.sort_rounded, size: 18, color: HCColor.of(context).primary),
+              const SizedBox(width: 4),
+              Text(
+                _sortLabel(_t(context), filter.sortField),
+                style: AppTypography.labelSmall.copyWith(
+                  color: HCColor.of(context).readableOver(
+                    AppColors.primary,
+                    AppColors.primary.withValues(alpha: 0.08),
+                  ),
+                  fontWeight: FontWeight.w600,
                 ),
-              ))
-          .toList(),
-      // "Name" alone did not say what the button does.
-      tooltip: _t(context).sfSortBy(_sortLabel(_t(context), filter.sortField)),
-      child: Container(
-        // 48 dp, like the filter chips beside it (this was 34).
-        constraints: const BoxConstraints(minHeight: 48),
-        alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.sort_rounded, size: 18, color: HCColor.of(context).primary),
-            const SizedBox(width: 4),
-            Text(
-              _sortLabel(_t(context), filter.sortField),
-              style: AppTypography.labelSmall.copyWith(
-                color: HCColor.of(context).readableOver(
-                  AppColors.primary,
-                  AppColors.primary.withValues(alpha: 0.08),
-                ),
-                fontWeight: FontWeight.w600,
               ),
-            ),
-            Icon(
-              filter.sortAscending
-                  ? Icons.arrow_upward_rounded
-                  : Icons.arrow_downward_rounded,
-              size: 14,
-              color: HCColor.of(context).primary,
-            ),
-          ],
+              Icon(
+                filter.sortAscending
+                    ? Icons.arrow_upward_rounded
+                    : Icons.arrow_downward_rounded,
+                size: 14,
+                color: HCColor.of(context).primary,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -297,47 +312,53 @@ class _FilterChipDropdown<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PopupMenuButton<T>(
-      onSelected: onSelected,
-      itemBuilder: (_) => items
-          .map((item) => PopupMenuItem(
-                value: item,
-                child: Text(itemLabel(item)),
-              ))
-          .toList(),
-      child: Container(
-        // 48 dp, a finger's minimum (these were 32).
-        constraints: const BoxConstraints(minHeight: 48),
-        alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: isActive
-              ? AppColors.primary.withValues(alpha: 0.12)
-              : AppColors.textHint.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
+    return Semantics(
+      container: true,
+      // Opens a menu: a screen reader says "button", which the chip
+      // alone did not.
+      button: true,
+      child: PopupMenuButton<T>(
+        onSelected: onSelected,
+        itemBuilder: (_) => items
+            .map((item) => PopupMenuItem(
+                  value: item,
+                  child: Text(itemLabel(item)),
+                ))
+            .toList(),
+        child: Container(
+          // 48 dp, a finger's minimum (these were 32).
+          constraints: const BoxConstraints(minHeight: 48),
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
             color: isActive
-                ? AppColors.primary.withValues(alpha: 0.4)
-                : Colors.transparent,
+                ? AppColors.primary.withValues(alpha: 0.12)
+                : AppColors.textHint.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isActive
+                  ? AppColors.primary.withValues(alpha: 0.4)
+                  : Colors.transparent,
+            ),
           ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: AppTypography.labelSmall.copyWith(
-                color: isActive ? HCColor.of(context).primary : HCColor.of(context).textSecondary,
-                fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: AppTypography.labelSmall.copyWith(
+                  color: isActive ? HCColor.of(context).primary : HCColor.of(context).textSecondary,
+                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                ),
               ),
-            ),
-            const SizedBox(width: 2),
-            Icon(
-              Icons.arrow_drop_down_rounded,
-              size: 18,
-              color: isActive ? HCColor.of(context).primary : HCColor.of(context).textHint,
-            ),
-          ],
+              const SizedBox(width: 2),
+              Icon(
+                Icons.arrow_drop_down_rounded,
+                size: 18,
+                color: isActive ? HCColor.of(context).primary : HCColor.of(context).textHint,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -358,58 +379,64 @@ class _TagFilterChip extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isActive = selectedTags.isNotEmpty;
-    return PopupMenuButton<String>(
-      onSelected: (tag) {
-        final current = List<String>.from(selectedTags);
-        if (current.contains(tag)) {
-          current.remove(tag);
-        } else {
-          current.add(tag);
-        }
-        ref.read(studentFilterProvider.notifier).setTagFilter(current);
-      },
-      itemBuilder: (_) => availableTags
-          .map((tag) => CheckedPopupMenuItem(
-                value: tag,
-                checked: selectedTags.contains(tag),
-                child: Text(tag),
-              ))
-          .toList(),
-      child: Container(
-        // 48 dp, a finger's minimum (these were 32).
-        constraints: const BoxConstraints(minHeight: 48),
-        alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: isActive
-              ? AppColors.primary.withValues(alpha: 0.12)
-              : AppColors.textHint.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
+    return Semantics(
+      container: true,
+      // Opens a menu: a screen reader says "button", which the chip
+      // alone did not.
+      button: true,
+      child: PopupMenuButton<String>(
+        onSelected: (tag) {
+          final current = List<String>.from(selectedTags);
+          if (current.contains(tag)) {
+            current.remove(tag);
+          } else {
+            current.add(tag);
+          }
+          ref.read(studentFilterProvider.notifier).setTagFilter(current);
+        },
+        itemBuilder: (_) => availableTags
+            .map((tag) => CheckedPopupMenuItem(
+                  value: tag,
+                  checked: selectedTags.contains(tag),
+                  child: Text(tag),
+                ))
+            .toList(),
+        child: Container(
+          // 48 dp, a finger's minimum (these were 32).
+          constraints: const BoxConstraints(minHeight: 48),
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
             color: isActive
-                ? AppColors.primary.withValues(alpha: 0.4)
-                : Colors.transparent,
+                ? AppColors.primary.withValues(alpha: 0.12)
+                : AppColors.textHint.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isActive
+                  ? AppColors.primary.withValues(alpha: 0.4)
+                  : Colors.transparent,
+            ),
           ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              isActive
-                  ? _t(context).sfTagsN(selectedTags.length)
-                  : _t(context).sfTags,
-              style: AppTypography.labelSmall.copyWith(
-                color: isActive ? HCColor.of(context).primary : HCColor.of(context).textSecondary,
-                fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                isActive
+                    ? _t(context).sfTagsN(selectedTags.length)
+                    : _t(context).sfTags,
+                style: AppTypography.labelSmall.copyWith(
+                  color: isActive ? HCColor.of(context).primary : HCColor.of(context).textSecondary,
+                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                ),
               ),
-            ),
-            const SizedBox(width: 2),
-            Icon(
-              Icons.arrow_drop_down_rounded,
-              size: 18,
-              color: isActive ? HCColor.of(context).primary : HCColor.of(context).textHint,
-            ),
-          ],
+              const SizedBox(width: 2),
+              Icon(
+                Icons.arrow_drop_down_rounded,
+                size: 18,
+                color: isActive ? HCColor.of(context).primary : HCColor.of(context).textHint,
+              ),
+            ],
+          ),
         ),
       ),
     );

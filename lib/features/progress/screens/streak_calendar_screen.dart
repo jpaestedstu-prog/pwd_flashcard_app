@@ -13,6 +13,50 @@ import '../widgets/calendar_widget.dart';
 import '../../../core/widgets/reflow_row.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
+
+/// The days the learner learned something, as "yyyy-MM-dd": the days that
+/// keep a streak, which is what this screen counts.
+///
+/// A session is logged for any visit over five seconds, so a session alone
+/// proves nothing: the calendar marked four days in a row "studied" beside
+/// "0 Day Streak", and its best streak counted them (on the tablet, 30 Oct).
+/// A session that played or reviewed still counts, and so do the days of the
+/// current streak ([streakDays] in a row, ending on [lastActivity]) — the
+/// learning before the day ledger noted every activity.
+@visibleForTesting
+Set<String> learningDays({
+  required Map<String, Map<String, int>> ledger,
+  required Iterable<String> challengeDays,
+  required Iterable<Map<String, dynamic>> sessions,
+  required Iterable<DateTime> scoreDates,
+  required int streakDays,
+  required DateTime lastActivity,
+}) {
+  final days = <String>{...challengeDays};
+  ledger.forEach((day, row) {
+    if (row.values.any((n) => n > 0)) days.add(day);
+  });
+  for (final s in sessions) {
+    final date = s['date'] as String?;
+    final learned = ((s['gamesPlayed'] as num?) ?? 0) > 0 ||
+        ((s['cardsReviewed'] as num?) ?? 0) > 0;
+    if (learned && date != null && date.length >= 10) {
+      days.add(date.substring(0, 10));
+    }
+  }
+  for (final d in scoreDates) {
+    days.add(HiveService.dayKey(d));
+  }
+  for (var i = 0; i < streakDays; i++) {
+    days.add(HiveService.dayKey(DateTime(
+      lastActivity.year,
+      lastActivity.month,
+      lastActivity.day - i,
+    )));
+  }
+  return days;
+}
 
 class StreakCalendarScreen extends ConsumerWidget {
   const StreakCalendarScreen({super.key});
@@ -24,31 +68,20 @@ class StreakCalendarScreen extends ConsumerWidget {
     final hc = HCColor.of(context);
     final profileId = profile?.id ?? '';
 
-    final completedDates = HiveService.getDailyChallengeHistory(profileId);
     final streak = progress.liveStreakDays;
-
-    // Also include dates from session logs as study activity
-    final sessionDates = <String>{};
-    final sessions = HiveService.getSessionLogs(profileId);
-    for (final s in sessions) {
-      final date = s['date'] as String?;
-      if (date != null && date.length >= 10) {
-        sessionDates.add(date.substring(0, 10));
-      }
-    }
-    // Also include game score dates
-    for (final score in progress.recentScores) {
-      final d = score.date;
-      sessionDates.add(
-        '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}',
-      );
-    }
-
-    final allActivityDates = {...completedDates, ...sessionDates};
+    final allActivityDates = learningDays(
+      ledger: HiveService.getDailyActivity(profileId),
+      challengeDays: HiveService.getDailyChallengeHistory(profileId),
+      sessions: HiveService.getSessionLogs(profileId),
+      scoreDates: [for (final s in progress.recentScores) s.date],
+      streakDays: streak,
+      lastActivity: progress.lastActivityDate,
+    );
 
     // Longest streak. The date-derived figure is only as complete as the logs
-    // that survive — daily-challenge history, session logs, and the last 20
-    // game scores — so it silently under-reports once older activity is pruned.
+    // that survive — the day ledger and session logs (90 days), daily-challenge
+    // history, and the last 20 game scores — so it silently under-reports once
+    // older activity is pruned.
     // `effectiveBestStreak` is the recorded high-water mark that XP is scored
     // off, so take whichever is larger and the two surfaces agree.
     final longestStreak = math.max(
@@ -67,7 +100,7 @@ class StreakCalendarScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: const AppBackButton(fallbackRoute: '/progress'),
-        title: Text(
+        title: AppBarTitle(
           _t(context).scTitle,
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
@@ -203,6 +236,9 @@ class _MiniStat extends StatelessWidget {
     final hc = HCColor.of(context);
     return Semantics(
         label: '$label: $value',
+        // The sentence says it; the number and the word under it were read
+        // again.
+        excludeSemantics: true,
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(

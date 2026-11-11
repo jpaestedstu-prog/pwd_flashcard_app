@@ -15,6 +15,7 @@ import '../services/experiment_service.dart';
 import '../../../core/utils/seeded_random.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Teacher-facing screen to configure experiment mode for students.
 ///
@@ -95,7 +96,7 @@ class _ExperimentSetupScreenState
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isFilipino ? 'Mode ng Eksperimento' : 'Experiment Mode'),
+        title: AppBarTitle(isFilipino ? 'Mode ng Eksperimento' : 'Experiment Mode'),
         centerTitle: true,
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -169,18 +170,33 @@ class _ExperimentSetupScreenState
   }
 
   Widget _buildInfoBanner(bool isFilipino, ColorScheme colorScheme) {
+    // Pale amber on a light page; on a dark one, the same amber as a tint
+    // of the page with words that read on it (a bright panel on black
+    // before, 8 Nov).
+    final hc = HCColor.of(context);
+    final dark = hc.isDark;
+    final title = dark ? hc.warningText : Colors.amber.shade900;
+    final body = dark ? hc.textPrimary : Colors.amber.shade800;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.amber.shade50,
+        color: dark
+            ? Color.alphaBlend(
+                Colors.amber.withValues(alpha: 0.16),
+                hc.surface,
+              )
+            : Colors.amber.shade50,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.amber.shade200),
+        border: Border.all(
+          color: dark
+              ? Colors.amber.withValues(alpha: 0.55)
+              : Colors.amber.shade200,
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.science_rounded,
-              color: Colors.amber.shade800, size: 28),
+          Icon(Icons.science_rounded, color: title, size: 28),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -192,7 +208,7 @@ class _ExperimentSetupScreenState
                       : 'Research Experiment Mode',
                   style: AppTypography.titleSmall.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: Colors.amber.shade900,
+                    color: title,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -203,7 +219,7 @@ class _ExperimentSetupScreenState
                       : 'Assign students to treatment (with gamification) or control '
                         '(without gamification) groups for your thesis experiment.',
                   style: AppTypography.bodySmall.copyWith(
-                    color: Colors.amber.shade800,
+                    color: body,
                   ),
                 ),
               ],
@@ -355,8 +371,11 @@ class _ExperimentSetupScreenState
             ),
             if (config.enabled)
               Text(
-                '${GamificationFeature.values.length - config.disabledFeatures.length}'
-                '/${GamificationFeature.values.length} features',
+                _t(context).exFeaturesCount(
+                  GamificationFeature.values.length -
+                      config.disabledFeatures.length,
+                  GamificationFeature.values.length,
+                ),
                 style: AppTypography.labelSmall.copyWith(
                   color: colorScheme.onSurfaceVariant,
                 ),
@@ -437,7 +456,7 @@ class _ExperimentSetupScreenState
                   style: AppTypography.bodySmall,
                 ),
                 subtitle: Text(
-                  feature.description,
+                  isFilipino ? feature.descriptionFilipino : feature.description,
                   style: AppTypography.labelSmall.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
@@ -491,23 +510,26 @@ class _QuickPresetButton extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-            child: Column(
-              children: [
-                Text(emoji, style: const TextStyle(fontSize: 24)),
-                const SizedBox(height: 4),
-                Text(
-                  label,
-                  style: AppTypography.labelSmall.copyWith(
-                    color: HCColor.of(
-                      context,
-                    ).readableOver(color, color.withValues(alpha: 0.08)),
-                    fontWeight: FontWeight.bold,
+          child: ExcludeSemantics(
+            // The label says it; the emoji and words drawn here were read again.
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+              child: Column(
+                children: [
+                  Text(emoji, style: const TextStyle(fontSize: 24)),
+                  const SizedBox(height: 4),
+                  Text(
+                    label,
+                    style: AppTypography.labelSmall.copyWith(
+                      color: HCColor.of(
+                        context,
+                      ).readableOver(color, color.withValues(alpha: 0.08)),
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -544,7 +566,7 @@ class _GroupButton extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(10),
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 10),
+            padding: const EdgeInsets.symmetric(vertical: 12),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
@@ -554,7 +576,7 @@ class _GroupButton extends StatelessWidget {
                 width: selected ? 2 : 1,
               ),
             ),
-            child: Center(
+            child: ExcludeSemantics(child: Center(
               child: Text(
                 label,
                 style: AppTypography.labelMedium.copyWith(
@@ -562,7 +584,7 @@ class _GroupButton extends StatelessWidget {
                   fontWeight: selected ? FontWeight.bold : FontWeight.w500,
                 ),
               ),
-            ),
+            )),
           ),
         ),
       ),

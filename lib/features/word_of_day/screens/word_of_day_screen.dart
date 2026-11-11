@@ -17,6 +17,7 @@ import '../../assessment/models/question_prompt.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../widgets/dpad_focusable.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 class WordOfDayScreen extends ConsumerStatefulWidget {
   const WordOfDayScreen({super.key});
@@ -51,10 +52,11 @@ class _WordOfDayScreenState extends ConsumerState<WordOfDayScreen> {
     }
   }
 
+  // The English word: in the English voice, whatever was said before.
   void _speak(String text) {
     final settings = ref.read(settingsProvider);
     if (settings.ttsEnabled) {
-      ref.read(ttsServiceProvider).speak(text);
+      ref.read(ttsServiceProvider).speakEnglish(text);
     }
   }
 
@@ -76,7 +78,7 @@ class _WordOfDayScreenState extends ConsumerState<WordOfDayScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isFilipino ? 'Salita ng Araw' : 'Word of the Day'),
+        title: AppBarTitle(isFilipino ? 'Salita ng Araw' : 'Word of the Day'),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -209,42 +211,45 @@ class _WordOfDayScreenState extends ConsumerState<WordOfDayScreen> {
               // in two.
               Builder(
                 builder: (context) {
-                  final listen = Semantics(
-                      button: true,
+                  // The spoken names on the buttons' own nodes, with their
+                  // press and focus: a Semantics around each was a second
+                  // "button" with nothing to press.
+                  final listen = OutlinedButton.icon(
+                    onPressed: () => _speak(_word.wordEnglish),
+                    icon: const Icon(Icons.volume_up_rounded),
+                    label: Semantics(
                       label: isFilipino ? 'Basahin nang malakas' : 'Read aloud',
-                      child: OutlinedButton.icon(
-                        onPressed: () => _speak(_word.wordEnglish),
-                        icon: const Icon(Icons.volume_up_rounded),
-                        label: Text(isFilipino ? 'Pakinggan' : 'Listen'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                      ),
-                    );
-                  final learn = Semantics(
-                      button: true,
+                      excludeSemantics: true,
+                      child: Text(isFilipino ? 'Pakinggan' : 'Listen'),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                  );
+                  final learn = FilledButton.icon(
+                    onPressed: _learned ? null : _markLearned,
+                    icon: Icon(
+                      _learned
+                          ? Icons.check_circle_rounded
+                          : Icons.school_rounded,
+                    ),
+                    label: Semantics(
                       label: _learned
                           ? (isFilipino ? 'Natutunan na' : 'Already learned')
                           : (isFilipino
                                 ? 'Markahan bilang natutunan'
                                 : 'Mark as learned'),
-                      child: FilledButton.icon(
-                        onPressed: _learned ? null : _markLearned,
-                        icon: Icon(
-                          _learned
-                              ? Icons.check_circle_rounded
-                              : Icons.school_rounded,
-                        ),
-                        label: Text(
-                          _learned
-                              ? (isFilipino ? 'Natutunan na!' : 'Learned!')
-                              : (isFilipino ? 'Natutunan Ko' : 'I Learned It'),
-                        ),
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
+                      excludeSemantics: true,
+                      child: Text(
+                        _learned
+                            ? (isFilipino ? 'Natutunan na!' : 'Learned!')
+                            : (isFilipino ? 'Natutunan Ko' : 'I Learned It'),
                       ),
-                    );
+                    ),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                  );
                   final stacked =
                       MediaQuery.textScalerOf(context).scale(1.0) >= 1.3 &&
                           MediaQuery.sizeOf(context).width < 600;
@@ -483,30 +488,33 @@ class _StatTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(emoji, style: const TextStyle(fontSize: 24)),
-        const SizedBox(height: 4),
-        // The value here can be a category name ("Greetings"), not just a
-        // number, so it splits like any other word in a narrow tile.
-        FitText(
-          value,
-          maxLines: 1,
-          style: AppTypography.titleMedium.copyWith(
-            fontWeight: FontWeight.bold,
-            color: color,
+    return MergeSemantics(
+      // One phrase ("12 Words"): the number alone was a stop that said only "12".
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ExcludeSemantics(child: Text(emoji, style: const TextStyle(fontSize: 24))),
+          const SizedBox(height: 4),
+          // The value here can be a category name ("Greetings"), not just a
+          // number, so it splits like any other word in a narrow tile.
+          FitText(
+            value,
+            maxLines: 1,
+            style: AppTypography.titleMedium.copyWith(
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+            textAlign: TextAlign.center,
           ),
-          textAlign: TextAlign.center,
-        ),
-        FitText(
-          label,
-          style: AppTypography.labelSmall.copyWith(
-            color: HCColor.of(context).textSecondary,
+          FitText(
+            label,
+            style: AppTypography.labelSmall.copyWith(
+              color: HCColor.of(context).textSecondary,
+            ),
+            textAlign: TextAlign.center,
           ),
-          textAlign: TextAlign.center,
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

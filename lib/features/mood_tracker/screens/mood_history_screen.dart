@@ -10,6 +10,7 @@ import '../../../providers/mood_provider.dart';
 import '../../../providers/app_providers.dart';
 import '../models/mood_context.dart';
 import '../models/mood_models.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 class MoodHistoryScreen extends ConsumerWidget {
   const MoodHistoryScreen({super.key});
@@ -36,7 +37,7 @@ class MoodHistoryScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isFilipino ? 'Kasaysayan ng Mood' : 'Mood History'),
+        title: AppBarTitle(isFilipino ? 'Kasaysayan ng Mood' : 'Mood History'),
         centerTitle: true,
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -45,7 +46,7 @@ class MoodHistoryScreen extends ConsumerWidget {
             IconButton(
               onPressed: () => GoRouter.of(context).push('/mood-insights'),
               icon: const Icon(Icons.insights_rounded),
-              tooltip: isFilipino ? 'Mood Insights' : 'Mood Insights',
+              tooltip: isFilipino ? 'Pagsusuri ng Damdamin' : 'Mood Insights',
             ),
         ],
       ),
@@ -62,7 +63,7 @@ class MoodHistoryScreen extends ConsumerWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text('📊', style: TextStyle(fontSize: 64)),
+                    const ExcludeSemantics(child: Text('📊', style: TextStyle(fontSize: 64))),
                     const SizedBox(height: 16),
                     Text(
                       isFilipino
@@ -145,7 +146,7 @@ class MoodHistoryScreen extends ConsumerWidget {
                                 ),
                               ),
                               const SizedBox(height: 16),
-                              SizedBox(
+                              ExcludeSemantics(child: SizedBox(
                                 height: 180,
                                 child: LineChart(
                                   LineChartData(
@@ -168,6 +169,8 @@ class MoodHistoryScreen extends ConsumerWidget {
                                             }
                                             return Text(
                                               mood.emoji,
+                                              semanticsLabel: mood.labelOf(
+                                                  isFilipino: isFilipino),
                                               style: const TextStyle(
                                                   fontSize: 14),
                                             );
@@ -226,7 +229,7 @@ class MoodHistoryScreen extends ConsumerWidget {
                                     ],
                                   ),
                                 ),
-                              ),
+                              )),
                             ],
                           ),
                         )
@@ -299,6 +302,7 @@ class MoodHistoryScreen extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text(isFilipino ? 'Burahin ang entry?' : 'Delete this entry?'),
         content: Text(
           isFilipino
@@ -353,7 +357,9 @@ class _SummaryCard extends StatelessWidget {
     final hc = HCColor.of(context);
     final moodLabel = avgMood != null ? _nearestMood(avgMood!).emoji : '—';
 
-    return Container(
+    // One stop, with its title: "This week, 3 entries, mostly Happy". Two
+    // cards with the same numbers read as the same stop twice.
+    return MergeSemantics(child: Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
@@ -369,40 +375,46 @@ class _SummaryCard extends StatelessWidget {
           const SizedBox(height: 8),
           Row(
             children: [
-              Text(moodLabel, style: const TextStyle(fontSize: 28)),
+              ExcludeSemantics(
+                child: Text(moodLabel, style: const TextStyle(fontSize: 28)),
+              ),
               const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    // The old ternary was inverted: English always read
-                    // "entries", so a single reading showed "1 entries".
-                    isFilipino
-                        ? '$entries ${entries == 1 ? 'entry' : 'na entry'}'
-                        : '$entries ${entries == 1 ? 'entry' : 'entries'}',
-                    style: AppTypography.titleSmall.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: hc.textPrimary,
-                    ),
-                  ),
-                  if (avgMood != null)
+              // Takes the room left, and wraps in it: at the largest text size
+              // on a phone it ran 114 px past the card.
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      // Named, not scored. "Avg: 2.0/6" is not an answer a
-                      // learner can use, and it is the only summary a
-                      // cognitive / multiple profile would have been given.
+                      // The old ternary was inverted: English always read
+                      // "entries", so a single reading showed "1 entries".
                       isFilipino
-                          ? 'Kadalasan: ${_averageLabel(avgMood!, true)}'
-                          : 'Mostly: ${_averageLabel(avgMood!, false)}',
-                      style: AppTypography.bodySmall
-                          .copyWith(color: hc.textSecondary),
+                          ? '$entries ${entries == 1 ? 'entry' : 'na entry'}'
+                          : '$entries ${entries == 1 ? 'entry' : 'entries'}',
+                      style: AppTypography.titleSmall.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: hc.textPrimary,
+                      ),
                     ),
-                ],
+                    if (avgMood != null)
+                      Text(
+                        // Named, not scored. "Avg: 2.0/6" is not an answer a
+                        // learner can use, and it is the only summary a
+                        // cognitive / multiple profile would have been given.
+                        isFilipino
+                            ? 'Kadalasan: ${_averageLabel(avgMood!, true)}'
+                            : 'Mostly: ${_averageLabel(avgMood!, false)}',
+                        style: AppTypography.bodySmall
+                            .copyWith(color: hc.textSecondary),
+                      ),
+                  ],
+                ),
               ),
             ],
           ),
         ],
       ),
-    );
+    ));
   }
 }
 
@@ -432,6 +444,10 @@ class _MoodEntryTile extends StatelessWidget {
               '${entry.note != null ? ', tala: ${entry.note}' : ''}'
           : '$moodLabel mood on $dateStr'
               '${entry.note != null ? ', note: ${entry.note}' : ''}',
+      container: true,
+      // Its texts below are the label's own words: they were read a second
+      // time. Left out one by one, not as a whole row: the row's delete button
+      // stays a button a screen reader can press.
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
@@ -452,12 +468,13 @@ class _MoodEntryTile extends StatelessWidget {
               ),
               child: Center(
                 child:
-                    Text(entry.mood.emoji, style: const TextStyle(fontSize: 24)),
+                    ExcludeSemantics(child: Text(entry.mood.emoji, style: const TextStyle(fontSize: 24))),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Column(
+              child: ExcludeSemantics(
+                child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
@@ -481,36 +498,36 @@ class _MoodEntryTile extends StatelessWidget {
                             moodContext.labelOf(isFilipino: isFilipino),
                             style: AppTypography.labelSmall
                                 .copyWith(color: hc.textSecondary),
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
                     ),
                   if (entry.note != null && entry.note!.isNotEmpty)
                     Text(
+                      // Whole: the history is the only place it is read.
                       entry.note!,
                       style: AppTypography.bodySmall
                           .copyWith(color: hc.textSecondary),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                     ),
                 ],
+              ),
               ),
             ),
             Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(
-                  dateStr,
-                  style: AppTypography.bodySmall.copyWith(
-                    color: hc.textSecondary,
-                    fontSize: 11,
+                ExcludeSemantics(
+                  child: Text(
+                    dateStr,
+                    style: AppTypography.bodySmall.copyWith(
+                      color: hc.textSecondary,
+                      fontSize: 11,
+                    ),
                   ),
                 ),
                 IconButton(
                   onPressed: onDelete,
-                  visualDensity: VisualDensity.compact,
                   iconSize: 18,
                   tooltip: isFilipino ? 'Burahin ang entry' : 'Delete entry',
                   icon: Icon(Icons.delete_outline_rounded, color: hc.textHint),

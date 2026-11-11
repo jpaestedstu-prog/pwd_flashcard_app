@@ -211,7 +211,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final close = find.byTooltip('Close');
+    // Named for what it closes: "Close" alone left a learner who cannot see
+    // the banner guessing what would go.
+    final close = find.byTooltip('Hide the ${event.name} banner');
     expect(close, findsOneWidget);
     final size = tester.getSize(find.byType(IconButton));
     expect(size.width, greaterThanOrEqualTo(48));

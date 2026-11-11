@@ -14,6 +14,18 @@ import '../widgets/showcase_widgets.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
+import '../../../core/widgets/fit_label.dart';
+import '../../../core/widgets/text_limits.dart';
+
+/// How many cards fit side by side: each at least 256 dp wide, wider with the
+/// text. One on a phone, three at most.
+int _gridColumns(BuildContext context) {
+  final media = MediaQuery.of(context);
+  final scale = media.textScaler.scale(1.0).clamp(1.0, 1.5);
+  final room = media.size.width - 40 + 16;
+  return (room / (272 * scale)).floor().clamp(1, 3);
+}
 
 class ShowcaseScreen extends ConsumerStatefulWidget {
   const ShowcaseScreen({super.key});
@@ -48,7 +60,7 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: const AppBackButton(fallbackRoute: '/progress'),
-        title: Text(
+        title: AppBarTitle(
           _t(context).scPortfolio,
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
@@ -122,38 +134,59 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
                 ),
 
                 // ─── Portfolio Grid ───────────────
+                // Rows that grow with their cards. They were fixed cells, and
+                // a long title or note ran 175 px out of the bottom of a card
+                // on a phone at the largest text size.
                 SliverPadding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  sliver: SliverGrid(
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 16,
-                      crossAxisSpacing: 16,
-                      childAspectRatio: 0.72,
-                    ),
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final item = filteredItems[index];
-                        return ShowcaseCard(
-                          item: item,
-                          onTap: () =>
-                              context.push('/showcase/detail', extra: item),
-                          onPin: () => ref
-                              .read(showcaseProvider.notifier)
-                              .togglePin(item.id),
-                          onRemove: () => _confirmRemove(context, ref, item),
-                        )
-                            .animate()
-                            .fadeIn(
-                              duration: 400.ms,
-                              delay: (200 + index * 60).ms,
-                            )
-                            .slideY(begin: 0.1, end: 0);
+                  sliver: Builder(builder: (context) {
+                    final columns = _gridColumns(context);
+                    final rows = (filteredItems.length / columns).ceil();
+                    return SliverList.builder(
+                      itemCount: rows,
+                      itemBuilder: (context, row) {
+                        final cards = <Widget>[];
+                        for (var col = 0; col < columns; col++) {
+                          if (col > 0) cards.add(const SizedBox(width: 16));
+                          final index = row * columns + col;
+                          cards.add(Expanded(
+                            child: index >= filteredItems.length
+                                ? const SizedBox.shrink()
+                                : ShowcaseCard(
+                                    item: filteredItems[index],
+                                    onTap: () => context.push(
+                                      '/showcase/detail',
+                                      extra: filteredItems[index],
+                                    ),
+                                    onPin: () => ref
+                                        .read(showcaseProvider.notifier)
+                                        .togglePin(filteredItems[index].id),
+                                    onRemove: () => _confirmRemove(
+                                      context,
+                                      ref,
+                                      filteredItems[index],
+                                    ),
+                                  )
+                                    .animate()
+                                    .fadeIn(
+                                      duration: 400.ms,
+                                      delay: (200 + index * 60).ms,
+                                    )
+                                    .slideY(begin: 0.1, end: 0),
+                          ));
+                        }
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: IntrinsicHeight(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: cards,
+                            ),
+                          ),
+                        );
                       },
-                      childCount: filteredItems.length,
-                    ),
-                  ),
+                    );
+                  }),
                 ),
 
                 const SliverToBoxAdapter(child: SizedBox(height: 100)),
@@ -201,6 +234,7 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text(_t(context).scRemoveTitle),
         content: Text(_t(context).scRemoveBody(item.title)),
         actions: [
@@ -230,11 +264,12 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Row(
           children: [
             const Text('📌', style: TextStyle(fontSize: 24)),
             const SizedBox(width: 8),
-            Text(_t(context).scAddANote),
+            Expanded(child: Text(_t(context).scAddANote)),
           ],
         ),
         content: Column(
@@ -242,8 +277,10 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
           children: [
             TextField(
               controller: titleController,
+              maxLength: TextLimits.title,
+              buildCounter: TextLimits.counter,
               decoration: InputDecoration(
-                labelText: _t(context).scNoteTitle,
+                label: FitLabel(_t(context).scNoteTitle),
                 hintText: _t(context).scNoteTitleHint,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
@@ -254,8 +291,10 @@ class _ShowcaseScreenState extends ConsumerState<ShowcaseScreen> {
             const SizedBox(height: 12),
             TextField(
               controller: noteController,
+              maxLength: TextLimits.paragraph,
+              buildCounter: TextLimits.counter,
               decoration: InputDecoration(
-                labelText: _t(context).scNote,
+                label: FitLabel(_t(context).scNote),
                 hintText: _t(context).scNoteHint,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),

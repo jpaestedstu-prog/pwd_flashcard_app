@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../l10n/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -24,6 +25,7 @@ import '../widgets/routine_sync_feedback.dart';
 import 'routine_builder_screen.dart';
 import 'routine_history_screen.dart';
 import 'routine_screen.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// The educator's routine manager for one learner.
 ///
@@ -83,7 +85,7 @@ class RoutineEditorScreen extends ConsumerWidget {
           backgroundColor: Colors.transparent,
           elevation: 0,
           leading: const AppBackButton(),
-          title: Text(
+          title: AppBarTitle(
             self
                 ? (l ? 'Ang Aking mga Routine' : 'My Routines')
                 : childDisplayName == null
@@ -348,6 +350,7 @@ class RoutineEditorScreen extends ConsumerWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text(l ? 'Simulan muli ang araw na ito?' : 'Start today over?'),
         content: Text(
           self
@@ -412,6 +415,7 @@ class RoutineEditorScreen extends ConsumerWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text(
           l ? 'Burahin ang “${routine.name}”?' : 'Delete “${routine.name}”?',
         ),
@@ -582,7 +586,7 @@ class _TemplateTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
-    return Material(
+    return Semantics(container: true, button: true, child: Material(
       type: MaterialType.transparency,
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
@@ -657,7 +661,7 @@ class _TemplateTile extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ));
   }
 }
 
@@ -759,6 +763,8 @@ class _TodayCard extends StatelessWidget {
                         visualDensity: VisualDensity.compact,
                         label: Text(
                           '+${steps.length - 8}',
+                          semanticsLabel: AppLocalizations.of(context)
+                              ?.rtMoreSteps(steps.length - 8),
                           style: AppTypography.labelSmall,
                         ),
                       ),
@@ -933,6 +939,8 @@ class _RoutineCard extends StatelessWidget {
                 if (routine.orderedSteps.length > 10)
                   Text(
                     '+${routine.orderedSteps.length - 10}',
+                    semanticsLabel: AppLocalizations.of(context)
+                        ?.rtMoreSteps(routine.orderedSteps.length - 10),
                     style: AppTypography.labelSmall
                         .copyWith(color: hc.textSecondary),
                   ),

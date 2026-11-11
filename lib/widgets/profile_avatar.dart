@@ -34,7 +34,9 @@ class ProfileAvatar extends ConsumerWidget {
       return CircleAvatar(
         radius: radius,
         backgroundColor: AppColors.surfaceContainerHighest,
-        child: Text('?', style: TextStyle(fontSize: fontSize ?? radius)),
+        child: ExcludeSemantics(
+          child: Text('?', style: TextStyle(fontSize: fontSize ?? radius)),
+        ),
       );
     }
 
@@ -108,7 +110,11 @@ class CosmeticAvatar extends StatelessWidget {
     final avatarWidget = CircleAvatar(
       radius: radius,
       backgroundColor: bgColor,
-      child: Text(emoji, style: TextStyle(fontSize: fontSize ?? radius)),
+      // A face, not a word: always shown beside the name, or inside a button
+      // that has its own, so read aloud it only added "dog" before the name.
+      child: ExcludeSemantics(
+        child: Text(emoji, style: TextStyle(fontSize: fontSize ?? radius)),
+      ),
     );
 
     if (equippedBorderId == null) return avatarWidget;

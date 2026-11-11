@@ -1,5 +1,8 @@
 import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter/material.dart';
+import 'nav_bar_sizes.dart';
+import '../features/companion/widgets/companion_clearance.dart';
+import '../features/companion/controllers/companion_controller.dart';
 import '../features/gaze_control/debug/gaze_debug_bridge.dart';
 import '../features/routine/widgets/routine_popup_watcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,6 +29,7 @@ import '../features/gaze_control/providers/gaze_home_grid.dart';
 import '../features/gaze_control/widgets/gaze_hints.dart';
 import '../features/gaze_control/widgets/gaze_home_tiles.dart';
 import '../features/gaze_control/widgets/nav_gaze_scope.dart';
+import '../features/gaze_control/widgets/shell_modal_observer.dart';
 import '../widgets/level_up_celebration_screen.dart';
 import '../features/assessment/widgets/learner_assignment_sync.dart';
 
@@ -114,25 +118,14 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
   /// for outer container, animated bar, pill, and item rendering — so the
   /// bar can never disagree with what its content needs, at any scale.
   _NavMetrics _computeMetrics(BuildContext context) {
-    final iconSel = context.scaleIcon(context.responsiveSize(26));
-    final iconUnsel = context.scaleIcon(context.responsiveSize(22));
-    final scale = MediaQuery.textScalerOf(context).scale(1.0);
-    // Label height for layout math (Text applies textScaler internally
-    // when rendering; we mirror it here so the height calculation matches).
-    final fontSel = context.responsiveSize(11.5) * scale;
-    final gap = (4.0 * scale).clamp(3.0, 8.0);
-    const dot = 5.0;
-    // Selected item is the tallest: icon + gap + textLineHeight + gap + dot.
-    // ~1.25 line-height fits Nunito at all weights without descender clipping.
-    final content = iconSel + gap + fontSel * 1.25 + gap + dot;
-    // 12dp vertical padding (6 top + 6 bottom) so content never touches edges.
-    final bar = content + 12;
+    // Shared with the floating AI Buddy, which rests above the bar.
+    final sizes = NavBarSizes.of(context);
     return _NavMetrics(
-      bar: bar,
-      iconSelected: iconSel,
-      iconUnselected: iconUnsel,
-      gap: gap,
-      dot: dot,
+      bar: sizes.bar,
+      iconSelected: sizes.iconSelected,
+      iconUnselected: sizes.iconUnselected,
+      gap: sizes.gap,
+      dot: sizes.dot,
     );
   }
 
@@ -187,7 +180,13 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
       curve: Curves.easeInOut,
     );
     _opacity = CurvedAnimation(parent: _animController, curve: Curves.easeIn);
+    // The AI Buddy's floating button rests just above this bar: it rises and
+    // fades with it.
+    _heightFactor.addListener(_shareReveal);
+    _shareReveal();
   }
+
+  void _shareReveal() => CompanionFab.reveal.value = _heightFactor.value;
 
   @override
   void didUpdateWidget(covariant BottomNavShell oldWidget) {
@@ -224,6 +223,46 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
       ref.read(bottomNavVisibleProvider.notifier).state = shouldShow;
     });
   }
+
+  /// Floating messages ("Something went wrong", a "Saved" notice) sit above
+  /// the AI Buddy's corner while the buddy is on. It floats over this shell,
+  /// and its bubble covered a message's OK: a tap on OK opened the tutor
+  /// instead (the Villaon phone, 9 Nov).
+  Widget _messagesClearOfBuddy(
+    BuildContext context, {
+    required Widget child,
+  }) {
+    final enabled = ref.watch(
+      settingsProvider.select((s) => s.aiCompanionEnabled),
+    );
+    final learner =
+        ref.watch(profileProvider.select((p) => p?.role.isLearner)) ?? false;
+    if (!enabled || !learner) return child;
+    final base = Theme.of(context);
+    // A message rests on the tab bar, or on the bottom of the safe area: it
+    // rises over the buddy's floating button, which rests there too.
+    final bottom = CompanionFab.clearance(
+      context,
+      ref.watch(companionPresentationProvider),
+    );
+    if (!identical(base, _messagesBase) || bottom != _messagesBottom) {
+      final inset =
+          base.snackBarTheme.insetPadding ??
+          const EdgeInsets.fromLTRB(15, 5, 15, 10);
+      _messagesBase = base;
+      _messagesBottom = bottom;
+      _messagesTheme = base.copyWith(
+        snackBarTheme: base.snackBarTheme.copyWith(
+          insetPadding: inset.copyWith(bottom: bottom),
+        ),
+      );
+    }
+    return Theme(data: _messagesTheme!, child: child);
+  }
+
+  ThemeData? _messagesBase;
+  double? _messagesBottom;
+  ThemeData? _messagesTheme;
 
   /// The guest's floating Home button, as the D-pad's last row on the guest's
   /// hubs (see [GazeHomeGrid.publishShellCells]). Without it a guest steering
@@ -271,6 +310,7 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
         identical(dpadFloatingParent.value, _floatingParent)) {
       dpadFloatingParent.value = null;
     }
+    _heightFactor.removeListener(_shareReveal);
     _animController.dispose();
     for (final c in _bounceControllers.values) {
       c.dispose();
@@ -390,7 +430,9 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
           onCommit: (_) {},
           builder: (context, gaze) => Stack(
             children: [
-              Scaffold(
+              _messagesClearOfBuddy(
+                context,
+                child: Scaffold(
                 // The shell's own navigator reports "nothing to pop" on a
                 // hub, and the root navigator passes that on unchanged — it
                 // ignores the PopScope above. On Android's predictive back
@@ -430,6 +472,7 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
                           label: const Text('Home'),
                         ),
                       ),
+              ),
               ),
               if (_celebratingLevel != null)
                 LevelUpCelebrationScreen(
@@ -487,80 +530,105 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell>
               key: ValueKey('assignment-sync-$learnerId'),
               profileId: learnerId,
             ),
-          Scaffold(
+          _messagesClearOfBuddy(
+                context,
+                child: Scaffold(
             body: RepaintBoundary(child: widget.child),
-            bottomNavigationBar: Builder(
-              builder: (context) {
-                final hc = HCColor.of(context);
-                final metrics = _computeMetrics(context);
-                return AnimatedBuilder(
-                  animation: _animController,
-                  builder: (context, child) {
-                    return ClipRect(
-                      child: Align(
-                        alignment: Alignment.topCenter,
-                        heightFactor: _heightFactor.value,
-                        child: Opacity(opacity: _opacity.value, child: child),
-                      ),
-                    );
-                  },
-                  child: RepaintBoundary(
-                    // SafeArea(top: false) lifts the bar above Android gesture-nav
-                    // insets on Android 10+ — Scaffold's bottomNavigationBar slot
-                    // does NOT auto-pad for the system gesture area.
-                    child: SafeArea(
-                      top: false,
-                      child: Container(
-                        height: metrics.bar,
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surface,
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(28),
-                            topRight: Radius.circular(28),
-                          ),
-                          border: Border(
-                            top: BorderSide(
-                              color: hc.primary.withValues(alpha: 0.08),
-                            ),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: hc.primary.withValues(alpha: 0.08),
-                              blurRadius: 24,
-                              offset: const Offset(0, -6),
-                            ),
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.04),
-                              blurRadius: 8,
-                              offset: const Offset(0, -2),
-                            ),
-                          ],
+            bottomNavigationBar: ValueListenableBuilder<bool>(
+                // A pop-up over the page (a game's difficulty sheet) is modal:
+              // its barrier hides the page from a screen reader, but not this
+              // bar, outside the shell's navigator — TalkBack walked out of
+              // the sheet into the tabs behind it. A page pushed inside the
+              // shell (Settings) is no pop-up: the bar stays live and readable.
+              valueListenable: shellModalObserver.popupCovering,
+              builder: (context, covered, bar) =>
+                  ExcludeSemantics(excluding: covered, child: bar),
+              child: Builder(
+                builder: (context) {
+                  final hc = HCColor.of(context);
+                  final metrics = _computeMetrics(context);
+                  return AnimatedBuilder(
+                    animation: _animController,
+                    builder: (context, child) {
+                      return ClipRect(
+                        child: Align(
+                          alignment: Alignment.topCenter,
+                          heightFactor: _heightFactor.value,
+                          child: Opacity(opacity: _opacity.value, child: child),
                         ),
-                        child: ClipRRect(
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(28),
-                            topRight: Radius.circular(28),
+                      );
+                    },
+                    child: RepaintBoundary(
+                      // SafeArea(top: false) lifts the bar above Android gesture-nav
+                      // insets on Android 10+ — Scaffold's bottomNavigationBar slot
+                      // does NOT auto-pad for the system gesture area.
+                      child: SafeArea(
+                        top: false,
+                        child: Container(
+                          height: metrics.bar,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surface,
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(28),
+                              topRight: Radius.circular(28),
+                            ),
+                            border: Border(
+                              top: BorderSide(
+                                color: hc.primary.withValues(alpha: 0.08),
+                              ),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: hc.primary.withValues(alpha: 0.08),
+                                blurRadius: 24,
+                                offset: const Offset(0, -6),
+                              ),
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.04),
+                                blurRadius: 8,
+                                offset: const Offset(0, -2),
+                              ),
+                            ],
                           ),
-                          child: _AnimatedNavBar(
-                            currentIndex: currentIndex,
-                            gazeTargetIndex: gaze.active
-                                ? gaze.targetIndex
-                                : null,
-                            gazeWholeBar: gaze.active && gaze.wholeNavRow,
-                            items: items,
-                            onTap: (index) => _onTap(context, index),
-                            bounceControllers: _bounceControllers,
-                            vsync: this,
-                            metrics: metrics,
+                          child: ClipRRect(
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(28),
+                              topRight: Radius.circular(28),
+                            ),
+                            // On a wide window the tabs stay together in the
+                            // middle, under the page's column: spread over
+                            // 1,400 px they read as five unrelated things.
+                            child: Center(
+                              child: ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  maxWidth: context.hubContentWidth == null
+                                      ? double.infinity
+                                      : 760,
+                                ),
+                                child: _AnimatedNavBar(
+                                  currentIndex: currentIndex,
+                                  gazeTargetIndex: gaze.active
+                                      ? gaze.targetIndex
+                                      : null,
+                                  gazeWholeBar: gaze.active && gaze.wholeNavRow,
+                                  items: items,
+                                  onTap: (index) => _onTap(context, index),
+                                  bounceControllers: _bounceControllers,
+                                  vsync: this,
+                                  metrics: metrics,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
           ),
+              ),
 
           // Gaze-navigation hint, sitting just above the bar while gaze nav runs.
           if (gaze.active)
@@ -994,10 +1062,14 @@ class _AnimatedNavItemState extends State<_AnimatedNavItem> {
                         fontFamily: 'Nunito',
                         letterSpacing: widget.isSelected ? 0.2 : 0,
                       ),
-                      child: Text(
-                        widget.item.label,
-                        maxLines: 1,
-                        softWrap: false,
+                      // Said by the tab's own label: TalkBack read
+                      // "Progress, Progress".
+                      child: ExcludeSemantics(
+                        child: Text(
+                          widget.item.label,
+                          maxLines: 1,
+                          softWrap: false,
+                        ),
                       ),
                     ),
                   ),

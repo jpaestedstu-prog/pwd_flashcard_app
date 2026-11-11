@@ -34,6 +34,7 @@ import '../../../widgets/fullscreen_host.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../core/utils/seeded_random.dart';
 import '../../../widgets/dpad_focusable.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 class SentenceBuilderScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
@@ -305,7 +306,7 @@ class _SentenceBuilderScreenState extends ConsumerState<SentenceBuilderScreen>
     if (_currentIndex >= _cards.length) return;
     final sentence = _buildSentenceWithBlank(_cards[_currentIndex]);
     gamepadScreen.announce(
-      'Sentence: ${sentence.replaceAll('______', 'blank')}',
+      AppLocalizations.of(context)!.sbSentenceSemantics(sentence.replaceAll('______', AppLocalizations.of(context)!.sbBlankWord)),
     );
   }
 
@@ -471,7 +472,7 @@ class _SentenceBuilderScreenState extends ConsumerState<SentenceBuilderScreen>
       title: GameType.sentenceBuilder.labelOf(l10n),
       active: !_answered && !isPaused,
       narration: [
-        'Sentence: ${sentenceWithBlank.replaceAll('______', 'blank')}',
+        l10n.sbSentenceSemantics(sentenceWithBlank.replaceAll('______', l10n.sbBlankWord)),
       ],
       items: [
         for (final choice in _choices)
@@ -500,8 +501,13 @@ class _SentenceBuilderScreenState extends ConsumerState<SentenceBuilderScreen>
                     tooltip: l10n.close,
                     onPressed: pauseGame,
                   ),
-                  title: Text(
+                  title: AppBarTitle(
                     l10n.gameRoundHeader(
+                      GameType.sentenceBuilder.labelOf(l10n),
+                      _currentIndex + 1,
+                      _cards.length,
+                    ),
+                    semanticsLabel: l10n.gameRoundHeaderSpoken(
                       GameType.sentenceBuilder.labelOf(l10n),
                       _currentIndex + 1,
                       _cards.length,
@@ -536,6 +542,7 @@ class _SentenceBuilderScreenState extends ConsumerState<SentenceBuilderScreen>
                             const SizedBox(width: 4),
                             Text(
                               '$_score',
+                              semanticsLabel: l10n.gameScoreChip(_score),
                               style: AppTypography.labelLarge.copyWith(
                                 color: HCColor.of(context).warningText,
                               ),
@@ -624,7 +631,10 @@ class _SentenceBuilderScreenState extends ConsumerState<SentenceBuilderScreen>
                             // ─── Sentence with Blank ────────
                             Semantics(
                                   label:
-                                      'Sentence: ${sentenceWithBlank.replaceAll('______', 'blank')}',
+                                      l10n.sbSentenceSemantics(sentenceWithBlank.replaceAll('______', l10n.sbBlankWord)),
+                                  // The sentence once; its words drawn here
+                                  // were read again under it.
+                                  excludeSemantics: true,
                                   child: Container(
                                     width: double.infinity,
                                     padding: const EdgeInsets.all(24),
@@ -697,89 +707,95 @@ class _SentenceBuilderScreenState extends ConsumerState<SentenceBuilderScreen>
                                     child: Semantics(
                                       button: true,
                                       label:
-                                          '${_answered ? (isCorrectChoice ? "Correct answer" : (isSelected ? "Your wrong answer" : "")) : "Option"}: $choice',
+                                          '${l10n.answerChoiceSemantics(choice)}'
+                                              '${_answered && isCorrectChoice ? l10n.correctAnswerSuffix : ''}'
+                                              '${_answered && isSelected && !isCorrectChoice ? l10n.wrongAnswerSuffix : ''}',
                                       child: DpadFocusable(onActivate: () => _onChoiceTapped(choice), child: GestureDetector(
                                         onTap: () => _onChoiceTapped(choice),
-                                        child: AnimatedContainer(
-                                          duration: const Duration(
-                                            milliseconds: 250,
-                                          ),
-                                          width: double.infinity,
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 20,
-                                            vertical: 16,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: bgColor,
-                                            borderRadius: BorderRadius.circular(
-                                              16,
+                                        child: ExcludeSemantics(
+                                          // The label says the answer; the letter and word drawn here were
+                                          // read again under it.
+                                          child: AnimatedContainer(
+                                            duration: const Duration(
+                                              milliseconds: 250,
                                             ),
-                                            border: Border.all(
-                                              color: borderColor,
-                                              width: highlighted ? 4 : 2,
+                                            width: double.infinity,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 20,
+                                              vertical: 16,
                                             ),
-                                            boxShadow: highlighted
-                                                ? [
-                                                    BoxShadow(
-                                                      color: AppColors.accent
-                                                          .withValues(
-                                                            alpha: 0.5,
-                                                          ),
-                                                      blurRadius: 14,
-                                                      spreadRadius: 1,
+                                            decoration: BoxDecoration(
+                                              color: bgColor,
+                                              borderRadius: BorderRadius.circular(
+                                                16,
+                                              ),
+                                              border: Border.all(
+                                                color: borderColor,
+                                                width: highlighted ? 4 : 2,
+                                              ),
+                                              boxShadow: highlighted
+                                                  ? [
+                                                      BoxShadow(
+                                                        color: AppColors.accent
+                                                            .withValues(
+                                                              alpha: 0.5,
+                                                            ),
+                                                        blurRadius: 14,
+                                                        spreadRadius: 1,
+                                                      ),
+                                                    ]
+                                                  : null,
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                // Letter prefix
+                                                Container(
+                                                  width: 32,
+                                                  height: 32,
+                                                  decoration: BoxDecoration(
+                                                    color: borderColor.withValues(
+                                                      alpha: 0.2,
                                                     ),
-                                                  ]
-                                                : null,
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              // Letter prefix
-                                              Container(
-                                                width: 32,
-                                                height: 32,
-                                                decoration: BoxDecoration(
-                                                  color: borderColor.withValues(
-                                                    alpha: 0.2,
+                                                    shape: BoxShape.circle,
                                                   ),
-                                                  shape: BoxShape.circle,
+                                                  child: Center(
+                                                    child: Text(
+                                                      String.fromCharCode(
+                                                        65 + i,
+                                                      ), // A, B, C, D
+                                                      style: AppTypography
+                                                          .labelLarge
+                                                          .copyWith(
+                                                            color: textColor,
+                                                            fontWeight:
+                                                                FontWeight.w800,
+                                                          ),
+                                                    ),
+                                                  ),
                                                 ),
-                                                child: Center(
+                                                const SizedBox(width: 14),
+                                                Expanded(
                                                   child: Text(
-                                                    String.fromCharCode(
-                                                      65 + i,
-                                                    ), // A, B, C, D
+                                                    choice,
                                                     style: AppTypography
-                                                        .labelLarge
+                                                        .titleMedium
                                                         .copyWith(
                                                           color: textColor,
                                                           fontWeight:
-                                                              FontWeight.w800,
+                                                              FontWeight.w600,
                                                         ),
                                                   ),
                                                 ),
-                                              ),
-                                              const SizedBox(width: 14),
-                                              Expanded(
-                                                child: Text(
-                                                  choice,
-                                                  style: AppTypography
-                                                      .titleMedium
-                                                      .copyWith(
-                                                        color: textColor,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                      ),
-                                                ),
-                                              ),
-                                              if (trailingIcon != null)
-                                                Icon(
-                                                  trailingIcon,
-                                                  color: isCorrectChoice
-                                                      ? HCColor.of(context).graphic(AppColors.success)
-                                                      : HCColor.of(context).graphic(AppColors.error),
-                                                  size: 24,
-                                                ),
-                                            ],
+                                                if (trailingIcon != null)
+                                                  Icon(
+                                                    trailingIcon,
+                                                    color: isCorrectChoice
+                                                        ? HCColor.of(context).graphic(AppColors.success)
+                                                        : HCColor.of(context).graphic(AppColors.error),
+                                                    size: 24,
+                                                  ),
+                                              ],
+                                            ),
                                           ),
                                         ),
                                       )),

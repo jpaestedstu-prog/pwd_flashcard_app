@@ -1,11 +1,13 @@
-/// A **reading-order** cursor over the ragged tile grid a hub publishes.
+/// The controller's cursor over the ragged tile grid a hub publishes, both
+/// ways round.
 ///
-/// The hands-free gaze D-pad steers the same grids in 2-D (`GazeGridCursor`),
-/// which suits someone who can see the layout. A learner who cannot see it
-/// needs the opposite: one unambiguous "next thing" per press. So this cursor
-/// flattens the rows into a single sequence — left-to-right, top-to-bottom,
-/// exactly how a screen reader walks a page — and exposes `next`/`previous`
-/// over that.
+/// **By direction** ([moveVertical], [moveHorizontal]) for the D-pad, as the
+/// hands-free gaze D-pad steers the same grid (`GazeGridCursor`): left and
+/// right stay in the row, wrapping at its ends; up and down change row,
+/// wrapping top to bottom. **One at a time** ([next], [previous]) for L2 and
+/// R2: the rows flattened into a single sequence — left-to-right,
+/// top-to-bottom, exactly how a screen reader walks a page — for a learner
+/// who needs one unambiguous "next thing" per press.
 ///
 /// It still reports a `(row, col)` because that is what `gazeHomeGrid.setFocus`
 /// wants in order to draw the highlight ring, so the visible focus and the
@@ -78,17 +80,61 @@ class GamepadCursor {
   void previous() => _step(-1);
 
   void _step(int delta) {
+    _wantCol = null;
     final max = length;
     if (max == 0) return;
     _index = (_index + delta) % max;
     if (_index < 0) _index += max;
   }
 
-  void first() => _index = 0;
+  void first() {
+    _wantCol = null;
+    _index = 0;
+  }
 
   void last() {
+    _wantCol = null;
     final max = length;
     _index = max == 0 ? 0 : max - 1;
+  }
+
+  /// The column up and down aim for, kept while passing through shorter
+  /// rows: from the right-hand tile of a three-wide row, down through a
+  /// one-wide card and on into another wide row lands on its right-hand tile
+  /// again, not on its first.
+  int? _wantCol;
+
+  /// Up ([delta] -1) or down (+1) a row, wrapping top to bottom and skipping
+  /// empty rows; the column is kept where the new row is wide enough.
+  void moveVertical(int delta) {
+    if (isEmpty) return;
+    final want = _wantCol ?? col;
+    var r = row;
+    for (var i = 0; i < _rows.length; i++) {
+      r = (r + delta) % _rows.length;
+      if (r < 0) r += _rows.length;
+      if (_rows[r] > 0) break;
+    }
+    _goTo(r, want < _rows[r] ? want : _rows[r] - 1);
+    _wantCol = want;
+  }
+
+  /// Left ([delta] -1) or right (+1) within the row, wrapping at its ends.
+  void moveHorizontal(int delta) {
+    if (isEmpty) return;
+    final width = _rows[row];
+    var c = (col + delta) % width;
+    if (c < 0) c += width;
+    _goTo(row, c);
+    _wantCol = c;
+  }
+
+  void _goTo(int row, int col) {
+    var linear = 0;
+    for (var i = 0; i < row; i++) {
+      linear += _rows[i];
+    }
+    _index = linear + col;
   }
 
   /// Jumps to a known cell — used to follow a focus change that came from
@@ -96,6 +142,7 @@ class GamepadCursor {
   /// press continues from what the learner last heard rather than from a stale
   /// position.
   void moveTo(int row, int col) {
+    _wantCol = null;
     if (_rows.isEmpty) {
       _index = 0;
       return;

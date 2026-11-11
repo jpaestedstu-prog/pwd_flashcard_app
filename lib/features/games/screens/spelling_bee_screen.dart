@@ -41,6 +41,7 @@ import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/fullscreen_host.dart';
 import '../../../core/utils/seeded_random.dart';
 import '../../../widgets/dpad_focusable.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 class SpellingBeeScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
@@ -320,11 +321,13 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
     ];
   }
 
-  /// Places a letter from the controller and reads back the spelling so far.
+  /// Places a letter pressed from the controller or a keyboard (a tile's
+  /// [DpadFocusable]), and reads back the spelling so far.
   ///
   /// Placing a letter changes only the slots, which a learner driving by ear
   /// cannot see — so without this the game would accept the letter in silence
-  /// and they would lose track of the word after two moves.
+  /// and they would lose track of the word after two moves. A touch places it
+  /// silently, as before: the read-back is the controller's to speak.
   void _placeLetterFromGamepad(int letterIndex) {
     if (letterIndex < 0 || letterIndex >= _scrambledLetters.length) return;
     if (_letterUsed[letterIndex] || _wordComplete) return;
@@ -332,11 +335,12 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
     _announceSpelling();
   }
 
-  /// Removes the last placed letter from the controller.
-  void _undoFromGamepad() {
-    final lastFilled = _answerSlots.lastIndexWhere((slot) => slot != null);
-    if (lastFilled < 0) return;
-    _removeLetterAtSlot(lastFilled);
+  /// Takes a placed letter back out from the controller or a keyboard, and
+  /// reads back what is left — the undo, for a learner who cannot see which
+  /// slot is which.
+  void _removeLetterFromGamepad(int slotIndex) {
+    if (_answerSlots[slotIndex] == null || _wordComplete) return;
+    _removeLetterAtSlot(slotIndex);
     _announceSpelling();
   }
 
@@ -693,7 +697,9 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
     // disabled rather than removed, so the numbering a learner is memorising
     // never shifts under them — the same rule Memory Match follows for its
     // cards. The word being spelled is read from the slots, so they always
-    // know how far they have got.
+    // know how far they have got. The items are what X lists; the D-pad moves
+    // over the tiles and slots themselves, and a filled slot ("Slot 2: P, tap
+    // to remove") is the undo.
     return GamepadScreenRegistrar(
       title: GameType.spellingBee.labelOf(l10n),
       active: !_wordComplete && !isPaused,
@@ -709,11 +715,6 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
             enabled: !_letterUsed[i],
             onActivate: () => _placeLetterFromGamepad(i),
           ),
-        GamepadItem(
-          label: l10n.gazeUndo,
-          enabled: _answerSlots.any((s) => s != null),
-          onActivate: _undoFromGamepad,
-        ),
       ],
       child: GazeScope(
       actions: _gazeActions(),
@@ -735,8 +736,13 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
                     tooltip: l10n.close,
                     onPressed: pauseGame,
                   ),
-                  title: Text(
+                  title: AppBarTitle(
                     l10n.gameRoundHeader(
+                      GameType.spellingBee.labelOf(l10n),
+                      _currentIndex + 1,
+                      _cards.length,
+                    ),
+                    semanticsLabel: l10n.gameRoundHeaderSpoken(
                       GameType.spellingBee.labelOf(l10n),
                       _currentIndex + 1,
                       _cards.length,
@@ -771,6 +777,7 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
                             const SizedBox(width: 4),
                             Text(
                               '$_score',
+                              semanticsLabel: l10n.gameScoreChip(_score),
                               style: AppTypography.labelLarge.copyWith(
                                 color: HCColor.of(context).warningText,
                               ),
@@ -865,11 +872,13 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
                               label: _answerSlots[i] != null
                                   ? l10n.slotFilled(i + 1, _answerSlots[i]!)
                                   : l10n.slotEmpty(i + 1),
-                              child: DpadFocusable(onActivate: () => _removeLetterAtSlot(i), child: GestureDetector(
+                              child: DpadFocusable(onActivate: () => _removeLetterFromGamepad(i), child: GestureDetector(
                                 onTap: () => _removeLetterAtSlot(i),
                                 child: AnimatedContainer(
                                   duration: const Duration(milliseconds: 200),
-                                  width: context.responsiveSize(48),
+                                  // Never under a finger's 48 dp: a phone's
+                                  // scale made these 43.
+                                  width: context.responsiveSize(48).clamp(48.0, 200.0),
                                   height: context.responsiveSize(56),
                                   decoration: BoxDecoration(
                                     color: isCorrectSlot
@@ -939,18 +948,24 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
                                   showCursor && !used && i == _cursorIndex;
                               return Semantics(
                                 button: true,
+                                // With its place: a word with a letter twice
+                                // had two tiles that said the same.
                                 label: used
                                     ? l10n.letterAlreadyUsed(
                                         _scrambledLetters[i],
+                                        i + 1,
+                                        _scrambledLetters.length,
                                       )
                                     : l10n.letterTapToPlace(
                                         _scrambledLetters[i],
+                                        i + 1,
+                                        _scrambledLetters.length,
                                       ),
-                                child: DpadFocusable(onActivate: () => _placeLetter(i), child: GestureDetector(
+                                child: DpadFocusable(onActivate: () => _placeLetterFromGamepad(i), child: GestureDetector(
                                   onTap: () => _placeLetter(i),
                                   child: AnimatedContainer(
                                     duration: const Duration(milliseconds: 200),
-                                    width: context.responsiveSize(52),
+                                    width: context.responsiveSize(52).clamp(48.0, 200.0),
                                     height: context.responsiveSize(56),
                                     decoration: BoxDecoration(
                                       color: used
@@ -982,14 +997,19 @@ class _SpellingBeeScreenState extends ConsumerState<SpellingBeeScreen>
                                           ? []
                                           : AppColors.softShadow,
                                     ),
+                                    // The label says the letter ("Letter
+                                    // E"); the drawn one said it again.
                                     child: Center(
-                                      child: Text(
-                                        used ? '' : _scrambledLetters[i],
-                                        style: AppTypography.titleLarge
-                                            .copyWith(
-                                              color: HCColor.of(context).primary,
-                                              fontWeight: FontWeight.w800,
-                                            ),
+                                      child: ExcludeSemantics(
+                                        child: Text(
+                                          used ? '' : _scrambledLetters[i],
+                                          style: AppTypography.titleLarge
+                                              .copyWith(
+                                                color:
+                                                    HCColor.of(context).primary,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                        ),
                                       ),
                                     ),
                                   ),

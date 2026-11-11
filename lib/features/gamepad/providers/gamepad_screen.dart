@@ -1,14 +1,18 @@
 import 'package:flutter/foundation.dart';
 
 /// One control a screen offers to the controller.
+///
+/// On a screen ([GamepadScreenContent.publish]) it names a button the D-pad
+/// reaches by focus, for X to list; floating over a hub
+/// ([GamepadScreenContent.publishFloating]) it is a stop of the hub's own
+/// cursor, which [onActivate] opens.
 @immutable
 class GamepadItem {
-  /// What the learner hears when the cursor lands here.
+  /// What the learner hears for this control.
   final String label;
 
-  /// Extra detail spoken after the label — a card's translation, an answer's
-  /// hint. Kept separate so item-stepping can stay terse while "read the whole
-  /// screen" can be complete.
+  /// Extra detail spoken after the label, when the hub cursor lands on a
+  /// floating control.
   final String? detail;
 
   final VoidCallback onActivate;
@@ -40,10 +44,11 @@ class GamepadItem {
 /// This bridge is how such a screen says what it contains. Both halves matter
 /// and they are deliberately published together:
 ///
-/// * [items] — the answers, the choices, the actions. Walked with ▲ ▼ and
-///   opened with R1, exactly like hub tiles.
+/// * [items] — the answers, the choices, the actions, by name. The buttons
+///   themselves are reached by focus, as a keyboard reaches them; X lists
+///   them after the prose so the learner knows what there is to find.
 /// * [narration] — the prose: the prompt, the question, the sentence of the
-///   story. Read on request (R2), and the reason a blind learner can follow a
+///   story. Read on request (X), and the reason a blind learner can follow a
 ///   quiz at all rather than just operate its buttons.
 ///
 /// App-wide singleton rather than a Riverpod provider, matching `gazeHomeGrid`
@@ -54,7 +59,6 @@ class GamepadScreenContent extends ChangeNotifier {
   String? _title;
   List<String> _narration = const [];
   List<GamepadItem> _items = const [];
-  int? _focusedIndex;
   Object? _owner;
 
   /// The screen's name, spoken when asked "where am I?".
@@ -73,17 +77,11 @@ class GamepadScreenContent extends ChangeNotifier {
   /// rather than falling through to focus traversal.
   bool get hasContent => _items.isNotEmpty || _narration.isNotEmpty;
 
-  /// Which item the controller is resting on, published back by the host so
-  /// the screen can draw its highlight.
-  int? get focusedIndex => _focusedIndex;
-
   /// Publishes this screen's content.
   ///
   /// Only notifies when something structural changed — the label list, the
-  /// narration or the title. A screen re-publishes on every rebuild to keep its
-  /// `onActivate` closures fresh (they capture round state that changes every
-  /// answer), and notifying on each of those would reset the reading cursor
-  /// mid-sentence.
+  /// narration or the title. A screen re-publishes on every rebuild, and
+  /// notifying on each of those would re-shape the host's cursor for nothing.
   void publish({
     required List<GamepadItem> items,
     List<String> narration = const [],
@@ -93,17 +91,6 @@ class GamepadScreenContent extends ChangeNotifier {
     final changed = !_sameLabels(items) ||
         !listEquals(narration, _narration) ||
         title != _title;
-    // A *different screen* is publishing, so the cursor position belongs to a
-    // list that is no longer on screen. Carried over, it pointed into the new
-    // screen's items at the old index — pressing R1 straight after opening the
-    // category sheet toggled whichever category happened to sit where the
-    // previous screen's cursor had been, instead of the Start button the
-    // learner was aiming at.
-    //
-    // Keyed on the owner, not on the content: a screen that republishes its
-    // own changed items (a game dealing the next round, a letter being used
-    // up) must keep the learner where they were.
-    if (owner != null && !identical(owner, _owner)) _focusedIndex = null;
     _owner = owner;
     _items = List.unmodifiable(items);
     _narration = List.unmodifiable(narration);
@@ -120,11 +107,10 @@ class GamepadScreenContent extends ChangeNotifier {
   void clear({Object? owner}) {
     if (owner != null && !identical(owner, _owner)) return;
     _owner = null;
-    if (!hasContent && _title == null && _focusedIndex == null) return;
+    if (!hasContent && _title == null) return;
     _items = const [];
     _narration = const [];
     _title = null;
-    _focusedIndex = null;
     notifyListeners();
   }
 
@@ -183,23 +169,6 @@ class GamepadScreenContent extends ChangeNotifier {
     _live = message;
     _liveSeq++;
     notifyListeners();
-  }
-
-  /// Publishes which item is focused (host → screen). Null when the cursor is
-  /// not on this screen's items.
-  void setFocus(int? index) {
-    if (_focusedIndex == index) return;
-    _focusedIndex = index;
-    notifyListeners();
-  }
-
-  bool isFocused(int index) => _focusedIndex == index;
-
-  /// The item at [index], or null when out of range — the screen can change
-  /// between a button press and its handler running.
-  GamepadItem? itemAt(int index) {
-    if (index < 0 || index >= _items.length) return null;
-    return _items[index];
   }
 
   bool _sameLabels(List<GamepadItem> next) {

@@ -12,6 +12,7 @@ import '../../l10n/app_localizations_en.dart';
 import '../theme/accessible_theme.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
+import 'app_bar_title.dart';
 
 /// What the capture screen makes.
 enum CaptureMode { video, photo }
@@ -421,7 +422,7 @@ class _MediaCaptureScreenState extends State<MediaCaptureScreen>
           icon: const Icon(Icons.close_rounded),
           onPressed: () => Navigator.of(context).maybePop(),
         ),
-        title: Text(title),
+        title: AppBarTitle(title),
       ),
       body: SafeArea(
         child: Column(
@@ -610,20 +611,24 @@ class _MediaCaptureScreenState extends State<MediaCaptureScreen>
                         )
                       : null,
                 ),
-                _Shutter(
-                  recording: recording,
-                  isVideo: _isVideo,
-                  enabled: _phase == _Phase.ready || recording,
-                  label: !_isVideo
-                      ? t.captureTakePhoto
-                      : recording
-                      ? t.captureStop
-                      : t.captureStart,
-                  onPressed: !_isVideo
-                      ? _takePhoto
-                      : recording
-                      ? _stopRecording
-                      : _beginCountdown,
+                // Flexible: its label under it ran the row 68 px off a phone
+                // at the largest Font Size.
+                Flexible(
+                  child: _Shutter(
+                    recording: recording,
+                    isVideo: _isVideo,
+                    enabled: _phase == _Phase.ready || recording,
+                    label: !_isVideo
+                        ? t.captureTakePhoto
+                        : recording
+                        ? t.captureStop
+                        : t.captureStart,
+                    onPressed: !_isVideo
+                        ? _takePhoto
+                        : recording
+                        ? _stopRecording
+                        : _beginCountdown,
+                  ),
                 ),
                 const SizedBox(width: 56),
               ],

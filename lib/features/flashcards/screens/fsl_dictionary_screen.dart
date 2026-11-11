@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import '../../../features/parent/services/learner_restrictions.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/services/fsl_assets_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/auto_fit.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
@@ -16,6 +18,7 @@ import '../../../widgets/fsl_video_sheet.dart';
 import '../../../widgets/fullscreen_host.dart';
 import '../widgets/fsl_offline_packs_sheet.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Browse all flashcard words grouped by category and watch their
 /// Filipino Sign Language (FSL) videos. Acts as a stand-alone
@@ -174,7 +177,11 @@ class _FslDictionaryScreenState extends ConsumerState<FslDictionaryScreen> {
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
-    final allCards = SeedData.allFlashcards;
+    final allCards = LearnerRestrictions.blockedCategories(
+      ref.watch(profileProvider)?.role,
+    ).isEmpty
+        ? SeedData.allFlashcards
+        : LearnerRestrictions.visibleCards(SeedData.allFlashcards);
     final profileId = ref.watch(profileProvider)?.id;
     // One availability resolve for the whole screen. Until it lands every card
     // renders as "no clip", which is also the correct state for the ~35 seed
@@ -222,7 +229,7 @@ class _FslDictionaryScreenState extends ConsumerState<FslDictionaryScreen> {
           appBar: fullscreenBar(
             ref,
             AppBar(
-              title: Text(
+              title: AppBarTitle(
                 AppLocalizations.of(context)!.fslDictionary,
                 style: AppTypography.titleMedium.copyWith(
                   fontWeight: FontWeight.w700,
@@ -346,7 +353,9 @@ class _FslDictionaryScreenState extends ConsumerState<FslDictionaryScreen> {
                               setState(() => _selectedCategory = null),
                         ),
                       ),
-                      ...FlashcardCategory.values.map((cat) {
+                      ...LearnerRestrictions.categoriesFor(
+                        ref.watch(profileProvider)?.role,
+                      ).map((cat) {
                         final signs =
                             availability?.videoCountByCategory[cat] ?? 0;
                         // With signs-only on, a category that has none would
@@ -431,7 +440,16 @@ class _FslDictionaryScreenState extends ConsumerState<FslDictionaryScreen> {
                           padding: const EdgeInsets.all(16),
                           gridDelegate:
                               SliverGridDelegateWithMaxCrossAxisExtent(
-                                maxCrossAxisExtent: 220,
+                                // Wider cells for larger type: fewer of them,
+                                // so a word keeps its size in its cell.
+                                // One column on a very narrow screen.
+                                maxCrossAxisExtent:
+                                    MediaQuery.sizeOf(context).width < 350
+                                    ? 400
+                                    : 220 *
+                                          MediaQuery.textScalerOf(context)
+                                              .scale(1)
+                                              .clamp(1.0, 1.5),
                                 // Explicit height instead of an aspect ratio so
                                 // the cell grows with the Font Size setting —
                                 // see [_wordCardExtent].
@@ -541,7 +559,10 @@ class _FslWordCard extends StatelessWidget {
     // gaze or switch learner gets the whole dictionary with no gaze-specific
     // wiring here. A bare `GestureDetector` is neither, which is why every word
     // card used to be a dead end for them.
+    // A button, said once: TalkBack read "Afternoon, Hapon. Sign coming
+    // soon. Afternoon. Hapon" with nothing to say it could be pressed.
     return Semantics(
+      button: true,
       label: hasVideo
           ? (watched
                 ? _t(context).fslWatchedSemantics(
@@ -579,44 +600,47 @@ class _FslWordCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      Icon(
-                        card.category.icon,
-                        color: card.category.color,
-                        size: context.scaleIcon(18),
-                      ),
-                      if (hasVideo) ...[
-                        const Spacer(),
-                        if (watched)
-                          Padding(
-                            padding: const EdgeInsets.only(right: 4),
-                            child: Icon(
-                              Icons.check_circle_rounded,
-                              color: hc.success,
-                              size: context.scaleIcon(16),
-                            ),
-                          ),
+                  ExcludeSemantics(
+                    // The tile's label says this; its icons and tag were read again.
+                    child: Row(
+                      children: [
                         Icon(
-                          Icons.play_circle_rounded,
-                          color: HCColor.of(context).graphic(AppColors.secondary),
-                          size: context.scaleIcon(22),
+                          card.category.icon,
+                          color: card.category.color,
+                          size: context.scaleIcon(18),
                         ),
-                      ] else ...[
-                        const SizedBox(width: 8),
-                        // Scales down rather than overflowing the narrowest
-                        // cell at a large Font Size.
-                        const Expanded(
-                          child: Align(
-                            alignment: AlignmentDirectional.centerEnd,
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: _SignSoonTag(),
+                        if (hasVideo) ...[
+                          const Spacer(),
+                          if (watched)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 4),
+                              child: Icon(
+                                Icons.check_circle_rounded,
+                                color: hc.success,
+                                size: context.scaleIcon(16),
+                              ),
+                            ),
+                          Icon(
+                            Icons.play_circle_rounded,
+                            color: HCColor.of(context).graphic(AppColors.secondary),
+                            size: context.scaleIcon(22),
+                          ),
+                        ] else ...[
+                          const SizedBox(width: 8),
+                          // Scales down rather than overflowing the narrowest
+                          // cell at a large Font Size.
+                          const Expanded(
+                            child: Align(
+                              alignment: AlignmentDirectional.centerEnd,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: _SignSoonTag(),
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                   // Flexible so that even if a font fallback makes the words taller
                   // than [_wordCardExtent] budgeted, they shrink instead of
@@ -629,31 +653,39 @@ class _FslWordCard extends StatelessWidget {
                         // give way to it rather than the row overflowing at a
                         // large Font Size on the narrowest grid cell.
                         Expanded(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  card.wordEnglish,
-                                  style: AppTypography.titleMedium.copyWith(
-                                    fontWeight: FontWeight.w700,
+                          child: ExcludeSemantics(
+                            // The tile's label says both words.
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              // The whole word, a little smaller if it must
+                              // be: at the largest Font Size "Afternoon" and
+                              // "Mansanas" were cut to "Afterno…" (30 Oct).
+                              children: [
+                                Flexible(
+                                  child: AutoFit(
+                                    alignment: AlignmentDirectional.centerStart,
+                                    child: Text(
+                                      card.wordEnglish,
+                                      style: AppTypography.titleMedium.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              ),
-                              Flexible(
-                                child: Text(
-                                  card.wordFilipino,
-                                  style: AppTypography.bodySmall.copyWith(
-                                    color: hc.textSecondary,
+                                Flexible(
+                                  child: AutoFit(
+                                    alignment: AlignmentDirectional.centerStart,
+                                    child: Text(
+                                      card.wordFilipino,
+                                      style: AppTypography.bodySmall.copyWith(
+                                        color: hc.textSecondary,
+                                      ),
+                                    ),
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                         if (onToggleFavourite != null)

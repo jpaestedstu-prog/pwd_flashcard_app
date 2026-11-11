@@ -16,6 +16,7 @@ import '../services/gaze_detector.dart';
 import '../services/gaze_metrics.dart';
 import '../widgets/gaze_traversal_scope.dart';
 import '../widgets/gaze_widgets.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// **Set my resting position.** The learner sits the way they usually do and
 /// looks at the middle of the screen; two seconds of keeping still later,
@@ -193,7 +194,7 @@ class _GazeCalibrationScreenState extends ConsumerState<GazeCalibrationScreen> {
     final camera = c?.cameraController;
     final saved = _phase == _Phase.saved;
     return Scaffold(
-      appBar: AppBar(title: Text(t.gzcTitle)),
+      appBar: AppBar(title: AppBarTitle(t.gzcTitle)),
       body: GazeTraversalScope(
         settingsOverride: _runSettings,
         onController: _onController,

@@ -56,20 +56,35 @@ class ActivityHeatmap extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          // Day labels + grid
-          Row(
+          // Day labels + grid. What it comes to, for a reader: it was told the
+          // day letters and every one of the 56 days ("9/11: 0 min").
+          Semantics(
+            label: l10n.chartActivitySummary(
+              cells.where((c) => c.$2 > 0).length,
+              cells.fold<int>(0, (sum, c) => sum + c.$2),
+            ),
+            excludeSemantics: true,
+            child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Day-of-week labels
               Column(
-                children: ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+                children: (l10n.localeName.startsWith('fil')
+                        ? const ['L', 'M', 'M', 'H', 'B', 'S', 'L']
+                        : const ['M', 'T', 'W', 'T', 'F', 'S', 'S'])
                     .map((l) => SizedBox(
                           height: 14,
-                          child: Text(
-                            l,
-                            style: AppTypography.labelSmall.copyWith(
-                              fontSize: 8,
-                              color: hc.textSecondary,
+                          // In rows that line up with the squares: drawn
+                          // to fit the row at a large text size, not cut.
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Text(
+                              l,
+                              style: AppTypography.labelSmall.copyWith(
+                                fontSize: 11,
+                                color: hc.textSecondary,
+                              ),
                             ),
                           ),
                         ))
@@ -82,15 +97,17 @@ class ActivityHeatmap extends StatelessWidget {
               ),
             ],
           ),
+          ),
           const SizedBox(height: 12),
           // Legend
-          Row(
+          ExcludeSemantics(
+            child: Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               Text(
                 '${l10n.chartLess} ',
                 style: AppTypography.labelSmall.copyWith(
-                  fontSize: 9,
+                  fontSize: 11,
                   color: hc.textSecondary,
                 ),
               ),
@@ -106,11 +123,12 @@ class ActivityHeatmap extends StatelessWidget {
               Text(
                 ' ${l10n.chartMore}',
                 style: AppTypography.labelSmall.copyWith(
-                  fontSize: 9,
+                  fontSize: 11,
                   color: hc.textSecondary,
                 ),
               ),
             ],
+          ),
           ),
         ],
       ),

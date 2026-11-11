@@ -16,6 +16,7 @@ import '../providers/app_providers.dart';
 import '../providers/unlocking_educators_provider.dart';
 import '../l10n/app_localizations.dart';
 import '../l10n/app_localizations_en.dart';
+import '../core/widgets/fit_label.dart';
 
 /// Asks whoever is holding the device to prove they are the adult, then
 /// returns whether they did.
@@ -199,6 +200,7 @@ class _AdultGateDialogState extends State<AdultGateDialog> {
     final hc = HCColor.of(context);
 
     return AlertDialog(
+      scrollable: true,
       title: Text(_t(context).agTitle),
       content: SizedBox(
         width: 400,
@@ -242,7 +244,7 @@ class _AdultGateDialogState extends State<AdultGateDialog> {
                 maxLength: 4,
                 onSubmitted: (_) => _submit(),
                 decoration: InputDecoration(
-                  labelText: _isPin ? 'PIN' : _t(context).agAnswer,
+                  label: FitLabel(_isPin ? 'PIN' : _t(context).agAnswer),
                   counterText: '',
                 ),
               ),

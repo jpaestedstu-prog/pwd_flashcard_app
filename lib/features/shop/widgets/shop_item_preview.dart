@@ -116,7 +116,7 @@ class _ShopItemPreviewState extends ConsumerState<ShopItemPreview> {
   /// the same way both of those draw it.
   Widget _title(String name) {
     final hc = HCColor.of(context);
-    return Column(
+    return ExcludeSemantics(child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(widget.item.emoji, style: const TextStyle(fontSize: 36)),
@@ -138,7 +138,7 @@ class _ShopItemPreviewState extends ConsumerState<ShopItemPreview> {
           ),
         ),
       ],
-    );
+    ));
   }
 
   Widget _theme() => Wrap(

@@ -27,6 +27,24 @@ void main() {
     expect(declared.single, isNot(contains('fontWeightAdjustment')));
   });
 
+  test('the first key after a touch reaches the app', () {
+    // Since Android 9 nothing holds focus when the window opens in touch
+    // mode, and the first arrow, D-pad, Space or Enter is then spent giving
+    // it focus: only its release reached the app. The activity focuses the
+    // Flutter view whenever the window gains focus, for every learner.
+    final activity = File(
+      'android/app/src/main/kotlin/com/example/pwdpwdpwd/MainActivity.kt',
+    ).readAsStringSync();
+    final handler = RegExp(
+      r'override fun onWindowFocusChanged\(hasFocus: Boolean\) \{([\s\S]*?)\n    \}',
+    ).firstMatch(activity);
+    expect(handler, isNotNull);
+    final body = handler!.group(1)!;
+    expect(body, contains('focusFlutterView()'));
+    expect(body, isNot(contains('switchKeysToApp')),
+        reason: 'not only while a switch learner is active');
+  });
+
   test('speech engines are declared, so Android 11+ shows them to the app', () {
     expect(manifest, contains('android.intent.action.TTS_SERVICE'));
   });

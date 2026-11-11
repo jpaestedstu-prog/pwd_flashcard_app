@@ -100,9 +100,13 @@ class RichEmptyState extends StatelessWidget {
                     period: const Duration(seconds: 6),
                     tilt: 0.10,
                     bob: 6,
-                    child: Text(
-                      emoji,
-                      style: TextStyle(fontSize: emojiSize),
+                    // A picture only: read aloud it was a name ("camera")
+                    // before the title, on every empty page.
+                    child: ExcludeSemantics(
+                      child: Text(
+                        emoji,
+                        style: TextStyle(fontSize: emojiSize),
+                      ),
                     ),
                   ),
                 ],

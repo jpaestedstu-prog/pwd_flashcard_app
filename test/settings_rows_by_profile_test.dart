@@ -159,7 +159,9 @@ void main() {
     'AI Companion': [true, true, true, true, false, false],
     'Daily Reminder': [true, true, true, true, false, false],
     'Replay Tutorials': [true, true, true, true, false, false],
-    'Routine': [false, true, false, false, false, false],
+    // My Day's switch, under the "My Day" heading (it said "Routine",
+    // a third name for the same thing).
+    'Show on Home': [false, true, false, false, false, false],
     'Fullscreen': [false, false, false, false, true, true],
     'Classroom Mode': [false, false, false, false, true, false],
     'Parental Controls': [false, false, false, false, true, true],

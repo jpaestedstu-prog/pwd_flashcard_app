@@ -8,7 +8,7 @@ class BoardSeedData {
 
   static const List<BoardTile> allTiles = [
     // ─── Greetings ──────────────────────────────────
-    BoardTile(id: 'g01', label: 'Hello',        labelFil: 'Kamusta',       emoji: '👋', category: BoardTileCategory.greetings),
+    BoardTile(id: 'g01', label: 'Hello',        labelFil: 'Kumusta',       emoji: '👋', category: BoardTileCategory.greetings),
     BoardTile(id: 'g02', label: 'Good morning',  labelFil: 'Magandang umaga', emoji: '🌅', category: BoardTileCategory.greetings),
     BoardTile(id: 'g03', label: 'Good afternoon', labelFil: 'Magandang hapon', emoji: '☀️', category: BoardTileCategory.greetings),
     BoardTile(id: 'g04', label: 'Goodbye',       labelFil: 'Paalam',       emoji: '👋', category: BoardTileCategory.greetings),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/widgets/app_bar_title.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -293,8 +294,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
               children: [
                 for (final s in educatorScopes)
                   ChoiceChip(
-                    label: Text(s.displayName ?? 'Group',
-                        overflow: TextOverflow.ellipsis),
+                    label: Text(s.displayName ?? 'Group',),
                     selected: s == scope,
                     onSelected: (_) =>
                         setState(() => _educatorSelected = s),
@@ -308,8 +308,6 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                 scope.displayName!,
                 style:
                     AppTypography.titleMedium.copyWith(color: hc.textPrimary),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
             ),
           for (final n in notices)
@@ -421,8 +419,8 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
             ),
             const SizedBox(width: 10),
             Flexible(
-              child: Text(title ?? _t(context).lbTitle,
-                  maxLines: 1, overflow: TextOverflow.ellipsis),
+              // A class's own name can be the title: whole, as any top bar's.
+              child: AppBarTitle(title ?? _t(context).lbTitle),
             ),
           ],
         ),
@@ -566,8 +564,6 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                         ? HCColor.of(context).primary
                         : HCColor.of(context).textPrimary,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 2),
@@ -671,8 +667,6 @@ class _ChipSelector<T> extends StatelessWidget {
             Flexible(
               child: Text(
                 '$label: ${labelOf(value)}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 style: AppTypography.bodySmall.copyWith(
                   fontWeight: FontWeight.w600,
                   color: HCColor.of(context).primary,
@@ -853,8 +847,6 @@ class _LeaderboardTile extends StatelessWidget {
                                   ? FontWeight.bold
                                   : FontWeight.w500,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
                           // An equipped Title was previously visible on one
                           // screen the learner rarely opens. A title is a
@@ -872,8 +864,6 @@ class _LeaderboardTile extends StatelessWidget {
                                 color: HCColor.of(context).primary,
                                 fontWeight: FontWeight.w700,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
                         ],
                       ),
@@ -892,7 +882,7 @@ class _LeaderboardTile extends StatelessWidget {
                           style: AppTypography.labelSmall.copyWith(
                             color: HCColor.of(context).primary,
                             fontWeight: FontWeight.w700,
-                            fontSize: 10,
+                            fontSize: 11,
                           ),
                         ),
                       ),

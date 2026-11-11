@@ -312,62 +312,60 @@ class _ChoiceCard extends StatelessWidget {
     final roleTheme = RoleTheme.of(choice.role);
     final label = choice.label(l10n);
 
-    return Semantics(
-      button: true,
-      label: label,
-      child: AppCard(
-        onTap: onTap,
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        borderColor: roleTheme.primary.withValues(alpha: 0.15),
-        child: Row(
-          children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                gradient: roleTheme.gradient,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: roleTheme.primary.withValues(alpha: 0.3),
-                    blurRadius: 10,
-                    spreadRadius: 1,
-                  ),
-                ],
-              ),
-              child: Icon(choice.icon, color: Colors.white, size: 32),
+    return AppCard(
+      onTap: onTap,
+      // Name and tagline once; the card's own words were read again.
+      semanticLabel: '$label. ${choice.tagline(l10n)}',
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      borderColor: roleTheme.primary.withValues(alpha: 0.15),
+      child: Row(
+        children: [
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              gradient: roleTheme.gradient,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: roleTheme.primary.withValues(alpha: 0.3),
+                  blurRadius: 10,
+                  spreadRadius: 1,
+                ),
+              ],
             ),
-            const SizedBox(width: AppSpacing.lg),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // "Manlalaro" and "Magulang" broke in two at 2x.
-                  FitText(
-                    label,
-                    maxLines: 3,
-                    style: AppTypography.titleLarge.copyWith(
-                      color: HCColor.of(context).textPrimary,
-                      fontWeight: FontWeight.w800,
-                    ),
+            child: Icon(choice.icon, color: Colors.white, size: 32),
+          ),
+          const SizedBox(width: AppSpacing.lg),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // "Manlalaro" and "Magulang" broke in two at 2x.
+                FitText(
+                  label,
+                  maxLines: 3,
+                  style: AppTypography.titleLarge.copyWith(
+                    color: HCColor.of(context).textPrimary,
+                    fontWeight: FontWeight.w800,
                   ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    choice.tagline(l10n),
-                    style: AppTypography.bodySmall.copyWith(
-                      color: HCColor.of(context).textSecondary,
-                    ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  choice.tagline(l10n),
+                  style: AppTypography.bodySmall.copyWith(
+                    color: HCColor.of(context).textSecondary,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            Icon(
-              Icons.arrow_forward_ios_rounded,
-              size: 18,
-              color: HCColor.of(context).textSecondary,
-            ),
-          ],
-        ),
+          ),
+          Icon(
+            Icons.arrow_forward_ios_rounded,
+            size: 18,
+            color: HCColor.of(context).textSecondary,
+          ),
+        ],
       ),
     );
   }

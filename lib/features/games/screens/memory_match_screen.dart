@@ -37,6 +37,8 @@ import '../../gamepad/widgets/gamepad_screen_registrar.dart';
 import '../../../core/utils/seeded_random.dart';
 import '../unfinished_round_stars.dart';
 import '../../../widgets/dpad_focusable.dart';
+import '../../../core/widgets/app_bar_title.dart';
+import '../../../core/widgets/fit_text.dart';
 
 /// How many columns, and what card shape (width / height), put all [count]
 /// cards on screen in a [width] x [height] area with [spacing] between them.
@@ -314,7 +316,9 @@ class _MemoryMatchScreenState extends ConsumerState<MemoryMatchScreen>
   void _flipFromGamepad(int index) {
     if (index < 0 || index >= _cards.length) return;
     final card = _cards[index];
-    if (card.isMatched || card.isFlipped) return;
+    // While a pair is being checked [_flipCard] refuses — and announcing the
+    // card anyway would read out a word that is still face down.
+    if (_isChecking || card.isMatched || card.isFlipped) return;
     final wasFirst = _firstFlippedIndex == null;
     _flipCard(index);
     gamepadScreen.announce(
@@ -532,6 +536,34 @@ class _MemoryMatchScreenState extends ConsumerState<MemoryMatchScreen>
     // when they come back for its pair. Cards already matched stay in the list
     // (the numbering must not shift under them) but are marked unavailable.
     final phrases = _gamepadPhrases;
+    // On a phone the bar held the close, break and pause buttons, the moves
+    // and the time, and left "Memory Match" no room at all (a 360 dp phone at
+    // the largest Font Size, 3 Nov).
+    final countersUnderBar = MediaQuery.sizeOf(context).width < 600;
+    final movesCounter = ExcludeSemantics(child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.touch_app_rounded, size: 18, color: hc.textSecondary),
+        const SizedBox(width: 4),
+        Text(
+          l10n.moves(_moves),
+          style: AppTypography.labelMedium.copyWith(color: hc.textSecondary),
+        ),
+      ],
+    ));
+    final timeCounter = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.timer_rounded, size: 18, color: hc.textSecondary),
+        const SizedBox(width: 4),
+        Text(
+          '${_elapsedSeconds}s',
+          semanticsLabel: l10n.secondsCount(_elapsedSeconds),
+          style: AppTypography.labelMedium.copyWith(color: hc.textSecondary),
+        ),
+      ],
+    );
+
     return GamepadScreenRegistrar(
       title: GameType.memoryMatch.labelOf(l10n),
       active: !isPaused && !_isChecking,
@@ -571,7 +603,7 @@ class _MemoryMatchScreenState extends ConsumerState<MemoryMatchScreen>
                     tooltip: l10n.close,
                     onPressed: pauseGame,
                   ),
-                  title: Text(AppLocalizations.of(context)!.memoryMatch),
+                  title: AppBarTitle(AppLocalizations.of(context)!.memoryMatch),
                   actions: [
                     GameBreakAction(onHold: holdForBreak, onResume: resumeFromBreak),
                     IconButton(
@@ -588,48 +620,18 @@ class _MemoryMatchScreenState extends ConsumerState<MemoryMatchScreen>
                           size: 44,
                         ),
                       ),
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: Center(
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.touch_app_rounded,
-                              size: 18,
-                              color: hc.textSecondary,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              l10n.moves(_moves),
-                              style: AppTypography.labelMedium.copyWith(
-                                color: hc.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
+                    // The moves and the time, in the bar where they leave
+                    // the title room; under it, beside "Matched", on a phone.
+                    if (!countersUnderBar) ...[
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: Center(child: movesCounter),
                       ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(right: 16),
-                      child: Center(
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.timer_rounded,
-                              size: 18,
-                              color: hc.textSecondary,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${_elapsedSeconds}s',
-                              style: AppTypography.labelMedium.copyWith(
-                                color: hc.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
+                      Padding(
+                        padding: const EdgeInsets.only(right: 16),
+                        child: Center(child: timeCounter),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
@@ -640,24 +642,33 @@ class _MemoryMatchScreenState extends ConsumerState<MemoryMatchScreen>
                     // Matches counter
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
-                      child: Semantics(
-                        liveRegion: true,
-                        label: l10n.memoryProgressSemantics(
-                          _matchedPairs,
-                          _pairs,
-                          _moves,
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              l10n.matched(_matchedPairs, _pairs),
-                              style: AppTypography.titleMedium.copyWith(
-                                color: HCColor.of(context).primary,
+                      child: Wrap(
+                        alignment: WrapAlignment.center,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 16,
+                        runSpacing: 4,
+                        children: [
+                          Semantics(
+                            liveRegion: true,
+                            label: l10n.memoryProgressSemantics(
+                              _matchedPairs,
+                              _pairs,
+                              _moves,
+                            ),
+                            // The sentence says it all: TalkBack read it,
+                            // then "Matched: 0 / 4" as well (on the tablet,
+                            // 30 Oct).
+                            child: ExcludeSemantics(
+                              child: Text(
+                                l10n.matched(_matchedPairs, _pairs),
+                                style: AppTypography.titleMedium.copyWith(
+                                  color: HCColor.of(context).primary,
+                                ),
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                          if (countersUnderBar) ...[movesCounter, timeCounter],
+                        ],
                       ),
                     ),
 
@@ -693,9 +704,13 @@ class _MemoryMatchScreenState extends ConsumerState<MemoryMatchScreen>
                               final card = _cards[index];
                               return _MemoryCardWidget(
                                 card: card,
+                                number: index + 1,
                                 highlighted:
                                     showCursor && index == _cursorIndex,
                                 onTap: () => _flipCard(index),
+                                // A press from the controller or a keyboard
+                                // also says what was turned over.
+                                onActivate: () => _flipFromGamepad(index),
                               );
                             },
                           );
@@ -751,14 +766,23 @@ class _MemoryCard {
 class _MemoryCardWidget extends StatelessWidget {
   final _MemoryCard card;
 
+  /// Its place in the grid, from 1: twelve face-down cards all said "Face-down
+  /// card", and a learner could not tell which one they had already tried.
+  final int number;
+
   /// The hands-free cursor is resting on this card — ring it the way the hub
   /// tiles and the other gaze games do.
   final bool highlighted;
   final VoidCallback onTap;
 
+  /// A focus press (controller, keyboard): [onTap] plus the spoken result.
+  final VoidCallback onActivate;
+
   const _MemoryCardWidget({
     required this.card,
+    required this.number,
     required this.onTap,
+    required this.onActivate,
     this.highlighted = false,
   });
 
@@ -771,10 +795,10 @@ class _MemoryCardWidget extends StatelessWidget {
           ? l10n.memoryCardMatched(card.displayText)
           : card.isFlipped
           ? l10n.memoryCardShowing(card.displayText)
-          : l10n.memoryCardFaceDown,
-      child: DpadFocusable(onActivate: onTap, child: GestureDetector(
+          : l10n.memoryCardFaceDown(number),
+      child: DpadFocusable(onActivate: onActivate, child: GestureDetector(
         onTap: onTap,
-        child: TweenAnimationBuilder<double>(
+        child: ExcludeSemantics(child: TweenAnimationBuilder<double>(
           tween: Tween(
             begin: 0,
             end: card.isFlipped || card.isMatched ? pi : 0,
@@ -791,7 +815,7 @@ class _MemoryCardWidget extends StatelessWidget {
               child: isFront ? _buildBack(context) : _buildFront(context),
             );
           },
-        ),
+        )),
       )),
     );
 
@@ -863,9 +887,12 @@ class _MemoryCardWidget extends StatelessWidget {
               FlashcardPicture(card: card.card, extent: 32),
               const SizedBox(height: 4),
             ],
-            Padding(
+            // What is left under the picture, and smaller to fit it whole:
+            // a card is a fixed cell (27 px past it on a phone).
+            Flexible(
+              child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Text(
+              child: FitText(
                 card.displayText,
                 style: AppTypography.labelMedium.copyWith(
                   color: card.isMatched
@@ -874,9 +901,8 @@ class _MemoryCardWidget extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                 ),
                 textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
               ),
+            ),
             ),
           ],
         ),

@@ -40,7 +40,28 @@ extension GamificationFeatureX on GamificationFeature {
         GamificationFeature.levelUp => 'Level-Up System',
         GamificationFeature.celebrations => 'Mga Selebrasyon at Animasyon',
         GamificationFeature.stickers => 'Sticker Album',
-        GamificationFeature.dailyChallenge => 'Daily Challenge',
+        GamificationFeature.dailyChallenge => 'Pang-araw-araw na Hamon',
+      };
+
+  String get descriptionFilipino => switch (this) {
+        GamificationFeature.stars =>
+          'Mga bituin mula sa mga laro at aktibidad',
+        GamificationFeature.achievements =>
+          'Mga badge ng tagumpay at abiso kapag nabuksan',
+        GamificationFeature.leaderboard =>
+          'Ranggo at paghahambing ng mga mag-aaral',
+        GamificationFeature.streaks =>
+          'Bilang ng magkakasunod na araw',
+        GamificationFeature.shop =>
+          'Tindahan ng mga avatar, tema at iba pa',
+        GamificationFeature.levelUp =>
+          'Pag-angat ng level ayon sa XP',
+        GamificationFeature.celebrations =>
+          'Mga animation at confetti kapag nagtagumpay',
+        GamificationFeature.stickers =>
+          'Mga sticker na makokolekta bilang gantimpala',
+        GamificationFeature.dailyChallenge =>
+          'Mga random na hamon araw-araw',
       };
 
   String get description => switch (this) {

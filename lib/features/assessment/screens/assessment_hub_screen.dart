@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../features/parent/services/learner_restrictions.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -27,6 +28,7 @@ import '../widgets/assessment_media_sheets.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../../../widgets/dpad_focusable.dart';
+import '../../../core/widgets/stagger_in.dart';
 
 class AssessmentHubScreen extends ConsumerWidget {
   const AssessmentHubScreen({super.key});
@@ -231,15 +233,19 @@ class AssessmentHubScreen extends ConsumerWidget {
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate((context, index) {
                     final work = assignedWork[index];
-                    return _AssignedWorkTile(
+                    return StaggerIn(
+                      index: index,
+                      base: const Duration(milliseconds: 120),
+                      child: _AssignedWorkTile(
                           assignment: work.assignment,
                           assessment: work.assessment,
                           presentation: mediaPresentation,
                           onTap: () => _openAssigned(context, ref, work),
-                        )
-                        .animate()
-                        .fadeIn(duration: 400.ms, delay: (120 + index * 60).ms)
-                        .slideY(begin: 0.08, end: 0);
+                        ),
+                      builder: (child, delay) => child.animate()
+                        .fadeIn(duration: 400.ms, delay: delay)
+                        .slideY(begin: 0.08, end: 0),
+                    );
                   }, childCount: assignedWork.length),
                 ),
               ),
@@ -329,7 +335,11 @@ class AssessmentHubScreen extends ConsumerWidget {
                   // left it 16px short. Dividing by the scale gives the text
                   // room instead of taking size away from it; the grid
                   // scrolls, so the extra height costs nothing else.
-                  childAspectRatio: (context.isTablet ? 2.5 : 3.2) /
+                  childAspectRatio: (context.isTablet
+                          ? 2.5
+                          : context.screenWidth < 350
+                          ? 2.6
+                          : 3.2) /
                       MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 2.0),
                 ),
                 delegate: SliverChildListDelegate([
@@ -480,15 +490,22 @@ class AssessmentHubScreen extends ConsumerWidget {
                   crossAxisCount: context.isTablet ? 3 : 2,
                   mainAxisSpacing: 12,
                   crossAxisSpacing: 12,
-                  // Same reasoning as the type grid above: a fixed 40px icon
-                  // plus a label that grows with the font needs a taller cell
-                  // as the type grows, or the column runs off the bottom —
-                  // 36px under the dyslexia theme at 2.0x.
-                  childAspectRatio: 1.4 /
-                      MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 2.0),
+                  // As tall as what is in it: border and padding, the fixed
+                  // 40 px icon and its gaps, two lines of name and two of
+                  // score, by the reader's Font Size. A cell by proportion left
+                  // a 360 dp phone's two-line Filipino names 15 px (and ran 6 px
+                  // off the bottom at the smallest size); 36 px under the
+                  // dyslexia theme at 2.0x. With one line of score, "Hindi pa
+                  // nasusubok" took the name's second line on a 320 dp phone
+                  // at the largest Font Size (10 Nov).
+                  mainAxisExtent: 84 +
+                      MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 2.0) *
+                          (15 * 1.4 * 2 + 13 * 1.4 * 2 + 6),
                 ),
                 delegate: SliverChildBuilderDelegate((context, index) {
-                  final category = FlashcardCategory.values[index];
+                  final category = LearnerRestrictions.categoriesFor(
+                    ref.read(profileProvider)?.role,
+                  )[index];
                   final categoryResults = results
                       .where(
                         (r) =>
@@ -502,17 +519,23 @@ class AssessmentHubScreen extends ConsumerWidget {
                             .map((r) => r.percentage)
                             .reduce((a, b) => a > b ? a : b);
 
-                  return _CategoryMasteryCard(
+                  return StaggerIn(
+                    index: index,
+                    base: const Duration(milliseconds: 400),
+                    child: _CategoryMasteryCard(
                         category: category,
                         bestScore: bestScore,
                         attemptCount: categoryResults.length,
                         onTap: () =>
                             _startCategoryMastery(context, ref, category),
-                      )
-                      .animate()
-                      .fadeIn(duration: 400.ms, delay: (400 + index * 60).ms)
-                      .slideY(begin: 0.1, end: 0);
-                }, childCount: FlashcardCategory.values.length),
+                      ),
+                    builder: (child, delay) => child.animate()
+                      .fadeIn(duration: 400.ms, delay: delay)
+                      .slideY(begin: 0.1, end: 0),
+                  );
+                }, childCount: LearnerRestrictions.categoriesFor(
+                  ref.watch(profileProvider)?.role,
+                ).length),
               ),
             ),
             ],
@@ -538,7 +561,7 @@ class AssessmentHubScreen extends ConsumerWidget {
                       ),
                       child: Row(
                         children: [
-                          const Text('🧩', style: TextStyle(fontSize: 32)),
+                          const ExcludeSemantics(child: Text('🧩', style: TextStyle(fontSize: 32))),
                           const SizedBox(width: 16),
                           Expanded(
                             child: Column(
@@ -584,6 +607,7 @@ class AssessmentHubScreen extends ConsumerWidget {
                       Expanded(
                         child: Text(
                           '✏️ ${_tr(context).hubCustomAssessments}',
+                  semanticsLabel: _tr(context).hubCustomAssessments,
                           style: AppTypography.titleLarge.copyWith(
                             color: hc.textPrimary,
                           ),
@@ -620,7 +644,7 @@ class AssessmentHubScreen extends ConsumerWidget {
                       ),
                       child: Column(
                         children: [
-                          const Text('📝', style: TextStyle(fontSize: 40)),
+                          const ExcludeSemantics(child: Text('📝', style: TextStyle(fontSize: 40))),
                           const SizedBox(height: 12),
                           Text(
                             _tr(context).hubNoCustom,
@@ -653,7 +677,10 @@ class AssessmentHubScreen extends ConsumerWidget {
                             .where((a) => a.type == AssessmentType.custom)
                             .toList();
                         final assessment = customs[index];
-                        return _CustomAssessmentTile(
+                        return StaggerIn(
+                          index: index,
+                          base: const Duration(milliseconds: 650),
+                          child: _CustomAssessmentTile(
                               assessment: assessment,
                               onTap: () => context.push(
                                 '/assessment/take/${assessment.id}',
@@ -668,13 +695,14 @@ class AssessmentHubScreen extends ConsumerWidget {
                                     .read(customAssessmentsProvider.notifier)
                                     .deleteAssessment(assessment.id);
                               },
-                            )
-                            .animate()
+                            ),
+                          builder: (child, delay) => child.animate()
                             .fadeIn(
                               duration: 400.ms,
-                              delay: (650 + index * 60).ms,
+                              delay: delay,
                             )
-                            .slideX(begin: 0.05, end: 0);
+                            .slideX(begin: 0.05, end: 0),
+                        );
                       },
                       childCount: customAssessments
                           .where((a) => a.type == AssessmentType.custom)
@@ -694,16 +722,17 @@ class AssessmentHubScreen extends ConsumerWidget {
                       Expanded(
                         child: Text(
                           '📈 ${l10n?.assessRecentResults ?? 'Recent Results'}',
+                  semanticsLabel: l10n?.assessRecentResults ?? 'Recent Results',
                           style: AppTypography.titleLarge.copyWith(
                             color: hc.textPrimary,
                           ),
                         ),
                       ),
-                      Semantics(
-                        button: true,
-                        label: _tr(context).hubViewAllResults,
-                        child: TextButton(
-                          onPressed: () => context.push('/assessment/results'),
+                      TextButton(
+                        onPressed: () => context.push('/assessment/results'),
+                        child: Semantics(
+                          label: _tr(context).hubViewAllResults,
+                          excludeSemantics: true,
                           child: Text(l10n?.assessSeeAll ?? 'See All'),
                         ),
                       ),
@@ -718,10 +747,14 @@ class AssessmentHubScreen extends ConsumerWidget {
                     final sorted = List.of(results)
                       ..sort((a, b) => b.completedAt.compareTo(a.completedAt));
                     final result = sorted[index];
-                    return _RecentResultTile(result: result)
-                        .animate()
-                        .fadeIn(duration: 400.ms, delay: (750 + index * 60).ms)
-                        .slideX(begin: 0.05, end: 0);
+                    return StaggerIn(
+                      index: index,
+                      base: const Duration(milliseconds: 750),
+                      child: _RecentResultTile(result: result),
+                      builder: (child, delay) => child.animate()
+                        .fadeIn(duration: 400.ms, delay: delay)
+                        .slideX(begin: 0.05, end: 0),
+                    );
                   }, childCount: results.length.clamp(0, 5)),
                 ),
               ),
@@ -851,9 +884,11 @@ class _LearningGainBanner extends StatelessWidget {
           children: [
             Row(
               children: [
-                Text(
-                  improved ? '🚀' : '📊',
-                  style: const TextStyle(fontSize: 28),
+                ExcludeSemantics(
+                  child: Text(
+                    improved ? '🚀' : '📊',
+                    style: const TextStyle(fontSize: 28),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -1009,69 +1044,76 @@ class _AssessmentTypeCard extends StatelessWidget {
             ),
       child: DpadFocusable(onActivate: isLocked ? null : onTap, child: GestureDetector(
         onTap: isLocked ? null : onTap,
-        child: AnimatedOpacity(
-          duration: const Duration(milliseconds: 300),
-          opacity: isLocked ? 0.5 : 1.0,
-          child: AppCard(
-            gradient: gradient,
-            borderRadius: 18,
-            child: Row(
-              children: [
-                Text(type.emoji, style: const TextStyle(fontSize: 32)),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        type.labelOf(AppLocalizations.of(context)),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.titleSmall.copyWith(
-                          color: AppColors.textOnPrimary,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      // Bounded to one line (full text is in the Semantics label
-                      // above) so the card can't overflow its fixed-ratio grid
-                      // cell at large accessibility font scales.
-                      Text(
-                        isLocked
-                            ? lockMessage ?? ''
-                            : isCompleted
-                            ? _tr(
-                                context,
-                              ).hubBest(((latestScore ?? 0) * 100).round())
-                            : _tr(context).hubTapToStart,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.bodySmall.copyWith(
-                          color: AppColors.textOnPrimary.withValues(
-                            alpha: 0.85,
+        child: ExcludeSemantics(
+          // The label says it; what is drawn here was read again under it.
+          child: AnimatedOpacity(
+            duration: const Duration(milliseconds: 300),
+            opacity: isLocked ? 0.5 : 1.0,
+            child: AppCard(
+              gradient: gradient,
+              borderRadius: 18,
+              child: Row(
+                children: [
+                  Text(type.emoji, style: const TextStyle(fontSize: 32)),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Two lines for the name, three for the message, and
+                        // Flexible: the cell grows with the text size, and
+                        // one line had cut "Panimulang Pagsusulit" and "Your
+                        // teacher or parent will give you this test" short at
+                        // the largest Font Size (30 Oct). Past what the cell
+                        // holds, the words give way instead of overflowing.
+                        Flexible(
+                          child: FitText(
+                            type.labelOf(AppLocalizations.of(context)),
+                            style: AppTypography.titleSmall.copyWith(
+                              color: AppColors.textOnPrimary,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 2),
+                        Flexible(
+                          child: FitText(
+                            isLocked
+                                ? lockMessage ?? ''
+                                : isCompleted
+                                ? _tr(
+                                    context,
+                                  ).hubBest(((latestScore ?? 0) * 100).round())
+                                : _tr(context).hubTapToStart,
+                            maxLines: 3,
+                            style: AppTypography.bodySmall.copyWith(
+                              color: AppColors.textOnPrimary.withValues(
+                                alpha: 0.85,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                if (isLocked)
-                  Icon(
-                    Icons.lock_rounded,
-                    color: AppColors.textOnPrimary.withValues(alpha: 0.6),
-                  )
-                else if (isCompleted)
-                  Icon(
-                    Icons.check_circle_rounded,
-                    color: AppColors.textOnPrimary.withValues(alpha: 0.9),
-                  )
-                else
-                  Icon(
-                    Icons.arrow_forward_rounded,
-                    color: AppColors.textOnPrimary.withValues(alpha: 0.8),
-                  ),
-              ],
+                  if (isLocked)
+                    Icon(
+                      Icons.lock_rounded,
+                      color: AppColors.textOnPrimary.withValues(alpha: 0.6),
+                    )
+                  else if (isCompleted)
+                    Icon(
+                      Icons.check_circle_rounded,
+                      color: AppColors.textOnPrimary.withValues(alpha: 0.9),
+                    )
+                  else
+                    Icon(
+                      Icons.arrow_forward_rounded,
+                      color: AppColors.textOnPrimary.withValues(alpha: 0.8),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
@@ -1114,55 +1156,68 @@ class _CategoryMasteryCard extends StatelessWidget {
             ).hubMasteryNewSemantics(category.labelOf(_tr(context))),
       child: DpadFocusable(onActivate: onTap, child: GestureDetector(
         onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: catColor.withValues(alpha: hc.isDark ? 0.3 : 0.15),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: catColor.withValues(alpha: hc.isDark ? 0.8 : 0.4),
-              width: 2,
+        child: ExcludeSemantics(
+          // The label says the test and its best score; what is drawn here
+          // was read again under it.
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: catColor.withValues(alpha: hc.isDark ? 0.3 : 0.15),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: catColor.withValues(alpha: hc.isDark ? 0.8 : 0.4),
+                width: 2,
+              ),
             ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: catColor.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(category.icon, size: 22, color: catColor),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                category.labelOf(_tr(context)),
-                style: AppTypography.labelMedium.copyWith(
-                  color: hc.textPrimary,
-                  fontWeight: FontWeight.w700,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 2),
-              if (bestScore != null)
-                Text(
-                  _tr(context).hubBest((bestScore! * 100).round()),
-                  style: AppTypography.labelSmall.copyWith(
-                    color: HCColor.of(context).readableOver(catColor, catColor.withValues(alpha: 0.3)),
-                    fontWeight: FontWeight.w700,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: catColor.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                )
-              else
-                Text(
-                  _tr(context).hubNotTested,
-                  style: AppTypography.labelSmall.copyWith(color: hc.textHint),
+                  child: Icon(category.icon, size: 22, color: catColor),
                 ),
-            ],
+                const SizedBox(height: 6),
+                // Two lines: one cut "Mga Bahagi ng Katawan" short at the
+                // largest Font Size (30 Oct).
+                Flexible(
+                  child: FitText(
+                    category.labelOf(_tr(context)),
+                    style: AppTypography.labelMedium.copyWith(
+                      color: hc.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                // At most two lines, words kept whole, and the cell keeps
+                // room for both. As plain text, "Hindi pa nasusubok" ran to
+                // three lines on a 320 dp phone at the largest Font Size,
+                // splitting "nasusubo / k", and the name above it was left
+                // one line of room: it shrank to 8 px (10 Nov).
+                if (bestScore != null)
+                  FitText(
+                    _tr(context).hubBest((bestScore! * 100).round()),
+                    style: AppTypography.labelSmall.copyWith(
+                      color: HCColor.of(context).readableOver(catColor, catColor.withValues(alpha: 0.3)),
+                      fontWeight: FontWeight.w700,
+                    ),
+                    textAlign: TextAlign.center,
+                  )
+                else
+                  FitText(
+                    _tr(context).hubNotTested,
+                    style: AppTypography.labelSmall.copyWith(color: hc.textHint),
+                    textAlign: TextAlign.center,
+                  ),
+              ],
+            ),
           ),
         ),
       )),
@@ -1451,8 +1506,6 @@ class _FeedbackTile extends StatelessWidget {
                           style: AppTypography.titleSmall.copyWith(
                             color: hc.textPrimary,
                           ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
                         ),
                         if (note.isNotEmpty)
                           Text(
@@ -1460,8 +1513,6 @@ class _FeedbackTile extends StatelessWidget {
                             style: AppTypography.bodySmall.copyWith(
                               color: hc.textSecondary,
                             ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
                           ),
                         if (kinds.isNotEmpty) ...[
                           const SizedBox(height: 6),
@@ -1540,8 +1591,6 @@ class _CustomAssessmentTile extends StatelessWidget {
                         style: AppTypography.titleSmall.copyWith(
                           color: hc.textPrimary,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
                       Text(
                         '${_tr(context).hubQuestionCount(assessment.questions.length)} • '
@@ -1596,6 +1645,7 @@ class _CustomAssessmentTile extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text(_tr(context).hubDeleteTitle),
         content: Text(_tr(context).hubDeleteBody(assessment.title)),
         actions: [
@@ -1771,15 +1821,20 @@ class _LearnerGainCoverage extends ConsumerWidget {
     return SliverList(
       delegate: SliverChildBuilderDelegate((context, index) {
         final learner = sorted[index].$1;
-        return _LearnerGainTile(
+        return StaggerIn(
+          index: index,
+          base: const Duration(milliseconds: 250),
+          step: const Duration(milliseconds: 50),
+          child: _LearnerGainTile(
               profile: learner,
               hc: hc,
               onTap: () =>
                   context.push('/student-profile-detail', extra: learner),
-            )
-            .animate()
-            .fadeIn(duration: 400.ms, delay: (250 + index * 50).ms)
-            .slideY(begin: 0.06, end: 0);
+            ),
+          builder: (child, delay) => child.animate()
+            .fadeIn(duration: 400.ms, delay: delay)
+            .slideY(begin: 0.06, end: 0),
+        );
       }, childCount: sorted.length),
     );
   }
@@ -1840,8 +1895,6 @@ class _LearnerGainTile extends StatelessWidget {
                   width: double.infinity,
                   child: Text(
                     profile.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                     style: AppTypography.labelLarge.copyWith(
                       color: hc.textPrimary,
                       fontWeight: FontWeight.w700,

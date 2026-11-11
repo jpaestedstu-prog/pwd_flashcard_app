@@ -52,8 +52,9 @@ class ParentRecommendationCard extends StatelessWidget {
       accent: color,
       padding: const EdgeInsets.all(14),
       onTap: () => _followAction(context),
+      // The panel makes this a button; a second `button` flag here split the
+      // card in two nodes — the role and press on one, the words on another.
       child: Semantics(
-        button: true,
         // Read as one sentence rather than three fragments, and say what
         // happens on activation — the label is the only cue a screen-reader
         // user gets that the card does anything.

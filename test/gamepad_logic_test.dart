@@ -29,63 +29,47 @@ void main() {
       }
     });
 
-    test('D-pad left/right walk sections, up/down walk items', () {
-      expect(resolveGamepadAction(GamepadButton.dpadLeft),
-          GamepadAction.previousSection);
+    test('the D-pad only moves — one direction each', () {
+      expect(resolveGamepadAction(GamepadButton.dpadUp), GamepadAction.moveUp);
+      expect(
+          resolveGamepadAction(GamepadButton.dpadDown), GamepadAction.moveDown);
+      expect(
+          resolveGamepadAction(GamepadButton.dpadLeft), GamepadAction.moveLeft);
       expect(resolveGamepadAction(GamepadButton.dpadRight),
-          GamepadAction.nextSection);
-      expect(resolveGamepadAction(GamepadButton.dpadUp),
-          GamepadAction.previousItem);
-      expect(resolveGamepadAction(GamepadButton.dpadDown),
-          GamepadAction.nextItem);
+          GamepadAction.moveRight);
     });
 
-    test('face buttons mirror the D-pad diamond: X left, B right, Y up, A down',
-        () {
-      expect(resolveGamepadAction(GamepadButton.x),
-          resolveGamepadAction(GamepadButton.dpadLeft));
-      expect(resolveGamepadAction(GamepadButton.b),
-          resolveGamepadAction(GamepadButton.dpadRight));
-      expect(resolveGamepadAction(GamepadButton.y),
-          resolveGamepadAction(GamepadButton.dpadUp));
-      expect(resolveGamepadAction(GamepadButton.a),
-          resolveGamepadAction(GamepadButton.dpadDown));
+    test('every face button has its own job, none of them a direction', () {
+      expect(resolveGamepadAction(GamepadButton.a), GamepadAction.activate);
+      expect(resolveGamepadAction(GamepadButton.b), GamepadAction.back);
+      expect(resolveGamepadAction(GamepadButton.x), GamepadAction.readScreen);
+      expect(resolveGamepadAction(GamepadButton.y), GamepadAction.repeatLast);
     });
 
-    test('the left stick mirrors the D-pad exactly', () {
-      expect(resolveGamepadAction(GamepadButton.leftStickLeft),
-          resolveGamepadAction(GamepadButton.dpadLeft));
-      expect(resolveGamepadAction(GamepadButton.leftStickRight),
-          resolveGamepadAction(GamepadButton.dpadRight));
-      expect(resolveGamepadAction(GamepadButton.leftStickUp),
-          resolveGamepadAction(GamepadButton.dpadUp));
-      expect(resolveGamepadAction(GamepadButton.leftStickDown),
-          resolveGamepadAction(GamepadButton.dpadDown));
+    test('shoulders switch sections; triggers step one item at a time', () {
+      expect(
+          resolveGamepadAction(GamepadButton.l1), GamepadAction.previousSection);
+      expect(resolveGamepadAction(GamepadButton.r1), GamepadAction.nextSection);
+      expect(
+          resolveGamepadAction(GamepadButton.l2), GamepadAction.previousItem);
+      expect(resolveGamepadAction(GamepadButton.r2), GamepadAction.nextItem);
     });
 
-    test('A and B become yes/no only while a question is open', () {
-      expect(resolveGamepadAction(GamepadButton.a, awaitingAnswer: true),
-          GamepadAction.answerYes);
-      expect(resolveGamepadAction(GamepadButton.b, awaitingAnswer: true),
-          GamepadAction.answerNo);
-      // …and nothing else changes meaning under a question, so the learner can
-      // still move or leave without answering.
-      expect(resolveGamepadAction(GamepadButton.dpadUp, awaitingAnswer: true),
-          GamepadAction.previousItem);
-      expect(resolveGamepadAction(GamepadButton.r1, awaitingAnswer: true),
-          GamepadAction.activate);
-      expect(resolveGamepadAction(GamepadButton.l1, awaitingAnswer: true),
-          GamepadAction.back);
-    });
-
-    test('shoulders open and leave; triggers and centre buttons speak', () {
-      expect(resolveGamepadAction(GamepadButton.r1), GamepadAction.activate);
-      expect(resolveGamepadAction(GamepadButton.l1), GamepadAction.back);
-      expect(resolveGamepadAction(GamepadButton.r2), GamepadAction.readScreen);
-      expect(resolveGamepadAction(GamepadButton.l2), GamepadAction.repeatLast);
+    test('centre buttons speak', () {
       expect(resolveGamepadAction(GamepadButton.start), GamepadAction.whereAmI);
       expect(
           resolveGamepadAction(GamepadButton.select), GamepadAction.buttonGuide);
+    });
+
+    test('the right stick scrolls and jumps to the ends', () {
+      expect(resolveGamepadAction(GamepadButton.rightStickUp),
+          GamepadAction.scrollUp);
+      expect(resolveGamepadAction(GamepadButton.rightStickDown),
+          GamepadAction.scrollDown);
+      expect(resolveGamepadAction(GamepadButton.rightStickLeft),
+          GamepadAction.firstItem);
+      expect(resolveGamepadAction(GamepadButton.rightStickRight),
+          GamepadAction.lastItem);
     });
 
     test('stick clicks: left goes home, right silences speech', () {
@@ -93,6 +77,127 @@ void main() {
           GamepadAction.goHome);
       expect(resolveGamepadAction(GamepadButton.rightStickClick),
           GamepadAction.stopSpeech);
+    });
+
+    test('the left stick moves like the D-pad, and can be turned off', () {
+      const pairs = {
+        GamepadButton.leftStickUp: GamepadButton.dpadUp,
+        GamepadButton.leftStickDown: GamepadButton.dpadDown,
+        GamepadButton.leftStickLeft: GamepadButton.dpadLeft,
+        GamepadButton.leftStickRight: GamepadButton.dpadRight,
+      };
+      pairs.forEach((stick, dpad) {
+        expect(isLeftStickMove(stick), isTrue);
+        expect(isLeftStickMove(dpad), isFalse);
+        expect(resolveGamepadAction(stick), resolveGamepadAction(dpad));
+        expect(resolveGamepadAction(stick, leftStickMoves: false),
+            GamepadAction.none,
+            reason: '${stick.name} turned off must do nothing at all');
+        // Turning the stick off never changes the D-pad.
+        expect(resolveGamepadAction(dpad, leftStickMoves: false),
+            resolveGamepadAction(dpad));
+      });
+    });
+
+    // The redesign's whole point: one control, one job. The face buttons used
+    // to double as a second D-pad and the D-pad's left and right switched
+    // sections, so the same press meant different things.
+    test('no two controls share a job, except the documented left stick', () {
+      Map<GamepadAction, Set<GamepadButton>> jobs({
+        bool awaitingAnswer = false,
+        bool leftStickMoves = true,
+      }) {
+        final out = <GamepadAction, Set<GamepadButton>>{};
+        for (final button in GamepadButton.values) {
+          final action = resolveGamepadAction(
+            button,
+            awaitingAnswer: awaitingAnswer,
+            leftStickMoves: leftStickMoves,
+          );
+          if (action == GamepadAction.none) continue;
+          out.putIfAbsent(action, () => {}).add(button);
+        }
+        return out;
+      }
+
+      const moves = {
+        GamepadAction.moveUp,
+        GamepadAction.moveDown,
+        GamepadAction.moveLeft,
+        GamepadAction.moveRight,
+      };
+      for (final awaiting in [false, true]) {
+        final withStick = jobs(awaitingAnswer: awaiting);
+        withStick.forEach((action, buttons) {
+          if (moves.contains(action)) {
+            expect(buttons.length, 2, reason: '$action: D-pad + left stick');
+            expect(buttons.where(isLeftStickMove).length, 1);
+          } else {
+            expect(buttons, hasLength(1),
+                reason: '$action is reached by $buttons');
+          }
+        });
+        // With the stick off, every single action has exactly one control.
+        jobs(awaitingAnswer: awaiting, leftStickMoves: false)
+            .forEach((action, buttons) {
+          expect(buttons, hasLength(1),
+              reason: '$action is reached by $buttons');
+        });
+      }
+      // Yes and no exist only while a question is asked.
+      expect(jobs().keys, isNot(contains(GamepadAction.answerYes)));
+      expect(jobs().keys, isNot(contains(GamepadAction.answerNo)));
+      // And nothing is lost: every real action has a control.
+      final reachable = {...jobs().keys, ...jobs(awaitingAnswer: true).keys};
+      for (final action in GamepadAction.values) {
+        if (action == GamepadAction.none) continue;
+        expect(reachable, contains(action), reason: '$action has no control');
+      }
+    });
+
+    test('A and B answer yes and no only while a question is open', () {
+      expect(resolveGamepadAction(GamepadButton.a, awaitingAnswer: true),
+          GamepadAction.answerYes);
+      expect(resolveGamepadAction(GamepadButton.b, awaitingAnswer: true),
+          GamepadAction.answerNo);
+      // …and nothing else changes meaning under a question, so the learner can
+      // still move, listen or switch without answering.
+      for (final button in GamepadButton.values) {
+        if (button == GamepadButton.a || button == GamepadButton.b) continue;
+        expect(resolveGamepadAction(button, awaitingAnswer: true),
+            resolveGamepadAction(button),
+            reason: '${button.name} must not change under a question');
+      }
+    });
+
+    test('the Nintendo swap exchanges A and B and nothing else', () {
+      expect(swapConfirmButton(GamepadButton.a), GamepadButton.b);
+      expect(swapConfirmButton(GamepadButton.b), GamepadButton.a);
+      for (final button in GamepadButton.values) {
+        if (button == GamepadButton.a || button == GamepadButton.b) continue;
+        expect(swapConfirmButton(button), button);
+      }
+      // Swapped twice is back where it started.
+      for (final button in GamepadButton.values) {
+        expect(swapConfirmButton(swapConfirmButton(button)), button);
+      }
+    });
+
+    test('only movement repeats when held', () {
+      const repeating = {
+        GamepadAction.moveUp,
+        GamepadAction.moveDown,
+        GamepadAction.moveLeft,
+        GamepadAction.moveRight,
+        GamepadAction.previousItem,
+        GamepadAction.nextItem,
+        GamepadAction.scrollUp,
+        GamepadAction.scrollDown,
+      };
+      for (final action in GamepadAction.values) {
+        expect(repeatsOnHold(action), repeating.contains(action),
+            reason: '$action');
+      }
     });
   });
 
@@ -211,8 +316,8 @@ void main() {
     });
 
     test('every cell of a multi-column grid is reachable with next alone', () {
-      // The reason item movement is linear rather than 2-D: a learner who
-      // cannot see a 2-column grid would never reach column 2 with up/down.
+      // L2 and R2's one-at-a-time walk: a learner who cannot picture a
+      // 2-column grid still reaches every cell with a single "next".
       final c = GamepadCursor(rowLengths: [2, 2, 2]);
       final seen = <String>{};
       for (var i = 0; i < c.length; i++) {
@@ -268,6 +373,68 @@ void main() {
       expect([c.row, c.col], [1, 0]);
       c.next();
       expect([c.row, c.col], [1, 1]);
+    });
+
+    test('up and down keep the column; left and right stay in the row', () {
+      final c = GamepadCursor(rowLengths: [3, 3, 3]);
+      c.moveHorizontal(1);
+      expect([c.row, c.col], [0, 1]);
+      c.moveVertical(1);
+      expect([c.row, c.col], [1, 1], reason: 'straight down, same column');
+      c.moveHorizontal(1);
+      c.moveHorizontal(1);
+      expect([c.row, c.col], [1, 0], reason: 'right wraps within the row');
+      c.moveHorizontal(-1);
+      expect([c.row, c.col], [1, 2], reason: 'left wraps within the row');
+      c.moveVertical(-1);
+      c.moveVertical(-1);
+      expect([c.row, c.col], [2, 2], reason: 'up from the top wraps');
+    });
+
+    test('a short row clamps the column but remembers the one wanted', () {
+      // Home's layout: a full row, a single banner, a full row.
+      final c = GamepadCursor(rowLengths: [3, 1, 3]);
+      c.moveHorizontal(1);
+      c.moveHorizontal(1);
+      expect([c.row, c.col], [0, 2]);
+      c.moveVertical(1);
+      expect([c.row, c.col], [1, 0], reason: 'the banner is one wide');
+      c.moveVertical(1);
+      expect([c.row, c.col], [2, 2],
+          reason: 'through the banner and back to the column it came from');
+    });
+
+    test('a sideways move or a jump forgets the remembered column', () {
+      final c = GamepadCursor(rowLengths: [3, 1, 3]);
+      c.moveHorizontal(-1); // (0, 2)
+      c.moveVertical(1); // (1, 0), wanting column 2
+      c.moveHorizontal(1); // the only cell — now *chosen* as column 0
+      c.moveVertical(1);
+      expect([c.row, c.col], [2, 0]);
+
+      c.moveHorizontal(-1); // (2, 2)
+      c.moveVertical(-1); // (1, 0), wanting 2
+      c.next(); // L2/R2 move: back to reading order
+      expect([c.row, c.col], [2, 0]);
+      c.moveVertical(-1);
+      c.moveVertical(-1);
+      expect([c.row, c.col], [0, 0], reason: 'column 2 was forgotten');
+    });
+
+    test('vertical moves skip rows of zero width', () {
+      final c = GamepadCursor(rowLengths: [2, 0, 2]);
+      c.moveHorizontal(1);
+      c.moveVertical(1);
+      expect([c.row, c.col], [2, 1]);
+      c.moveVertical(1);
+      expect([c.row, c.col], [0, 1], reason: 'wraps, and skips the gap again');
+    });
+
+    test('directional moves on an empty grid are inert', () {
+      final c = GamepadCursor();
+      c.moveVertical(1);
+      c.moveHorizontal(-1);
+      expect(c.index, 0);
     });
   });
 
@@ -403,28 +570,127 @@ void main() {
     });
 
     test('an empty screen still tells the learner how to leave', () {
-      expect(en.screenContents('Home', const []), contains('L1'));
-      expect(en.nothingHere, contains('L1'));
+      expect(en.screenContents('Home', const []), contains('Press B'));
+      expect(en.nothingHere, contains('Press B'));
+      expect(en.screenReading('Quiz', const [], const []), contains('Press B'));
+      expect(fil.nothingHere, contains('ang B'));
     });
 
-    test('the spoken guide covers every control group', () {
-      final guide = en.buttonGuide;
-      for (final needle in [
-        'D-pad',
-        'X',
-        'B',
-        'Y',
-        'A',
-        'R1',
-        'L1',
-        'R2',
-        'L2',
-        'Start',
-        'Select',
-        'Left joystick',
-        'Right joystick',
+    test('the spoken guide gives every control its one job', () {
+      for (final phrases in [en, fil]) {
+        final guide = phrases.buttonGuide;
+        for (final needle in [
+          'D-pad:',
+          'A:',
+          'B:',
+          'X:',
+          'Y:',
+          'L1 ',
+          'R1:',
+          'L2 ',
+          'R2:',
+          'Start:',
+          'Select:',
+          'joystick',
+        ]) {
+          expect(guide, contains(needle),
+              reason: '$needle missing from the ${phrases.locale} guide');
+        }
+      }
+    });
+
+    test('the spoken guide leaves out a left stick that is turned off', () {
+      expect(en.buttonGuide, contains('Left joystick: the same as the D-pad.'));
+      final off = en.buttonGuideFor(leftStickMoves: false);
+      expect(off, isNot(contains('Left joystick: the same')));
+      // Its click still goes Home — only the stick's movement is turned off.
+      expect(off, contains('Click the left joystick to go straight Home.'));
+      expect(fil.buttonGuideFor(leftStickMoves: false),
+          isNot(contains('Kaliwang joystick: tulad ng D-pad.')));
+    });
+
+    test('nothing spoken still describes the old mapping', () {
+      final said = <String>[
+        for (final p in [en, fil]) ...[
+          p.buttonGuide,
+          p.buttonGuideFor(leftStickMoves: false),
+          p.traversalMode,
+          p.nothingHere,
+          p.practiceIntro,
+          p.welcome('Home'),
+          p.sectionQuestion('Cards'),
+          p.screenReading('Quiz', const [], const []),
+          for (final action in GamepadAction.values) p.actionName(action),
+        ],
+      ];
+      for (final line in said) {
+        for (final stale in [
+          'R1 to',
+          'L1 to',
+          'Press L1',
+          'R1 para',
+          'L1 para',
+          'ang L1',
+          'X is left',
+          'A is down',
+          'open the item you are on',
+          'R2: read',
+          'L2: repeat',
+        ]) {
+          expect(line, isNot(contains(stale)), reason: '"$stale" in: $line');
+        }
+      }
+    });
+
+    test('a switch is named with its state, unless the label says it', () {
+      expect(en.withState('Left joystick moves too', true),
+          'Left joystick moves too, on');
+      expect(en.withState('Vibrate.', false), 'Vibrate, off');
+      expect(en.withState('Sound Effects. On. Game sounds', false),
+          'Sound Effects. On. Game sounds',
+          reason: 'the Settings rows carry their state already');
+      expect(en.withState('Turn on the camera', false),
+          'Turn on the camera, off',
+          reason: 'a word in a sentence is not a state');
+      expect(fil.withState('Mag-vibrate', true), 'Mag-vibrate, naka-on');
+      expect(fil.withState('Tunog. Naka-off. Mga tunog', true),
+          'Tunog. Naka-off. Mga tunog');
+    });
+
+    test('a reading of an ordinary screen counts and lists its controls',
+        () {
+      expect(en.screenItems(const ['Back', 'Save']), '2 items here: Back, Save.');
+      expect(en.screenItems(const ['Back']), '1 item here: Back.');
+      final many = [for (var i = 1; i <= 20; i++) 'Row $i'];
+      expect(en.screenItems(many), contains('and 8 more'));
+      expect(fil.screenItems(const ['Back', 'Save']),
+          'May 2 item dito: Back, Save.');
+      expect(fil.leftTextBox, isNot(en.leftTextBox));
+    });
+
+    test('a move with nothing that way says where the learner still is', () {
+      expect(en.stillOn('Games'), 'Nothing more that way. Still on Games.');
+      expect(fil.stillOn('Games'), contains('Games'));
+      expect(fil.stillOn('Games'), isNot(en.stillOn('Games')));
+    });
+
+    test('A on a slider says how to turn it, without a doubled full stop', () {
+      expect(en.sliderHint('Speech speed. Normal'),
+          'Speech speed. Normal. Use left and right to change it.');
+      expect(en.sliderHint('Volume.'),
+          'Volume. Use left and right to change it.');
+      expect(fil.sliderHint('Bilis'), contains('kaliwa at kanan'));
+    });
+
+    test('the move actions are named for the practice screen', () {
+      for (final action in [
+        GamepadAction.moveUp,
+        GamepadAction.moveDown,
+        GamepadAction.moveLeft,
+        GamepadAction.moveRight,
       ]) {
-        expect(guide, contains(needle), reason: '$needle missing from the guide');
+        expect(en.actionName(action), startsWith('Move '));
+        expect(fil.actionName(action), startsWith('Gumalaw '));
       }
     });
 
@@ -443,30 +709,60 @@ void main() {
     /// Every control the app acts on has to appear in the printed guide too —
     /// a control that works but is documented nowhere is, for a learner who
     /// cannot see the screen, a control that does not exist.
-    test('documents every control group the resolver acts on', () {
-      final text = [
-        for (final group in kGamepadGuide)
-          for (final entry in group.entries) '${entry.control} ${entry.meaning}',
-      ].join(' | ');
+    /// The guide entry that documents each physical control.
+    String controlFor(GamepadButton button) => switch (button) {
+      GamepadButton.dpadUp ||
+      GamepadButton.dpadDown ||
+      GamepadButton.dpadLeft ||
+      GamepadButton.dpadRight => 'D-pad ▲ ▼ ◀ ▶',
+      GamepadButton.leftStickUp ||
+      GamepadButton.leftStickDown ||
+      GamepadButton.leftStickLeft ||
+      GamepadButton.leftStickRight => 'Left joystick',
+      GamepadButton.a => 'A',
+      GamepadButton.b => 'B',
+      GamepadButton.x => 'X',
+      GamepadButton.y => 'Y',
+      GamepadButton.l1 || GamepadButton.r1 => 'L1 / R1',
+      GamepadButton.l2 || GamepadButton.r2 => 'L2 / R2',
+      GamepadButton.start => 'Start',
+      GamepadButton.select => 'Select',
+      GamepadButton.rightStickUp ||
+      GamepadButton.rightStickDown => 'Right joystick ▲ / ▼',
+      GamepadButton.rightStickLeft ||
+      GamepadButton.rightStickRight => 'Right joystick ◀ / ▶',
+      GamepadButton.leftStickClick => 'Left joystick click',
+      GamepadButton.rightStickClick => 'Right joystick click',
+      GamepadButton.mode => '',
+    };
 
-      for (final needle in [
-        'D-pad ◀ / ▶',
-        'D-pad ▲ / ▼',
-        'Left joystick',
-        'X (left)',
-        'B (right)',
-        'Y (up)',
-        'A (down)',
-        'R1',
-        'L1',
-        'R2',
-        'L2',
-        'Start',
-        'Select',
-        'Right joystick click',
-        'Left joystick click',
-      ]) {
-        expect(text, contains(needle), reason: '$needle undocumented');
+    test('documents every control the resolver acts on, once', () {
+      final controls = [
+        for (final group in kGamepadGuide)
+          for (final entry in group.entries) entry.control,
+      ];
+      for (final button in GamepadButton.values) {
+        if (resolveGamepadAction(button) == GamepadAction.none) continue;
+        expect(controls.where((c) => c == controlFor(button)), hasLength(1),
+            reason: '${button.name} must have exactly one guide entry');
+      }
+    });
+
+    test('the Filipino guide is the same page in the same order', () {
+      expect(kGamepadGuideFilipino.length, kGamepadGuide.length);
+      for (var g = 0; g < kGamepadGuide.length; g++) {
+        final en = kGamepadGuide[g].entries;
+        final fil = kGamepadGuideFilipino[g].entries;
+        expect(fil.length, en.length, reason: 'group $g');
+        for (var i = 0; i < en.length; i++) {
+          expect(fil[i].meaning, isNot(en[i].meaning),
+              reason: '${en[i].control} is not translated');
+          // Button names are printed on the pad, so they stay as they are.
+          if (!en[i].control.contains('joystick') &&
+              !en[i].control.contains(' and ')) {
+            expect(fil[i].control, en[i].control);
+          }
+        }
       }
     });
 
@@ -488,6 +784,8 @@ void main() {
       expect(s.speak, isTrue);
       expect(s.confirmSectionChange, isTrue);
       expect(s.announceItems, isTrue);
+      expect(s.leftStickMoves, isTrue,
+          reason: 'the stick moves until someone turns it off');
     });
 
     test('round-trips through Hive', () {
@@ -496,12 +794,35 @@ void main() {
         speak: false,
         dedupeMs: 300,
         swapConfirmButtons: true,
+        leftStickMoves: false,
       );
       final back = GamepadSettings.fromMap(s.toMap());
       expect(back.enabled, isFalse);
       expect(back.speak, isFalse);
       expect(back.dedupeMs, 300);
       expect(back.swapConfirmButtons, isTrue);
+      expect(back.leftStickMoves, isFalse);
+    });
+
+    test('settings saved by 1.4.3 keep the stick moving', () {
+      // 1.4.3 never wrote the key: a learner updating must not find their
+      // stick dead.
+      final old = const GamepadSettings(swapConfirmButtons: true).toMap()
+        ..remove('leftStickMoves');
+      final back = GamepadSettings.fromMap(old);
+      expect(back.leftStickMoves, isTrue);
+      expect(back.swapConfirmButtons, isTrue);
+      expect(GamepadSettings.fromMap({'leftStickMoves': 'nonsense'})
+          .leftStickMoves, isTrue);
+    });
+
+    test('copyWith changes only the stick', () {
+      const s = GamepadSettings(swapConfirmButtons: true, dedupeMs: 200);
+      final off = s.copyWith(leftStickMoves: false);
+      expect(off.leftStickMoves, isFalse);
+      expect(off.swapConfirmButtons, isTrue);
+      expect(off.dedupeMs, 200);
+      expect(off.copyWith().leftStickMoves, isFalse);
     });
 
     test('an older or corrupt blob falls back to defaults, never crashes', () {

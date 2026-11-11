@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/utils/localized_date.dart';
+
 /// Type of message in the local message board.
 ///
 /// Persisted by `index` (see [LocalMessage.fromJson]), so new values must be
@@ -687,6 +689,19 @@ class MessageTime {
     final day = time.day.toString().padLeft(2, '0');
     return '$month/$day';
   }
+
+  /// [relative] as a voice should say it: "5 minutes ago" — "5m" is read
+  /// "5 meters" — and an older day by its date.
+  static String relativeSpoken(
+    DateTime time, {
+    required bool isFilipino,
+    DateTime? now,
+  }) =>
+      LocalizedDuration.ago(
+        (now ?? DateTime.now()).difference(time),
+        filipino: isFilipino,
+      ) ??
+      LocalizedDate.monthDayIn(time, filipino: isFilipino);
 
   /// Day divider above the first bubble of each calendar day.
   static String dayLabel(

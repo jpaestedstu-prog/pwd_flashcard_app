@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/utils/platform_caps.dart';
 import '../models/gamepad_button.dart';
+import 'browser_gamepads.dart';
 
 /// Dart end of the native gamepad bridge (`GamepadBridge.kt`).
 ///
@@ -12,10 +14,14 @@ import '../models/gamepad_button.dart';
 /// swallow controller keys or let them fall through to Flutter's own focus
 /// traversal.
 ///
-/// Everything here is best-effort: on a platform with no bridge (iOS, web,
-/// desktop, and every widget test) the channels simply never produce events and
-/// the app behaves exactly as it did before. Nothing about this service is
-/// allowed to throw into the app.
+/// In a web browser the same two streams come from the browser's Gamepad API
+/// instead ([BrowserGamepads]), so the web app's controller goes through the
+/// very same host, actions and speech.
+///
+/// Everything here is best-effort: on a platform with neither (desktop, and
+/// every widget test) the channels simply never produce events and the app
+/// behaves exactly as it did before. Nothing about this service is allowed to
+/// throw into the app.
 class GamepadService {
   static const _events = EventChannel('flashlearn/gamepad/events');
   static const _methods = MethodChannel('flashlearn/gamepad');
@@ -25,6 +31,9 @@ class GamepadService {
 
   StreamSubscription<dynamic>? _sub;
   bool _started = false;
+
+  /// The browser's controllers, in the web app.
+  BrowserGamepads? _browser;
 
   /// Controllers the native side has told us about, by device id. Kept so a
   /// removal event — which arrives with no name, because the device is already
@@ -55,10 +64,18 @@ class GamepadService {
   /// event channel has no listener, and listening to it is not a quiet no-op:
   /// Flutter reports the MissingPluginException through FlutterError, which
   /// put "Something went wrong" over every screen of the first iOS build.
-  static bool get isSupported =>
-      !kIsWeb &&
-      (defaultTargetPlatform == TargetPlatform.android ||
+  ///
+  /// In a browser, its Gamepad API ([BrowserGamepads]): every current one has
+  /// it, on a page served over https or from this computer. It said
+  /// "controllers work in the Android app" before.
+  static bool get isSupported => PlatformCaps.isWeb
+      ? (debugBrowserGamepads ?? BrowserGamepads.available)
+      : (defaultTargetPlatform == TargetPlatform.android ||
           defaultTargetPlatform == TargetPlatform.iOS);
+
+  /// Set by a test to say whether the browser version has the Gamepad API.
+  @visibleForTesting
+  static bool? debugBrowserGamepads;
 
   /// Begins listening. Safe to call repeatedly; does nothing where there is
   /// no bridge ([isSupported]).
@@ -66,6 +83,15 @@ class GamepadService {
     if (_started) return;
     _started = true;
     if (!isSupported) return;
+    if (kIsWeb) {
+      _browser = BrowserGamepads(
+        onButton: (event) {
+          if (!_buttons.isClosed) _buttons.add(event);
+        },
+        onConnection: _onBrowserConnection,
+      )..start();
+      return;
+    }
     try {
       _sub = _events.receiveBroadcastStream().listen(
             _onEvent,
@@ -91,6 +117,10 @@ class GamepadService {
   /// Re-reads the attached controllers from the platform and emits a
   /// connection event for any this service had not already recorded.
   Future<void> refreshDevices() async {
+    if (kIsWeb) {
+      _browser?.scan();
+      return;
+    }
     try {
       final raw = await _methods.invokeListMethod<dynamic>('devices');
       if (raw == null) return;
@@ -113,6 +143,8 @@ class GamepadService {
 
   Future<void> stop() async {
     _started = false;
+    _browser?.stop();
+    _browser = null;
     await _sub?.cancel();
     _sub = null;
     _known.clear();
@@ -125,6 +157,8 @@ class GamepadService {
   /// built-in focus traversal), which is the right behaviour when the learner
   /// has switched gamepad support off.
   Future<void> setCaptureEnabled(bool enabled) async {
+    // A browser hands a page no controller keys to swallow.
+    if (kIsWeb) return;
     try {
       await _methods.invokeMethod<bool>('setCaptureEnabled', {
         'enabled': enabled,
@@ -136,6 +170,7 @@ class GamepadService {
 
   /// Controllers Android currently reports, independent of the event stream.
   Future<List<String>> queryDevices() async {
+    if (kIsWeb) return connectedNames;
     try {
       final raw = await _methods.invokeListMethod<dynamic>('devices');
       if (raw == null) return const [];
@@ -146,6 +181,18 @@ class GamepadService {
     } catch (_) {
       return const [];
     }
+  }
+
+  /// A browser's controller appearing or going, kept in the same roster as
+  /// the bridge's.
+  void _onBrowserConnection(GamepadConnectionEvent event) {
+    if (event.connected) {
+      if (_known.containsKey(event.deviceId)) return;
+      _known[event.deviceId] = event.name;
+    } else if (_known.remove(event.deviceId) == null) {
+      return;
+    }
+    if (!_connections.isClosed) _connections.add(event);
   }
 
   void _onEvent(dynamic raw) {

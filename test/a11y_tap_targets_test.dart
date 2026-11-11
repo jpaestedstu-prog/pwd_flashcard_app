@@ -11,8 +11,8 @@ import 'support/real_fonts.dart';
 /// sees the part showing at the strip's edge; each is a full 48 dp tall.
 const _cutOffBySidewaysStrip = <String, Set<String>>{
   'ShopScreen': {'Titles / Tab 4 of 6'},
-  'AiTutorScreen': {'Hint / 💡 / Hint'},
-  'ParentTeacherNotesScreen': {'Behaviour / 🌟 / Behaviour'},
+  'AiTutorScreen': {'Hint'},
+  'ParentTeacherNotesScreen': {'Behaviour'},
   'FslDictionaryScreen': {'I can sign · 0'},
 };
 

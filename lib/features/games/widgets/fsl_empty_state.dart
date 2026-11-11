@@ -8,6 +8,7 @@ import '../../../providers/app_providers.dart';
 import '../../../widgets/fullscreen_host.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Friendly empty state shown when an FSL game can't run with the user's
 /// chosen categories — usually because that category doesn't have enough
@@ -51,7 +52,7 @@ class FslEmptyStateScaffold extends ConsumerWidget {
             tooltip: l10n.close,
             onPressed: onClose,
           ),
-          title: Text(title),
+          title: AppBarTitle(title),
         ),
       ),
       body: Center(

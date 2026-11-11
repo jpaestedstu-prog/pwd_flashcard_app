@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../core/services/learning_level_service.dart';
+import '../../../core/widgets/whole_month_title.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/accessibility/accessibility_presets.dart';
@@ -24,6 +26,8 @@ import '../../../l10n/app_localizations_en.dart';
 import '../../../core/utils/keyboard.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/dpad_focusable.dart';
+import '../../../core/widgets/app_bar_title.dart';
+import '../../../core/widgets/text_limits.dart';
 
 /// Screen for editing an existing user profile (name, avatar, disability type).
 ///
@@ -200,6 +204,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       gradeLevel: () => _selectedGradeLevel,
       section: () => sectionText.isNotEmpty ? sectionText : null,
       birthDate: () => _selectedBirthDate,
+      learningLevel: () =>
+          LearningLevelService.levelToSave(profile, _selectedBirthDate),
       tags: _tags,
       interests: _selectedInterests,
       // Re-scoped to whatever category is being saved, so switching a learner
@@ -303,6 +309,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(l10n.recoveryCodeTitle),
         content: Column(
@@ -334,6 +341,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text(_t(context).epApplyPresetsTitle),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -351,19 +359,15 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 2),
                     child: Row(
                       children: [
-                        Text(c.emoji, style: const TextStyle(fontSize: 16)),
+                        ExcludeSemantics(child: Text(c.emoji, style: const TextStyle(fontSize: 16))),
                         const SizedBox(width: 8),
                         Flexible(
                           child: Text('${c.nameOf(AppLocalizations.of(context))}: ',
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
                               style: AppTypography.bodySmall
                                   .copyWith(fontWeight: FontWeight.w600)),
                         ),
                         Flexible(
                           child: Text(c.valueOf(AppLocalizations.of(context)),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
                               style: AppTypography.bodySmall),
                         ),
                       ],
@@ -396,7 +400,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     final isLearner = profile?.role.isLearner ?? true;
     if (profile == null) {
       return Scaffold(
-        appBar: AppBar(title: Text(_t(context).spdEditProfile)),
+        appBar: AppBar(title: AppBarTitle(_t(context).spdEditProfile)),
         body: RichEmptyState(
           emoji: '👤',
           title: _t(context).lgNoProfile,
@@ -410,7 +414,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_t(context).spdEditProfile),
+        title: AppBarTitle(_t(context).spdEditProfile),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 8),
@@ -444,9 +448,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       shape: BoxShape.circle,
                     ),
                     child: Center(
-                      child: Text(
-                        emoji,
-                        style: const TextStyle(fontSize: 40),
+                      child: ExcludeSemantics(
+                        child: Text(
+                          emoji,
+                          style: const TextStyle(fontSize: 40),
+                        ),
                       ),
                     ),
                   );
@@ -485,6 +491,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   label: '${_t(context).epAvatarSemantics(av.labelOf(filipino: _t(context).localeName.startsWith('fil')))}'
                       '${isSelected ? _t(context).epSelectedSuffix : ''}',
                   button: true,
+                  // The label says it; the emoji and words drawn here were read again.
+                  excludeSemantics: true,
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     width: context.scaleIcon(56),
@@ -560,6 +568,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         '${_t(context).epPremiumSemantics(item.localizedName(_t(context).localeName.startsWith('fil')))}'
                         '${owned ? (isSelected ? _t(context).epSelectedSuffix : _t(context).epOwnedSuffix) : _t(context).epLockedSuffix(item.cost)}',
                     button: true,
+                    // The label says it; the emoji and words drawn here were read again.
+                    excludeSemantics: true,
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       width: context.scaleIcon(56),
@@ -610,7 +620,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                 child: Text(
                                   '${item.cost}⭐',
                                   style: const TextStyle(
-                                    fontSize: 8,
+                                    fontSize: 11,
                                     fontWeight: FontWeight.w700,
                                     color: Colors.white,
                                   ),
@@ -644,7 +654,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               filled: true,
               fillColor: hc.surface,
             ),
-            maxLength: 30,
+            maxLength: TextLimits.personName,
+            buildCounter: TextLimits.counter,
           ),
 
           const SizedBox(height: 20),
@@ -756,57 +767,64 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               style: AppTypography.titleSmall
                   .copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
-          DpadGestureDetector(
-            onTap: () async {
-              await closeKeyboardFirst(context);
-              if (!context.mounted) return;
-              final picked = await showDatePicker(
-                context: context,
-                initialDate: _selectedBirthDate ?? DateTime(2015),
-                firstDate: DateTime(1990),
-                lastDate: DateTime.now(),
-              );
-              if (picked != null) {
-                setState(() => _selectedBirthDate = picked);
-                _onChanged();
-              }
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              decoration: BoxDecoration(
-                color: hc.surface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: hc.textSecondary.withValues(alpha: 0.3)),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.calendar_today_rounded, color: hc.textSecondary),
-                  const SizedBox(width: 12),
-                  // Expanded, not Flexible + Spacer: the Spacer took half
-                  // the row, and "nakatakda" broke in two at 2x.
-                  Expanded(child: Text(
-                    _selectedBirthDate != null
-                        ? '${_selectedBirthDate!.month}/${_selectedBirthDate!.day}/${_selectedBirthDate!.year}'
-                          '  ${_t(context).epAge(_ageFrom(_selectedBirthDate!))}'
-                        : _t(context).epNotSet,
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: _selectedBirthDate != null
-                          ? hc.textPrimary
-                          : hc.textSecondary,
-                    ),
-  maxLines: 2,
-  overflow: TextOverflow.ellipsis,
-)),
-                  if (_selectedBirthDate != null)
-                    DpadGestureDetector(
-                      onTap: () {
-                        setState(() => _selectedBirthDate = null);
-                        _onChanged();
-                      },
-                      child: Icon(Icons.clear_rounded,
-                          size: 20, color: hc.textSecondary),
-                    ),
-                ],
+          Semantics(
+            container: true,
+            // A button, and which field it sets: it read only "Not set".
+            button: true,
+            label: _t(context).spdBirthDate,
+            child: DpadGestureDetector(
+              onTap: () async {
+                await closeKeyboardFirst(context);
+                if (!context.mounted) return;
+                final picked = await showDatePicker(
+                  context: context,
+                  builder: wholeMonthTitle,
+                  initialDate: _selectedBirthDate ?? DateTime(2015),
+                  firstDate: DateTime(1990),
+                  lastDate: DateTime.now(),
+                );
+                if (picked != null) {
+                  setState(() => _selectedBirthDate = picked);
+                  _onChanged();
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: hc.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: hc.textSecondary.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.calendar_today_rounded, color: hc.textSecondary),
+                    const SizedBox(width: 12),
+                    // Expanded, not Flexible + Spacer: the Spacer took half
+                    // the row, and "nakatakda" broke in two at 2x.
+                    Expanded(child: Text(
+                      _selectedBirthDate != null
+                          ? '${_selectedBirthDate!.month}/${_selectedBirthDate!.day}/${_selectedBirthDate!.year}'
+                            '  ${_t(context).epAge(_ageFrom(_selectedBirthDate!))}'
+                          : _t(context).epNotSet,
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: _selectedBirthDate != null
+                            ? hc.textPrimary
+                            : hc.textSecondary,
+                      ),
+    maxLines: 2,
+    overflow: TextOverflow.ellipsis,
+  )),
+                    if (_selectedBirthDate != null)
+                      DpadGestureDetector(
+                        onTap: () {
+                          setState(() => _selectedBirthDate = null);
+                          _onChanged();
+                        },
+                        child: Icon(Icons.clear_rounded,
+                            size: 20, color: hc.textSecondary),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -829,6 +847,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               Expanded(
                 child: TextField(
                   controller: _tagController,
+                  maxLength: TextLimits.tag,
+                  buildCounter: TextLimits.counter,
                   decoration: InputDecoration(
                     hintText: _t(context).epAddTag,
                     prefixIcon: const Icon(Icons.label_rounded),
@@ -903,6 +923,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     label: '${cat.labelOf(_t(context))}'
                         '${selected ? _t(context).epSelectedSuffix : ''}',
                     button: true,
+                    // The label says it; the emoji and words drawn here were read again.
+                    excludeSemantics: true,
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       // 48 dp, a finger's minimum (these were 46).
@@ -1182,6 +1204,8 @@ class _DisabilityTile extends StatelessWidget {
         label: '${type.labelOf(AppLocalizations.of(context))}'
             '${isSelected ? _t(context).epSelectedSuffix : ''}',
         button: true,
+        // The label says it; the emoji and words drawn here were read again.
+        excludeSemantics: true,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

@@ -30,6 +30,7 @@ import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/fullscreen_host.dart';
 import '../../../widgets/gesture_edge_padding.dart';
 import '../../../core/widgets/fit_text.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 class TracingScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
@@ -421,7 +422,7 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
                   tooltip: l10n.close,
                   onPressed: pauseGame,
                 ),
-                title: Text(AppLocalizations.of(context)!.tracing),
+                title: AppBarTitle(AppLocalizations.of(context)!.tracing),
                 actions: [
                   GameBreakAction(onHold: holdForBreak, onResume: resumeFromBreak),
                   IconButton(
@@ -443,6 +444,8 @@ class _TracingScreenState extends ConsumerState<TracingScreen>
                     child: Center(
                       child: Text(
                         '${_currentIndex + 1} / $_totalItems',
+                        semanticsLabel: AppLocalizations.of(context)!
+                            .dcWordNofM(_currentIndex + 1, _totalItems),
                         style: AppTypography.titleMedium.copyWith(
                           color: HCColor.of(context).primary,
                         ),

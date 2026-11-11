@@ -10,6 +10,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../widgets/app_card.dart';
 import '../../../core/widgets/fit_text.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// A short, friendly primer on Persons with Disabilities (PWD): what the
 /// term means, the common kinds of disability, how to interact respectfully,
@@ -29,7 +30,7 @@ class PwdAwarenessScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         leading: const AppBackButton(fallbackRoute: '/profile'),
-        title: Text(l10n.pwdAwarenessTitle),
+        title: AppBarTitle(l10n.pwdAwarenessTitle),
       ),
       body: Align(
         alignment: Alignment.topCenter,

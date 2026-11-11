@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/models/enums.dart';
@@ -21,22 +22,51 @@ import '../services/friend_service.dart';
 /// widgets are watching, which is what keeps this inside the Spark-tier read
 /// budget the repository's docs work through.
 
+/// Whose messages and friends these are: the person at the tablet.
+///
+/// While a teacher or parent looks at a learner, the learner is the active
+/// profile, and every listener here followed them. For a learner another device
+/// owns, the cloud refuses those reads, and each refusal said "Something went
+/// wrong" over the learner's dashboard (found on the tablet, 7 Nov). Nothing on
+/// that dashboard shows messages, so the listeners stay the viewer's own.
+final messagingProfileProvider = Provider<UserProfile?>((ref) {
+  final active = ref.watch(profileProvider);
+  return profileAtTablet(active, ref.read(profileProvider.notifier));
+});
+
 /// Live messages where the active profile is sender or recipient.
 ///
 /// Emits an empty list when there is no active profile (splash / profile
 /// picker) so watchers never have to special-case a null profile.
 final activeProfileMessagesProvider = StreamProvider<List<LocalMessage>>((ref) {
-  final profileId = ref.watch(profileProvider.select((p) => p?.id));
-  if (profileId == null) return Stream.value(const <LocalMessage>[]);
-  return CloudMessageRepository.instance.watchMessagesFor(profileId);
+  final who = ref.watch(
+    messagingProfileProvider.select(
+      (p) => p == null ? null : (id: p.id, inbox: profileHasInbox(p)),
+    ),
+  );
+  if (who == null || !who.inbox) return Stream.value(const <LocalMessage>[]);
+  return watchInbox(who.id);
 });
+
+/// Whether [profile] has an inbox in the cloud to listen to. A guest has
+/// none: the cloud refuses to list one. This listener outlives the screen
+/// that started it, so it followed a switch from a learner to a guest, and
+/// the refusal said "Something went wrong" on the guest's home (the
+/// Villaon phone, 9 Nov).
+bool profileHasInbox(UserProfile profile) =>
+    inboxKindFor(profile) != InboxKind.guestPlayer;
+
+/// The cloud query behind [activeProfileMessagesProvider]; tests swap it.
+@visibleForTesting
+Stream<List<LocalMessage>> Function(String profileId) watchInbox =
+    CloudMessageRepository.instance.watchMessagesFor;
 
 /// Profiles the active learner has blocked, shared by the unread badge and
 /// the Messages screen. Emits the Hive cache first, so a blocked peer never
 /// flashes back on cold start. Empty for educators and guests, who have no
 /// block list.
 final blockedProfileIdsProvider = StreamProvider<Set<String>>((ref) {
-  final profile = ref.watch(profileProvider);
+  final profile = ref.watch(messagingProfileProvider);
   if (profile == null || !profileUsesFriends(profile)) {
     return Stream.value(const <String>{});
   }
@@ -53,7 +83,7 @@ final blockedProfileIdsProvider = StreamProvider<Set<String>>((ref) {
 final incomingFriendRequestsProvider = StreamProvider<List<FriendRequest>>((
   ref,
 ) {
-  final profile = ref.watch(profileProvider);
+  final profile = ref.watch(messagingProfileProvider);
   if (profile == null || !profileUsesFriends(profile)) {
     return Stream.value(const <FriendRequest>[]);
   }
@@ -67,7 +97,7 @@ final incomingFriendRequestsProvider = StreamProvider<List<FriendRequest>>((
 /// Friend requests waiting for the active **parent** to say yes or no: their
 /// child asked someone, or said yes to someone. Empty for everyone else.
 final parentApprovalsProvider = StreamProvider<List<FriendRequest>>((ref) {
-  final profile = ref.watch(profileProvider);
+  final profile = ref.watch(messagingProfileProvider);
   if (profile == null || profile.role != UserRole.parent) {
     return Stream.value(const <FriendRequest>[]);
   }
@@ -87,7 +117,7 @@ final parentApprovalsProvider = StreamProvider<List<FriendRequest>>((ref) {
 /// Returns 0 while messaging is blocked by parental controls — a badge that
 /// invites a tap the router will bounce to Home is worse than no badge.
 final unreadMessageCountProvider = Provider<int>((ref) {
-  final profile = ref.watch(profileProvider);
+  final profile = ref.watch(messagingProfileProvider);
   if (profile == null) return 0;
   if (_messagingBlocked()) return 0;
   final blocked =
@@ -115,7 +145,7 @@ final unreadMessageCountProvider = Provider<int>((ref) {
 /// [ConversationDirectoryService.watchContactIds]). Empty for educators and
 /// guests, whose badge is not filtered by it.
 final learnerContactIdsProvider = StreamProvider<Set<String>>((ref) {
-  final profile = ref.watch(profileProvider);
+  final profile = ref.watch(messagingProfileProvider);
   if (profile == null || !profileUsesFriends(profile)) {
     return Stream.value(const <String>{});
   }

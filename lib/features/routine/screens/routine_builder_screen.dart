@@ -23,6 +23,9 @@ import '../widgets/routine_over_other_apps.dart';
 import '../widgets/routine_step_card.dart';
 import '../widgets/routine_sync_feedback.dart';
 import 'routine_step_editor_sheet.dart';
+import '../../../core/widgets/app_bar_title.dart';
+import '../../../core/widgets/fit_label.dart';
+import '../../../core/widgets/text_limits.dart';
 
 /// Builds and edits one routine: its name, the days it runs, and its steps.
 ///
@@ -140,6 +143,7 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text(l ? 'Itapon ang mga pagbabago?' : 'Discard changes?'),
         content: Text(
           l
@@ -201,7 +205,7 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
-            title: Text(
+            title: AppBarTitle(
               l ? 'Ayusin ang Routine' : 'Edit Routine',
               style: AppTypography.titleMedium.copyWith(
                 fontWeight: FontWeight.w700,
@@ -240,10 +244,12 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
                     children: [
                       TextField(
                         controller: _name,
+                        maxLength: TextLimits.label,
+                        buildCounter: TextLimits.counter,
                         onChanged: (_) => setState(() => _dirty = true),
                         textCapitalization: TextCapitalization.sentences,
                         decoration: InputDecoration(
-                          labelText: l ? 'Pangalan (English)' : 'Name',
+                          label: FitLabel(l ? 'Pangalan (English)' : 'Name'),
                           hintText: l ? 'hal. Umaga' : 'e.g. Morning',
                           border: const OutlineInputBorder(),
                         ),
@@ -251,12 +257,14 @@ class _RoutineBuilderScreenState extends ConsumerState<RoutineBuilderScreen> {
                       const SizedBox(height: 12),
                       TextField(
                         controller: _nameFil,
+                        maxLength: TextLimits.label,
+                        buildCounter: TextLimits.counter,
                         onChanged: (_) => setState(() => _dirty = true),
                         textCapitalization: TextCapitalization.sentences,
                         decoration: InputDecoration(
-                          labelText: l
+                          label: FitLabel(l
                               ? 'Pangalan sa Filipino'
-                              : 'Filipino name (optional)',
+                              : 'Filipino name (optional)'),
                           hintText: 'hal. Rutina sa Umaga',
                           border: const OutlineInputBorder(),
                         ),
@@ -748,7 +756,6 @@ class _StepTile extends StatelessWidget {
           Flexible(
             child: Text(
               label,
-              overflow: TextOverflow.ellipsis,
               style: color == null ? null : TextStyle(color: color),
             ),
           ),
@@ -895,7 +902,9 @@ class _ActivityPicker extends StatelessWidget {
               const Divider(height: 28),
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Text('⭐', style: TextStyle(fontSize: 28)),
+                leading: const ExcludeSemantics(
+                  child: Text('⭐', style: TextStyle(fontSize: 28)),
+                ),
                 title: Text(
                   l ? 'Sariling gawain' : 'Custom activity',
                   style: AppTypography.bodyLarge.copyWith(

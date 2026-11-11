@@ -168,10 +168,11 @@ class QuickMoodCheckIn {
     if (ref.read(moodPresentationProvider).speakSelection) {
       final label = mood.labelOf(isFilipino: isFilipino);
       // Fire and forget — a learner should never wait on the speaker.
-      ref.read(ttsServiceProvider).speak(
+      ref.read(ttsServiceProvider).speakIn(
             isFilipino
                 ? 'Na-save. Ang pakiramdam mo ay $label.'
                 : 'Saved. You are feeling $label.',
+            filipino: isFilipino,
           );
     }
     return true;

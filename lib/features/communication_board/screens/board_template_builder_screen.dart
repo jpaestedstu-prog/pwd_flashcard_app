@@ -18,6 +18,8 @@ import '../../../navigation/nav_extensions.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
+import '../../../core/widgets/fit_label.dart';
 
 /// Builds the **active profile's** own Talk Board tab.
 ///
@@ -222,6 +224,7 @@ class _BoardTemplateBuilderScreenState
     final discard = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text(_t(context).bbDiscardTitle),
         content: Text(
           _t(context).bbDiscardBody,
@@ -265,7 +268,7 @@ class _BoardTemplateBuilderScreenState
       child: Scaffold(
         backgroundColor: hc.background,
         appBar: AppBar(
-          title: Text(
+          title: AppBarTitle(
             _t(context).bbMyBoard,
             style: AppTypography.titleLarge.copyWith(color: hc.textPrimary),
           ),
@@ -339,7 +342,7 @@ class _BoardTemplateBuilderScreenState
                             onChanged: (_) => _markDirty(),
                             decoration: InputDecoration(
                               // It becomes the tab label on Talk Board, so say so.
-                              labelText: _t(context).bbNameField,
+                              label: FitLabel(_t(context).bbNameField),
                               prefixIcon: const Icon(Icons.label_rounded),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(16),
@@ -810,6 +813,7 @@ class _CustomTileDialogState extends State<_CustomTileDialog> {
     final hc = HCColor.of(context);
 
     return AlertDialog(
+      scrollable: true,
       title: Text(widget.existing == null ? _t(context).bbMakeWord : _t(context).bbEditWord),
       content: SizedBox(
         width: 420,
@@ -824,7 +828,7 @@ class _CustomTileDialogState extends State<_CustomTileDialog> {
                 maxLength: kMaxCustomTileLabel,
                 textCapitalization: TextCapitalization.sentences,
                 decoration: InputDecoration(
-                  labelText: _t(context).bbWordEn,
+                  label: FitLabel(_t(context).bbWordEn),
                   hintText: _t(context).bbWordEnHint,
                 ),
                 onChanged: (_) {
@@ -836,7 +840,7 @@ class _CustomTileDialogState extends State<_CustomTileDialog> {
                 maxLength: kMaxCustomTileLabel,
                 textCapitalization: TextCapitalization.sentences,
                 decoration: InputDecoration(
-                  labelText: _t(context).bbWordFil,
+                  label: FitLabel(_t(context).bbWordFil),
                   hintText: _t(context).bbWordFilHint,
                 ),
               ),

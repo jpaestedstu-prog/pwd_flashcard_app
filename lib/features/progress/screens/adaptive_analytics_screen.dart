@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/fit_text.dart';
+import '../../../core/widgets/reflow_row.dart';
 import '../../../core/services/session_tracker.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../widgets/rich_empty_states.dart';
@@ -21,6 +22,7 @@ import '../../../widgets/app_back_button.dart';
 import '../models/category_mastery.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../navigation/nav_extensions.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Enhanced analytics dashboard with adaptive difficulty history,
 /// spaced repetition heatmap, and comprehensive learning insights.
@@ -91,7 +93,7 @@ class AdaptiveAnalyticsScreen extends ConsumerWidget {
         ),
         // Same words as the button that opens it — the screen used to call
         // itself "Adaptive Analytics" while nothing in the app named it at all.
-        title: Text(
+        title: AppBarTitle(
           l10n.advancedAnalytics,
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
@@ -260,6 +262,8 @@ class _InsightCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       label: '$label: $value',
+      // The sentence says it; the number and word under it were read again.
+      excludeSemantics: true,
       child: Container(
         // Grows with the Font Size setting instead of squeezing the label out
         // of a fixed 100 px. This screen had never been through the overflow
@@ -292,14 +296,15 @@ class _InsightCard extends StatelessWidget {
                 ),
               ),
             ),
+            // Two lines: one cut "Minuto ng Pag-aaral" short (30 Oct).
             Flexible(
               child: Text(
                 label,
-                maxLines: 1,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
                 style: AppTypography.labelSmall.copyWith(
-                  fontSize: 9,
+                  fontSize: 11,
                   color: hc.textSecondary,
                 ),
               ),
@@ -394,12 +399,12 @@ class _SummaryBar extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(emoji),
+        ExcludeSemantics(child: Text(emoji)),
         const SizedBox(width: 4),
         Text(
           text,
           style: AppTypography.labelSmall.copyWith(
-            fontSize: 10,
+            fontSize: 11,
             fontWeight: FontWeight.w600,
             color: color,
           ),
@@ -454,7 +459,17 @@ class _SessionStatsCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          Row(
+          // Under one another when a third of the card is too narrow for a
+          // label: "Sunod-sunod na Araw" was cut on a phone at the largest
+          // Font Size.
+          ReflowRow(
+            labelFontSize: 9,
+            tilePadding: 24,
+            labels: [
+              _t(context).aaAvgSession,
+              _t(context).aaTotalSessions,
+              _t(context).pfDayStreak,
+            ],
             children: [
               _sessionStat(
                 Icons.av_timer_rounded,
@@ -462,14 +477,12 @@ class _SessionStatsCard extends StatelessWidget {
                 _t(context).aaAvgSession,
                 hc.info,
               ),
-              const SizedBox(width: 12),
               _sessionStat(
                 Icons.replay_rounded,
                 '$totalSess',
                 _t(context).aaTotalSessions,
                 hc.accent,
               ),
-              const SizedBox(width: 12),
               _sessionStat(
                 Icons.local_fire_department_rounded,
                 '$streakDays',
@@ -484,8 +497,7 @@ class _SessionStatsCard extends StatelessWidget {
   }
 
   Widget _sessionStat(IconData icon, String value, String label, Color color) {
-    return Expanded(
-      child: Container(
+    return Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.1),
@@ -507,13 +519,12 @@ class _SessionStatsCard extends StatelessWidget {
               label,
               textAlign: TextAlign.center,
               style: AppTypography.labelSmall.copyWith(
-                fontSize: 9,
+                fontSize: 11,
                 color: hc.textSecondary,
               ),
             ),
           ],
         ),
-      ),
     );
   }
 }

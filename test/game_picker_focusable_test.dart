@@ -1,3 +1,5 @@
+import 'dart:ui' show SemanticsAction, Tristate;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pwdpwdpwd/data/models/enums.dart';
@@ -13,9 +15,12 @@ import 'package:pwdpwdpwd/widgets/game_widgets.dart';
 /// sheet included. That made the difficulty chooser, the gateway to all ten
 /// games, a dead end: nothing to land on and nothing to press.
 ///
-/// `Semantics` + `FocusableActionDetector` gives each card a focus node and
-/// `ActivateIntent` handling, which also makes them real buttons to a screen
-/// reader.
+/// Then each card had TWO focus nodes (a FocusableActionDetector under the
+/// D-pad's own), so the D-pad stopped on every card twice, and its label sat
+/// on a node apart from its press: on the tablet, TalkBack landed on a
+/// "button" a double-tap could not press. And the sheet opened with the
+/// timer switch first in line, so a remote's first OK toggled Beat the Clock
+/// instead of choosing a level.
 void main() {
   /// Opens [open] as a modal sheet on a host with the l10n delegates the real
   /// app supplies — the picker copy comes from `AppLocalizations`.
@@ -38,6 +43,25 @@ void main() {
     );
     unawaited(open(hostContext));
     await tester.pumpAndSettle();
+  }
+
+  /// Whether the focused control sits inside [card].
+  bool focusedIn(WidgetTester tester, Finder card) {
+    final focus = FocusManager.instance.primaryFocus;
+    if (focus == null || focus is FocusScopeNode) return false;
+    return tester.getRect(card).contains(focus.rect.center);
+  }
+
+  /// [node] is read, pressed and focused as one: a screen reader's
+  /// double-tap presses what it lands on, and in a browser the keyboard's
+  /// focus is on that same node.
+  void expectOneNode(WidgetTester tester, Finder node, String what) {
+    expect(node, findsOneWidget, reason: '$what: one node, not two');
+    final data = tester.getSemantics(node).getSemanticsData();
+    expect(data.hasAction(SemanticsAction.tap), isTrue,
+        reason: '$what is pressed where it is read');
+    expect(data.flagsCollection.isFocused, isNot(Tristate.none),
+        reason: '$what takes focus where it is read');
   }
 
   /// Walks traversal until [done] reports success, or gives up.
@@ -65,7 +89,7 @@ void main() {
   }
 
   group('difficulty picker', () {
-    testWidgets('its cards are focusable controls, not bare tap targets', (
+    testWidgets('each card is one node, read and pressed as one', (
       tester,
     ) async {
       await pumpSheet(
@@ -73,12 +97,65 @@ void main() {
         (context) => showDifficultyPicker(context, GameType.wordMatch),
       );
 
-      // Easy / Medium / Hard each carry one.
-      expect(
-        find.byType(FocusableActionDetector),
-        findsAtLeastNWidgets(3),
-        reason: 'without these, traversal has nothing to land on',
+      for (final level in ['Easy', 'Medium', 'Hard']) {
+        expectOneNode(
+          tester,
+          find.bySemanticsLabel(RegExp('^$level\\. ')),
+          level,
+        );
+      }
+    });
+
+    testWidgets('down steps one card at a time: one stop per card', (
+      tester,
+    ) async {
+      await pumpSheet(
+        tester,
+        (context) => showDifficultyPicker(context, GameType.wordMatch),
       );
+      final easy = find.bySemanticsLabel(RegExp(r'^Easy\. '));
+      final medium = find.bySemanticsLabel(RegExp(r'^Medium\. '));
+      final hard = find.bySemanticsLabel(RegExp(r'^Hard\. '));
+
+      expect(focusedIn(tester, easy), isTrue);
+      for (final next in [medium, hard]) {
+        expect(GazeFocusDriver.move(TraversalDirection.down), isTrue);
+        await tester.pumpAndSettle();
+        expect(focusedIn(tester, next), isTrue);
+      }
+    });
+
+    testWidgets('a D-pad starts on Easy, not the timer: one press plays', (
+      tester,
+    ) async {
+      GamePickerResult? picked;
+      await pumpSheet(tester, (context) async {
+        picked = await showDifficultyPicker(context, GameType.wordMatch);
+      });
+
+      expect(
+        focusedIn(tester, find.bySemanticsLabel(RegExp(r'^Easy\. '))),
+        isTrue,
+        reason: 'the first OK should choose a level',
+      );
+      expect(GazeFocusDriver.activate(), isTrue);
+      await tester.pumpAndSettle();
+      expect(picked?.difficulty, GameDifficulty.easy);
+      expect(picked?.timedMode, isFalse);
+    });
+
+    testWidgets('the timer switch is read by its name', (tester) async {
+      await pumpSheet(
+        tester,
+        (context) => showDifficultyPicker(context, GameType.wordMatch),
+      );
+
+      final timer = find.bySemanticsLabel(RegExp('Beat the Clock'));
+      expect(timer, findsOneWidget);
+      final data = tester.getSemantics(timer).getSemanticsData();
+      expect(data.flagsCollection.isToggled, Tristate.isFalse,
+          reason: 'one node: the name, the switch and its state');
+      expect(data.hasAction(SemanticsAction.tap), isTrue);
     });
 
     testWidgets('traversal can reach and press a difficulty', (tester) async {
@@ -98,15 +175,31 @@ void main() {
   });
 
   group('category picker', () {
-    testWidgets('its option cards are focusable controls', (tester) async {
+    testWidgets('each option card is one node, read and pressed as one', (
+      tester,
+    ) async {
       await pumpSheet(tester, (context) => showCategoryPicker(context));
 
-      // "All Categories" plus one per vocabulary category.
+      final all = find.bySemanticsLabel('All Categories');
+      expectOneNode(tester, all, 'All Categories');
       expect(
-        find.byType(FocusableActionDetector),
-        findsAtLeastNWidgets(2),
-        reason: 'the step straight after difficulty must be reachable too',
+        tester.getSemantics(all).getSemanticsData().flagsCollection.isSelected,
+        Tristate.isTrue,
       );
+      expectOneNode(tester, find.bySemanticsLabel('Animals'), 'Animals');
+    });
+
+    testWidgets('a D-pad starts on Start: one press plays every category', (
+      tester,
+    ) async {
+      List<FlashcardCategory>? picked;
+      await pumpSheet(tester, (context) async {
+        picked = await showCategoryPicker(context);
+      });
+
+      expect(GazeFocusDriver.activate(), isTrue);
+      await tester.pumpAndSettle();
+      expect(picked, isEmpty, reason: 'empty means all categories');
     });
 
     testWidgets('a focused option card responds to an activation', (

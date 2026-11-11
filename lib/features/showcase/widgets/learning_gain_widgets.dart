@@ -72,7 +72,18 @@ class LearningGainBarChart extends StatelessWidget {
           ),
           const SizedBox(height: 20),
 
-          SizedBox(
+          // Each category before and after: a reader was told the scale.
+          Semantics(
+            label: [
+              for (final e in gains.entries)
+                _t(context).chartPrePost(
+                  QuestionPrompt.categoryName(e.key, _t(context)),
+                  (e.value.pre * 100).round(),
+                  (e.value.post * 100).round(),
+                ),
+            ].join(', '),
+            excludeSemantics: true,
+            child: SizedBox(
             height: categories.length * 56.0 + 20,
             child: BarChart(
               BarChartData(
@@ -116,7 +127,7 @@ class LearningGainBarChart extends StatelessWidget {
                           child: Text(
                             display,
                             style: AppTypography.labelSmall.copyWith(
-                              fontSize: 9,
+                              fontSize: 10,
                               color: hc.textSecondary,
                             ),
                           ),
@@ -134,7 +145,7 @@ class LearningGainBarChart extends StatelessWidget {
                         return Text(
                           '${value.toInt()}%',
                           style: AppTypography.labelSmall.copyWith(
-                            fontSize: 9,
+                            fontSize: 10,
                             color: hc.textHint,
                           ),
                         );
@@ -182,7 +193,7 @@ class LearningGainBarChart extends StatelessWidget {
                 }),
               ),
             ),
-          ),
+          )),
         ],
       ),
     );
@@ -572,7 +583,7 @@ class AssessmentTrendChart extends StatelessWidget {
                       getTitlesWidget: (value, meta) => Text(
                         '${value.toInt()}%',
                         style: AppTypography.labelSmall.copyWith(
-                          fontSize: 9,
+                          fontSize: 10,
                           color: hc.textHint,
                         ),
                       ),

@@ -36,6 +36,8 @@ import '../models/collab_models.dart';
 import '../models/collab_presentation.dart';
 import '../services/collab_session_store.dart';
 import '../../../core/utils/seeded_random.dart';
+import '../../../core/widgets/app_bar_title.dart';
+import '../../../core/widgets/text_limits.dart';
 
 const _uuid = Uuid();
 
@@ -493,6 +495,7 @@ class _PeerCollaborationScreenState
     await GazeKeyboard.show(
       context,
       controller: _player2Controller,
+      maxLength: TextLimits.playerName,
       hint: l10n.collabPlayer2NameHint,
     );
     // The keyboard writes through the controller, which runs no onChanged.
@@ -581,7 +584,12 @@ class _PeerCollaborationScreenState
           },
           child: Scaffold(
             appBar: AppBar(
-              title: const Text('🤝 Peer Collab'),
+              // In the learner's language, as its Home tile is (it was
+              // English only), and said without the handshake.
+              title: AppBarTitle(
+                '🤝 ${AppLocalizations.of(context)!.homePeerCollab}',
+                semanticsLabel: AppLocalizations.of(context)!.homePeerCollab,
+              ),
               centerTitle: true,
               elevation: 0,
               backgroundColor: Colors.transparent,
@@ -662,7 +670,7 @@ class _PeerCollaborationScreenState
             ),
             child: Column(
               children: [
-                const Text('🤝', style: TextStyle(fontSize: 48)),
+                const ExcludeSemantics(child: Text('🤝', style: TextStyle(fontSize: 48))),
                 const SizedBox(height: 10),
                 Text(
                   l10n.collabLearnTogether,
@@ -707,11 +715,15 @@ class _PeerCollaborationScreenState
 
           const SizedBox(height: 20),
 
-          Text(
-            l10n.collabPlayer2NameLabel,
-            style: AppTypography.titleSmall.copyWith(
-              fontWeight: FontWeight.w600,
-              color: hc.textPrimary,
+          // The field below carries the name ("Player 2's name"); its
+          // visible label said it first, as a stop of its own.
+          ExcludeSemantics(
+            child: Text(
+              l10n.collabPlayer2NameLabel,
+              style: AppTypography.titleSmall.copyWith(
+                fontWeight: FontWeight.w600,
+                color: hc.textPrimary,
+              ),
             ),
           ),
           const SizedBox(height: 8),
@@ -720,6 +732,8 @@ class _PeerCollaborationScreenState
             label: l10n.collabPlayer2NameSemantics,
             child: TextField(
               controller: _player2Controller,
+              maxLength: TextLimits.playerName,
+              buildCounter: TextLimits.counter,
               textInputAction: TextInputAction.done,
               decoration: InputDecoration(
                 hintText: l10n.collabPlayer2NameHint,
@@ -1216,9 +1230,11 @@ class _StatusBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Text(
-            session.activityType.emoji,
-            style: const TextStyle(fontSize: 28),
+          ExcludeSemantics(
+            child: Text(
+              session.activityType.emoji,
+              style: const TextStyle(fontSize: 28),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1244,7 +1260,8 @@ class _StatusBar extends StatelessWidget {
               ],
             ),
           ),
-          Column(
+          MergeSemantics(
+            child: Column(
             children: [
               Text(
                 '${session.teamScore}',
@@ -1260,6 +1277,7 @@ class _StatusBar extends StatelessWidget {
                 ),
               ),
             ],
+          ),
           ),
         ],
       ),
@@ -1364,7 +1382,15 @@ class _RelayBoard extends StatelessWidget {
           const SizedBox(height: 12),
           // Wrap rather than Row: the boxes are a fixed 36px, so an 8-letter
           // word overflowed a 360-wide phone.
-          Wrap(
+          // One stop for the word so far: "S, I, blanko, blanko", not a stop per
+          // box.
+          Semantics(
+            label: [
+              for (var i = 0; i < round.word.length; i++)
+                i < revealed.length ? revealed[i] : l10n.collabBlank,
+            ].join(', '),
+            excludeSemantics: true,
+            child: Wrap(
             alignment: WrapAlignment.center,
             runSpacing: 6,
             children: List.generate(round.word.length, (i) {
@@ -1394,6 +1420,7 @@ class _RelayBoard extends StatelessWidget {
                 ),
               );
             }),
+          ),
           ),
           if (showFsl) ...[
             const SizedBox(height: 16),
@@ -1723,11 +1750,12 @@ class _AnswerBar extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: Semantics(
-                      textField: true,
-                      label: hint,
-                      child: TextField(
+                    // The box says its own hint: a label around it made two stops
+                    // of the same words.
+                    child: TextField(
                         controller: controller,
+                        maxLength: TextLimits.sentence,
+                        buildCounter: TextLimits.counter,
                         textInputAction: TextInputAction.send,
                         onSubmitted: onChoose,
                         decoration: InputDecoration(
@@ -1748,19 +1776,18 @@ class _AnswerBar extends StatelessWidget {
                           ),
                         ),
                       ),
-                    ),
                   ),
                   const SizedBox(width: 8),
-                  Semantics(
-                    button: true,
-                    label: submitLabel,
-                    child: IconButton.filled(
-                      onPressed: () => onChoose(controller.text),
-                      icon: const Icon(Icons.check_rounded),
-                      style: IconButton.styleFrom(
-                        backgroundColor: HCColor.of(context).fillFor(accent),
-                        foregroundColor: Colors.white,
-                      ),
+                  // Named by its tooltip, on its own node with its press and
+                  // focus (a Semantics around it was a second, dead
+                  // "button").
+                  IconButton.filled(
+                    tooltip: submitLabel,
+                    onPressed: () => onChoose(controller.text),
+                    icon: const Icon(Icons.check_rounded),
+                    style: IconButton.styleFrom(
+                      backgroundColor: HCColor.of(context).fillFor(accent),
+                      foregroundColor: Colors.white,
                     ),
                   ),
                 ],
@@ -1825,26 +1852,29 @@ class _ChoiceButton extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(16),
-          child: Container(
-            constraints: BoxConstraints(minWidth: big ? 84 : 64),
-            padding: EdgeInsets.symmetric(
-              horizontal: big ? 20 : 14,
-              vertical: big ? 16 : 10,
-            ),
-            decoration: BoxDecoration(
-              color: accent.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: accent.withValues(alpha: 0.35)),
-            ),
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              style:
-                  (big ? AppTypography.titleMedium : AppTypography.titleSmall)
-                      .copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: hc.textPrimary,
-                      ),
+          child: ExcludeSemantics(
+            // The label says it; what is drawn here was read again under it.
+            child: Container(
+              constraints: BoxConstraints(minWidth: big ? 84 : 64),
+              padding: EdgeInsets.symmetric(
+                horizontal: big ? 20 : 14,
+                vertical: big ? 16 : 10,
+              ),
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: accent.withValues(alpha: 0.35)),
+              ),
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                style:
+                    (big ? AppTypography.titleMedium : AppTypography.titleSmall)
+                        .copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: hc.textPrimary,
+                        ),
+              ),
             ),
           ),
         ),
@@ -1895,63 +1925,71 @@ class _ActivityCard extends StatelessWidget {
       focused: focused,
       child: Semantics(
         button: true,
-        label: activity.labelOf(l10n),
+        label: '${activity.labelOf(l10n)}. ${activity.descriptionOf(l10n)}',
         child: InkWell(
           onTap: onStart,
           borderRadius: BorderRadius.circular(16),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: activity.color.withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: activity.color.withValues(alpha: 0.15)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: activity.color.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Center(
-                    child: Text(
-                      activity.emoji,
-                      style: const TextStyle(fontSize: 26),
+          child: ExcludeSemantics(
+            // The label says the name and what it is; the emoji and words drawn
+            // here were read again under it.
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: activity.color.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: activity.color.withValues(alpha: 0.15)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: activity.color.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Center(
+                      child: ExcludeSemantics(
+                        child: Text(
+                          activity.emoji,
+                          style: const TextStyle(fontSize: 26),
+                        ),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        activity.labelOf(l10n),
-                        style: AppTypography.titleSmall.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: hc.textPrimary,
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          activity.labelOf(l10n),
+                          style: AppTypography.titleSmall.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: hc.textPrimary,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        activity.descriptionOf(l10n),
-                        style: AppTypography.bodySmall.copyWith(
-                          color: hc.textSecondary,
+                        const SizedBox(height: 2),
+                        // The row grows: two lines cut "Build a story
+                        // together, one sentence at a time" on a phone at
+                        // the largest Font Size (30 Oct), and five the
+                        // Filipino (3 Nov). Every line it needs.
+                        Text(
+                          activity.descriptionOf(l10n),
+                          style: AppTypography.bodySmall.copyWith(
+                            color: hc.textSecondary,
+                          ),
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                Icon(
-                  Icons.play_circle_filled_rounded,
-                  color: activity.color,
-                  size: 32,
-                ),
-              ],
+                  Icon(
+                    Icons.play_circle_filled_rounded,
+                    color: activity.color,
+                    size: 32,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -1975,15 +2013,13 @@ class _ScoreColumn extends StatelessWidget {
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
 
-    return Column(
+    return MergeSemantics(child: Column(
       children: [
-        Text(emoji, style: const TextStyle(fontSize: 32)),
+        ExcludeSemantics(child: Text(emoji, style: const TextStyle(fontSize: 32))),
         const SizedBox(height: 6),
         Text(
           name,
           textAlign: TextAlign.center,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
           style: AppTypography.labelMedium.copyWith(
             color: hc.textPrimary,
             fontWeight: FontWeight.w600,
@@ -1998,6 +2034,6 @@ class _ScoreColumn extends StatelessWidget {
           ),
         ),
       ],
-    );
+    ));
   }
 }

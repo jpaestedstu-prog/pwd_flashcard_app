@@ -29,6 +29,136 @@ class AppTheme {
     ),
   );
 
+  // ─── Shared by every theme ───────────────────────────
+  //
+  // A theme chooses colours and a typeface; the shapes and sizes of its
+  // controls, the ripple and the page transitions are the same everywhere, so
+  // they are written once. What differs between a phone, a tablet and a
+  // computer's browser is layered on top in `form_factor.dart`.
+
+  static const EdgeInsets _buttonPadding =
+      EdgeInsets.symmetric(horizontal: 32, vertical: 18);
+  static const EdgeInsets _textButtonPadding =
+      EdgeInsets.symmetric(horizontal: 24, vertical: 14);
+  static const Size _buttonMinSize = Size(56, 56);
+
+  static RoundedRectangleBorder _rounded(double radius) =>
+      RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius));
+
+  static ElevatedButtonThemeData _elevatedTheme({
+    required Color background,
+    required Color foreground,
+    required TextStyle? text,
+    double elevation = 4,
+    Color? shadow,
+  }) => ElevatedButtonThemeData(
+    style: ElevatedButton.styleFrom(
+      elevation: elevation,
+      shadowColor: shadow,
+      backgroundColor: background,
+      foregroundColor: foreground,
+      textStyle: text,
+      padding: _buttonPadding,
+      minimumSize: _buttonMinSize,
+      shape: _rounded(20),
+    ),
+  );
+
+  static FilledButtonThemeData _filledTheme({
+    required Color background,
+    required Color foreground,
+    required TextStyle? text,
+  }) => FilledButtonThemeData(
+    style: FilledButton.styleFrom(
+      backgroundColor: background,
+      foregroundColor: foreground,
+      textStyle: text,
+      padding: _buttonPadding,
+      minimumSize: _buttonMinSize,
+      shape: _rounded(20),
+    ),
+  );
+
+  static OutlinedButtonThemeData _outlinedTheme(
+    Color color, {
+    required TextStyle? text,
+  }) => OutlinedButtonThemeData(
+    style: OutlinedButton.styleFrom(
+      foregroundColor: color,
+      textStyle: text,
+      padding: _buttonPadding,
+      minimumSize: _buttonMinSize,
+      shape: _rounded(20),
+      side: BorderSide(color: color, width: 2),
+    ),
+  );
+
+  static TextButtonThemeData _textButtonTheme(
+    Color color, {
+    required TextStyle? text,
+  }) => TextButtonThemeData(
+    style: TextButton.styleFrom(
+      foregroundColor: color,
+      textStyle: text,
+      padding: _textButtonPadding,
+      minimumSize: _buttonMinSize,
+      shape: _rounded(16),
+    ),
+  );
+
+  /// A filled text field. [resting] is the outline when a field is neither
+  /// focused nor enabled-and-idle (none by default); [enabled], when set, is
+  /// its outline at rest; [error] shows it has a problem.
+  static InputDecorationTheme _fieldTheme({
+    required Color fill,
+    required Color focused,
+    required TextStyle? hint,
+    BorderSide resting = BorderSide.none,
+    BorderSide? enabled,
+    Color? error,
+  }) {
+    OutlineInputBorder outline(BorderSide side) => OutlineInputBorder(
+      borderRadius: BorderRadius.circular(16),
+      borderSide: side,
+    );
+    return InputDecorationTheme(
+      filled: true,
+      fillColor: fill,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      border: outline(resting),
+      enabledBorder: outline(enabled ?? resting),
+      focusedBorder: outline(BorderSide(color: focused, width: 2)),
+      errorBorder: error == null
+          ? null
+          : outline(BorderSide(color: error, width: 2)),
+      hintStyle: hint,
+    );
+  }
+
+  /// One page transition everywhere: without it a theme silently fell back
+  /// to the platform's own.
+  static const PageTransitionsTheme _pageTransitions = PageTransitionsTheme(
+    builders: {
+      TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+      TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+    },
+  );
+
+  /// Snack bars float, rounded, in every theme.
+  static SnackBarThemeData _snackBarTheme({
+    Color? background,
+    TextStyle? text,
+    BorderSide side = BorderSide.none,
+  }) => SnackBarThemeData(
+    behavior: SnackBarBehavior.floating,
+    backgroundColor: background,
+    contentTextStyle: text,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(16),
+      side: side,
+    ),
+  );
+
   // ─── Standard (Pastel) Theme ─────────────────────────
   static final ThemeData _lightTheme = _buildLightTheme();
   static ThemeData get light => _lightTheme;
@@ -89,38 +219,21 @@ class AppTheme {
     ),
 
     // Buttons
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        elevation: 4,
-        shadowColor: AppColors.primary.withValues(alpha: 0.3),
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.textOnPrimary,
-        textStyle: AppTypography.buttonText,
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
-        minimumSize: const Size(56, 56),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      ),
+    elevatedButtonTheme: _elevatedTheme(
+      background: AppColors.primary,
+      foreground: AppColors.textOnPrimary,
+      shadow: AppColors.primary.withValues(alpha: 0.3),
+      text: AppTypography.buttonText,
     ),
 
-    outlinedButtonTheme: OutlinedButtonThemeData(
-      style: OutlinedButton.styleFrom(
-        foregroundColor: AppColors.primary,
-        textStyle: AppTypography.buttonText,
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
-        minimumSize: const Size(56, 56),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        side: const BorderSide(color: AppColors.primary, width: 2),
-      ),
+    outlinedButtonTheme: _outlinedTheme(
+      AppColors.primary,
+      text: AppTypography.buttonText,
     ),
 
-    textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(
-        foregroundColor: AppColors.primary,
-        textStyle: AppTypography.buttonText,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-        minimumSize: const Size(56, 56),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      ),
+    textButtonTheme: _textButtonTheme(
+      AppColors.primary,
+      text: AppTypography.buttonText,
     ),
 
     // FAB
@@ -132,15 +245,10 @@ class AppTheme {
     ),
 
     // Filled Button (M3)
-    filledButtonTheme: FilledButtonThemeData(
-      style: FilledButton.styleFrom(
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.textOnPrimary,
-        textStyle: AppTypography.buttonText,
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
-        minimumSize: const Size(56, 56),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      ),
+    filledButtonTheme: _filledTheme(
+      background: AppColors.primary,
+      foreground: AppColors.textOnPrimary,
+      text: AppTypography.buttonText,
     ),
 
     // Icon Button — larger icon + guaranteed tap target (accessibility).
@@ -173,29 +281,11 @@ class AppTheme {
     ),
 
     // Input
-    inputDecorationTheme: InputDecorationTheme(
-      filled: true,
-      fillColor: AppColors.surfaceVariant,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide.none,
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide.none,
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: AppColors.primary, width: 2),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: AppColors.error, width: 2),
-      ),
-      hintStyle: AppTypography.bodyMedium.copyWith(
-        color: AppColors.textSecondary,
-      ),
+    inputDecorationTheme: _fieldTheme(
+      fill: AppColors.surfaceVariant,
+      focused: AppColors.primary,
+      hint: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
+      error: AppColors.error,
     ),
 
     // Dialogs
@@ -205,10 +295,7 @@ class AppTheme {
     ),
 
     // Snackbar
-    snackBarTheme: SnackBarThemeData(
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-    ),
+    snackBarTheme: _snackBarTheme(),
 
     // Chip
     chipTheme: ChipThemeData(
@@ -224,12 +311,7 @@ class AppTheme {
     ),
 
     // Transitions
-    pageTransitionsTheme: const PageTransitionsTheme(
-      builders: {
-        TargetPlatform.android: CupertinoPageTransitionsBuilder(),
-        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-      },
-    ),
+    pageTransitionsTheme: _pageTransitions,
 
     // Theme extensions — palette-aware semantic colors so
     // SemanticColors.of(context) always resolves on the active theme,
@@ -274,6 +356,22 @@ class AppTheme {
   static ThemeData _buildHighContrastTheme(Color accent) => accessibleTheme(light.copyWith(
     brightness: Brightness.dark,
     scaffoldBackgroundColor: AppColors.hcBackground,
+    // ThemeData works these out from the brightness when it builds a theme;
+    // a copy keeps the light theme's. A dropdown's open menu is painted in
+    // canvasColor and its chosen row in focusColor: the Language menu was
+    // white words on white (found on the tablet, 30 Oct). The controller
+    // screens' notes are in hintColor (black on black), the template
+    // preview sheet in cardColor (white on white).
+    canvasColor: AppColors.hcSurface,
+    cardColor: AppColors.hcSurface,
+    dividerColor: AppColors.hcBorder,
+    hintColor: AppColors.hcTextSecondary,
+    disabledColor: Colors.white38,
+    unselectedWidgetColor: Colors.white70,
+    focusColor: Colors.white.withValues(alpha: 0.12),
+    hoverColor: Colors.white.withValues(alpha: 0.04),
+    highlightColor: const Color(0x40CCCCCC),
+    splashColor: const Color(0x40CCCCCC),
     extensions: const [SemanticColors.highContrast, ThemeMarker.highContrast],
     // The base light theme's textTheme carries BLACK default colors (merged
     // in by ThemeData for light brightness). Without this override, any Text
@@ -341,36 +439,13 @@ class AppTheme {
       height: 80,
       elevation: 0,
     ),
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        elevation: 4,
-        backgroundColor: accent,
-        foregroundColor: Colors.black,
-        textStyle: AppTypography.buttonText,
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
-        minimumSize: const Size(56, 56),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      ),
+    elevatedButtonTheme: _elevatedTheme(
+      background: accent,
+      foreground: Colors.black,
+      text: AppTypography.buttonText,
     ),
-    outlinedButtonTheme: OutlinedButtonThemeData(
-      style: OutlinedButton.styleFrom(
-        foregroundColor: accent,
-        textStyle: AppTypography.buttonText,
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
-        minimumSize: const Size(56, 56),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        side: BorderSide(color: accent, width: 2),
-      ),
-    ),
-    textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(
-        foregroundColor: accent,
-        textStyle: AppTypography.buttonText,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-        minimumSize: const Size(56, 56),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      ),
-    ),
+    outlinedButtonTheme: _outlinedTheme(accent, text: AppTypography.buttonText),
+    textButtonTheme: _textButtonTheme(accent, text: AppTypography.buttonText),
     floatingActionButtonTheme: FloatingActionButtonThemeData(
       backgroundColor: accent == AppColors.hcAccent
           ? AppColors.hcPrimary
@@ -379,25 +454,13 @@ class AppTheme {
       elevation: 6,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     ),
-    inputDecorationTheme: InputDecorationTheme(
-      filled: true,
-      fillColor: const Color(0xFF2C2C2C),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: accent, width: 2),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: AppColors.hcBorder, width: 1.5),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: accent, width: 2),
-      ),
-      hintStyle: AppTypography.bodyMedium.copyWith(
-        color: AppColors.hcTextSecondary,
-      ),
+    inputDecorationTheme: _fieldTheme(
+      fill: const Color(0xFF2C2C2C),
+      focused: accent,
+      hint: AppTypography.bodyMedium.copyWith(color: AppColors.hcTextSecondary),
+      resting: BorderSide(color: accent, width: 2),
+      enabled: const BorderSide(color: AppColors.hcBorder, width: 1.5),
+      error: AppColors.hcError,
     ),
     dialogTheme: DialogThemeData(
       backgroundColor: AppColors.hcSurface,
@@ -424,16 +487,12 @@ class AppTheme {
       inactiveTrackColor: AppColors.hcBorder,
       thumbColor: accent,
     ),
-    snackBarTheme: SnackBarThemeData(
-      behavior: SnackBarBehavior.floating,
-      backgroundColor: AppColors.hcSurface,
-      contentTextStyle: AppTypography.bodyMedium.copyWith(
+    snackBarTheme: _snackBarTheme(
+      background: AppColors.hcSurface,
+      text: AppTypography.bodyMedium.copyWith(
         color: AppColors.hcText,
       ),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: accent),
-      ),
+      side: BorderSide(color: accent),
     ),
     chipTheme: ChipThemeData(
       backgroundColor: AppColors.hcSurface,
@@ -506,46 +565,25 @@ class AppTheme {
       clipBehavior: Clip.antiAlias,
       color: _dkCard,
     ),
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        elevation: 2,
-        shadowColor: _dkPrimary.withValues(alpha: 0.3),
-        backgroundColor: _dkPrimary,
-        foregroundColor: const Color(0xFF1A1A1A),
-        textStyle: AppTypography.buttonText,
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
-        minimumSize: const Size(56, 56),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      ),
+    elevatedButtonTheme: _elevatedTheme(
+      background: _dkPrimary,
+      foreground: const Color(0xFF1A1A1A),
+      elevation: 2,
+      shadow: _dkPrimary.withValues(alpha: 0.3),
+      text: AppTypography.buttonText,
     ),
-    outlinedButtonTheme: OutlinedButtonThemeData(
-      style: OutlinedButton.styleFrom(
-        foregroundColor: _dkPrimary,
-        textStyle: AppTypography.buttonText,
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
-        minimumSize: const Size(56, 56),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        side: const BorderSide(color: _dkPrimary, width: 2),
-      ),
+    outlinedButtonTheme: _outlinedTheme(
+      _dkPrimary,
+      text: AppTypography.buttonText,
     ),
-    textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(
-        foregroundColor: _dkPrimary,
-        textStyle: AppTypography.buttonText,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-        minimumSize: const Size(56, 56),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      ),
+    textButtonTheme: _textButtonTheme(
+      _dkPrimary,
+      text: AppTypography.buttonText,
     ),
-    filledButtonTheme: FilledButtonThemeData(
-      style: FilledButton.styleFrom(
-        backgroundColor: _dkPrimary,
-        foregroundColor: const Color(0xFF1A1A1A),
-        textStyle: AppTypography.buttonText,
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
-        minimumSize: const Size(56, 56),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      ),
+    filledButtonTheme: _filledTheme(
+      background: _dkPrimary,
+      foreground: const Color(0xFF1A1A1A),
+      text: AppTypography.buttonText,
     ),
     iconButtonTheme: _iconButtonTheme,
     floatingActionButtonTheme: FloatingActionButtonThemeData(
@@ -577,38 +615,21 @@ class AppTheme {
       height: 80,
       elevation: 0,
     ),
-    inputDecorationTheme: InputDecorationTheme(
-      filled: true,
-      fillColor: _dkCard,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide.none,
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: _dkBorder),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: _dkPrimary, width: 2),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFFEF9A9A), width: 2),
-      ),
-      hintStyle: AppTypography.bodyMedium.copyWith(color: _dkTextSecondary),
+    inputDecorationTheme: _fieldTheme(
+      fill: _dkCard,
+      focused: _dkPrimary,
+      hint: AppTypography.bodyMedium.copyWith(color: _dkTextSecondary),
+      enabled: const BorderSide(color: _dkBorder),
+      error: const Color(0xFFEF9A9A),
     ),
     dialogTheme: DialogThemeData(
       backgroundColor: _dkCard,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       elevation: 8,
     ),
-    snackBarTheme: SnackBarThemeData(
-      behavior: SnackBarBehavior.floating,
-      backgroundColor: _dkCard,
-      contentTextStyle: AppTypography.bodyMedium.copyWith(color: _dkText),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    snackBarTheme: _snackBarTheme(
+      background: _dkCard,
+      text: AppTypography.bodyMedium.copyWith(color: _dkText),
     ),
     switchTheme: SwitchThemeData(
       thumbColor: WidgetStateProperty.resolveWith(
@@ -645,12 +666,7 @@ class AppTheme {
       color: _dkPrimary,
       linearTrackColor: _dkBorder,
     ),
-    pageTransitionsTheme: const PageTransitionsTheme(
-      builders: {
-        TargetPlatform.android: CupertinoPageTransitionsBuilder(),
-        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-      },
-    ),
+    pageTransitionsTheme: _pageTransitions,
     extensions: const [SemanticColors.defaults, ThemeMarker.dark],
   ));
 
@@ -707,51 +723,31 @@ class AppTheme {
           clipBehavior: Clip.antiAlias,
           color: AppColors.dyslexiaCard,
         ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            elevation: 2,
-            backgroundColor: AppColors.dyslexiaPrimary,
-            foregroundColor: Colors.white,
-            textStyle: AppTypography.dyslexiaTextTheme.labelLarge,
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
-            minimumSize: const Size(56, 56),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          ),
+        elevatedButtonTheme: _elevatedTheme(
+          background: AppColors.dyslexiaPrimary,
+          foreground: Colors.white,
+          elevation: 2,
+          text: AppTypography.dyslexiaTextTheme.labelLarge,
         ),
-        outlinedButtonTheme: OutlinedButtonThemeData(
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.dyslexiaPrimary,
-            textStyle: AppTypography.dyslexiaTextTheme.labelLarge,
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
-            minimumSize: const Size(56, 56),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            side: const BorderSide(color: AppColors.dyslexiaPrimary, width: 2),
-          ),
+        outlinedButtonTheme: _outlinedTheme(
+          AppColors.dyslexiaPrimary,
+          text: AppTypography.dyslexiaTextTheme.labelLarge,
         ),
-        textButtonTheme: TextButtonThemeData(
-          style: TextButton.styleFrom(
-            foregroundColor: AppColors.dyslexiaPrimary,
-            textStyle: AppTypography.dyslexiaTextTheme.labelLarge,
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-            minimumSize: const Size(56, 56),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          ),
+        textButtonTheme: _textButtonTheme(
+          AppColors.dyslexiaPrimary,
+          text: AppTypography.dyslexiaTextTheme.labelLarge,
         ),
-        filledButtonTheme: FilledButtonThemeData(
-          style: FilledButton.styleFrom(
-            backgroundColor: AppColors.dyslexiaPrimary,
-            foregroundColor: Colors.white,
-            textStyle: AppTypography.dyslexiaTextTheme.labelLarge,
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
-            minimumSize: const Size(56, 56),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          ),
+        filledButtonTheme: _filledTheme(
+          background: AppColors.dyslexiaPrimary,
+          foreground: Colors.white,
+          text: AppTypography.dyslexiaTextTheme.labelLarge,
         ),
         iconButtonTheme: _iconButtonTheme,
-        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        floatingActionButtonTheme: FloatingActionButtonThemeData(
           backgroundColor: AppColors.dyslexiaAccent,
           foregroundColor: Colors.white,
           elevation: 4,
+          shape: _rounded(20),
         ),
         navigationBarTheme: NavigationBarThemeData(
           backgroundColor: AppColors.dyslexiaSurface,
@@ -775,25 +771,12 @@ class AppTheme {
           height: 80,
           elevation: 0,
         ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: AppColors.dyslexiaSurfaceVariant,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: AppColors.dyslexiaBorder),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: AppColors.dyslexiaPrimary, width: 2),
-          ),
-          hintStyle: AppTypography.dyslexiaTextTheme.bodyMedium?.copyWith(
-            color: AppColors.dyslexiaTextSecondary,
-          ),
+        inputDecorationTheme: _fieldTheme(
+          fill: AppColors.dyslexiaSurfaceVariant,
+          focused: AppColors.dyslexiaPrimary,
+          hint: AppTypography.dyslexiaTextTheme.bodyMedium?.copyWith(color: AppColors.dyslexiaTextSecondary),
+          enabled: const BorderSide(color: AppColors.dyslexiaBorder),
+          error: const Color(0xFFB3463E),
         ),
         dialogTheme: DialogThemeData(
           backgroundColor: AppColors.dyslexiaCard,
@@ -813,6 +796,8 @@ class AppTheme {
           thickness: 1,
           space: 24,
         ),
+        snackBarTheme: _snackBarTheme(),
+        pageTransitionsTheme: _pageTransitions,
         extensions: const [SemanticColors.dyslexia, ThemeMarker.dyslexia],
       ));
 
@@ -1181,39 +1166,19 @@ class AppTheme {
         color: card,
         shadowColor: primary.withValues(alpha: 0.15),
       ),
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          elevation: 4,
-          shadowColor: primary.withValues(alpha: 0.3),
-          backgroundColor: primary,
-          foregroundColor: Colors.white,
-          textStyle: AppTypography.buttonText,
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
-          minimumSize: const Size(56, 56),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20)),
-        ),
+      elevatedButtonTheme: _elevatedTheme(
+        background: primary,
+        foreground: Colors.white,
+        shadow: primary.withValues(alpha: 0.3),
+        text: AppTypography.buttonText,
       ),
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: primary,
-          textStyle: AppTypography.buttonText,
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
-          minimumSize: const Size(56, 56),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20)),
-          side: BorderSide(color: primary, width: 2),
-        ),
+      outlinedButtonTheme: _outlinedTheme(
+        primary,
+        text: AppTypography.buttonText,
       ),
-      textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor: primary,
-          textStyle: AppTypography.buttonText,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          minimumSize: const Size(56, 56),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16)),
-        ),
+      textButtonTheme: _textButtonTheme(
+        primary,
+        text: AppTypography.buttonText,
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: accent,
@@ -1385,45 +1350,24 @@ class AppTheme {
         clipBehavior: Clip.antiAlias,
         color: card,
       ),
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          elevation: 2,
-          backgroundColor: primary,
-          foregroundColor: onPrimary,
-          textStyle: AppTypography.buttonText,
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
-          minimumSize: const Size(56, 56),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        ),
+      elevatedButtonTheme: _elevatedTheme(
+        background: primary,
+        foreground: onPrimary,
+        elevation: 2,
+        text: AppTypography.buttonText,
       ),
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: primary,
-          textStyle: AppTypography.buttonText,
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
-          minimumSize: const Size(56, 56),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          side: BorderSide(color: primary, width: 2),
-        ),
+      outlinedButtonTheme: _outlinedTheme(
+        primary,
+        text: AppTypography.buttonText,
       ),
-      textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor: primary,
-          textStyle: AppTypography.buttonText,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          minimumSize: const Size(56, 56),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        ),
+      textButtonTheme: _textButtonTheme(
+        primary,
+        text: AppTypography.buttonText,
       ),
-      filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          backgroundColor: primary,
-          foregroundColor: onPrimary,
-          textStyle: AppTypography.buttonText,
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
-          minimumSize: const Size(56, 56),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        ),
+      filledButtonTheme: _filledTheme(
+        background: primary,
+        foreground: onPrimary,
+        text: AppTypography.buttonText,
       ),
       iconButtonTheme: _iconButtonTheme,
       floatingActionButtonTheme: FloatingActionButtonThemeData(
@@ -1453,23 +1397,12 @@ class AppTheme {
         height: 80,
         elevation: 0,
       ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: card,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: border),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: primary, width: 2),
-        ),
-        hintStyle: AppTypography.bodyMedium.copyWith(color: textSecondaryOnDark),
+      inputDecorationTheme: _fieldTheme(
+        fill: card,
+        focused: primary,
+        hint: AppTypography.bodyMedium.copyWith(color: textSecondaryOnDark),
+        enabled: BorderSide(color: border),
+        error: const Color(0xFFEF9A9A),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: card,
@@ -1507,6 +1440,11 @@ class AppTheme {
         inactiveTrackColor: border,
         thumbColor: primary,
       ),
+      snackBarTheme: _snackBarTheme(
+        background: card,
+        text: AppTypography.bodyMedium.copyWith(color: textOnDark),
+      ),
+      pageTransitionsTheme: _pageTransitions,
       extensions: [semantic, ThemeMarker.dark],
     ));
   }

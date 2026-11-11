@@ -7,7 +7,7 @@ import '../../../data/models/models.dart';
 ///     surprise sound, or a moving hit-target are barriers (visual, motor,
 ///     cognitive, multiple). No idle animation, no artificial typing delay.
 ///   * [playful] — the lively "buddy": gentle idle motion, animated typing
-///     dots, a draggable floating avatar. Chosen where liveliness helps and
+///     dots, a little pop as it appears. Chosen where liveliness helps and
 ///     does no harm (no accessibility need, or a hearing profile that gets the
 ///     full *visual* liveliness precisely *because* it never depends on sound).
 enum CompanionStyle { calm, playful }
@@ -65,16 +65,11 @@ class CompanionPresentation {
   /// screen readers speak them without the learner hunting for the bubble.
   final bool announce;
 
-  /// Whether the floating launcher can be dragged around the screen. Off for
-  /// calm profiles — a moving hit-target is a barrier for motor and a
-  /// distraction for cognitive learners; the launcher stays docked & fixed.
-  final bool draggable;
-
   /// Calm vs. playful overall feel.
   final CompanionStyle style;
 
-  /// Base diameter (logical px) of the floating launcher. Larger for profiles
-  /// that benefit from a bigger touch target.
+  /// Base size (logical px) of the floating launcher button (see
+  /// CompanionFab). Larger for profiles that benefit from a bigger target.
   final double launcherSize;
 
   const CompanionPresentation({
@@ -85,7 +80,6 @@ class CompanionPresentation {
     required this.voiceInput,
     required this.haptics,
     required this.announce,
-    required this.draggable,
     required this.style,
     required this.launcherSize,
   });
@@ -151,7 +145,6 @@ class CompanionPresentation {
       voiceInput: voiceInput,
       haptics: haptics,
       announce: announce,
-      draggable: style == CompanionStyle.playful && !s.reducedMotion,
       style: style,
       launcherSize: launcherSize,
     );

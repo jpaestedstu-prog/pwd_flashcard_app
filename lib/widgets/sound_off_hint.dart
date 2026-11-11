@@ -36,6 +36,10 @@ class SoundOffHintHost extends ConsumerStatefulWidget {
   /// How long the note stays when nobody touches it.
   static const showFor = Duration(seconds: 20);
 
+  /// Whether the note is on screen: the Filipino-voice note waits for it,
+  /// so the two never cover each other ([FilipinoVoiceHintHost]).
+  static final ValueNotifier<bool> visible = ValueNotifier(false);
+
   @override
   ConsumerState<SoundOffHintHost> createState() => _SoundOffHintHostState();
 }
@@ -71,6 +75,7 @@ class _SoundOffHintHostState extends ConsumerState<SoundOffHintHost>
     TtsService.requests.removeListener(_onSpeech);
     _autoHide?.cancel();
     _anim.dispose();
+    SoundOffHintHost.visible.value = false;
     super.dispose();
   }
 
@@ -87,6 +92,9 @@ class _SoundOffHintHostState extends ConsumerState<SoundOffHintHost>
       if (!wanted) return _hide();
       final off = await DeviceSound.isOff();
       if (!mounted) return;
+      // Asked again: the answer took a moment, and the person may have moved
+      // to a profile that has speech off in it.
+      if (!_stillWanted) return _hide();
       if (off == false) return _hide();
       final snoozed =
           _snoozedUntil != null && DateTime.now().isBefore(_snoozedUntil!);
@@ -96,8 +104,14 @@ class _SoundOffHintHostState extends ConsumerState<SoundOffHintHost>
     }
   }
 
+  bool get _stillWanted => soundOffHintWanted(
+        ref.read(profileProvider),
+        ref.read(settingsProvider),
+      );
+
   void _show() {
     setState(() => _visible = true);
+    SoundOffHintHost.visible.value = true;
     _anim.forward();
     _autoHide?.cancel();
     _autoHide = Timer(SoundOffHintHost.showFor, () => _hide(snooze: true));
@@ -116,6 +130,7 @@ class _SoundOffHintHostState extends ConsumerState<SoundOffHintHost>
     if (!_visible || !mounted) return;
     _anim.reverse().then((_) {
       if (mounted) setState(() => _visible = false);
+      SoundOffHintHost.visible.value = false;
     });
   }
 
@@ -134,6 +149,15 @@ class _SoundOffHintHostState extends ConsumerState<SoundOffHintHost>
 
   @override
   Widget build(BuildContext context) {
+    // Found on the tablet: the note went up as one profile spoke, and stayed
+    // over the next one, a deaf learner's with speech off, saying "turn the
+    // volume up to hear the words". It belongs to whoever is here now.
+    void onChange() {
+      if (_visible && !_stillWanted) _hide();
+    }
+
+    ref.listen(profileProvider, (_, _) => onChange());
+    ref.listen(settingsProvider, (_, _) => onChange());
     return Stack(
       children: [
         widget.child,
@@ -151,10 +175,11 @@ class _SoundOffHintHostState extends ConsumerState<SoundOffHintHost>
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 560),
                     // Its own Material and semantics node: this sits above
-                    // the Navigator, where neither is supplied.
+                    // the Navigator, where neither is supplied. Not a live
+                    // region: [_show]'s announcement says it, and TalkBack
+                    // read a live note again as it slid in — three times.
                     child: Semantics(
                       container: true,
-                      liveRegion: true,
                       child: Material(
                         type: MaterialType.transparency,
                         child: _note(context),

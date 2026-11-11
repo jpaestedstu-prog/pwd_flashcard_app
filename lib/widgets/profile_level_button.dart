@@ -55,6 +55,7 @@ class ProfileLevelButton extends StatelessWidget {
     final badge = (radius * 0.85).clamp(18.0, 26.0);
 
     return Semantics(
+      container: true,
       button: true,
       label: t.homeLevelSemantics(
         level.level,
@@ -68,58 +69,59 @@ class ProfileLevelButton extends StatelessWidget {
               )
             : t.homeMaxLevel,
       ),
-      excludeSemantics: true,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
           customBorder: const CircleBorder(),
-          child: SizedBox(
-            width: diameter,
-            height: diameter,
-            child: Stack(
-              alignment: Alignment.center,
-              clipBehavior: Clip.none,
-              children: [
-                SizedBox.expand(
-                  child: CircularProgressIndicator(
-                    value: fraction.clamp(0.0, 1.0),
-                    strokeWidth: 3.5,
-                    backgroundColor: hc.border,
-                    valueColor: AlwaysStoppedAnimation<Color>(hc.primary),
-                  ),
-                ),
-                ProfileAvatar(profile: profile, radius: radius),
-                Positioned(
-                  right: 0,
-                  bottom: 0,
-                  child: Container(
-                    width: badge,
-                    height: badge,
-                    decoration: BoxDecoration(
-                      gradient: hc.heroGradient,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: hc.surface, width: 2),
+          child: ExcludeSemantics(
+            child: SizedBox(
+              width: diameter,
+              height: diameter,
+              child: Stack(
+                alignment: Alignment.center,
+                clipBehavior: Clip.none,
+                children: [
+                  SizedBox.expand(
+                    child: CircularProgressIndicator(
+                      value: fraction.clamp(0.0, 1.0),
+                      strokeWidth: 3.5,
+                      backgroundColor: hc.border,
+                      valueColor: AlwaysStoppedAnimation<Color>(hc.primary),
                     ),
-                    alignment: Alignment.center,
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        '${level.level}',
-                        // Fixed scale: the badge is a fixed-size chip on a
-                        // fixed-size avatar, so a 2.0x font setting would
-                        // otherwise push the number straight out of it.
-                        textScaler: const TextScaler.linear(1.0),
-                        style: AppTypography.labelSmall.copyWith(
-                          color: hc.textOnPrimary,
-                          fontWeight: FontWeight.w900,
-                          height: 1.0,
+                  ),
+                  ProfileAvatar(profile: profile, radius: radius),
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      width: badge,
+                      height: badge,
+                      decoration: BoxDecoration(
+                        gradient: hc.heroGradient,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: hc.surface, width: 2),
+                      ),
+                      alignment: Alignment.center,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          '${level.level}',
+                          // Fixed scale: the badge is a fixed-size chip on a
+                          // fixed-size avatar, so a 2.0x font setting would
+                          // otherwise push the number straight out of it.
+                          textScaler: const TextScaler.linear(1.0),
+                          style: AppTypography.labelSmall.copyWith(
+                            color: hc.textOnPrimary,
+                            fontWeight: FontWeight.w900,
+                            height: 1.0,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

@@ -1,12 +1,15 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../../../core/widgets/whole_month_title.dart';
+import '../../classroom/widgets/cloud_sync_error_view.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/lock_media.dart';
 import '../../../core/services/guardian_address.dart';
 import '../../../core/services/lock_announcer.dart';
 import '../../../core/services/lock_presentation.dart';
+import '../../../core/theme/accessible_theme.dart' show tonalButtonStyle;
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/models/child_time_limit.dart';
@@ -19,8 +22,12 @@ import '../../../providers/managed_child_profile_provider.dart';
 import '../../../widgets/app_back_button.dart';
 import '../services/child_time_limit_service.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../core/utils/localized_date.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../navigation/dpad_keys.dart';
+import '../../../core/widgets/app_bar_title.dart';
+import '../../../core/widgets/fit_label.dart';
+import '../../../core/widgets/text_limits.dart';
 
 /// Per-child editor for [ChildTimeLimit].
 ///
@@ -130,7 +137,7 @@ class _ChildTimeLimitsScreenState extends ConsumerState<ChildTimeLimitsScreen> {
       child: Scaffold(
       appBar: AppBar(
         leading: AppBackButton(onBeforePop: _confirmLeave),
-        title: Text(
+        title: AppBarTitle(
           widget.childDisplayName == null
               ? _t(context).tlTitle
               : _t(context).tlTitleFor(widget.childDisplayName!),
@@ -152,8 +159,13 @@ class _ChildTimeLimitsScreenState extends ConsumerState<ChildTimeLimitsScreen> {
       ),
       body: remoteAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text(_t(context).tlLoadError('$e'))),
+        error: (e, _) => Center(child: Text(_t(context).tlLoadError(
+          cloudSyncErrorMessage(e, _t(context)).title,
+        ))),
         data: (remote) => ListView(
+          // Rows come and go here: no row may stay "alive" in a place another
+          // has taken (see found_by_pressing_test: Scan Mode).
+          addAutomaticKeepAlives: false,
           padding: const EdgeInsets.all(16),
           children: [
             // Tiny passive line: when this updates after a save, it's
@@ -165,7 +177,7 @@ class _ChildTimeLimitsScreenState extends ConsumerState<ChildTimeLimitsScreen> {
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Text(
-                  'Last saved ${_relTime(remote.updatedAt)}',
+                  _t(context).tlLastSaved(_relTime(context, remote.updatedAt)),
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     color: HCColor.of(context).textSecondary,
                   ),
@@ -205,16 +217,25 @@ class _ChildTimeLimitsScreenState extends ConsumerState<ChildTimeLimitsScreen> {
             ),
             if (draft.dailyLimitEnabled)
               ListTile(
-                title: DpadSliderScope(child: Slider(
-                  min: 5,
-                  max: 240,
-                  divisions: 47,
-                  value: draft.dailyLimitMinutes.clamp(5, 240).toDouble(),
-                  label: '${draft.dailyLimitMinutes} min',
-                  onChanged: (v) =>
-                      _update(draft.copyWith(dailyLimitMinutes: v.round())),
-                )),
-                subtitle: Text(_t(context).tlMinutesPerDay(draft.dailyLimitMinutes)),
+                // Named, with its value said in words: the bubble read "60
+                // min" (in English whatever the language) and named nothing.
+                title: DpadSliderScope(
+                  name: _t(context).tlDaily,
+                  child: Slider(
+                    min: 5,
+                    max: 240,
+                    divisions: 47,
+                    value: draft.dailyLimitMinutes.clamp(5, 240).toDouble(),
+                    semanticFormatterCallback: (v) =>
+                        _t(context).tlMinutesPerDay(v.round()),
+                    onChanged: (v) =>
+                        _update(draft.copyWith(dailyLimitMinutes: v.round())),
+                  ),
+                ),
+                subtitle: ExcludeSemantics(
+                  child: Text(
+                      _t(context).tlMinutesPerDay(draft.dailyLimitMinutes)),
+                ),
               ),
             const Divider(height: 32),
             _SectionHeader(text: _t(context).tlSchedule),
@@ -222,7 +243,10 @@ class _ChildTimeLimitsScreenState extends ConsumerState<ChildTimeLimitsScreen> {
               title: Text(_t(context).tlRestrict),
               subtitle: Text(
                 draft.scheduleEnabled
-                    ? 'Only ${_fmt(draft.allowedStartHour)} – ${_fmt(draft.allowedEndHour)}'
+                    ? _t(context).tlOnlyBetween(
+                        _fmt(draft.allowedStartHour),
+                        _fmt(draft.allowedEndHour),
+                      )
                     : _t(context).tlAnyTime,
               ),
               value: draft.scheduleEnabled,
@@ -274,19 +298,25 @@ class _ChildTimeLimitsScreenState extends ConsumerState<ChildTimeLimitsScreen> {
             ),
             if (draft.warningEnabled)
               ListTile(
-                title: DpadSliderScope(child: Slider(
-                  min: ChildTimeLimit.minWarningMinutes.toDouble(),
-                  max: ChildTimeLimit.maxWarningMinutes.toDouble(),
-                  divisions:
-                      ChildTimeLimit.maxWarningMinutes -
-                      ChildTimeLimit.minWarningMinutes,
-                  value: draft.effectiveWarningMinutes.toDouble(),
-                  label: '${draft.effectiveWarningMinutes} min',
-                  onChanged: (v) =>
-                      _update(draft.copyWith(warningMinutes: v.round())),
-                )),
-                subtitle: Text(
-                  _t(context).tlNotice(draft.effectiveWarningMinutes),
+                title: DpadSliderScope(
+                  name: _t(context).tlNoticeLength,
+                  child: Slider(
+                    min: ChildTimeLimit.minWarningMinutes.toDouble(),
+                    max: ChildTimeLimit.maxWarningMinutes.toDouble(),
+                    divisions:
+                        ChildTimeLimit.maxWarningMinutes -
+                        ChildTimeLimit.minWarningMinutes,
+                    value: draft.effectiveWarningMinutes.toDouble(),
+                    semanticFormatterCallback: (v) =>
+                        _t(context).tlNotice(v.round()),
+                    onChanged: (v) =>
+                        _update(draft.copyWith(warningMinutes: v.round())),
+                  ),
+                ),
+                subtitle: ExcludeSemantics(
+                  child: Text(
+                    _t(context).tlNotice(draft.effectiveWarningMinutes),
+                  ),
                 ),
               ),
             const SizedBox(height: 4),
@@ -354,6 +384,7 @@ class _ChildTimeLimitsScreenState extends ConsumerState<ChildTimeLimitsScreen> {
     final choice = await showDialog<_LeaveChoice>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text(t.tlUnsavedTitle),
         content: Text(t.tlUnsavedBody),
         actions: [
@@ -408,22 +439,32 @@ class _ChildTimeLimitsScreenState extends ConsumerState<ChildTimeLimitsScreen> {
     );
   }
 
-  /// The exact line the child will hear / read, for the preview card.
+  /// The exact line the child will hear / read, for the preview card: in
+  /// this app's language, which on a Filipino educator's device it was not.
   String _previewMessage(ChildTimeLimit draft, LockPresentation presentation) {
     final me = ref.read(profileProvider);
+    final filipino = ref.read(settingsProvider).locale == 'fil';
     final address = GuardianAddress.resolve(
       preferredName: draft.guardianPreferredName,
       stampedHonorific: _derivedHonorific(),
       role: me?.role,
       avatarIndex: me?.avatarIndex,
+      filipino: filipino,
     );
     if (presentation.simplifiedWording) {
-      return GuardianAddress.timesUpMessageSimple(address: address);
+      return filipino
+          ? GuardianAddress.timesUpMessageSimpleFilipino(address: address)
+          : GuardianAddress.timesUpMessageSimple(address: address);
     }
-    return GuardianAddress.timesUpMessage(
-      address: address,
-      setterRole: me?.role ?? UserRole.parent,
-    );
+    return filipino
+        ? GuardianAddress.timesUpMessageFilipino(
+            address: address,
+            setterRole: me?.role ?? UserRole.parent,
+          )
+        : GuardianAddress.timesUpMessage(
+            address: address,
+            setterRole: me?.role ?? UserRole.parent,
+          );
   }
 
   /// Plays the announcement here, on the educator's device, exactly as
@@ -514,11 +555,14 @@ class _ChildTimeLimitsScreenState extends ConsumerState<ChildTimeLimitsScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text(_t(context).tlSaved)));
     } catch (e) {
+      debugPrint('time limits: save failed: $e');
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(_t(context).tlSaveError('$e'))));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(_t(context).tlSaveError(
+          cloudSyncErrorMessage(e, _t(context)).title,
+        )),
+      ));
     }
   }
 
@@ -528,6 +572,7 @@ class _ChildTimeLimitsScreenState extends ConsumerState<ChildTimeLimitsScreen> {
   }) async {
     final picked = await showTimePicker(
       context: context,
+      builder: wholeTimePicker,
       initialTime: TimeOfDay(hour: initial, minute: 0),
     );
     if (picked == null) return;
@@ -539,12 +584,13 @@ class _ChildTimeLimitsScreenState extends ConsumerState<ChildTimeLimitsScreen> {
   /// Compact relative-time formatter for the "Last saved" line. Stays
   /// inline because it's the only place we need it; nothing else in
   /// the screen reaches into the time domain.
-  String _relTime(DateTime t) {
+  String _relTime(BuildContext context, DateTime t) {
     final delta = DateTime.now().difference(t);
-    if (delta.inSeconds < 60) return 'just now';
-    if (delta.inMinutes < 60) return '${delta.inMinutes} min ago';
-    if (delta.inHours < 24) return '${delta.inHours} h ago';
-    return '${delta.inDays} d ago';
+    final l = _t(context);
+    if (delta.inSeconds < 60) return l.gmJustNow;
+    if (delta.inMinutes < 60) return l.gmMinutesAgo(delta.inMinutes);
+    if (delta.inHours < 24) return l.gmHoursAgo(delta.inHours);
+    return l.gmDaysAgo(delta.inDays);
   }
 }
 
@@ -637,6 +683,7 @@ class _AccessibilityProfileCard extends StatelessWidget {
             Align(
               alignment: Alignment.centerLeft,
               child: FilledButton.tonalIcon(
+                style: tonalButtonStyle(context),
                 onPressed: onApplyDefaults,
                 icon: const Icon(Icons.auto_fix_high_rounded),
                 label: Text(
@@ -669,10 +716,12 @@ class _PreferredNameField extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
+      maxLength: TextLimits.personName,
+      buildCounter: TextLimits.counter,
       onChanged: onChanged,
       textCapitalization: TextCapitalization.words,
       decoration: InputDecoration(
-        labelText: _t(context).tlCallYou,
+        label: FitLabel(_t(context).tlCallYou),
         hintText: _t(context).tlCallHint,
         border: const OutlineInputBorder(),
         helperMaxLines: 3,
@@ -755,7 +804,7 @@ class _FslUrlField extends StatelessWidget {
           onChanged: onChanged,
           keyboardType: TextInputType.url,
           decoration: InputDecoration(
-            labelText: _t(context).tlFslUrl,
+            label: FitLabel(_t(context).tlFslUrl),
             hintText: 'https://…',
             border: const OutlineInputBorder(),
             helperMaxLines: 4,
@@ -799,11 +848,15 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Text(
-        text,
-        style: Theme.of(
-          context,
-        ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+      child: Semantics(
+        container: true,
+        header: true,
+        child: Text(
+          text,
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+        ),
       ),
     );
   }
@@ -843,7 +896,11 @@ class _DaysOfWeekChips extends StatelessWidget {
             children: [
               for (final entry in labels.entries)
                 FilterChip(
-                  label: Text(entry.value),
+                  // The reader's own day names: "Lun", "Mar" in Filipino.
+                  label: Text(LocalizedDate.weekdayShort(
+                    entry.key,
+                    AppLocalizations.of(context),
+                  )),
                   selected: selected.contains(entry.key),
                   onSelected: (v) {
                     final next = Set<int>.from(selected);

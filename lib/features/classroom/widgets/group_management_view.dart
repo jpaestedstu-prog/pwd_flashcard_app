@@ -24,11 +24,13 @@ import '../../../widgets/rich_empty_states.dart';
 import '../../parent/services/child_unlock_override_service.dart';
 import 'accessibility_category_picker.dart';
 import 'cloud_aware_text_dialog.dart';
+import '../../../core/widgets/text_limits.dart';
 import 'cloud_retry_banner.dart';
 import 'cloud_sync_error_view.dart';
 import 'learner_accessibility_dialog.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// A class or a home group, flattened so the shared management view never
 /// has to know which Firestore collection the row came from.
@@ -199,7 +201,7 @@ class GroupManagementView extends ConsumerWidget {
           backgroundColor: Colors.transparent,
           elevation: 0,
           leading: const AppBackButton(),
-          title: Text(
+          title: AppBarTitle(
             _tr(context).gmScreenTitle(delegate.audience),
             style: AppTypography.titleMedium.copyWith(
               fontWeight: FontWeight.w700,
@@ -472,8 +474,6 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
             children: [
               Text(
                 _group.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 style: AppTypography.titleSmall.copyWith(
                   fontWeight: FontWeight.w700,
                   color: hc.textPrimary,
@@ -734,6 +734,7 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           locking ? _tr(context).gmLockTitle : _tr(context).gmAllowTitle,
@@ -885,6 +886,7 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
     return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text(
           _tr(context).gmApplyMembersTitle(_delegate.audience, count),
         ),
@@ -997,6 +999,7 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text(_tr(context).gmResetTitle),
         content: Text(_tr(context).gmResetBody(_delegate.audience)),
         actions: [
@@ -1032,6 +1035,7 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text(_tr(context).gmDeleteTitle(_group.name)),
         content: Text(_tr(context).gmDeleteBody(_delegate.audience)),
         actions: [
@@ -1070,6 +1074,7 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
       emptyError: _tr(context).gmDisplayNameRequired,
       initialValue: m.displayName,
       helperText: _tr(context).gmRenameMemberNote(_delegate.audience),
+      maxLength: TextLimits.personName,
       onSubmit: (name) =>
           _delegate.renameMember(ref, _group, m.profileId, name),
     );
@@ -1120,6 +1125,7 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text(_tr(context).gmRemoveTitle(m.displayName)),
         content: Text(_tr(context).gmRemoveBody(_delegate.audience)),
         actions: [
@@ -1152,6 +1158,7 @@ class _GroupCardState extends ConsumerState<_GroupCard> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text(_tr(context).gmRemoveManyTitle(_delegate.audience, n)),
         content: Text(_tr(context).gmRemoveManyBody(_delegate.audience)),
         actions: [
@@ -1253,8 +1260,6 @@ class _MemberRow extends StatelessWidget {
       ),
       title: Text(
         member.displayName,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
         style: AppTypography.bodyMedium.copyWith(
           fontWeight: FontWeight.w600,
           color: hc.textPrimary,
@@ -1308,6 +1313,8 @@ class _MemberRow extends StatelessWidget {
                     );
                   case 'unlock':
                     onUnlock();
+                  case 'select':
+                    onLongPress();
                   case 'remove':
                     onRemove();
                 }
@@ -1349,6 +1356,14 @@ class _MemberRow extends StatelessWidget {
                   'unlock',
                   Icons.lock_open_rounded,
                   _tr(context).gmUnlockScreen,
+                ),
+                // The long press's twin: a keyboard, a switch, the
+                // controller and gaze have no long press, so picking several
+                // members to remove at once was touch-only.
+                _menuItem(
+                  'select',
+                  Icons.checklist_rounded,
+                  _tr(context).gmSelectSeveral,
                 ),
                 _menuItem(
                   'remove',
@@ -1395,6 +1410,7 @@ Future<Duration?> _pickUnlockDuration(BuildContext context, String memberName) {
   return showDialog<Duration>(
     context: context,
     builder: (ctx) => AlertDialog(
+      scrollable: true,
       title: Text(_tr(context).gmUnlockTitle(memberName)),
       content: Text(_tr(context).gmUnlockBody),
       actions: [

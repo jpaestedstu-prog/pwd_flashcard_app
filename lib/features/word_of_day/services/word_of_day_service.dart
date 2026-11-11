@@ -1,6 +1,8 @@
 import '../../../data/local/seed_data.dart';
+import 'package:flutter/foundation.dart';
 import '../../../data/local/hive_service.dart';
 import '../../../data/models/enums.dart';
+import '../../parent/services/learner_restrictions.dart';
 import '../../../core/constants/flashcard_emojis.dart';
 import '../models/word_of_day_models.dart';
 
@@ -10,13 +12,17 @@ import '../models/word_of_day_models.dart';
 class WordOfDayService {
   WordOfDayService._();
 
+  /// Stands in for the day's card in tests: what any day shows, on this day.
+  @visibleForTesting
+  static int? debugCardIndex;
+
   /// Returns today's Word of the Day.
   static WordOfDay today() {
-    final allCards = SeedData.allFlashcards;
+    final allCards = LearnerRestrictions.visibleCards(SeedData.allFlashcards);
     if (allCards.isEmpty) {
       return WordOfDay(
         wordEnglish: 'Hello',
-        wordFilipino: 'Kamusta',
+        wordFilipino: 'Kumusta',
         emoji: '👋',
         category: 'Greetings',
         date: DateTime.now(),
@@ -26,7 +32,7 @@ class WordOfDayService {
     final now = DateTime.now();
     // Use day-of-year to pick a card deterministically, cycling every year.
     final dayOfYear = now.difference(DateTime(now.year)).inDays;
-    final index = dayOfYear % allCards.length;
+    final index = debugCardIndex ?? dayOfYear % allCards.length;
     final card = allCards[index];
 
     return WordOfDay(

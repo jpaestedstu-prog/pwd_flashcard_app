@@ -139,9 +139,12 @@ class CompanionController extends Notifier<CompanionState> {
     // gets its own remembered conversation and its own adaptive presentation.
     ref.watch(profileProvider.select((p) => p?.id));
 
+    _lastAsked = null;
     ref.onDispose(() {
       _disposed = true;
       _celebrateTimer?.cancel();
+      _secondTap?.cancel();
+      _secondTap = null;
       try {
         ref.read(sttServiceProvider).cancel();
       } catch (_) {}
@@ -261,9 +264,31 @@ class CompanionController extends Notifier<CompanionState> {
   }
 
   // ── Sending ──
-  void sendText(String rawText) {
+
+  /// The learner's last question, and a timer running for
+  /// [_secondTapWindow] after it was asked.
+  String? _lastAsked;
+  Timer? _secondTap;
+
+  /// How soon after a question the same words again count as a second tap.
+  static const _secondTapWindow = Duration(seconds: 1);
+
+  /// Sends the learner's [rawText], shown in their bubble as written. The
+  /// tutor is asked [askAs] when given: a chip's command ("favorites") under
+  /// the chip's own words ("Paborito").
+  void sendText(String rawText, {String? askAs}) {
     final text = rawText.trim();
     if (text.isEmpty) return;
+    // The same question again straight after, or while its answer is still
+    // coming, is a second tap, not a second question. A hand that shakes
+    // taps a chip twice, and the buddy answered twice (on the AI Tutor
+    // screen a screen reader then said "Favorites" twice in a row; the
+    // reader crawl, 9 Nov).
+    if (text == _lastAsked && (_secondTap != null || state.isTyping)) return;
+    _lastAsked = text;
+    _secondTap?.cancel();
+    _secondTap = Timer(_secondTapWindow, () => _secondTap = null);
+    final asked = askAs ?? text;
     ensureInitialized();
 
     _playSend();
@@ -280,24 +305,28 @@ class CompanionController extends Notifier<CompanionState> {
     // interests, progress, …) always stays on the offline TutorEngine. The
     // online path checks connectivity first and falls back to the engine, so
     // the switch between online and offline is fully automatic.
-    if (GeminiService.isConfigured && TutorEngine.isFreeForm(text)) {
+    if (GeminiService.isConfigured && TutorEngine.isFreeForm(asked)) {
       // Show the thinking state for the whole network round-trip — a real
       // loading cue (genuine latency), not decorative motion.
       state = state.copyWith(
         messages: [...state.messages, student],
         isTyping: true,
       );
-      _respondOnline(text);
+      _respondOnline(asked);
     } else {
       state = state.copyWith(
         messages: [...state.messages, student],
         isTyping: _presentation.typingIndicator,
       );
-      _afterTyping(() => _respondWithEngine(text));
+      _afterTyping(() => _respondWithEngine(asked));
     }
   }
 
-  void sendQuick(String command) => sendText(command);
+  /// A quick chip: the learner's bubble shows the chip's words, [shown], in
+  /// their language. It used to show the [command] itself, "favorites", in
+  /// English and lower case, under a chip that said "Paborito".
+  void sendQuick(String command, [String? shown]) =>
+      sendText(shown ?? command, askAs: command);
 
   /// The default, fully-offline responder: the rule-based [TutorEngine].
   void _respondWithEngine(String text) {

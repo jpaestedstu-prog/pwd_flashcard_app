@@ -9,6 +9,8 @@ import '../../core/utils/responsive_utils.dart';
 import '../../data/models/achievements.dart';
 import '../core/utils/reduced_motion.dart';
 import '../features/gaze_control/widgets/gaze_modal_region.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/app_localizations_en.dart';
 
 /// A full-screen overlay that announces a newly unlocked achievement
 /// with a glow effect, scale animation, and confetti.
@@ -68,7 +70,7 @@ class _AchievementUnlockedOverlayState
   /// behind it.
   @override
   Widget build(BuildContext context) =>
-      GazeModalRegion(child: _overlay(context));
+      GazeModalRegion(onBack: widget.onDismiss, child: _overlay(context));
 
   Widget _overlay(BuildContext context) {
     final achievement = widget.achievements[_currentIndex];
@@ -93,7 +95,25 @@ class _AchievementUnlockedOverlayState
           ),
 
           // ─── Achievement Card ─────────────────
-          Container(
+          // Scrolls when the screen is shorter than the card: on a phone on
+          // its side it ran 110 px past the bottom, and its button with it
+          // (3 Nov).
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: _card(context, achievement, hasMore),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _card(BuildContext context, Achievement achievement, bool hasMore) {
+    final t = AppLocalizations.of(context) ?? AppLocalizationsEn();
+    return Container(
             margin: const EdgeInsets.symmetric(horizontal: 32),
             padding: const EdgeInsets.fromLTRB(28, 36, 28, 24),
             decoration: BoxDecoration(
@@ -124,7 +144,7 @@ class _AchievementUnlockedOverlayState
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    '🏆 Achievement Unlocked!',
+                    t.achUnlockedBanner,
                     style: AppTypography.labelLarge.copyWith(
                       color: HCColor.of(context).readableOver(achievement.color, achievement.color.withValues(alpha: 0.1)),
                       fontWeight: FontWeight.w700,
@@ -187,7 +207,7 @@ class _AchievementUnlockedOverlayState
                 if (widget.achievements.length > 1) ...[
                   const SizedBox(height: 12),
                   Text(
-                    '${_currentIndex + 1} of ${widget.achievements.length}',
+                    t.achCountOf(_currentIndex + 1, widget.achievements.length),
                     style: AppTypography.labelSmall
                         .copyWith(color: HCColor.of(context).textHint),
                   ),
@@ -209,7 +229,7 @@ class _AchievementUnlockedOverlayState
                       ),
                     ),
                     child: Text(
-                      hasMore ? 'Next Achievement' : 'Awesome! 🎉',
+                      hasMore ? t.achNextButton : t.achDoneButton,
                       style: AppTypography.titleMedium.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
@@ -230,10 +250,7 @@ class _AchievementUnlockedOverlayState
                 duration: 500.ms,
                 curve: Curves.easeOutBack,
               )
-              .fadeIn(duration: 300.ms),
-        ],
-      ),
-    );
+              .fadeIn(duration: 300.ms);
   }
 }
 

@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../../../core/widgets/auto_fit.dart';
+import '../../../features/parent/services/learner_restrictions.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -20,6 +22,8 @@ import '../../../providers/tile_grid_active_provider.dart';
 import '../../gaze_control/widgets/gaze_home_tiles.dart';
 import '../../progress/models/category_mastery.dart';
 import '../../../widgets/dpad_focusable.dart';
+import '../../companion/widgets/companion_clearance.dart';
+import '../../../core/widgets/stagger_in.dart';
 
 class DeckListScreen extends ConsumerWidget {
   const DeckListScreen({super.key});
@@ -64,9 +68,13 @@ class DeckListScreen extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                              AppLocalizations.of(context)!.flashcardDecks,
-                              style: AppTypography.headlineLarge,
+                        Semantics(
+                              container: true,
+                              header: true,
+                              child: Text(
+                                AppLocalizations.of(context)!.flashcardDecks,
+                                style: AppTypography.headlineLarge,
+                              ),
                             )
                             .animate()
                             .fadeIn(duration: 400.ms)
@@ -159,7 +167,10 @@ class DeckListScreen extends ConsumerWidget {
 
                 // ─── Category Decks ─────────────────
                 SliverPadding(
-                  padding: EdgeInsets.all(padding),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: padding,
+                    vertical: context.pageInset,
+                  ),
                   sliver: SliverGrid(
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: context.gridColumns,
@@ -177,10 +188,16 @@ class DeckListScreen extends ConsumerWidget {
                         columns: context.gridColumns,
                         entries: [
                           for (final (index, category)
-                              in FlashcardCategory.values.indexed)
+                              in LearnerRestrictions.categoriesFor(
+                                profile?.role,
+                              ).indexed)
                             (
                               tile:
-                                  _DeckCard(
+                                  StaggerIn(
+                                    index: index,
+                                    base: const Duration(milliseconds: 200),
+                                    step: const Duration(milliseconds: 80),
+                                    child: _DeckCard(
                                         category: category,
                                         cardCount: SeedData.getByCategory(
                                           category,
@@ -196,17 +213,18 @@ class DeckListScreen extends ConsumerWidget {
                                         onTap: () => context.push(
                                           '/flashcards/viewer/${category.index}',
                                         ),
-                                      )
-                                      .animate()
+                                      ),
+                                    builder: (child, delay) => child.animate()
                                       .fadeIn(
                                         duration: 400.ms,
-                                        delay: (200 + index * 80).ms,
+                                        delay: delay,
                                       )
                                       .slideY(begin: 0.12, end: 0)
                                       .scale(
                                         begin: const Offset(0.95, 0.95),
                                         end: const Offset(1.0, 1.0),
                                       ),
+                                  ),
                               cell: GazeTileCell(
                                 label: category.labelOf(AppLocalizations.of(context)!),
                                 onActivate: () => context.push(
@@ -219,6 +237,8 @@ class DeckListScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
+                // The last deck clear of the floating AI Buddy.
+                const CompanionClearanceSliver(),
               ],
             ),
           ),
@@ -289,7 +309,9 @@ class _DeckCardState extends State<_DeckCard> {
         onTapUp: (_) => _setPressed(false),
         onTapCancel: () => _setPressed(false),
         // Pressable3D adds a finger-tracking tilt and honours reduced motion.
-        child: Pressable3D(
+        // Said once, by the deck's label (its names, count and percentage
+        // were read again after it).
+        child: ExcludeSemantics(child: Pressable3D(
           pressScale: 0.96,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 160),
@@ -367,8 +389,7 @@ class _DeckCardState extends State<_DeckCard> {
                                 ),
                                 const SizedBox(height: 8),
                                 Flexible(
-                                  child: FittedBox(
-                                    fit: BoxFit.scaleDown,
+                                  child: AutoFit(
                                     child: Text(
                                       widget.category.labelOf(AppLocalizations.of(context)!),
                                       style: AppTypography.titleLarge.copyWith(
@@ -386,15 +407,13 @@ class _DeckCardState extends State<_DeckCard> {
                                         ],
                                       ),
                                       textAlign: TextAlign.center,
-                                      maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                 ),
                                 const SizedBox(height: 2),
                                 Flexible(
-                                  child: FittedBox(
-                                    fit: BoxFit.scaleDown,
+                                  child: AutoFit(
                                     child: Text(
                                       widget.category.labelFilipino,
                                       style: AppTypography.bodySmall.copyWith(
@@ -405,7 +424,6 @@ class _DeckCardState extends State<_DeckCard> {
                                         fontWeight: FontWeight.w500,
                                       ),
                                       textAlign: TextAlign.center,
-                                      maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
@@ -544,7 +562,7 @@ class _DeckCardState extends State<_DeckCard> {
               ),
             ),
           ),
-        ),
+        )),
       ),
     ));
   }
@@ -626,24 +644,24 @@ class _ActionChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: AppLocalizations.of(context)!.deckChipSemantics(label),
-      child: ActionChip(
-        avatar: Icon(
-          icon,
-          size: context.scaleIcon(18),
-          color: HCColor.of(context).primary,
-        ),
-        label: Text(
+    return ActionChip(
+      avatar: Icon(
+        icon,
+        size: context.scaleIcon(18),
+        color: HCColor.of(context).primary,
+      ),
+      label: Semantics(
+        label: AppLocalizations.of(context)!.deckChipSemantics(label),
+        excludeSemantics: true,
+        child: Text(
           label,
           style: AppTypography.labelMedium.copyWith(color: HCColor.of(context).primary),
         ),
-        backgroundColor: AppColors.primaryLight,
-        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.2)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        onPressed: onTap,
       ),
+      backgroundColor: AppColors.primaryLight,
+      side: BorderSide(color: AppColors.primary.withValues(alpha: 0.2)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      onPressed: onTap,
     );
   }
 }

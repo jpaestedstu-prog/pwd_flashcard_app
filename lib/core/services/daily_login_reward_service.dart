@@ -32,7 +32,10 @@ class DailyLoginReward {
 
     final lastClaim = HiveService.getLoginRewardDate(profileId);
     final today = _todayKey();
-    final yesterday = _dateKey(DateTime.now().subtract(const Duration(days: 1)));
+    // The calendar day before, not 24 hours ago (not always the same day
+    // where the clocks change).
+    final now = DateTime.now();
+    final yesterday = _dateKey(DateTime(now.year, now.month, now.day - 1));
 
     int streak;
     if (lastClaim == yesterday) {

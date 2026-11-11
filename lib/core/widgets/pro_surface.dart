@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'auto_fit.dart';
+import '../../l10n/app_localizations.dart';
+import '../../l10n/app_localizations_en.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
@@ -114,12 +117,17 @@ class ProPanel extends StatelessWidget {
     );
 
     if (onTap == null) return decorated;
-    return Material(
-      type: MaterialType.transparency,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: ProSurface.borderRadius,
-        child: decorated,
+    // Pressable, so a screen reader says "button" — an InkWell alone does not.
+    return Semantics(
+      container: true,
+      button: true,
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: ProSurface.borderRadius,
+          child: decorated,
+        ),
       ),
     );
   }
@@ -152,24 +160,34 @@ class ProSectionHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                title.toUpperCase(),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: hc.textSecondary,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.8,
+              // A heading to a screen reader too, in its own spelling: a voice
+              // can spell "MGA" out letter by letter.
+              Semantics(
+                container: true,
+                header: true,
+                child: Text(
+                  title.toUpperCase(),
+                  semanticsLabel: title,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: hc.textSecondary,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.8,
+                  ),
                 ),
               ),
               if (subtitle != null) ...[
                 const SizedBox(height: AppSpacing.xs),
-                Text(
-                  subtitle!,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: hc.textHint,
+                // A node of its own, after the heading. Left loose, it joined
+                // the node around the header, whose own words a reader says
+                // before its children: "13 steps · drag to reorder", then
+                // "Steps" (the routine builder, 9 Nov crawl).
+                Semantics(
+                  container: true,
+                  child: Text(
+                    subtitle!,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: hc.textHint,
+                    ),
                   ),
                 ),
               ],
@@ -200,6 +218,7 @@ class ProStatTile extends StatelessWidget {
     super.key,
     required this.label,
     required this.value,
+    this.spokenValue,
     this.caption,
     this.icon,
     this.trend,
@@ -209,6 +228,9 @@ class ProStatTile extends StatelessWidget {
 
   final String label;
   final String value;
+
+  /// [value] in words, where its short form reads badly aloud ("12m").
+  final String? spokenValue;
   final String? caption;
   final IconData? icon;
   final ProTrend? trend;
@@ -225,71 +247,78 @@ class ProStatTile extends StatelessWidget {
     final theme = Theme.of(context);
     final accentColor = accent ?? hc.primary;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(
-          children: [
-            if (icon != null) ...[
-              Icon(icon, size: 18, color: accentColor),
-              const SizedBox(width: AppSpacing.xs),
-            ],
-            Expanded(
-              child: Text(
-                label.toUpperCase(),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: hc.textSecondary,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        // Big numeral — scale down to fit the cell width rather than overflow.
-        Align(
-          alignment: Alignment.centerLeft,
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              maxLines: 1,
-              style: theme.textTheme.headlineSmall?.copyWith(
-                color: hc.textPrimary,
-                fontWeight: FontWeight.w700,
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
-            ),
-          ),
-        ),
-        if (trend != null || caption != null) ...[
-          const SizedBox(height: AppSpacing.xs),
+    return MergeSemantics(
+      // One phrase: "All Students, 12, up 3, this week". Apart, the number
+      // was a stop of its own that said only "12".
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
           Row(
             children: [
-              if (trend != null) ...[
-                _TrendChip(trend: trend!, delta: delta, hc: hc),
-                if (caption != null) const SizedBox(width: AppSpacing.xs),
+              if (icon != null) ...[
+                Icon(icon, size: 18, color: accentColor),
+                const SizedBox(width: AppSpacing.xs),
               ],
-              if (caption != null)
-                Expanded(
+              // Smaller rather than cut: at the largest Font Size Filipino
+              // read "AVG NA KATUMPA…" (30 Oct).
+              Expanded(
+                child: AutoFit(
+                  alignment: AlignmentDirectional.centerStart,
                   child: Text(
-                    caption!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: hc.textHint,
+                    label.toUpperCase(),
+                    semanticsLabel: label,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: hc.textSecondary,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
                     ),
                   ),
                 ),
+              ),
             ],
           ),
+          const SizedBox(height: AppSpacing.sm),
+          // Big numeral — scale down to fit the cell width rather than overflow.
+          Align(
+            alignment: Alignment.centerLeft,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                value,
+                semanticsLabel: spokenValue,
+                maxLines: 1,
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  color: hc.textPrimary,
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+            ),
+          ),
+          if (trend != null || caption != null) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Row(
+              children: [
+                if (trend != null) ...[
+                  _TrendChip(trend: trend!, delta: delta, hc: hc),
+                  if (caption != null) const SizedBox(width: AppSpacing.xs),
+                ],
+                if (caption != null)
+                  Expanded(
+                    child: Text(
+                      caption!,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: hc.textHint,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }
@@ -366,8 +395,6 @@ class ProDataRow extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: hc.textSecondary,
               ),
@@ -634,10 +661,10 @@ class ProActionTile extends StatelessWidget {
           // "Work / sheets" and "Expe / riment". `fittedStyle` rather than
           // `FitText` because these tiles sit in a grid that computes intrinsic
           // sizes, and the `LayoutBuilder` inside `FitText` throws there.
+          // Three lines: the tile is as tall as its words, and two cut "Pag-
+          // export ng Datos ng Pananaliksik" short (30 Oct).
           Text(
             label,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
             style: fittedStyle(
               context,
               label,
@@ -659,8 +686,6 @@ class ProActionTile extends StatelessWidget {
             const SizedBox(height: AppSpacing.xs),
             Text(
               caption!,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
               // Secondary, not hint: a caption on a tinted tile in the dark
               // theme was 3:1 in the hint grey. Stepped down like the label:
               // "Lingguhang buod" broke as "Lingguhan / g" at 1.4x.
@@ -687,55 +712,60 @@ class ProActionTile extends StatelessWidget {
       enabled: enabled,
       // The pip below is IgnorePointer, so the count has to be spoken here or
       // a screen-reader user never hears it.
-      label: count > 0 ? '$base. $count new' : base,
+      label: count > 0
+          ? '$base. ${(AppLocalizations.of(context) ?? AppLocalizationsEn()).proNewCount(count)}'
+          : base,
       child: Material(
         type: MaterialType.transparency,
         child: InkWell(
           onTap: enabled ? onTap : null,
           borderRadius: ProSurface.borderRadius,
-          child: count > 0
-              ? Stack(
-                  clipBehavior: Clip.none,
-                  // Without passthrough the non-positioned content gets *loose*
-                  // constraints and shrink-wraps, so a badged tile drew
-                  // narrower than its unbadged neighbours in the same grid row
-                  // (and the pip floated in the gap beside it).
-                  fit: StackFit.passthrough,
-                  children: [
-                    content,
-                    Positioned(
-                      top: compact ? 6 : 10,
-                      right: compact ? 6 : 10,
-                      child: IgnorePointer(
-                        child: Container(
-                          constraints: const BoxConstraints(
-                            minWidth: 20,
-                            minHeight: 20,
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: accentColor,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Center(
-                            widthFactor: 1,
-                            child: Text(
-                              count > 99 ? '99+' : '$count',
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
+          child: ExcludeSemantics(
+            // The label says it all; the words drawn here were read again.
+            child: count > 0
+                ? Stack(
+                    clipBehavior: Clip.none,
+                    // Without passthrough the non-positioned content gets *loose*
+                    // constraints and shrink-wraps, so a badged tile drew
+                    // narrower than its unbadged neighbours in the same grid row
+                    // (and the pip floated in the gap beside it).
+                    fit: StackFit.passthrough,
+                    children: [
+                      content,
+                      Positioned(
+                        top: compact ? 6 : 10,
+                        right: compact ? 6 : 10,
+                        child: IgnorePointer(
+                          child: Container(
+                            constraints: const BoxConstraints(
+                              minWidth: 20,
+                              minHeight: 20,
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: accentColor,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Center(
+                              widthFactor: 1,
+                              child: Text(
+                                count > 99 ? '99+' : '$count',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                )
-              : content,
+                    ],
+                  )
+                : content,
+          ),
         ),
       ),
     );

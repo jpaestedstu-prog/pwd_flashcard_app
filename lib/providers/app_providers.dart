@@ -15,6 +15,7 @@ import '../data/repository.dart';
 import '../data/local/local_repository.dart';
 import '../data/local/hive_service.dart';
 import '../data/local/seed_data.dart';
+import '../core/accessibility/spoken_words.dart';
 import '../data/remote/firestore_repository.dart';
 import '../core/services/educator_roster_service.dart';
 import '../core/services/firebase_service.dart';
@@ -288,13 +289,61 @@ class ProfileNotifier extends Notifier<UserProfile?> {
   /// Deliberately local-only: this profile already exists — it came off the
   /// educator's roster — so there is nothing to publish, and an educator
   /// looking at a learner must never be blocked by a write the rules refuse.
+  ///
+  /// Looking changes nothing. The roster's copy comes from the cloud, which
+  /// never holds a PIN, a birth date or a grade (`ProfileCloudFields`), and it
+  /// used to be saved over the tablet's own copy: opening a learner from a list
+  /// erased theirs, and a child lost their home group as well (found on the
+  /// tablet, 4 Nov; the Honor's "Hearing Impairment Anak" went that way on
+  /// 5 Oct). A learner this tablet does not hold gets a copy for the viewing,
+  /// which goes with it: they are not one of this tablet's profiles.
   Future<void> viewAsStudent(UserProfile studentProfile) async {
     final current = state;
     if (current != null &&
         (current.role == UserRole.teacher || current.role == UserRole.parent)) {
       _savedEducatorProfile = current;
     }
-    await _switchLocally(studentProfile);
+    final onThisTablet = HiveService.getProfileById(studentProfile.id);
+    if (onThisTablet == null) {
+      _copiesForViewing.add(studentProfile.id);
+      await _switchLocally(studentProfile);
+      return;
+    }
+    final kept = learnerToView(
+      studentProfile,
+      onThisTablet,
+      deviceUid: FirebaseService.currentUid,
+    );
+    if (identical(kept, onThisTablet)) {
+      await HiveService.setActiveProfileId(kept.id);
+      state = kept;
+      ref.read(profileSyncListenerProvider)?.watch(kept.id);
+      return;
+    }
+    await _switchLocally(kept);
+  }
+
+  /// Learners put on this tablet only to be looked at: see [viewAsStudent].
+  final Set<String> _copiesForViewing = {};
+
+  Future<void> _forgetCopiesForViewing() async {
+    final copies = {..._copiesForViewing};
+    _copiesForViewing.clear();
+    for (final id in copies) {
+      await HiveService.removeViewedCopy(id);
+    }
+  }
+
+  /// A child's home group, from the group's own list, when this tablet's copy
+  /// of the child has lost it (see [viewAsStudent]). Still a member: nothing
+  /// to join again.
+  Future<void> restoreHomeGroupLink(String homeGroupId) async {
+    final child = state;
+    if (child == null || child.homeGroupId != null) return;
+    final stored = await _switchLocally(
+      child.copyWith(homeGroupId: () => homeGroupId),
+    );
+    unawaited(const LocalRepository().publishProfile(stored));
   }
 
   /// Restore the previously saved educator profile, if any.
@@ -310,6 +359,7 @@ class ProfileNotifier extends Notifier<UserProfile?> {
       // account.
       await _switchLocally(saved);
       _savedEducatorProfile = null;
+      await _forgetCopiesForViewing();
     }
   }
 
@@ -347,6 +397,25 @@ final profileProvider = NotifierProvider<ProfileNotifier, UserProfile?>(
   ProfileNotifier.new,
 );
 
+/// A learner as a viewing should show them, given the [roster] copy from the
+/// cloud and the copy [onThisTablet].
+///
+/// A learner whose profile this tablet owns: its own copy, the very same
+/// object, so that nothing is written. A copy owned elsewhere (restored on
+/// another device, say): the cloud knows better, except for what the cloud
+/// never holds.
+UserProfile learnerToView(
+  UserProfile roster,
+  UserProfile onThisTablet, {
+  required String? deviceUid,
+}) {
+  final owner = onThisTablet.ownerUid;
+  if (deviceUid == null || owner == null || owner == deviceUid) {
+    return onThisTablet;
+  }
+  return roster.keepingPrivateFieldsOf(onThisTablet);
+}
+
 /// The person actually at the tablet.
 ///
 /// "View as student" makes the learner the active profile so the dashboards
@@ -365,7 +434,15 @@ UserProfile? profileAtTablet(UserProfile? active, ProfileNotifier notifier) =>
 final allFlashcardsProvider = Provider<List<Flashcard>>((ref) {
   final seed = SeedData.allFlashcards;
   final custom = HiveService.getCustomCards();
-  return [...seed, ...custom];
+  final all = [...seed, ...custom];
+  // The English the app teaches, so that a screen reader reads it in
+  // English on a Filipino screen ([SpokenWords.localeFor]). Here, where the
+  // cards are gathered, so a card the learner adds is in it too.
+  SpokenWords.learnVocabulary(
+    all.map((card) => card.wordEnglish),
+    all.map((card) => card.exampleSentence).whereType<String>(),
+  );
+  return all;
 });
 
 final flashcardsByCategoryProvider =
@@ -523,6 +600,12 @@ class ProgressNotifier extends Notifier<LearningProgress> {
       bestStreakDays: math.max(state.effectiveBestStreak, newStreak),
       lastActivityDate: now,
     );
+
+    // On the day ledger too: the streak calendar marks the days that kept the
+    // streak, and a story or the daily challenge is not in the game records.
+    if (profileId.isNotEmpty) {
+      HiveService.addDailyActivity(profileId, activities: 1, on: now);
+    }
 
     // If we already checked in today and the streak didn't move, only the
     // timestamp changed — persist locally but skip the cloud write to save

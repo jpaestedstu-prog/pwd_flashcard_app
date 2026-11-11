@@ -51,6 +51,12 @@ void main() {
         devicePixelRatio: 1.0,
         maxScrolls: 80,
       );
+      for (final t in report.buttonsWithoutPress) {
+        debugPrint('SRTAP FOCUS ${entry.key} | $t');
+      }
+      for (final t in report.focusNotOnNode) {
+        debugPrint('SRFOCUS FOCUS ${entry.key} | $t');
+      }
       for (final t in report.notFocusable) {
         debugPrint('FOCUS ${entry.key} | $t');
       }
@@ -58,6 +64,13 @@ void main() {
           '${report.notFocusable.length} not focusable');
       expect(report.notFocusable.map((t) => '$t'), isEmpty,
           reason: 'every control takes D-pad focus');
+      // What a screen reader is told is what it can do: a control it calls a
+      // button can be pressed, and the node it lands on is the one that takes
+      // focus (in a browser, the node that gets the keyboard's focus).
+      expect(report.buttonsWithoutPress.map((t) => '$t'), isEmpty,
+          reason: 'a screen reader can press every button it announces');
+      expect(report.focusNotOnNode.map((t) => '$t'), isEmpty,
+          reason: "a control's focus sits on the node a screen reader reads");
 
       for (var t = 0; t < 30; t++) {
         await tester.pump(const Duration(milliseconds: 100));

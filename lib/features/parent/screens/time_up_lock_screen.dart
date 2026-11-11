@@ -2,6 +2,9 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import '../../../core/widgets/capped_width.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../classroom/widgets/cloud_sync_error_view.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -31,9 +34,11 @@ import '../../../providers/pin_unlock_grace_provider.dart';
 import '../../../providers/unlocking_educators_provider.dart';
 import '../../../widgets/fsl_fullscreen_player.dart';
 import '../services/child_unlock_override_service.dart';
+import '../../../core/utils/localized_date.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../widgets/dpad_focusable.dart';
+import '../../../core/widgets/fit_label.dart';
 
 /// Grace window granted on a successful PIN / recovery-code entry. The
 /// underlying time-limit/alarm/schedule rule may still be active, so
@@ -294,8 +299,11 @@ class _TimeUpLockScreenState extends ConsumerState<TimeUpLockScreen>
 
     // The scrolling half. "Switch account" deliberately lives outside it —
     // see [_SwitchAccountBar].
+    // This route fills the window, so on a computer the words would run
+    // the whole width of the screen. Keep them in a readable column.
+    final side = math.max(24.0, (MediaQuery.sizeOf(context).width - 640) / 2);
     final scrollingBody = ListView(
-      padding: const EdgeInsets.fromLTRB(24, 32, 24, 8),
+      padding: EdgeInsets.fromLTRB(side, 32, side, 8),
       children: [
         Icon(
           Icons.lock_clock_rounded,
@@ -351,9 +359,9 @@ class _TimeUpLockScreenState extends ConsumerState<TimeUpLockScreen>
         educatorsAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => Text(
-            '$e',
+            cloudSyncErrorMessage(e, AppLocalizations.of(context)).title,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.red),
+            style: TextStyle(color: HCColor.of(context).errorText),
           ),
           data: (list) {
             if (list.isEmpty) {
@@ -549,19 +557,9 @@ class _TimeUpLockScreenState extends ConsumerState<TimeUpLockScreen>
     }
   }
 
-  String _formatRemaining(Duration d) {
-    if (d.inHours >= 1) {
-      final h = d.inHours;
-      final m = d.inMinutes % 60;
-      return '${h}h ${m}m';
-    }
-    if (d.inMinutes >= 1) {
-      final m = d.inMinutes;
-      final s = d.inSeconds % 60;
-      return '${m}m ${s}s';
-    }
-    return '${d.inSeconds}s';
-  }
+  /// In words: "4m 30s" is read "4 meters 30 s".
+  String _formatRemaining(Duration d) =>
+      LocalizedDuration.long(d, _t(context));
 
   Future<void> _showRecoveryDialog(
     List<UserProfile> educators,
@@ -571,6 +569,7 @@ class _TimeUpLockScreenState extends ConsumerState<TimeUpLockScreen>
     final code = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text(_t(context).tuUseRecovery),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -584,7 +583,7 @@ class _TimeUpLockScreenState extends ConsumerState<TimeUpLockScreen>
             TextField(
               controller: controller,
               autofocus: true,
-              decoration: InputDecoration(labelText: _t(context).tuRecoveryCode),
+              decoration: InputDecoration(label: FitLabel(_t(context).tuRecoveryCode)),
             ),
           ],
         ),
@@ -1176,14 +1175,14 @@ class _SwitchAccountBar extends StatelessWidget {
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 10, 24, 12),
-        child: OutlinedButton.icon(
+        child: CappedWidth(child: OutlinedButton.icon(
           style: OutlinedButton.styleFrom(
             minimumSize: Size.fromHeight(minTouchTarget),
           ),
           onPressed: onPressed,
           icon: const Icon(Icons.switch_account_rounded),
           label: Text(_t(context).tuSwitchAccount),
-        ),
+        )),
       ),
     );
   }

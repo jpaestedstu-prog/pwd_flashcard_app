@@ -264,16 +264,15 @@ class _RoutineNowDialogState extends State<_RoutineNowDialog> {
         if (widget.canTick) ...[
           SizedBox(
             width: double.infinity,
-            child: Semantics(
-              button: true,
-              label: isFilipino
+            child: ElevatedButton.icon(
+              onPressed: _didIt,
+              icon: const Icon(Icons.check_rounded, color: Colors.white),
+              label: Semantics(
+                label: isFilipino
                   ? 'Tapos na. Markahang tapos ang hakbang na ito.'
                   : 'I did it. Mark this step done.',
-              excludeSemantics: true,
-              child: ElevatedButton.icon(
-                onPressed: _didIt,
-                icon: const Icon(Icons.check_rounded, color: Colors.white),
-                label: Text(
+                excludeSemantics: true,
+                child: Text(
                   isFilipino ? 'Tapos na!' : 'I did it!',
                   style: AppTypography.titleSmall.copyWith(
                     color: Colors.white,
@@ -281,16 +280,16 @@ class _RoutineNowDialogState extends State<_RoutineNowDialog> {
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+              ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: hc.primary,
+                minimumSize: const Size.fromHeight(52),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: hc.primary,
-                  minimumSize: const Size.fromHeight(52),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  elevation: 0,
-                  shadowColor: Colors.transparent,
-                ),
+                elevation: 0,
+                shadowColor: Colors.transparent,
               ),
             ),
           ),

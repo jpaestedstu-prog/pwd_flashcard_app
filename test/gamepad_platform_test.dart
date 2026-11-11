@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pwdpwdpwd/core/utils/platform_caps.dart';
 import 'package:pwdpwdpwd/features/gamepad/services/gamepad_service.dart';
 
 /// The controller bridge exists on Android (GamepadBridge.kt) and, since
@@ -63,4 +64,28 @@ void main() {
       await service.dispose();
     });
   }
+
+  group('in a browser', () {
+    tearDown(() {
+      PlatformCaps.debugWeb = null;
+      GamepadService.debugBrowserGamepads = null;
+    });
+
+    test("a controller is read through the browser's Gamepad API", () {
+      // It said "Game controllers work in the Android app" before, though
+      // every current browser can read one.
+      PlatformCaps.debugWeb = true;
+      GamepadService.debugBrowserGamepads = true;
+      expect(GamepadService.isSupported, isTrue);
+    });
+
+    test('a browser without the API has no controller', () {
+      PlatformCaps.debugWeb = true;
+      GamepadService.debugBrowserGamepads = false;
+      expect(GamepadService.isSupported, isFalse);
+      // Away from a browser (these tests), there is no Gamepad API at all.
+      GamepadService.debugBrowserGamepads = null;
+      expect(GamepadService.isSupported, isFalse);
+    });
+  });
 }

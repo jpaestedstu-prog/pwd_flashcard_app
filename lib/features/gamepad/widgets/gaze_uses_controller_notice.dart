@@ -10,8 +10,8 @@ import '../../gaze_control/providers/gaze_settings_provider.dart';
 /// controller as its switch** — then any button picks what is lit and the
 /// stick moves the highlight, which is not what those pages describe.
 ///
-/// A learner at the tablet opened the controller's button guide (R1 opens, L1
-/// goes back, A yes, B no) and the practice screen while switch scanning had
+/// A learner at the tablet opened the controller's button guide (A chooses,
+/// B goes back, the D-pad moves) and the practice screen while switch scanning had
 /// the controller, found that none of it matched what the buttons did, and
 /// could not tell why. [practising]: the practice screen's wording — there a
 /// press picks what is lit instead of being practised.

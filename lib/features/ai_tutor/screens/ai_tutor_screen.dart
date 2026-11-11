@@ -1,5 +1,6 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import '../../../core/widgets/app_bar_title.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
@@ -22,6 +23,7 @@ import '../services/tutor_sign_launcher.dart';
 import '../services/tutor_speech.dart';
 import '../widgets/tutor_chat.dart';
 import '../widgets/tutor_persona.dart';
+import '../../../core/widgets/text_limits.dart';
 
 const _uuid = Uuid();
 
@@ -254,15 +256,28 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
 
   // ─── Sending ──────────────────────────────────────────────────────────────
 
-  void _sendMessage() {
-    final text = _textController.text.trim();
-    if (text.isEmpty) return;
+  void _sendMessage({String? askAs}) {
+    final shown = _textController.text.trim();
+    if (shown.isEmpty) return;
+    final text = askAs ?? shown;
+    // The same question again while the tutor is still answering it is a
+    // second tap, not a second question. A hand that shakes taps a chip
+    // twice, and the tutor answered twice: two topic pickers, and a screen
+    // reader said "Favorites" twice in a row (the reader crawl, 9 Nov).
+    final last = _messages.isEmpty ? null : _messages.last;
+    if (_isTyping &&
+        last != null &&
+        last.role == TutorMessageRole.student &&
+        last.content == shown) {
+      _textController.clear();
+      return;
+    }
 
     setState(() {
       _messages.add(TutorMessage(
         id: _uuid.v4(),
         role: TutorMessageRole.student,
-        content: text,
+        content: shown,
         timestamp: DateTime.now(),
       ));
       _isTyping = true;
@@ -358,9 +373,12 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
     ));
   }
 
-  void _sendQuick(String command) {
-    _textController.text = command;
-    _sendMessage();
+  /// A chip's question: the bubble shows the chip's own words, in the reader's
+  /// language ("Aralin"), and the tutor is asked by the [command] it knows. The
+  /// bubble used to say "lesson" or "favorites", in English, lower case.
+  void _sendQuick(String command, String shown) {
+    _textController.text = shown;
+    _sendMessage(askAs: command);
   }
 
   // ─── Favorite topics (interest personalization) ───────────────────────────
@@ -702,8 +720,7 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
             TutorAvatar(persona: _persona, state: avatarState, size: 30),
             const SizedBox(width: 8),
             Flexible(
-              child: Text(_persona.title(isFilipino),
-                  overflow: TextOverflow.ellipsis),
+              child: AppBarTitle(_persona.title(isFilipino)),
             ),
           ],
         ),
@@ -732,37 +749,43 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
                       TutorQuickChip(
                         label: isFilipino ? 'Aralin' : 'Lesson',
                         emoji: '🎯',
-                        onTap: () => _sendQuick('lesson'),
+                        onTap: () =>
+                            _sendQuick('lesson', isFilipino ? 'Aralin' : 'Lesson'),
                       ),
                       const SizedBox(width: 8),
                       TutorQuickChip(
                         label: isFilipino ? 'Pagsusulit' : 'Quiz',
                         emoji: '❓',
-                        onTap: () => _sendQuick('quiz'),
+                        onTap: () =>
+                            _sendQuick('quiz', isFilipino ? 'Pagsusulit' : 'Quiz'),
                       ),
                       const SizedBox(width: 8),
                       TutorQuickChip(
                         label: isFilipino ? 'Progreso' : 'Progress',
                         emoji: '📊',
-                        onTap: () => _sendQuick('progress'),
+                        onTap: () =>
+                            _sendQuick('progress', isFilipino ? 'Progreso' : 'Progress'),
                       ),
                       const SizedBox(width: 8),
                       TutorQuickChip(
                         label: isFilipino ? 'Pahiwatig' : 'Hint',
                         emoji: '💡',
-                        onTap: () => _sendQuick('hint'),
+                        onTap: () =>
+                            _sendQuick('hint', isFilipino ? 'Pahiwatig' : 'Hint'),
                       ),
                       const SizedBox(width: 8),
                       TutorQuickChip(
                         label: isFilipino ? 'Pagsasanay' : 'Practice',
                         emoji: '📝',
-                        onTap: () => _sendQuick('practice'),
+                        onTap: () =>
+                            _sendQuick('practice', isFilipino ? 'Pagsasanay' : 'Practice'),
                       ),
                       const SizedBox(width: 8),
                       TutorQuickChip(
                         label: isFilipino ? 'Paborito' : 'Favorites',
                         emoji: '💖',
-                        onTap: () => _sendQuick('favorites'),
+                        onTap: () =>
+                            _sendQuick('favorites', isFilipino ? 'Paborito' : 'Favorites'),
                       ),
                     ],
                   ),
@@ -817,6 +840,8 @@ class _AiTutorScreenState extends ConsumerState<AiTutorScreen> {
                               : 'Type your question',
                           child: TextField(
                             controller: _textController,
+                            maxLength: TextLimits.message,
+                            buildCounter: TextLimits.counter,
                             onSubmitted: (_) => _sendMessage(),
                             textInputAction: TextInputAction.send,
                             decoration: InputDecoration(

@@ -40,6 +40,7 @@ Future<bool> confirmHandsFreePause(
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
+      scrollable: true,
       title: Row(
         children: [
           Icon(Icons.front_hand_rounded, color: HCColor.of(context).graphic(AppColors.warning)),

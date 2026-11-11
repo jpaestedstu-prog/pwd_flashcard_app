@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart' show kDebugMode, listEquals;
 import 'package:flutter/material.dart';
+import '../../../l10n/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/accessibility/haptic_service.dart'
@@ -154,7 +155,8 @@ class GazeDpadScope extends ConsumerStatefulWidget {
 
   /// Label on the exit pill (and the word spoken commands match). Defaults to
   /// "Back"; pass e.g. "Exit" where that reads better.
-  final String exitLabel;
+  /// Null says "Back" in the reader's language.
+  final String? exitLabel;
 
   /// Which [GazeSettings] to run on, when the ambient [gazeSettingsProvider] is
   /// not the right answer. The profile picker needs this: it runs *before* a
@@ -171,7 +173,7 @@ class GazeDpadScope extends ConsumerStatefulWidget {
     required this.rows,
     required this.builder,
     this.onExit,
-    this.exitLabel = 'Back',
+    this.exitLabel,
     this.settingsOverride,
     this.camerasLoader,
     this.detectorFactory,
@@ -225,6 +227,18 @@ class _GazeDpadScopeState extends ConsumerState<GazeDpadScope>
   );
 
   bool get _scanning => _scanner != null;
+
+  /// "Back" in the reader's language, once a context may be asked.
+  String _backWord = 'Back';
+
+  /// The Back control's words: what the screen asked for, or that.
+  String get _exitLabel => widget.exitLabel ?? _backWord;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _backWord = AppLocalizations.of(context)?.back ?? 'Back';
+  }
 
   @override
   void initState() {
@@ -483,7 +497,7 @@ class _GazeDpadScopeState extends ConsumerState<GazeDpadScope>
   /// address, so a spoken "back" and a look-▲-then-blink hit the same cell.
   List<List<GazeDpadCell>> _grid() => [
     if (_hasExitRow)
-      [GazeDpadCell(label: widget.exitLabel, onActivate: widget.onExit!)],
+      [GazeDpadCell(label: _exitLabel, onActivate: widget.onExit!)],
     ...widget.rows,
   ];
 
@@ -699,7 +713,7 @@ class _GazeDpadScopeState extends ConsumerState<GazeDpadScope>
     // The hands-free way out, drawn top-left where a back button belongs so
     // "look up to leave" matches what the learner sees.
     final exitPill = gaze != null && _hasExitRow
-        ? _GazeExitPill(label: widget.exitLabel, focused: onExitRow)
+        ? _GazeExitPill(label: _exitLabel, focused: onExitRow)
         : null;
     // Always the same Stack, so the screen beneath never remounts as the chip
     // or the pill come and go (a sheet opening over the viewer used to rebuild

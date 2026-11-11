@@ -10,6 +10,7 @@ import '../../../core/utils/score_utils.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_en.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/student_list_provider.dart';
 import '../../../widgets/app_back_button.dart';
@@ -20,6 +21,7 @@ import '../services/assessment_service.dart';
 import '../services/class_analysis.dart';
 import '../models/question_prompt.dart';
 import '../../../navigation/nav_extensions.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// The educator's read of the whole class rather than one learner at a time.
 ///
@@ -93,7 +95,7 @@ class ClassReportScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: const AppBackButton(fallbackRoute: '/assessment'),
-        title: Text(
+        title: AppBarTitle(
           l10n?.eduClassReport ?? 'Class Report',
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
@@ -215,9 +217,13 @@ class _SectionTitle extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: AppTypography.titleLarge.copyWith(color: hc.textPrimary),
+        Semantics(
+          container: true,
+          header: true,
+          child: Text(
+            title,
+            style: AppTypography.titleLarge.copyWith(color: hc.textPrimary),
+          ),
         ),
         const SizedBox(height: 4),
         Text(
@@ -376,10 +382,14 @@ class _GroupGainCard extends StatelessWidget {
 class _Metric extends StatelessWidget {
   final String label;
   final String value;
+
+  /// [value] as it is said, when its short form would be misread ("12s").
+  final String? spokenValue;
   final Color color;
   const _Metric({
     required this.label,
     required this.value,
+    this.spokenValue,
     required this.color,
   });
 
@@ -393,6 +403,8 @@ class _Metric extends StatelessWidget {
       ),
       child: Text(
         '$label $value',
+        semanticsLabel:
+            spokenValue == null ? null : '$label $spokenValue'.trim(),
         style: AppTypography.labelSmall.copyWith(
           color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.12)),
           fontWeight: FontWeight.w700,
@@ -475,6 +487,8 @@ class _ItemCard extends StatelessWidget {
                     _Metric(
                       label: l10n?.reportMetricMedian ?? 'Median',
                       value: '${seconds}s',
+                      spokenValue:
+                          (l10n ?? AppLocalizationsEn()).secondsDecimal(seconds),
                       color: hc.textSecondary,
                     ),
                     if (stat.discrimination != null)
@@ -549,8 +563,6 @@ class _LearnerAttemptsRow extends StatelessWidget {
           children: [
             Text(
               profile.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
               style: AppTypography.labelLarge.copyWith(
                 color: hc.textPrimary,
                 fontWeight: FontWeight.w700,

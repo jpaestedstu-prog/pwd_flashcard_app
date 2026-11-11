@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import 'screens/break_time_screen.dart';
 import '../../l10n/app_localizations.dart';
+import '../../l10n/app_localizations_en.dart';
 
 /// Opens the full-screen "I Need a Break" experience and resolves when the
 /// student returns to their lesson.
@@ -72,7 +73,10 @@ class BreakButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      tooltip: tooltip,
+      // The documented fallback: with none given it had no name at all.
+      tooltip: tooltip ??
+          (AppLocalizations.of(context) ?? AppLocalizationsEn())
+              .iNeedABreakTooltip,
       icon: Icon(Icons.self_improvement_rounded, color: color),
       onPressed: () => _open(context),
     );
@@ -186,11 +190,14 @@ class _BreakPill extends StatelessWidget {
         : hc.fillFor(const Color(0xFF26A69A));
     final Color fg = highContrast ? const Color(0xFFFFEB3B) : Colors.white;
 
+    // Said once. TalkBack read the label, the word "Break" under it and the
+    // tooltip: "I need a break, Break, button, I need a break".
     return Semantics(
       button: true,
       label: l10n.iNeedABreakTooltip,
       child: Tooltip(
         message: l10n.iNeedABreakTooltip,
+        excludeFromSemantics: true,
         child: Material(
           color: bg,
           elevation: 6,
@@ -206,31 +213,33 @@ class _BreakPill extends StatelessWidget {
           child: InkWell(
             customBorder: const StadiumBorder(),
             onTap: onTap,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 48),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.self_improvement_rounded,
-                      color: fg,
-                      size: 22,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      l10n.breakButton,
-                      style: TextStyle(
+            child: ExcludeSemantics(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 48),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.self_improvement_rounded,
                         color: fg,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 15,
+                        size: 22,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 8),
+                      Text(
+                        l10n.breakButton,
+                        style: TextStyle(
+                          color: fg,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

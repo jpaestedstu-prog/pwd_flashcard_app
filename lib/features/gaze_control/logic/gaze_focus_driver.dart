@@ -35,6 +35,12 @@ abstract final class GazeFocusDriver {
   static bool move(TraversalDirection direction) {
     final node = focused;
     if (node == null) return false;
+    if (startOnScreen(
+      forward: direction == TraversalDirection.down ||
+          direction == TraversalDirection.right,
+    )) {
+      return true;
+    }
     _openShellPageEdge(node);
     // Geometry first: for a D-pad, "the control below this one" is what the
     // learner means.
@@ -150,9 +156,13 @@ abstract final class GazeFocusDriver {
   /// involved, or Flutter's own search should decide.
   ///
   /// With [inLineOnly], only controls in [node]'s row (◀ ▶) or column (▲ ▼)
-  /// count, on the page and in the shell alike, and the nearest wins:
-  ///  * from the page, only when it is a shell control — the page's own are
-  ///    Flutter's to find;
+  /// count, on the page and in the shell alike:
+  ///  * from the page, the nearest shell control, but only when the page has
+  ///    nothing further that way — the page's own are Flutter's to find. A
+  ///    page goes on before the shell starts: on a tablet held sideways, ▼
+  ///    from a tall deck or story went out to a tab or the guest's Home button
+  ///    (nearer by its centre than the next card), so the column below could
+  ///    not be stepped down;
   ///  * from a shell control, whichever it is. Flutter counts the page itself
   ///    as a control there, one the size of the page, and lands on whatever
   ///    the page last had focused: ◀ from the AI Buddy, level with a guest's
@@ -189,7 +199,11 @@ abstract final class GazeFocusDriver {
     if (pages == null) return null;
     final Rect from;
     try {
-      from = node.rect;
+      // A page control by the part of it that shows: held sideways, a story
+      // card running on behind the tab bar was level with the tabs by its
+      // hidden lower half, and ▶ from it went to Progress rather than to the
+      // AI Buddy's button floating beside it (10 Nov).
+      from = fromShell ? node.rect : _shownRect(node);
     } catch (_) {
       return null;
     }
@@ -198,7 +212,7 @@ abstract final class GazeFocusDriver {
     final forward = direction == TraversalDirection.down ||
         direction == TraversalDirection.right;
     FocusNode? best;
-    var bestInPage = false;
+    var pageGoesOn = false;
     var bestKey = (0, 0.0, 0.0);
     for (final other in scope.traversalDescendants) {
       if (identical(other, node) ||
@@ -208,6 +222,10 @@ abstract final class GazeFocusDriver {
       }
       final inPage = other.ancestors.contains(page);
       if (inPage ? !inLineOnly : other.ancestors.contains(pages)) continue;
+      // From the tab bar or a floating button, what is in view. On a short
+      // window a page control can sit behind the tab bar, and ◀ ▶ along the
+      // tabs went to it, level with them but out of sight.
+      if (fromShell && inPage && !_middleInView(other)) continue;
       final Rect r;
       try {
         r = other.rect;
@@ -224,8 +242,28 @@ abstract final class GazeFocusDriver {
           ? r.right > from.left && r.left < from.right
           : r.top < from.bottom - rowSlack && r.bottom > from.top + rowSlack;
       if (inLineOnly && !inLine) continue;
+      // Level with a tab only by an edge hidden under the tab bar is not level
+      // to the eye. Scrolled, a sideways Home has a row of tiles whose lower
+      // edges run behind the bar, and ◀ ▶ along the tabs went up to them
+      // instead of to the next tab.
+      if (fromShell &&
+          inPage &&
+          !vertical &&
+          _underShellControl(
+            other,
+            Offset(r.center.dx, from.center.dy.clamp(r.top, r.bottom)),
+          )) {
+        continue;
+      }
+      if (inPage) pageGoesOn = true;
+      // From a tab, ▲ ▼ take a button floating in its column (the AI Buddy
+      // above Progress) before the page behind it: it is drawn over the
+      // page, so to the eye it is the nearest thing above the tab, and the
+      // next press goes on into the page. A page card nearer by its centre
+      // took ▲ every time, and the buddy was reached only round a wrap.
+      final behind = fromShell && vertical && inPage ? 1 : 0;
       final key = (
-        inLine ? 0 : 1,
+        (inLine ? 0 : 1) * 2 + behind,
         ahead.abs(),
         (vertical
                 ? r.center.dx - from.center.dx
@@ -238,11 +276,24 @@ abstract final class GazeFocusDriver {
               (key.$2 < bestKey.$2 ||
                   (key.$2 == bestKey.$2 && key.$3 < bestKey.$3)))) {
         best = other;
-        bestInPage = inPage;
         bestKey = key;
       }
     }
-    return !fromShell && bestInPage ? null : best;
+    return !fromShell && pageGoesOn ? null : best;
+  }
+
+  /// [node]'s box cut to what its scroll view shows; the whole box when it is
+  /// in no scroll view, or shows nothing (then the box is all there is).
+  static Rect _shownRect(FocusNode node) {
+    final rect = node.rect;
+    final context = node.context;
+    if (context == null || !context.mounted) return rect;
+    final scrollable = Scrollable.maybeOf(context);
+    final box = scrollable?.context.findRenderObject();
+    if (box is! RenderBox || !box.hasSize || !box.attached) return rect;
+    final view = box.localToGlobal(Offset.zero) & box.size;
+    final shown = rect.intersect(view);
+    return shown.width > 0 && shown.height > 0 ? shown : rect;
   }
 
   /// Lets a move off the edge of a page **inside the navigation shell** carry
@@ -376,7 +427,15 @@ abstract final class GazeFocusDriver {
   /// the tab bar and the AI Buddy, ▲ from the last category jumped two rows
   /// up into another column — where an arrow had last left the page.
   static void _focusChosen(FocusNode from, FocusNode to) {
-    for (final node in [from, to]) {
+    focusChosen(to, from: from);
+  }
+
+  /// [_focusChosen] for a screen that moves focus itself, after the learner
+  /// acts rather than on an arrow: Drag & Drop handing focus to the next word
+  /// once one is placed. Without the wipe, the next arrow retraced the steps
+  /// that led to a control the screen had since taken away.
+  static void focusChosen(FocusNode to, {FocusNode? from}) {
+    for (final node in [?from, to]) {
       for (FocusScopeNode? s = node.nearestScope;
           s != null;
           s = s.enclosingScope) {
@@ -428,6 +487,9 @@ abstract final class GazeFocusDriver {
     final node = focused;
     final context = node?.context;
     if (context == null) return false;
+    // A control scrolled out of sight is not what the learner is pressing:
+    // the caller starts again from the screen instead.
+    if (node is! FocusScopeNode && !isOnScreen(node!)) return false;
     const intent = ActivateIntent();
     final action = Actions.maybeFind<ActivateIntent>(context, intent: intent);
     if (action == null || !action.isEnabled(intent)) return false;
@@ -502,6 +564,151 @@ abstract final class GazeFocusDriver {
     return true;
   }
 
+  /// Whether [node] has a place on the screen: laid out, with a real
+  /// rectangle, inside the list that scrolls it and inside the screen.
+  ///
+  /// A control scrolled far out of its list is kept alive off stage, its
+  /// rectangle not a number, and no direction from it leads anywhere. Once
+  /// TalkBack, a finger or a mouse wheel had moved the page under the D-pad
+  /// focus, the controller said "Nothing more that way" at every press, and
+  /// so did the arrow keys (found on the tablet, 29 Oct).
+  static bool isOnScreen(FocusNode node) {
+    final context = node.context;
+    if (context == null || !context.mounted) return false;
+    final Rect r;
+    try {
+      r = node.rect;
+    } catch (_) {
+      return false;
+    }
+    if (!r.isFinite || r.isEmpty) return false;
+    final viewport = Scrollable.maybeOf(context)?.context.findRenderObject();
+    if (viewport is RenderBox && viewport.attached && viewport.hasSize) {
+      final shown = MatrixUtils.transformRect(
+        viewport.getTransformTo(null),
+        Offset.zero & viewport.size,
+      );
+      if (shown.isFinite && !shown.overlaps(r)) return false;
+    }
+    return (Offset.zero & MediaQuery.sizeOf(context)).overlaps(r);
+  }
+
+  /// Whether the middle of [node] is in view: inside every list around it and
+  /// the window, and not under the navigation shell's own controls. Stricter
+  /// than [isOnScreen], which a sliver of it satisfies.
+  static bool _middleInView(FocusNode node) {
+    final context = node.context;
+    if (context == null || !context.mounted) return false;
+    final Offset middle;
+    try {
+      middle = node.rect.center;
+    } catch (_) {
+      return false;
+    }
+    for (var s = Scrollable.maybeOf(context);
+        s != null;
+        s = Scrollable.maybeOf(s.context)) {
+      final viewport = s.context.findRenderObject();
+      if (viewport is! RenderBox || !viewport.attached || !viewport.hasSize) {
+        continue;
+      }
+      final shown = MatrixUtils.transformRect(
+        viewport.getTransformTo(null),
+        Offset.zero & viewport.size,
+      );
+      if (shown.isFinite && !shown.contains(middle)) return false;
+    }
+    if (!(Offset.zero & MediaQuery.sizeOf(context)).contains(middle)) {
+      return false;
+    }
+    return !_underShellControl(node, middle);
+  }
+
+  /// Whether [middle], a point of a control on a page inside the navigation
+  /// shell, lies under one of the shell's own controls drawn over the page —
+  /// the tab bar, a guest's floating Home button. A page scrolls on behind the
+  /// tab bar: a card there is inside its list and the window, yet out of
+  /// sight, and on a scrolled sideways Home ◀ from Cards went to one of them
+  /// instead of the Home tab.
+  static bool _underShellControl(FocusNode node, Offset middle) {
+    FocusScopeNode? page;
+    for (final a in node.ancestors) {
+      if (a is FocusScopeNode && _isShellPage(a)) {
+        page = a;
+        break;
+      }
+    }
+    final pageContext = page?.context;
+    final shell = page?.enclosingScope;
+    if (page == null || shell == null || pageContext == null) return false;
+    final pages = Navigator.maybeOf(pageContext)?.focusNode;
+    for (final other in shell.traversalDescendants) {
+      if (other is FocusScopeNode || other.context == null) continue;
+      if (other.ancestors.contains(page)) continue;
+      // The shell's other pages, hidden under this one.
+      if (pages != null && other.ancestors.contains(pages)) continue;
+      final Rect r;
+      try {
+        r = other.rect;
+      } catch (_) {
+        continue;
+      }
+      if (r.contains(middle)) return true;
+    }
+    return false;
+  }
+
+  /// Whether a move from [from] may count [other] as lying ahead: from the tab
+  /// bar or a floating button, only what is in view on the page. A page's
+  /// controls built past its edge lie "below" a tab by their position alone.
+  static bool countsAhead(FocusNode from, FocusNode other) {
+    final own = from.nearestScope;
+    if (own == null || from is FocusScopeNode || _isShellPage(own)) return true;
+    final page = _shellPageInside(own);
+    if (page == null || !other.ancestors.contains(page)) return true;
+    return _middleInView(other);
+  }
+
+  /// When the focus has no place on the screen ([isOnScreen]), or rests on a
+  /// bare scope (a screen reader let go of it), focuses the first control on
+  /// screen — the last, when not going [forward] — and returns true. The
+  /// next press starts from what the learner sees.
+  ///
+  /// Content first: the app bar's back button is on screen on every page,
+  /// and "first on screen" would otherwise be Back, far from where TalkBack
+  /// had read to.
+  static bool startOnScreen({required bool forward}) {
+    final node = focused;
+    if (node == null) return false;
+    if (node is! FocusScopeNode && isOnScreen(node)) return false;
+    final shown = [
+      for (final n in _readingOrder(node))
+        if (isOnScreen(n)) n,
+    ];
+    if (shown.isEmpty) return false;
+    // In the list the focus was left in, when any of it is on screen.
+    final list = node is FocusScopeNode || node.context == null
+        ? null
+        : Scrollable.maybeOf(node.context!);
+    final inList = list == null
+        ? const <FocusNode>[]
+        : [
+            for (final n in shown)
+              if (Scrollable.maybeOf(n.context!) == list) n,
+          ];
+    final content = [
+      for (final n in inList.isNotEmpty ? inList : shown)
+        if (!isBackButton(n)) n,
+    ];
+    final from = content.isNotEmpty
+        ? content
+        : (inList.isNotEmpty ? inList : shown);
+    final pick = forward ? from.first : from.last;
+    _focusChosen(node, pick);
+    _revealFocused();
+    return true;
+  }
+
   /// The controls focus can move among on the focused surface, in reading
   /// order (top to bottom, then left to right within a row).
   static List<FocusNode> _readingOrder(FocusNode node) {
@@ -511,7 +718,11 @@ abstract final class GazeFocusDriver {
     for (final n in scope.traversalDescendants) {
       if (n is FocusScopeNode || n.context == null) continue;
       try {
-        nodes.add((node: n, rect: n.rect));
+        final rect = n.rect;
+        // Scrolled far out of its list, kept alive off stage: no place to
+        // sort by (its rectangle is not a number), and nowhere a learner is.
+        if (!rect.isFinite) continue;
+        nodes.add((node: n, rect: rect));
       } catch (_) {
         // Not laid out yet — not somewhere the learner can be.
       }
@@ -523,6 +734,21 @@ abstract final class GazeFocusDriver {
       return a.rect.center.dx.compareTo(b.rect.center.dx);
     });
     return [for (final n in nodes) n.node];
+  }
+
+  /// The controls of [node]'s surface in reading order — what the game
+  /// controller's X reads out.
+  static List<FocusNode> readingOrderOf(FocusNode node) => _readingOrder(node);
+
+  /// Where [node] stands in that reading order, counted from 1, and how many
+  /// controls the surface holds — what the game controller says after a move
+  /// ("Games, 3 of 12"), because counting out loud is how a learner who
+  /// cannot see the screen knows a list has an end. Null off the order.
+  static ({int position, int total})? readingPosition(FocusNode node) {
+    final order = _readingOrder(node);
+    final at = order.indexOf(node);
+    if (at < 0) return null;
+    return (position: at + 1, total: order.length);
   }
 
   /// Whether the focused control is the first one on its surface — the place
@@ -568,6 +794,7 @@ abstract final class GazeFocusDriver {
   static bool moveFirst() {
     final node = focused;
     if (node == null) return false;
+    if (startOnScreen(forward: true)) return true;
     // Down then right covers both column- and row-shaped layouts; whichever
     // finds a node first wins.
     return node.focusInDirection(TraversalDirection.down) ||
@@ -641,7 +868,9 @@ abstract final class GazeFocusDriver {
   /// sizes could not be reached at all.
   static bool step({required bool forward}) {
     final node = focused;
-    if (node == null || node is FocusScopeNode) return false;
+    if (node == null) return false;
+    if (startOnScreen(forward: forward)) return true;
+    if (node is FocusScopeNode) return false;
     final order = _readingOrder(node);
     final at = order.indexOf(node);
     if (at < 0) return false;

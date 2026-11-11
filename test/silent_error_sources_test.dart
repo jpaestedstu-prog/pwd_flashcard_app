@@ -41,6 +41,30 @@ void main() {
     });
   });
 
+  test('leaving a report\'s preview while a page is being drawn does not '
+      'interrupt, and other failures still do', () async {
+    // On the tablet (4 Nov): Reports, Preview, Back: "Something went wrong".
+    final seen = <Object>[];
+    final sub = ErrorHandler.errorStream.listen(seen.add);
+    ErrorHandler.report(
+      RangeError('Invalid value: Valid value range is empty: 1'),
+      StackTrace.fromString(
+        '#0 PdfPreviewRaster._raster (package:printing/src/preview/raster.dart)',
+      ),
+      'FlutterError',
+    );
+    await Future<void>.delayed(Duration.zero);
+    expect(seen, isEmpty);
+    ErrorHandler.report(
+      RangeError('Invalid value'),
+      StackTrace.fromString('#0 main (package:pwdpwdpwd/main.dart)'),
+      'FlutterError',
+    );
+    await Future<void>.delayed(Duration.zero);
+    expect(seen, hasLength(1));
+    await sub.cancel();
+  });
+
   group('user-initiated failures still surface', () {
     test('a username search that fails is the user\'s to see', () {
       // Somebody typed a handle and pressed go. Silence here would look like

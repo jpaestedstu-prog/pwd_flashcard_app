@@ -10,6 +10,8 @@ import '../../../widgets/app_back_button.dart';
 import '../widgets/path_card.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
+import '../../../core/widgets/stagger_in.dart';
 
 class LearningPathListScreen extends ConsumerWidget {
   const LearningPathListScreen({super.key});
@@ -23,7 +25,7 @@ class LearningPathListScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         leading: const AppBackButton(),
-        title: Text(_t(context).lpTitle),
+        title: AppBarTitle(_t(context).lpTitle),
         centerTitle: true,
         actions: [
           IconButton(
@@ -80,7 +82,10 @@ class LearningPathListScreen extends ConsumerWidget {
                     final progress = progressMap[path.id];
                     final isUnlocked = notifier.isPathUnlocked(path);
 
-                    return Padding(
+                    return StaggerIn(
+                      index: index,
+                      base: const Duration(milliseconds: 200),
+                      child: Padding(
                       padding: const EdgeInsets.only(bottom: 16),
                       child: PathCard(
                         path: path,
@@ -91,13 +96,14 @@ class LearningPathListScreen extends ConsumerWidget {
                             ? () => context.push('/learning-paths/${path.id}')
                             : null,
                       ),
-                    )
-                        .animate()
+                    ),
+                      builder: (child, delay) => child.animate()
                         .fadeIn(
                           duration: 400.ms,
-                          delay: (200 + index * 60).ms,
+                          delay: delay,
                         )
-                        .slideY(begin: 0.08, end: 0);
+                        .slideY(begin: 0.08, end: 0),
+                    );
                   },
                   childCount: paths.length,
                 ),
@@ -150,11 +156,13 @@ class _OverallProgressBar extends StatelessWidget {
               ],
             ),
             child: Center(
-              child: Text(
-                '$completedCount',
-                style: AppTypography.titleLarge.copyWith(
-                  color: HCColor.of(context).primary,
-                  fontWeight: FontWeight.w800,
+              child: ExcludeSemantics(
+                child: Text(
+                  '$completedCount',
+                  style: AppTypography.titleLarge.copyWith(
+                    color: HCColor.of(context).primary,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ),

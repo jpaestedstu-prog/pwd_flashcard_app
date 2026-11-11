@@ -21,6 +21,8 @@ import '../../../widgets/app_snack_bar.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../models/question_prompt.dart';
+import '../../../core/widgets/app_bar_title.dart';
+import '../../../core/widgets/stagger_in.dart';
 
 /// Screen showing all assignments created by the current educator,
 /// with per-student completion tracking.
@@ -58,8 +60,8 @@ class AssignmentTrackingScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: const AppBackButton(fallbackRoute: '/assessment-hub'),
-        title: Text(
+        leading: const AppBackButton(fallbackRoute: '/assessment'),
+        title: AppBarTitle(
           _tr(context).trkTitle,
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
@@ -95,7 +97,10 @@ class AssignmentTrackingScreen extends ConsumerWidget {
                   assignment,
                   names: names,
                 );
-                return Padding(
+                return StaggerIn(
+                  index: index,
+                  step: const Duration(milliseconds: 80),
+                  child: Padding(
                   padding: const EdgeInsets.only(bottom: 16),
                   child: _AssignmentCard(
                     assignment: assignment,
@@ -112,6 +117,7 @@ class AssignmentTrackingScreen extends ConsumerWidget {
                       final confirm = await showDialog<bool>(
                         context: context,
                         builder: (ctx) => AlertDialog(
+                          scrollable: true,
                           title: Text(_tr(context).trkDeleteTitle),
                           content: Text(_tr(context).trkDeleteBody),
                           actions: [
@@ -145,10 +151,11 @@ class AssignmentTrackingScreen extends ConsumerWidget {
                       }
                     },
                   ),
-                )
-                    .animate()
-                    .fadeIn(duration: 300.ms, delay: (80 * index).ms)
-                    .slideY(begin: 0.05, end: 0);
+                ),
+                  builder: (child, delay) => child.animate()
+                    .fadeIn(duration: 300.ms, delay: delay)
+                    .slideY(begin: 0.05, end: 0),
+                );
               },
             ),
     );
@@ -525,7 +532,7 @@ class _EmptyState extends StatelessWidget {
         child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('📋', style: TextStyle(fontSize: 64)),
+          const ExcludeSemantics(child: Text('📋', style: TextStyle(fontSize: 64))),
           const SizedBox(height: 16),
           Text(
             _tr(context).trkEmpty,

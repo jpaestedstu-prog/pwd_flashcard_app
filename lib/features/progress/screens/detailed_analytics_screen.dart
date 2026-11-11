@@ -19,6 +19,7 @@ import '../../../core/widgets/fit_text.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../navigation/nav_extensions.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Full-page analytics dashboard with interactive fl_chart visuals.
 class DetailedAnalyticsScreen extends ConsumerWidget {
@@ -67,7 +68,7 @@ class DetailedAnalyticsScreen extends ConsumerWidget {
             return true;
           },
         ),
-        title: Text(
+        title: AppBarTitle(
           _t(context).daTitle,
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
@@ -243,12 +244,13 @@ class _MiniStat extends StatelessWidget {
               ),
             ),
             // The caption naming the number above it, in a third of a row:
-            // it was splitting "Minut / es" and "Sessio / ns".
+            // it was splitting "Minut / es" and "Sessio / ns". Two lines
+            // before it shrinks: on one, "Mga Sesyon" was drawn at 9 px.
             FitText(
               label,
-              maxLines: 1,
+              textAlign: TextAlign.center,
               style: AppTypography.labelSmall.copyWith(
-                fontSize: 9,
+                fontSize: 11,
                 color: HCColor.of(context).textSecondary,
               ),
             ),

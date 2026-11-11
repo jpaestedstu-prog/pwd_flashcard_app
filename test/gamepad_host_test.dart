@@ -1,15 +1,19 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart' show SemanticsAction;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pwdpwdpwd/core/accessibility/tts_service.dart';
 import 'package:pwdpwdpwd/features/gamepad/models/gamepad_button.dart';
+import 'package:pwdpwdpwd/features/gamepad/models/gamepad_settings.dart';
 import 'package:pwdpwdpwd/features/gamepad/providers/gamepad_sections.dart';
+import 'package:pwdpwdpwd/features/gamepad/providers/gamepad_settings_provider.dart';
 import 'package:pwdpwdpwd/features/gamepad/providers/gamepad_status_provider.dart';
 import 'package:pwdpwdpwd/features/gamepad/services/gamepad_service.dart';
 import 'package:pwdpwdpwd/features/gamepad/widgets/gamepad_host.dart';
 import 'package:pwdpwdpwd/features/gaze_control/providers/gaze_home_grid.dart';
+import 'package:pwdpwdpwd/navigation/dpad_keys.dart' show DpadSliderScope;
 
 /// End-to-end contract for [GamepadHost]: real controller events in, real
 /// navigation and real announcements out — with only the platform channel and
@@ -102,6 +106,15 @@ class _FakeTts extends TtsService {
   void clear() => spoken.clear();
 }
 
+/// A learner's saved controller settings, without Hive.
+class _FixedGamepadSettings extends GamepadSettingsNotifier {
+  _FixedGamepadSettings(this.initial);
+  final GamepadSettings initial;
+
+  @override
+  GamepadSettings build() => initial;
+}
+
 void main() {
   late _FakeGamepadService pad;
   late _FakeTts tts;
@@ -151,12 +164,16 @@ void main() {
   Future<void> pumpHost(
     WidgetTester tester, {
     Widget body = const Text('app'),
+    GamepadSettings? settings,
   }) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           gamepadServiceProvider.overrideWithValue(pad),
           ttsServiceProvider.overrideWithValue(tts),
+          if (settings != null)
+            gamepadSettingsProvider
+                .overrideWith(() => _FixedGamepadSettings(settings)),
         ],
         child: MaterialApp(
           home: GamepadHost(child: Scaffold(body: body)),
@@ -247,14 +264,14 @@ void main() {
   });
 
   group('the ask-before-you-move flow', () {
-    testWidgets('D-pad right asks about the next section', (tester) async {
+    testWidgets('R1 asks about the next section', (tester) async {
       await pumpHost(tester);
       publishShell();
       pad.connect();
       await tester.pump();
       tts.clear();
 
-      pad.press(GamepadButton.dpadRight);
+      pad.press(GamepadButton.r1);
       await tester.pump();
 
       expect(tts.last, contains('Do you want to go to the Cards section?'));
@@ -269,7 +286,7 @@ void main() {
       pad.connect();
       await tester.pump();
 
-      pad.press(GamepadButton.dpadRight);
+      pad.press(GamepadButton.r1);
       await tester.pump();
       tts.clear();
       pad.press(GamepadButton.a);
@@ -285,7 +302,7 @@ void main() {
       pad.connect();
       await tester.pump();
 
-      pad.press(GamepadButton.dpadRight);
+      pad.press(GamepadButton.r1);
       await tester.pump();
       pad.press(GamepadButton.b);
       await tester.pump();
@@ -299,7 +316,20 @@ void main() {
           reason: 'declining never moves the learner');
     });
 
-    testWidgets('A is directional again once no question is open',
+    testWidgets('L1 walks the sections backwards', (tester) async {
+      await pumpHost(tester);
+      publishShell();
+      pad.connect();
+      await tester.pump();
+      tts.clear();
+
+      pad.press(GamepadButton.l1);
+      await tester.pump();
+      expect(tts.last, contains('Progress section?'),
+          reason: 'back from Home wraps to the last tab');
+    });
+
+    testWidgets('with no question open, A presses the highlighted tile',
         (tester) async {
       await pumpHost(tester);
       publishShell();
@@ -308,11 +338,11 @@ void main() {
       await tester.pump();
       tts.clear();
 
-      // No question open: A means "next item", not "yes".
       pad.press(GamepadButton.a);
       await tester.pump();
       expect(selectedSections, isEmpty);
-      expect(tts.last, contains('of 4'));
+      expect(opened, ['Flashcards']);
+      expect(tts.said('Opening Flashcards'), isTrue);
     });
 
     testWidgets('a stale question cannot be answered later', (tester) async {
@@ -322,7 +352,7 @@ void main() {
       pad.connect();
       await tester.pump();
 
-      pad.press(GamepadButton.dpadRight); // asks about Cards
+      pad.press(GamepadButton.r1); // asks about Cards
       await tester.pump();
       pad.press(GamepadButton.dpadDown); // the learner does something else
       await tester.pump();
@@ -332,58 +362,104 @@ void main() {
 
       expect(selectedSections, isEmpty,
           reason: 'A must not answer a question the learner abandoned');
+      expect(opened, ['Stories'],
+          reason: 'it presses the tile the learner moved to instead');
     });
 
-    testWidgets('D-pad left walks the sections backwards', (tester) async {
-      await pumpHost(tester);
-      publishShell();
-      pad.connect();
-      await tester.pump();
-      tts.clear();
-
-      pad.press(GamepadButton.dpadLeft);
-      await tester.pump();
-      expect(tts.last, contains('Progress section?'),
-          reason: 'left from Home wraps to the last tab');
-    });
-  });
-
-  group('moving through items', () {
-    testWidgets('announces each item with its position', (tester) async {
+    testWidgets('the D-pad never answers a question', (tester) async {
       await pumpHost(tester);
       publishShell();
       publishGrid();
       pad.connect();
       await tester.pump();
-      tts.clear();
 
-      pad.press(GamepadButton.dpadDown);
+      pad.press(GamepadButton.r1);
       await tester.pump();
-      expect(tts.last, 'Games, 2 of 4.');
-
-      pad.press(GamepadButton.dpadDown);
+      pad.press(GamepadButton.dpadRight);
       await tester.pump();
-      expect(tts.last, 'Stories, 3 of 4.');
+      expect(selectedSections, isEmpty);
+      expect(tts.last, 'Games, 2 of 4.',
+          reason: 'right moves along the row, exactly as with no question');
     });
 
-    testWidgets('reaches every cell of a 2-column grid with down alone',
+    testWidgets('with the Nintendo swap, B says yes and A says no',
+        (tester) async {
+      await pumpHost(
+        tester,
+        settings: const GamepadSettings(swapConfirmButtons: true),
+      );
+      publishShell();
+      pad.connect();
+      await tester.pump();
+
+      pad.press(GamepadButton.r1); // Cards?
+      await tester.pump();
+      pad.press(GamepadButton.a); // reported as A, meant as "no"
+      await tester.pump();
+      expect(tts.last, contains('Games section?'));
+      pad.press(GamepadButton.b); // reported as B, meant as "yes"
+      await tester.pump();
+      expect(selectedSections, [2]);
+    });
+
+    testWidgets('with asking turned off, R1 switches straight away',
+        (tester) async {
+      await pumpHost(
+        tester,
+        settings: const GamepadSettings(confirmSectionChange: false),
+      );
+      publishShell();
+      pad.connect();
+      await tester.pump();
+
+      pad.press(GamepadButton.r1);
+      await tester.pump();
+      expect(selectedSections, [1]);
+      expect(tts.last, "You're now in the Cards section.");
+    });
+  });
+
+  group('moving over the hub tiles', () {
+    testWidgets('the D-pad moves by direction, counting each tile',
         (tester) async {
       await pumpHost(tester);
       publishShell();
       publishGrid();
       pad.connect();
       await tester.pump();
-      tts.clear();
 
       final heard = <String>[];
-      for (var i = 0; i < 4; i++) {
-        pad.press(GamepadButton.dpadDown);
+      for (final button in [
+        GamepadButton.dpadRight,
+        GamepadButton.dpadDown,
+        GamepadButton.dpadLeft,
+        GamepadButton.dpadUp,
+      ]) {
+        pad.press(button);
         await tester.pump();
         heard.add(tts.last);
       }
-      // Started on item 1, so stepping four times wraps back to it.
-      expect(heard.where((s) => s.contains('Games')), isNotEmpty);
-      expect(heard.where((s) => s.contains('Smart Review')), isNotEmpty);
+      expect(heard, [
+        'Games, 2 of 4.',
+        'Smart Review, 4 of 4.',
+        'Stories, 3 of 4.',
+        'Flashcards, 1 of 4.',
+      ]);
+    });
+
+    testWidgets('left and right wrap within the row', (tester) async {
+      await pumpHost(tester);
+      publishShell();
+      publishGrid();
+      pad.connect();
+      await tester.pump();
+
+      pad.press(GamepadButton.dpadLeft);
+      await tester.pump();
+      expect(tts.last, 'Games, 2 of 4.', reason: 'left from the first wraps');
+      pad.press(GamepadButton.dpadRight);
+      await tester.pump();
+      expect(tts.last, 'Flashcards, 1 of 4.');
     });
 
     testWidgets('draws the same focus ring the gaze D-pad uses', (tester) async {
@@ -393,91 +469,141 @@ void main() {
       pad.connect();
       await tester.pump();
 
-      pad.press(GamepadButton.dpadDown);
+      pad.press(GamepadButton.dpadRight);
       await tester.pump();
       expect(gazeHomeGrid.focusRow, 0);
       expect(gazeHomeGrid.focusCol, 1);
+      pad.press(GamepadButton.dpadDown);
+      await tester.pump();
+      expect(gazeHomeGrid.focusRow, 1);
+      expect(gazeHomeGrid.focusCol, 1);
     });
 
-    testWidgets('R1 opens the item the learner is on', (tester) async {
+    testWidgets('R2 and L2 walk the tiles one at a time in reading order',
+        (tester) async {
       await pumpHost(tester);
       publishShell();
       publishGrid();
       pad.connect();
       await tester.pump();
 
-      pad.press(GamepadButton.dpadDown); // to Games
+      final heard = <String>[];
+      for (var i = 0; i < 4; i++) {
+        pad.press(GamepadButton.r2);
+        await tester.pump();
+        heard.add(tts.last);
+      }
+      expect(heard, [
+        'Games, 2 of 4.',
+        'Stories, 3 of 4.',
+        'Smart Review, 4 of 4.',
+        'Flashcards, 1 of 4.',
+      ], reason: 'every tile of a 2-column grid, then round again');
+      pad.press(GamepadButton.l2);
+      await tester.pump();
+      expect(tts.last, 'Smart Review, 4 of 4.');
+    });
+
+    testWidgets('the right stick jumps to the last and first tile',
+        (tester) async {
+      await pumpHost(tester);
+      publishShell();
+      publishGrid();
+      pad.connect();
+      await tester.pump();
+
+      pad.press(GamepadButton.rightStickRight);
+      await tester.pump();
+      expect(tts.last, 'Smart Review, 4 of 4.');
+      pad.press(GamepadButton.rightStickLeft);
+      await tester.pump();
+      expect(tts.last, 'Flashcards, 1 of 4.');
+    });
+
+    testWidgets('A opens the tile the learner is on', (tester) async {
+      await pumpHost(tester);
+      publishShell();
+      publishGrid();
+      pad.connect();
+      await tester.pump();
+
+      pad.press(GamepadButton.dpadRight); // to Games
       await tester.pump();
       tts.clear();
-      pad.press(GamepadButton.r1);
+      pad.press(GamepadButton.a);
       await tester.pump();
 
       expect(opened, ['Games']);
       expect(tts.said('Opening Games'), isTrue);
     });
 
-    testWidgets('never leaves a press silent, even with no grid published',
+    testWidgets('the left stick moves too, unless it is turned off',
         (tester) async {
-      // The invariant that matters on an unadopted screen: whatever the focus
-      // traversal does or does not find, the learner hears *something*. A
-      // silent press reads as a broken controller, and there is no other cue
-      // available to someone who cannot see the screen.
       await pumpHost(tester);
       publishShell();
+      publishGrid();
+      pad.connect();
+      await tester.pump();
+
+      pad.press(GamepadButton.leftStickRight);
+      await tester.pump();
+      expect(tts.last, 'Games, 2 of 4.');
+    });
+
+    testWidgets('a left stick turned off does nothing at all', (tester) async {
+      await pumpHost(
+        tester,
+        settings: const GamepadSettings(leftStickMoves: false),
+      );
+      publishShell();
+      publishGrid();
       pad.connect();
       await tester.pump();
       tts.clear();
 
-      pad.press(GamepadButton.dpadDown);
-      await tester.pump();
-      await tester.pump(); // the focused label is read a frame later
+      for (final stick in [
+        GamepadButton.leftStickUp,
+        GamepadButton.leftStickDown,
+        GamepadButton.leftStickLeft,
+        GamepadButton.leftStickRight,
+      ]) {
+        pad.press(stick);
+        await tester.pump();
+      }
+      expect(tts.spoken, isEmpty, reason: 'a knocked stick must stay silent');
+      expect(opened, isEmpty);
 
-      expect(tts.spoken, isNotEmpty,
-          reason: 'a press with no audible result is indistinguishable from a '
-              'dead button');
+      pad.press(GamepadButton.dpadRight);
+      await tester.pump();
+      expect(tts.last, 'Games, 2 of 4.', reason: 'the D-pad still moves');
     });
 
-    testWidgets('down alone reaches every control of a row on an '
-        'unadopted screen', (tester) async {
-      // Left and right belong to the sections, so on a screen that publishes
-      // no items up and down are all a learner has. Stepped by direction,
-      // down from the heading took the first chip and then the button under
-      // it: Settings' M, L and XL text sizes could not be reached.
-      Widget chip(String label) =>
-          TextButton(onPressed: () {}, child: Text(label));
-      await pumpHost(
-        tester,
-        body: Column(
-          children: [
-            SizedBox(width: double.infinity, child: chip('Text size')),
-            Row(children: [chip('S'), chip('M'), chip('L'), chip('XL')]),
-            SizedBox(width: double.infinity, child: chip('Below')),
-          ],
-        ),
-      );
+    testWidgets('a hub rebuilding under the learner keeps their tile',
+        (tester) async {
+      // A hub republishes its tiles on every build — coming back from a game
+      // is one. The controller must still be on the tile that opened it.
+      await pumpHost(tester);
       publishShell();
+      publishGrid();
       pad.connect();
       await tester.pump();
 
-      final heard = <String>[];
-      for (var i = 0; i < 6; i++) {
-        tts.clear();
-        pad.press(GamepadButton.dpadDown);
-        await tester.pump();
-        await tester.pump();
-        heard.add(tts.last);
-      }
-      expect(heard, ['Text size', 'S', 'M', 'L', 'XL', 'Below']);
+      pad.press(GamepadButton.dpadRight); // Games
+      await tester.pump();
+      pad.press(GamepadButton.a);
+      await tester.pump();
+      expect(opened, ['Games']);
 
-      final back = <String>[];
-      for (var i = 0; i < 5; i++) {
-        tts.clear();
-        pad.press(GamepadButton.dpadUp);
-        await tester.pump();
-        await tester.pump();
-        back.add(tts.last);
-      }
-      expect(back, ['XL', 'L', 'M', 'S', 'Text size']);
+      publishGrid();
+      await tester.pump();
+      tts.clear();
+      pad.press(GamepadButton.start);
+      await tester.pump();
+      expect(tts.last, contains('Games'));
+      pad.press(GamepadButton.dpadDown);
+      await tester.pump();
+      expect(tts.last, 'Smart Review, 4 of 4.',
+          reason: 'the next move carries on from Games, not from the top');
     });
 
     testWidgets('a dead end always names the way out', (tester) async {
@@ -492,7 +618,524 @@ void main() {
       pad.press(GamepadButton.dpadDown);
       await tester.pump();
       expect(tts.said('no items'), isTrue);
-      expect(tts.said('L1'), isTrue);
+      expect(tts.said('Press B'), isTrue);
+    });
+  });
+
+  group('moving on any other screen', () {
+    // Four buttons in a square, with nothing else focusable: the screen a
+    // keyboard's arrows would move round.
+    Widget square() {
+      Widget button(String label) => SizedBox(
+            width: 140,
+            height: 64,
+            child: TextButton(
+              onPressed: () => opened.add(label),
+              child: Text(label),
+            ),
+          );
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [button('One'), button('Two')],
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [button('Three'), button('Four')],
+          ),
+        ],
+      );
+    }
+
+    Future<void> press(WidgetTester tester, GamepadButton button) async {
+      pad.press(button);
+      await tester.pump();
+      await tester.pump(); // the focused label is read a frame later
+    }
+
+    testWidgets('the D-pad moves in all four directions, as arrow keys do',
+        (tester) async {
+      await pumpHost(tester, body: square());
+      publishShell();
+      pad.connect();
+      await tester.pump();
+
+      final heard = <String>[];
+      for (final button in [
+        GamepadButton.dpadDown,
+        GamepadButton.dpadRight,
+        GamepadButton.dpadDown,
+        GamepadButton.dpadLeft,
+        GamepadButton.dpadUp,
+      ]) {
+        tts.clear();
+        await press(tester, button);
+        heard.add(tts.last);
+      }
+      expect(heard, [
+        'One, 1 of 4.',
+        'Two, 2 of 4.',
+        'Four, 4 of 4.',
+        'Three, 3 of 4.',
+        'One, 1 of 4.',
+      ]);
+    });
+
+    testWidgets('A presses the focused control', (tester) async {
+      await pumpHost(tester, body: square());
+      publishShell();
+      pad.connect();
+      await tester.pump();
+
+      await press(tester, GamepadButton.dpadDown);
+      await press(tester, GamepadButton.dpadRight);
+      await press(tester, GamepadButton.a);
+      expect(opened, ['Two']);
+    });
+
+    testWidgets('R2 and L2 step the focus one control at a time',
+        (tester) async {
+      await pumpHost(tester, body: square());
+      publishShell();
+      pad.connect();
+      await tester.pump();
+
+      final heard = <String>[];
+      for (var i = 0; i < 3; i++) {
+        tts.clear();
+        await press(tester, GamepadButton.r2);
+        heard.add(tts.last);
+      }
+      expect(heard, ['One, 1 of 4.', 'Two, 2 of 4.', 'Three, 3 of 4.']);
+      tts.clear();
+      await press(tester, GamepadButton.l2);
+      expect(tts.last, 'Two, 2 of 4.');
+    });
+
+    testWidgets('the right stick jumps to the last and first control',
+        (tester) async {
+      await pumpHost(tester, body: square());
+      publishShell();
+      pad.connect();
+      await tester.pump();
+
+      await press(tester, GamepadButton.dpadDown);
+      tts.clear();
+      await press(tester, GamepadButton.rightStickRight);
+      expect(tts.last, 'Four, 4 of 4.');
+      tts.clear();
+      await press(tester, GamepadButton.rightStickLeft);
+      expect(tts.last, 'One, 1 of 4.');
+    });
+
+    testWidgets('a focus parked on the root starts again from the first control',
+        (tester) async {
+      // Flutter parks the focus on its root scope while the app's window is
+      // not focused (a system pop-up over it) and gives it back only if
+      // nothing moved meanwhile. Seen twice on the tablet right after a
+      // keyboard connected (29 Oct): every press said "Nothing more that way.
+      // Still on Unnamed item", and the controller could not move at all.
+      await pumpHost(tester, body: square());
+      publishShell();
+      pad.connect();
+      await tester.pump();
+      await press(tester, GamepadButton.dpadDown);
+      expect(tts.last, 'One, 1 of 4.');
+
+      FocusManager.instance.rootScope.requestFocus();
+      await tester.pump();
+      tts.clear();
+      await press(tester, GamepadButton.dpadDown);
+      expect(tts.last, isNot(contains('Nothing more that way')),
+          reason: 'heard: ${tts.spoken}');
+      expect(tts.last, contains('of 4.'),
+          reason: 'it lands on a control again: ${tts.spoken}');
+    });
+
+    testWidgets('a move with nothing that way says where the learner still is',
+        (tester) async {
+      await pumpHost(
+        tester,
+        body: TextButton(onPressed: () {}, child: const Text('Only')),
+      );
+      publishShell();
+      pad.connect();
+      await tester.pump();
+
+      await press(tester, GamepadButton.dpadDown);
+      expect(tts.last, 'Only, 1 of 1.');
+      tts.clear();
+      await press(tester, GamepadButton.dpadDown);
+      expect(tts.last, 'Nothing more that way. Still on Only.',
+          reason: 'the same name again would sound like a move');
+    });
+
+    testWidgets('never leaves a press silent, even with nothing to focus',
+        (tester) async {
+      // Whatever the focus does or does not find, the learner hears
+      // *something*. A silent press reads as a broken controller, and there
+      // is no other cue available to someone who cannot see the screen.
+      await pumpHost(tester);
+      publishShell();
+      pad.connect();
+      await tester.pump();
+      tts.clear();
+
+      await press(tester, GamepadButton.dpadDown);
+      expect(tts.spoken, isNotEmpty,
+          reason: 'a press with no audible result is indistinguishable from a '
+              'dead button');
+    });
+
+    testWidgets('a slider turns with left and right and is left with down',
+        (tester) async {
+      var volume = 2.0;
+      await pumpHost(
+        tester,
+        body: StatefulBuilder(
+          builder: (context, setState) => Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextButton(onPressed: () {}, child: const Text('Before')),
+              Semantics(
+                container: true,
+                label: 'Volume. ${volume.round()}',
+                child: DpadSliderScope(
+                  child: Slider(
+                    value: volume,
+                    max: 3,
+                    divisions: 3,
+                    onChanged: (v) => setState(() => volume = v),
+                  ),
+                ),
+              ),
+              TextButton(onPressed: () {}, child: const Text('After')),
+            ],
+          ),
+        ),
+      );
+      publishShell();
+      pad.connect();
+      await tester.pump();
+
+      await press(tester, GamepadButton.dpadDown);
+      expect(tts.last, 'Before, 1 of 3.');
+      await press(tester, GamepadButton.dpadDown);
+      expect(tts.last, 'Volume. 2, 2 of 3.');
+
+      tts.clear();
+      await press(tester, GamepadButton.dpadRight);
+      expect(volume, 3);
+      expect(tts.last, 'Volume. 3', reason: 'the new value is read back');
+
+      tts.clear();
+      await press(tester, GamepadButton.dpadRight);
+      expect(volume, 3);
+      expect(tts.last, isNot('Volume. 3'),
+          reason: 'at the end it says so, rather than repeating itself');
+      expect(tts.last, contains('Volume. 3'));
+
+      tts.clear();
+      await press(tester, GamepadButton.a);
+      expect(tts.last, 'Volume. 3. Use left and right to change it.');
+      expect(volume, 3, reason: 'A never changes the value');
+
+      await press(tester, GamepadButton.dpadLeft);
+      expect(volume, 2);
+
+      tts.clear();
+      await press(tester, GamepadButton.dpadDown);
+      expect(tts.last, 'After, 3 of 3.', reason: 'down leaves the slider');
+      expect(volume, 2, reason: 'and does not turn it');
+    });
+
+    testWidgets('a named slider says its name and its value', (tester) async {
+      // DpadSliderScope(name:) puts only the name in the label; the value
+      // comes from the formatter, which TalkBack reads as the slider moves.
+      // The controller reads both, so a turn still sounds like one.
+      final semantics = tester.ensureSemantics();
+      var volume = 2.0;
+      await pumpHost(
+        tester,
+        body: StatefulBuilder(
+          builder: (context, setState) => Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextButton(onPressed: () {}, child: const Text('Before')),
+              DpadSliderScope(
+                name: 'Volume',
+                child: Slider(
+                  value: volume,
+                  max: 3,
+                  divisions: 3,
+                  semanticFormatterCallback: (v) => '${v.round()} points',
+                  onChanged: (v) => setState(() => volume = v),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+      publishShell();
+      pad.connect();
+      await tester.pump();
+
+      // What Android is sent: the merged node's data.
+      final data = tester.getSemantics(find.byType(Slider)).getSemanticsData();
+      expect(data.label, 'Volume', reason: 'the name, once, on the slider');
+      expect(data.value, '2 points');
+      expect(data.increasedValue, '3 points',
+          reason: 'what TalkBack says as it moves up');
+      expect(data.hasAction(SemanticsAction.increase), isTrue,
+          reason: 'and the slider can still be turned');
+
+      await press(tester, GamepadButton.dpadDown);
+      await press(tester, GamepadButton.dpadDown);
+      expect(tts.last, 'Volume. 2 points, 2 of 2.');
+
+      tts.clear();
+      await press(tester, GamepadButton.dpadRight);
+      expect(volume, 3);
+      expect(tts.last, 'Volume. 3 points', reason: 'the new value is read back');
+
+      tts.clear();
+      await press(tester, GamepadButton.dpadRight);
+      expect(tts.last, isNot('Volume. 3 points'),
+          reason: 'at the end it says so, rather than repeating itself');
+      expect(tts.last, contains('Volume. 3 points'));
+      semantics.dispose();
+    });
+
+    testWidgets('B goes back from a pushed screen, and says so',
+        (tester) async {
+      await pumpHost(
+        tester,
+        body: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const Scaffold(body: Text('Inner page')),
+              ),
+            ),
+            child: const Text('Open'),
+          ),
+        ),
+      );
+      publishShell();
+      pad.connect();
+      await tester.pump();
+
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      expect(find.text('Inner page'), findsOneWidget);
+      tts.clear();
+
+      pad.press(GamepadButton.b);
+      await tester.pumpAndSettle();
+      expect(find.text('Inner page'), findsNothing);
+      expect(tts.said('Going back'), isTrue);
+    });
+
+    testWidgets('after B, the focus is back on the control that opened '
+        'the page', (tester) async {
+      await pumpHost(
+        tester,
+        body: Builder(
+          builder: (context) => Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextButton(onPressed: () {}, child: const Text('First')),
+              TextButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => Scaffold(
+                      body: TextButton(
+                        onPressed: () {},
+                        child: const Text('Inside'),
+                      ),
+                    ),
+                  ),
+                ),
+                child: const Text('Open'),
+              ),
+            ],
+          ),
+        ),
+      );
+      publishShell();
+      pad.connect();
+      await tester.pump();
+
+      await press(tester, GamepadButton.dpadDown); // First
+      await press(tester, GamepadButton.dpadDown); // Open
+      expect(tts.last, 'Open, 2 of 2.');
+      pad.press(GamepadButton.a);
+      await tester.pumpAndSettle();
+      expect(find.text('Inside'), findsOneWidget);
+      // Let the arrival announcement's grace period run out.
+      await tester.pump(const Duration(milliseconds: 1300));
+
+      pad.press(GamepadButton.b);
+      await tester.pumpAndSettle();
+      expect(find.text('Inside'), findsNothing);
+      tts.clear();
+      pad.press(GamepadButton.start);
+      await tester.pump();
+      expect(tts.last, contains('Open'),
+          reason: 'where am I names the control the learner left from');
+      tts.clear();
+      await press(tester, GamepadButton.dpadUp);
+      expect(tts.last, 'First, 1 of 2.',
+          reason: 'and the next move carries on from there');
+    });
+
+    testWidgets('a switch row says its state on arrival and after A',
+        (tester) async {
+      // Its label never mentions the state, so the same words before and
+      // after A told a learner who cannot see the switch nothing.
+      var on = true;
+      await pumpHost(
+        tester,
+        body: StatefulBuilder(
+          builder: (context, setState) => SwitchListTile(
+            title: const Text('Vibrate'),
+            value: on,
+            onChanged: (v) => setState(() => on = v),
+          ),
+        ),
+      );
+      publishShell();
+      pad.connect();
+      await tester.pump();
+
+      await press(tester, GamepadButton.dpadDown);
+      expect(tts.last, 'Vibrate, on, 1 of 1.');
+      tts.clear();
+      pad.press(GamepadButton.a);
+      await tester.pump();
+      await tester.pump();
+      expect(on, isFalse);
+      expect(tts.last, 'Vibrate, off');
+      await tester.pump(const Duration(milliseconds: 1300));
+    });
+
+    testWidgets('a row whose label already says its state is not told twice',
+        (tester) async {
+      var on = true;
+      await pumpHost(
+        tester,
+        // The Settings rows' pattern: the full label, state included, inside
+        // the focusable part, where the label reader looks first.
+        body: StatefulBuilder(
+          builder: (context, setState) => SwitchListTile(
+            title: Semantics(
+              label: 'Sound Effects. ${on ? 'On' : 'Off'}. Game sounds',
+              excludeSemantics: true,
+              child: const Text('Sound Effects'),
+            ),
+            value: on,
+            onChanged: (v) => setState(() => on = v),
+          ),
+        ),
+      );
+      publishShell();
+      pad.connect();
+      await tester.pump();
+
+      await press(tester, GamepadButton.dpadDown);
+      expect(tts.last, 'Sound Effects. On. Game sounds, 1 of 1.');
+      tts.clear();
+      pad.press(GamepadButton.a);
+      await tester.pump();
+      await tester.pump();
+      expect(tts.spoken, ['Sound Effects. Off. Game sounds'],
+          reason: 'the new label says it; no extra ", off"');
+      await tester.pump(const Duration(milliseconds: 1300));
+    });
+
+    testWidgets('X reads every control on an ordinary screen',
+        (tester) async {
+      // The guide promises X reads the whole screen. Off the hubs it used to
+      // say only the focused control and how to move.
+      await pumpHost(tester, body: square());
+      publishShell();
+      pad.connect();
+      await tester.pump();
+      await press(tester, GamepadButton.dpadDown); // One
+      tts.clear();
+
+      pad.press(GamepadButton.x);
+      await tester.pump();
+      expect(tts.last, '4 items here: One, Two, Three, Four.');
+    });
+
+    testWidgets('B in a text box leaves the box, not the screen',
+        (tester) async {
+      await pumpHost(
+        tester,
+        body: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => Scaffold(
+                  body: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextButton(onPressed: () {}, child: const Text('Above')),
+                      const TextField(key: Key('box')),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            child: const Text('Open'),
+          ),
+        ),
+      );
+      publishShell();
+      pad.connect();
+      await tester.pump();
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+
+      final above = Focus.of(tester.element(find.text('Above')));
+      above.requestFocus();
+      await tester.pump();
+      await press(tester, GamepadButton.dpadDown); // into the box
+      final box = tester
+          .widget<EditableText>(find.byType(EditableText))
+          .focusNode;
+      expect(box.hasPrimaryFocus, isTrue);
+      tts.clear();
+
+      pad.press(GamepadButton.b);
+      await tester.pumpAndSettle();
+      expect(box.hasFocus, isFalse, reason: 'B left the box');
+      expect(find.byKey(const Key('box')), findsOneWidget,
+          reason: '…and kept the screen');
+      expect(above.hasPrimaryFocus, isTrue,
+          reason: 'back on the control the learner came from');
+      expect(tts.said('Left the text box.'), isTrue);
+
+      pad.press(GamepadButton.b);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('box')), findsNothing,
+          reason: 'a second B leaves the screen');
+    });
+
+    testWidgets('B at the root says there is nowhere to go back to',
+        (tester) async {
+      await pumpHost(tester);
+      publishShell();
+      pad.connect();
+      await tester.pump();
+      tts.clear();
+
+      pad.press(GamepadButton.b);
+      await tester.pump();
+      expect(tts.said('main screen'), isTrue);
     });
   });
 
@@ -514,7 +1157,7 @@ void main() {
       await tester.pump();
 
       expect(tts.spoken.length, 1);
-      expect(tts.last, 'Games, 2 of 4.');
+      expect(tts.last, 'Stories, 3 of 4.');
     });
 
     testWidgets('a held button does not stampede through the screen',
@@ -623,7 +1266,25 @@ void main() {
       pad.press(GamepadButton.select);
       await tester.pump();
       expect(tts.last, contains('Button guide'));
-      expect(tts.last, contains('R1'));
+      expect(tts.last, contains('A: choose what is highlighted'));
+      expect(tts.last, contains('Left joystick: the same as the D-pad.'));
+    });
+
+    testWidgets('the spoken guide leaves out a stick that is turned off',
+        (tester) async {
+      await pumpHost(
+        tester,
+        settings: const GamepadSettings(leftStickMoves: false),
+      );
+      publishShell();
+      pad.connect();
+      await tester.pump();
+      tts.clear();
+
+      pad.press(GamepadButton.select);
+      await tester.pump();
+      expect(tts.last, contains('Button guide'));
+      expect(tts.last, isNot(contains('Left joystick: the same')));
     });
 
     testWidgets('Start says where the learner is', (tester) async {
@@ -641,7 +1302,7 @@ void main() {
           reason: 'where am I means both the section and the item');
     });
 
-    testWidgets('R2 reads the whole screen', (tester) async {
+    testWidgets('X reads the whole screen', (tester) async {
       await pumpHost(tester);
       publishShell();
       publishGrid();
@@ -649,14 +1310,14 @@ void main() {
       await tester.pump();
       tts.clear();
 
-      pad.press(GamepadButton.r2);
+      pad.press(GamepadButton.x);
       await tester.pump();
       expect(tts.last, contains('4 items'));
       expect(tts.last, contains('Flashcards'));
       expect(tts.last, contains('Smart Review'));
     });
 
-    testWidgets('L2 repeats the last thing said', (tester) async {
+    testWidgets('Y repeats the last thing said', (tester) async {
       await pumpHost(tester);
       publishShell();
       publishGrid();
@@ -666,7 +1327,7 @@ void main() {
       pad.press(GamepadButton.dpadDown);
       await tester.pump();
       final wasSaid = tts.last;
-      pad.press(GamepadButton.l2);
+      pad.press(GamepadButton.y);
       await tester.pump();
       expect(tts.last, wasSaid);
     });
@@ -696,22 +1357,24 @@ void main() {
       expect(selectedSections, [0]);
       expect(tts.said('Home'), isTrue);
     });
-  });
 
-  group('when the feature is switched off', () {
-    testWidgets('L1 at the root says there is nowhere to go back to',
-        (tester) async {
-      await pumpHost(tester);
-      publishShell();
+    testWidgets('a turned-off stick still clicks Home', (tester) async {
+      await pumpHost(
+        tester,
+        settings: const GamepadSettings(leftStickMoves: false),
+      );
+      publishShell(current: 3);
       pad.connect();
       await tester.pump();
-      tts.clear();
 
-      pad.press(GamepadButton.l1);
+      pad.press(GamepadButton.leftStickClick);
       await tester.pump();
-      expect(tts.said('main screen'), isTrue);
+      expect(selectedSections, [0],
+          reason: 'only the stick\'s movement is turned off');
     });
+  });
 
+  group('ignored input', () {
     testWidgets('the mode button is ignored rather than acted on',
         (tester) async {
       await pumpHost(tester);

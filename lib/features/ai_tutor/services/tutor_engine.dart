@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:uuid/uuid.dart';
 import '../../../data/models/models.dart';
 import '../../../data/models/enums.dart';
+import '../../parent/services/learner_restrictions.dart';
 import '../../../data/local/seed_data.dart';
 import '../../../data/local/spaced_repetition_service.dart';
 import '../models/tutor_models.dart';
@@ -423,8 +424,8 @@ class TutorEngine {
                 ? '${cat.emoji} $label: alam mo na ang $known sa ${cards.length} salita.\n\n${prog < 0.5 ? 'Matuto pa tayo!' : 'Ang galing mo!'}'
                 : '${cat.emoji} $label: you know $known of ${cards.length} words.\n\n${prog < 0.5 ? 'Let\'s learn more!' : 'You are doing great!'}')
           : (isFilipino
-                ? '📊 ${cat.label}: $pct% na-master mo. Mayroong ${cards.length} salita sa kategiryang ito. ${prog < 0.5 ? 'Kailangan pa ng practice!' : 'Magaling ang progress mo!'}'
-                : '📊 ${cat.label}: You\'ve mastered $pct%. There are ${cards.length} words in this category. ${prog < 0.5 ? 'Let\'s practice more!' : 'Great progress!'}'),
+                ? '📊 $label: $pct% na-master mo. Mayroong ${cards.length} salita sa kategiryang ito. ${prog < 0.5 ? 'Kailangan pa ng practice!' : 'Magaling ang progress mo!'}'
+                : '📊 $label: You\'ve mastered $pct%. There are ${cards.length} words in this category. ${prog < 0.5 ? 'Let\'s practice more!' : 'Great progress!'}'),
       timestamp: DateTime.now(),
     );
   }
@@ -596,7 +597,7 @@ class TutorEngine {
   /// exist (a random favorite, then a random card within it). Falls back to
   /// the full pool. Null only when no seed cards exist at all.
   static Flashcard? _pickCard(List<FlashcardCategory> interests) {
-    final allCards = SeedData.allFlashcards;
+    final allCards = LearnerRestrictions.visibleCards(SeedData.allFlashcards);
     if (allCards.isEmpty) return null;
     if (interests.isNotEmpty) {
       final cat = interests[_random.nextInt(interests.length)];
@@ -784,7 +785,7 @@ class TutorEngine {
     int count = 3,
     List<FlashcardCategory> interests = const [],
   }) {
-    final allCards = SeedData.allFlashcards;
+    final allCards = LearnerRestrictions.visibleCards(SeedData.allFlashcards);
     if (allCards.isEmpty) return const [];
     final plan = SpacedRepetitionService.getReviewWords(
       profileId: profileId,

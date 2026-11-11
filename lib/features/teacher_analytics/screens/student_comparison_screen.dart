@@ -10,11 +10,13 @@ import '../../../data/local/hive_service.dart';
 import '../../../data/models/enums.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/parent_provider.dart';
+import '../../../widgets/dpad_focusable.dart';
 import '../../parent/models/educator_audience.dart';
 import '../models/teacher_analytics_models.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Screen for teachers to compare 2–3 students side by side across
 /// key metrics: words learned, accuracy, streak, stars, categories.
@@ -62,7 +64,7 @@ class _StudentComparisonScreenState
       backgroundColor: hc.background,
       appBar: AppBar(
         leading: const AppBackButton(),
-        title: Text(
+        title: AppBarTitle(
           audience.compareTitle(filipino: isFilipino),
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
@@ -252,6 +254,8 @@ class _StudentSelector extends StatelessWidget {
                 ),
                 child: Text(
                   '${selectedIds.length}/3',
+                  semanticsLabel: AppLocalizations.of(context)!
+                      .rxSelectedCount(selectedIds.length, 3),
                   style: AppTypography.labelSmall.copyWith(
                     fontWeight: FontWeight.w700,
                     color: selectedIds.length >= 2
@@ -275,10 +279,16 @@ class _StudentSelector extends StatelessWidget {
               final chipColor = _colorForIndex(idx);
               // A toggle a screen reader can name ("Test User, selected"),
               // not "dog emoji, Test User"; 48 dp tall (it was 42).
-              return Semantics(
+              // The D-pad's focus on the labelled node, and the press on it
+              // too: the GestureDetector's is excluded with the words, and it
+              // had no focus at all, so no arrow could reach a learner.
+              return DpadFocusable(
+                onActivate: () => onToggle(student.profileId),
+                child: Semantics(
                 button: true,
                 selected: selected,
                 label: student.name,
+                onTap: () => onToggle(student.profileId),
                 excludeSemantics: true,
                 child: GestureDetector(
                 onTap: () => onToggle(student.profileId),
@@ -316,19 +326,22 @@ class _StudentSelector extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Flexible(child: Text(avatar.emoji,
-                          style: const TextStyle(fontSize: 16),
-  maxLines: 2,
-  overflow: TextOverflow.ellipsis,
-)),
+                      // The face at its own size; the room left is the
+                      // name's. Both flexible, they split it in half and a
+                      // long name was cut in its half (3 Nov).
+                      Text(avatar.emoji, style: const TextStyle(fontSize: 16)),
                       const SizedBox(width: 6),
-                      Text(
-                        student.name,
-                        style: AppTypography.labelMedium.copyWith(
-                          fontWeight:
-                              selected ? FontWeight.w700 : FontWeight.w500,
-                          color:
-                              selected ? chipColor : hc.textPrimary,
+                      // Within the row: a thirty-letter name ran the chip
+                      // 103 px past a phone's edge (3 Nov).
+                      Flexible(
+                        child: Text(
+                          student.name,
+                          style: AppTypography.labelMedium.copyWith(
+                            fontWeight:
+                                selected ? FontWeight.w700 : FontWeight.w500,
+                            color:
+                                selected ? chipColor : hc.textPrimary,
+                          ),
                         ),
                       ),
                       if (selected) ...[
@@ -339,6 +352,7 @@ class _StudentSelector extends StatelessWidget {
                     ],
                   ),
                 ),
+              ),
               ),
               )
                   .animate()
@@ -486,22 +500,28 @@ class _MetricRow extends StatelessWidget {
           final i = entry.key;
           final val = entry.value;
           final color = _colorForIndex(i);
+          final name = Text(
+            names[i],
+            style: AppTypography.labelSmall.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+              fontSize: 11,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          );
+          // The name above its bar on a phone: in an 80 px column a long
+          // name was cut to its first word.
+          final nameAbove = MediaQuery.sizeOf(context).width < 600;
           return Padding(
             padding: const EdgeInsets.only(bottom: 4),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(
-                  width: 80,
-                  child: Text(
-                    names[i],
-                    style: AppTypography.labelSmall.copyWith(
-                      color: color,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 11,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
+                if (nameAbove) name,
+                Row(
+              children: [
+                if (!nameAbove) SizedBox(width: 80, child: name),
                 Expanded(
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(3),
@@ -527,6 +547,8 @@ class _MetricRow extends StatelessWidget {
                     ),
                     textAlign: TextAlign.right,
                   ),
+                ),
+              ],
                 ),
               ],
             ),
@@ -620,7 +642,7 @@ class _CategoryComparisonChart extends StatelessWidget {
                                   ? '${name.substring(0, 9)}…'
                                   : name,
                               style: AppTypography.labelSmall.copyWith(
-                                fontSize: 7,
+                                fontSize: 10,
                                 color: hc.textSecondary,
                               ),
                             ),
@@ -637,7 +659,7 @@ class _CategoryComparisonChart extends StatelessWidget {
                       getTitlesWidget: (value, meta) => Text(
                         '${value.toInt()}%',
                         style: AppTypography.labelSmall.copyWith(
-                          fontSize: 8,
+                          fontSize: 10,
                           color: hc.textSecondary,
                         ),
                       ),

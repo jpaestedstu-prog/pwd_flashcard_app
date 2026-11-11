@@ -1,7 +1,10 @@
+import 'dart:ui' show Tristate;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pwdpwdpwd/features/gaze_control/logic/gaze_focus_driver.dart';
 import 'package:pwdpwdpwd/features/gaze_control/widgets/gaze_home_tiles.dart';
 
 import 'deep_scroll.dart' show scrollEachVertical;
@@ -26,6 +29,18 @@ class ReachTarget {
 
   /// A focusable control of about its size frames it.
   bool focusable = false;
+
+  /// Its own accessibility node takes focus — what a browser (`tabindex`)
+  /// and a screen reader follow. Focus held by a node above or beside the
+  /// labelled one moves the ring but leaves the page's focus behind, so a
+  /// screen reader in a browser is never told the arrows arrived.
+  bool focusOnNode = false;
+
+  /// Says it is a button (or a link) but has no press for a screen reader
+  /// to send: the tap belongs to a widget under it whose semantics were
+  /// excluded. TalkBack falls back to a touch at its centre; a browser's
+  /// screen reader has nothing to activate.
+  bool noPress = false;
 
   /// Labels of other targets that shared its grid cell. A cell opens one
   /// thing, so a second target inside it is unreachable by the grid.
@@ -59,6 +74,14 @@ class ReachReport {
       targets.values.where((t) => !t.focusable);
   Iterable<ReachTarget> get sharedCells =>
       targets.values.where((t) => t.sharesCellWith.isNotEmpty);
+
+  /// Reached by the D-pad, but its own accessibility node cannot take focus.
+  Iterable<ReachTarget> get focusNotOnNode =>
+      targets.values.where((t) => t.focusable && !t.focusOnNode);
+
+  /// Buttons and links with no press a screen reader could send.
+  Iterable<ReachTarget> get buttonsWithoutPress =>
+      targets.values.where((t) => t.noPress);
 }
 
 Rect _globalRect(RenderBox box) =>
@@ -194,7 +217,12 @@ Future<ReachReport> surveyDpadReach(
       final data = node.getSemanticsData();
       final tappable = data.hasAction(SemanticsAction.tap) ||
           data.hasAction(SemanticsAction.longPress);
-      if (tappable &&
+      // A node that says it is a button or a link is a control to a screen
+      // reader whether or not its press reached the semantics tree.
+      final saysPressable =
+          (data.flagsCollection.isButton || data.flagsCollection.isLink) &&
+          data.flagsCollection.isEnabled != Tristate.isFalse;
+      if ((tappable || saysPressable) &&
           !node.isMergedIntoParent &&
           !data.flagsCollection.isHidden) {
         var rect = node.rect;
@@ -221,6 +249,7 @@ Future<ReachReport> surveyDpadReach(
               ? '$label@${dp.center.dx.round()},${dp.center.dy.round()}'
               : label;
           final t = targets.putIfAbsent(key, () => ReachTarget(label, dp.center));
+          if (saysPressable && !tappable) t.noPress = true;
           final owner = owners[node.id];
           if (owner != null) {
             if (t.madeBy == '?') t.madeBy = _creatorChain(owner);
@@ -246,6 +275,11 @@ Future<ReachReport> surveyDpadReach(
           // Flutter gives a node the focus action only when a focusable
           // Focus widget sits on it — the plainest proof there is.
           if (data.hasAction(SemanticsAction.focus)) t.focusable = true;
+          if (data.hasAction(SemanticsAction.focus) ||
+              data.flagsCollection.isFocused != Tristate.none ||
+              data.flagsCollection.isTextField) {
+            t.focusOnNode = true;
+          }
           if (owner != null) {
             final cell = _cellOf(owner);
             if (cell != null) {
@@ -292,9 +326,14 @@ String? _targetKey(SemanticsNode node) {
 
 bool _isTarget(SemanticsNode node) {
   final data = node.getSemanticsData();
+  final flags = data.flagsCollection;
+  // As [surveyDpadReach] counts them: a press, or a node that says it is a
+  // button or a link, so a walk can name whatever the survey found.
   return (data.hasAction(SemanticsAction.tap) ||
-          data.hasAction(SemanticsAction.longPress)) &&
-      !data.flagsCollection.isHidden;
+          data.hasAction(SemanticsAction.longPress) ||
+          ((flags.isButton || flags.isLink) &&
+              flags.isEnabled != Tristate.isFalse)) &&
+      !flags.isHidden;
 }
 
 /// The tap target the D-pad ring frames when [focus] holds focus: the
@@ -397,6 +436,58 @@ Future<Set<String>> walkArrowKeys(
   final names = <FocusNode, String>{};
   final seen = <FocusNode>{};
   final queue = <FocusNode>[];
+  // A long list builds only what is near the screen. A control scrolled away
+  // and back is a NEW node, so it is queued once by name, and where its page
+  // stood is kept to bring it back. Dropping it instead lost half of Settings
+  // on a short window: nothing explored from there, so its row "unreached".
+  final queuedNames = <String>{};
+  final pageAt = <String, double>{};
+
+  ScrollPosition? pageOf(BuildContext context) {
+    ScrollPosition? page;
+    for (var s = Scrollable.maybeOf(context);
+        s != null;
+        s = Scrollable.maybeOf(s.context)) {
+      final position = s.position;
+      if (axisDirectionToAxis(s.axisDirection) == Axis.vertical &&
+          position.hasContentDimensions &&
+          position.maxScrollExtent > position.minScrollExtent) {
+        page = position;
+      }
+    }
+    return page;
+  }
+
+  /// The live control named as [gone] was, scrolling its page back to it.
+  Future<FocusNode?> bringBack(FocusNode gone, ScrollPosition? page) async {
+    final name = names[gone];
+    final at = name == null ? null : pageAt[name];
+    if (name == null || at == null || page == null) return null;
+    page.jumpTo(at.clamp(page.minScrollExtent, page.maxScrollExtent));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    // Twice, the second time after the wait [land] gives a control just
+    // built: a list rebuilds what it scrolled away, and a card still growing
+    // in does not match its box yet.
+    for (var attempt = 0; attempt < 2; attempt++) {
+      if (attempt > 0) await tester.pump(const Duration(milliseconds: 400));
+      for (final n in FocusManager.instance.rootScope.descendants) {
+        if (n is FocusScopeNode || n.context == null || !n.canRequestFocus) {
+          continue;
+        }
+        if (n.context!.mounted &&
+            (_targetKeyAt(tester, n, devicePixelRatio) ?? _targetKeyFor(n)) ==
+                name) {
+          names[n] = name;
+          seen.add(n);
+          return n;
+        }
+      }
+    }
+    return null;
+  }
+
+  ScrollPosition? lastPage;
 
   FocusNode? current() {
     final f = FocusManager.instance.primaryFocus;
@@ -405,18 +496,32 @@ Future<Set<String>> walkArrowKeys(
 
   Future<void> land(FocusNode? f) async {
     if (f == null) return;
-    if (seen.add(f)) queue.add(f);
-    if (names.containsKey(f)) return;
-    final ctx = f.context;
-    if (ctx != null && ctx.mounted && Scrollable.maybeOf(ctx) != null) {
-      Scrollable.ensureVisible(ctx, alignment: 0.5);
-      await tester.pump();
+    final fresh = seen.add(f);
+    if (!names.containsKey(f)) {
+      final ctx = f.context;
+      if (ctx != null && ctx.mounted && Scrollable.maybeOf(ctx) != null) {
+        Scrollable.ensureVisible(ctx, alignment: 0.5);
+        await tester.pump();
+      }
+      var key = _targetKeyAt(tester, f, devicePixelRatio) ?? _targetKeyFor(f);
+      if (key == null) {
+        // A card just built is still growing in, and its target does not yet
+        // match its focus box: name it once it has settled.
+        await tester.pump(const Duration(milliseconds: 400));
+        key = _targetKeyAt(tester, f, devicePixelRatio) ?? _targetKeyFor(f);
+      }
+      if (key != null) {
+        reached.add(key);
+        names[f] = key;
+        final page = ctx != null && ctx.mounted ? pageOf(ctx) : null;
+        if (page != null) {
+          lastPage = page;
+          pageAt[key] = page.pixels;
+        }
+      }
     }
-    final key = _targetKeyAt(tester, f, devicePixelRatio) ?? _targetKeyFor(f);
-    if (key != null) {
-      reached.add(key);
-      names[f] = key;
-    }
+    final name = names[f];
+    if (fresh && (name == null || queuedNames.add(name))) queue.add(f);
   }
 
   Future<FocusNode?> press(LogicalKeyboardKey key) async {
@@ -442,12 +547,29 @@ Future<Set<String>> walkArrowKeys(
     LogicalKeyboardKey.arrowLeft,
   ];
   while (queue.isNotEmpty && seen.length < maxControls) {
-    final from = queue.removeAt(0);
+    var from = queue.removeAt(0);
     for (final key in keys) {
-      final ctx = from.context;
-      if (ctx == null || !ctx.mounted || !from.canRequestFocus) break;
+      if (from.context == null ||
+          !from.context!.mounted ||
+          !from.canRequestFocus) {
+        final again = await bringBack(from, lastPage);
+        if (again == null) break;
+        from = again;
+      }
+      final ctx = from.context!;
       from.requestFocus();
       await tester.pump();
+      // A learner's focus is always on screen: the app scrolls every control
+      // it moves to into view. Jumped back to after the page has scrolled
+      // elsewhere, a control could be off screen, and a press from there
+      // starts again from what is showing (GazeFocusDriver.startOnScreen)
+      // instead of moving from it. Shown first, as the app would: on
+      // Stories, where the AI Buddy rests below the list, the last story
+      // leads down to it only from where a learner sees it (9 Nov).
+      if (!GazeFocusDriver.isOnScreen(from) && Scrollable.maybeOf(ctx) != null) {
+        Scrollable.ensureVisible(ctx, alignment: 0.5);
+        await tester.pump();
+      }
       for (FocusScopeNode? s = from.nearestScope;
           s != null;
           s = s.enclosingScope) {

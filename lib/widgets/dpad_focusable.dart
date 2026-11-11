@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import '../core/accessibility/focused_label.dart';
+import '../core/utils/platform_caps.dart';
 
 /// Lets a D-pad reach a control that is drawn with a bare [GestureDetector].
 ///
@@ -13,7 +14,7 @@ import '../core/accessibility/focused_label.dart';
 ///
 /// Wrapped in this, the control takes focus and Enter, Space, Select or a
 /// controller's A press it — the same [ActivateIntent] a Material button
-/// answers, which is also what gaze's blink and the controller's R1 send. It
+/// answers, which is also what gaze's blink and the controller's A send. It
 /// draws nothing itself: the app-wide D-pad ring frames whatever holds focus
 /// (`GazeFocusRingLayer`), so every control looks focused the same way.
 class DpadFocusable extends StatelessWidget {
@@ -43,6 +44,17 @@ class DpadFocusable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final press = onActivate;
+    // A computer's browser: the hand cursor over anything that can be
+    // pressed, which a Material button shows by itself and a drawn card
+    // or tile does not.
+    final pointer = press != null && PlatformCaps.isWeb
+        ? MouseRegion(
+            cursor: SystemMouseCursors.click,
+            // Hit as its child is hit: the control's own taps unchanged.
+            hitTestBehavior: HitTestBehavior.deferToChild,
+            child: child,
+          )
+        : child;
     return Actions(
       actions: <Type, Action<Intent>>{
         if (press != null) ...{
@@ -66,7 +78,7 @@ class DpadFocusable extends StatelessWidget {
         parentNode: parentNode,
         autofocus: autofocus,
         canRequestFocus: press != null,
-        child: child,
+        child: pointer,
       ),
     );
   }
@@ -76,7 +88,7 @@ class DpadFocusable extends StatelessWidget {
 ///
 /// Made by the screen (which knows the learner's language and voice) and
 /// handed both to the panel and to the grid cell that stands for it, so a
-/// key press on the panel and a blink or an R1 on its cell read the same
+/// key press on the panel and a blink or an A on its cell read the same
 /// words. The panel attaches itself on every build; nothing is kept once it
 /// is gone.
 class DpadReadAloud {
@@ -169,6 +181,7 @@ class DpadGestureDetector extends StatelessWidget {
     this.onLongPress,
     this.behavior,
     this.excludeFromSemantics = false,
+    this.focusNode,
     this.child,
   });
 
@@ -179,11 +192,16 @@ class DpadGestureDetector extends StatelessWidget {
   final GestureLongPressCallback? onLongPress;
   final HitTestBehavior? behavior;
   final bool excludeFromSemantics;
+
+  /// See [DpadFocusable.focusNode]: for a screen that hands focus on itself.
+  final FocusNode? focusNode;
+
   final Widget? child;
 
   @override
   Widget build(BuildContext context) => DpadFocusable(
     onActivate: onTap,
+    focusNode: focusNode,
     child: GestureDetector(
       onTap: onTap,
       onTapDown: onTapDown,

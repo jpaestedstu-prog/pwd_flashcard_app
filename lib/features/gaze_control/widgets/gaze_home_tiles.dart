@@ -69,6 +69,19 @@ class GazeTileGridBuilder {
       for (final cell in cells) (rows..add([cell])).length - 1,
     ];
   }
+
+  /// Registers [cells] as ONE row, left to right, for a widget that draws its
+  /// own controls side by side: it wraps control `i` in a [GazeFocusable] at
+  /// the returned row and column `i`. Null while inactive or with nothing to
+  /// register, so that widget draws no rings.
+  ///
+  /// The row-of-one counterpart of [rowsFor]: Home's mood faces sit in a line,
+  /// so ◀ ▶ walk them as they look, rather than ▼ six times.
+  int? rowOf(List<GazeTileCell> cells) {
+    if (!active || cells.isEmpty) return null;
+    rows.add(List.of(cells));
+    return rows.length - 1;
+  }
 }
 
 /// Wraps a single Home feature tile so it shows a bright highlight ring while

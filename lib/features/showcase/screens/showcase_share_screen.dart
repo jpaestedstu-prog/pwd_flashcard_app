@@ -15,6 +15,7 @@ import '../../../widgets/app_back_button.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../core/utils/pdf_theme.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Screen that generates and previews a PDF portfolio summary for sharing
 class ShowcaseShareScreen extends ConsumerWidget {
@@ -33,7 +34,7 @@ class ShowcaseShareScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: const AppBackButton(fallbackRoute: '/progress'),
-        title: Text(
+        title: AppBarTitle(
           _t(context).scSharePortfolio,
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
@@ -41,69 +42,94 @@ class ShowcaseShareScreen extends ConsumerWidget {
           ),
         ),
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: hc.surface,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: AppColors.softShadow,
-              ),
-              child: Column(
-                children: [
-                  const Text('📤', style: TextStyle(fontSize: 48)),
-                  const SizedBox(height: 12),
-                  Text(
-                    _t(context).scPdfTitle,
-                    style: AppTypography.titleMedium.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: hc.textPrimary,
-                    ),
+      // The card above the preview while there is height for both; beside it
+      // on a short screen. A phone on its side had no height left under the
+      // card, and the card itself ran 50 px past the bottom (3 Nov).
+      body: LayoutBuilder(
+        builder: (context, box) {
+          final header =
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: hc.surface,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: AppColors.softShadow,
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _t(context).scItemsFor(
-                      portfolio.items.length,
-                      profile?.name ?? _t(context).playerFallbackName,
-                    ),
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: hc.textSecondary,
-                    ),
+                  child: Column(
+                    children: [
+                      const ExcludeSemantics(child: Text('📤', style: TextStyle(fontSize: 48))),
+                      const SizedBox(height: 12),
+                      Text(
+                        _t(context).scPdfTitle,
+                        style: AppTypography.titleMedium.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: hc.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _t(context).scItemsFor(
+                          portfolio.items.length,
+                          profile?.name ?? _t(context).playerFallbackName,
+                        ),
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: hc.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _t(context).scShareHint,
+                        style: AppTypography.bodySmall.copyWith(
+                          color: hc.textHint,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _t(context).scShareHint,
-                    style: AppTypography.bodySmall.copyWith(
-                      color: hc.textHint,
-                    ),
-                    textAlign: TextAlign.center,
+                ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1, end: 0),
+              );
+          final preview = PdfPreview(
+                  build: (_) => generatePortfolioPdf(
+                    profileName:
+                        profile?.name ?? _t(context).playerFallbackName,
+                    l10n: _t(context),
+                    portfolio: portfolio,
+                    totalStars: progress.totalStars,
+                    wordsLearned: progress.wordsLearned,
+                    streakDays: progress.liveStreakDays,
                   ),
-                ],
+                  canChangeOrientation: false,
+                  canChangePageFormat: false,
+                  pdfFileName:
+                      '${profile?.name ?? "learner"}_portfolio.pdf',
+                );
+          if (box.maxHeight < 520 && box.maxWidth > box.maxHeight) {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: SingleChildScrollView(child: header),
+                ),
+                Expanded(flex: 3, child: preview),
+              ],
+            );
+          }
+          return Column(
+            children: [
+              // At most half the height, scrolling in a short window; the
+              // preview has the rest.
+              ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: box.maxHeight / 2),
+                child: SingleChildScrollView(child: header),
               ),
-            ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1, end: 0),
-          ),
-          Expanded(
-            child: PdfPreview(
-              build: (_) => generatePortfolioPdf(
-                profileName:
-                    profile?.name ?? _t(context).playerFallbackName,
-                l10n: _t(context),
-                portfolio: portfolio,
-                totalStars: progress.totalStars,
-                wordsLearned: progress.wordsLearned,
-                streakDays: progress.liveStreakDays,
-              ),
-              canChangeOrientation: false,
-              canChangePageFormat: false,
-              pdfFileName:
-                  '${profile?.name ?? "learner"}_portfolio.pdf',
-            ),
-          ),
-        ],
+              Expanded(child: preview),
+            ],
+          );
+        },
       ),
     );
   }

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
+import '../../../core/widgets/fit_text.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -314,15 +315,15 @@ class _GazeControlScreenState extends ConsumerState<GazeControlScreen>
                 color: Colors.black45,
                 borderRadius: BorderRadius.circular(24),
               ),
-              child: Text(
+              // Two lines before it is cut: "Kontrol gamit ang Tingin
+              // (Preview)" lost its end on one (3 Nov).
+              child: FitText(
                 _t(context).gzPreview,
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
             ),
           ),
@@ -534,7 +535,9 @@ class _FallbackState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(emoji, style: const TextStyle(fontSize: 64)),
+            ExcludeSemantics(
+              child: Text(emoji, style: const TextStyle(fontSize: 64)),
+            ),
             const SizedBox(height: 16),
             Text(
               message,

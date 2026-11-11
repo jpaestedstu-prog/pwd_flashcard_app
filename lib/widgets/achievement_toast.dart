@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme/app_colors.dart';
@@ -136,7 +137,8 @@ class _AchievementToastWidgetState extends State<_AchievementToastWidget> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          '🏆  Achievement Unlocked!',
+                          AppLocalizations.of(context)?.achUnlockedBanner ??
+                              '🏆 Achievement Unlocked!',
                           style: AppTypography.labelSmall.copyWith(
                             color: HCColor.of(context).readableOver(a.color, a.color.withValues(alpha: 0.15)),
                             fontWeight: FontWeight.w600,
@@ -161,8 +163,6 @@ class _AchievementToastWidgetState extends State<_AchievementToastWidget> {
                           style: AppTypography.labelSmall.copyWith(
                             color: HCColor.of(context).textSecondary,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),

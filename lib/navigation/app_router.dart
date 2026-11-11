@@ -159,7 +159,11 @@ import '../core/services/lock_enforcer.dart';
 import '../features/routine/providers/today_routine_provider.dart';
 import '../providers/lock_state_provider.dart';
 import 'app_page_transitions.dart';
+import '../core/widgets/page_frame.dart';
 import 'bottom_nav_shell.dart';
+import 'text_focus_release.dart';
+import '../features/parent/services/learner_restrictions.dart';
+import '../core/accessibility/game_catalog.dart';
 import '../l10n/app_localizations.dart';
 import '../l10n/app_localizations_en.dart';
 
@@ -351,6 +355,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       ?tracker,
       VoiceNavigationObserver(voiceAnnouncer),
       rootPopupObserver,
+      // A text box lets go of the focus as a new screen opens (a browser's
+      // screen reader said "unknown" for the box left behind).
+      TextFocusReleaseObserver(),
     ],
     redirect: (context, state) {
       final profile = ref.read(profileProvider);
@@ -550,35 +557,35 @@ final routerProvider = Provider<GoRouter>((ref) {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 32),
-                  Semantics(
-                    button: true,
-                    label: _t(context).nfGoHomeSem,
-                    child: FilledButton.icon(
-                      onPressed: () => GoRouter.of(context).go('/home'),
-                      icon: const Icon(Icons.home_rounded),
-                      label: Text(_t(context).nfGoHome),
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 32,
-                          vertical: 16,
-                        ),
+                  FilledButton.icon(
+                    onPressed: () => GoRouter.of(context).go('/home'),
+                    icon: const Icon(Icons.home_rounded),
+                    label: Semantics(
+                      label: _t(context).nfGoHomeSem,
+                      excludeSemantics: true,
+                      child: Text(_t(context).nfGoHome),
+                    ),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 16,
                       ),
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Semantics(
-                    button: true,
-                    label: _t(context).nfGoBackSem,
-                    child: TextButton.icon(
-                      onPressed: () {
-                        if (Navigator.of(context).canPop()) {
-                          Navigator.of(context).pop();
-                        } else {
-                          GoRouter.of(context).go('/home');
-                        }
-                      },
-                      icon: const Icon(Icons.arrow_back_rounded),
-                      label: Text(_t(context).goBack),
+                  TextButton.icon(
+                    onPressed: () {
+                      if (Navigator.of(context).canPop()) {
+                        Navigator.of(context).pop();
+                      } else {
+                        GoRouter.of(context).go('/home');
+                      }
+                    },
+                    icon: const Icon(Icons.arrow_back_rounded),
+                    label: Semantics(
+                      label: _t(context).nfGoBackSem,
+                      excludeSemantics: true,
+                      child: Text(_t(context).goBack),
                     ),
                   ),
                 ],
@@ -683,6 +690,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           final studentProfile = state.extra as UserProfile?;
           return AppPageTransitions.slideUp(
             key: state.pageKey,
+            width: PageWidth.form,
             child: AccessibilitySetupScreen(studentProfile: studentProfile),
           );
         },
@@ -697,6 +705,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           final ctx = state.extra as JoinContext;
           return AppPageTransitions.slideRight(
             key: state.pageKey,
+            width: PageWidth.form,
             child: PostJoinSetupScreen(joinContext: ctx),
           );
         },
@@ -721,6 +730,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           final guestPlayer = state.uri.queryParameters['mode'] != 'progress';
           return AppPageTransitions.slideRight(
             key: state.pageKey,
+            width: PageWidth.form,
             child: RoleSetupScreen(role: role, guestPlayer: guestPlayer),
           );
         },
@@ -748,6 +758,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/profile-import-export',
         pageBuilder: (context, state) => AppPageTransitions.blurFade(
           key: state.pageKey,
+          width: PageWidth.form,
           child: const ProfileImportExportScreen(),
         ),
       ),
@@ -805,6 +816,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         observers: [
           shellModalObserver,
           VoiceNavigationObserver(voiceAnnouncer),
+          TextFocusReleaseObserver(),
         ],
         builder: (context, state, child) =>
             BottomNavShell(state: state, child: child),
@@ -858,7 +870,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                 // Navigator's `!keyReservation.contains(key)` assertion.
                 parentNavigatorKey: rootNavigatorKey,
                 pageBuilder: (context, state) {
-                  final catIndex = int.parse(state.pathParameters['category']!);
+                  final catIndex =
+                      int.tryParse(state.pathParameters['category']!) ?? -1;
                   if (catIndex < 0 ||
                       catIndex >= FlashcardCategory.values.length) {
                     return AppPageTransitions.slideRight(
@@ -882,6 +895,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                   final card = state.extra as Flashcard?;
                   return AppPageTransitions.slideUp(
                     key: state.pageKey,
+                    width: PageWidth.form,
                     child: CreateFlashcardScreen(editCard: card),
                   );
                 },
@@ -1146,6 +1160,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                     parentNavigatorKey: rootNavigatorKey,
                     pageBuilder: (context, state) => AppPageTransitions.scaleUp(
                       key: state.pageKey,
+                      width: PageWidth.full,
                       child: SignItScreen(categories: _parseCategories(state)),
                     ),
                   ),
@@ -1196,6 +1211,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/multi-dashboard',
             pageBuilder: (context, state) => AppPageTransitions.fade(
               key: state.pageKey,
+              width: PageWidth.content,
               child: const MultiStudentDashboardScreen(),
             ),
           ),
@@ -1203,6 +1219,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/teacher-analytics',
             pageBuilder: (context, state) => AppPageTransitions.fade(
               key: state.pageKey,
+              width: PageWidth.content,
               child: const TeacherAnalyticsScreen(),
             ),
           ),
@@ -1210,6 +1227,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/weekly-reports',
             pageBuilder: (context, state) => AppPageTransitions.fade(
               key: state.pageKey,
+              width: PageWidth.content,
               child: const WeeklyReportScreen(),
             ),
           ),
@@ -1217,6 +1235,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/settings',
             pageBuilder: (context, state) => AppPageTransitions.fade(
               key: state.pageKey,
+              width: PageWidth.form,
               child: const SettingsScreen(),
             ),
           ),
@@ -1251,6 +1270,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/backup',
         pageBuilder: (context, state) => AppPageTransitions.blurFade(
           key: state.pageKey,
+          width: PageWidth.form,
           child: const BackupRestoreScreen(),
         ),
       ),
@@ -1259,6 +1279,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/edit-profile',
         pageBuilder: (context, state) => AppPageTransitions.blurFade(
           key: state.pageKey,
+          width: PageWidth.form,
           child: const EditProfileScreen(),
         ),
       ),
@@ -1267,6 +1288,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/parental-controls',
         pageBuilder: (context, state) => AppPageTransitions.blurFade(
           key: state.pageKey,
+          width: PageWidth.form,
           child: const ParentalControlsScreen(),
         ),
       ),
@@ -1299,6 +1321,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/join-class',
         pageBuilder: (context, state) => AppPageTransitions.fade(
           key: state.pageKey,
+          width: PageWidth.form,
           child: const JoinClassScreen(),
         ),
       ),
@@ -1309,6 +1332,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/join-home-group',
         pageBuilder: (context, state) => AppPageTransitions.fade(
           key: state.pageKey,
+          width: PageWidth.form,
           child: const GazeTraversalScope(child: JoinHomeGroupScreen()),
         ),
       ),
@@ -1327,6 +1351,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/child-time-limits/:profileId',
         pageBuilder: (context, state) => AppPageTransitions.slideRight(
           key: state.pageKey,
+          width: PageWidth.form,
           child: ChildTimeLimitsScreen(
             childProfileId: state.pathParameters['profileId']!,
             childDisplayName: state.uri.queryParameters['name'],
@@ -1338,6 +1363,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/child-alarms/:profileId',
         pageBuilder: (context, state) => AppPageTransitions.slideRight(
           key: state.pageKey,
+          width: PageWidth.form,
           child: ChildAlarmsScreen(
             childProfileId: state.pathParameters['profileId']!,
             childDisplayName: state.uri.queryParameters['name'],
@@ -1451,7 +1477,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/learning-path-viewer/:category',
         pageBuilder: (context, state) {
-          final catIndex = int.parse(state.pathParameters['category']!);
+          final catIndex =
+                      int.tryParse(state.pathParameters['category']!) ?? -1;
           if (catIndex < 0 || catIndex >= FlashcardCategory.values.length) {
             return AppPageTransitions.slideRight(
               key: state.pageKey,
@@ -1589,6 +1616,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/voice-guided',
         pageBuilder: (context, state) => AppPageTransitions.blurFade(
           key: state.pageKey,
+          width: PageWidth.form,
           child: const VoiceGuidedModeScreen(),
         ),
       ),
@@ -1599,6 +1627,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           final card = state.extra as Flashcard?;
           return AppPageTransitions.slideUp(
             key: state.pageKey,
+            width: PageWidth.form,
             child: EnhancedCreateFlashcardScreen(editCard: card),
           );
         },
@@ -1683,6 +1712,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/assessment/builder',
         pageBuilder: (context, state) => AppPageTransitions.slideUp(
           key: state.pageKey,
+          width: PageWidth.form,
           child: AssessmentBuilderScreen(
             editId: state.uri.queryParameters['edit'],
           ),
@@ -1692,6 +1722,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/assessment/assign',
         pageBuilder: (context, state) => AppPageTransitions.slideUp(
           key: state.pageKey,
+          width: PageWidth.form,
           child: const AssessmentAssignScreen(),
         ),
       ),
@@ -1787,6 +1818,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         // values read as `general`, so a plain `/mood-check-in` is unchanged.
         pageBuilder: (context, state) => AppPageTransitions.slideUp(
           key: state.pageKey,
+          width: PageWidth.form,
           child: MoodCheckInScreen(
             moodContext:
                 MoodContextX.fromKey(state.uri.queryParameters['ctx']),
@@ -1847,6 +1879,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/object-scan',
         pageBuilder: (context, state) => AppPageTransitions.slideUp(
           key: state.pageKey,
+          width: PageWidth.full,
           child: const ObjectScanScreen(),
         ),
       ),
@@ -1871,6 +1904,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/gaze-settings',
         pageBuilder: (context, state) => AppPageTransitions.slideRight(
           key: state.pageKey,
+          width: PageWidth.form,
           child: GazeSettingsScreen(
             profileId: state.uri.queryParameters['profile'],
             learnerName: state.uri.queryParameters['name'],
@@ -1882,6 +1916,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/gaze-control',
         pageBuilder: (context, state) => AppPageTransitions.slideUp(
           key: state.pageKey,
+          width: PageWidth.full,
           child: GazeControlScreen(
             settingsOverride: state.extra is GazeSettings
                 ? state.extra as GazeSettings
@@ -1895,6 +1930,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/gaze-calibrate',
         pageBuilder: (context, state) => AppPageTransitions.slideUp(
           key: state.pageKey,
+          width: PageWidth.full,
           child: GazeCalibrationScreen(
             profileId: state.uri.queryParameters['profile'],
           ),
@@ -1910,6 +1946,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/gamepad-settings',
         pageBuilder: (context, state) => AppPageTransitions.slideRight(
           key: state.pageKey,
+          width: PageWidth.form,
           child: GamepadSettingsScreen(
             profileId: state.uri.queryParameters['profile'],
             learnerName: state.uri.queryParameters['name'],
@@ -1967,6 +2004,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           final extra = state.extra;
           return AppPageTransitions.slideUp(
             key: state.pageKey,
+            width: PageWidth.form,
             child: NoteEditorScreen(
               existingNote: extra is NoteEntry ? extra : null,
               draft: extra is NoteDraft ? extra : null,
@@ -1979,6 +2017,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/goals',
         pageBuilder: (context, state) => AppPageTransitions.slideRight(
           key: state.pageKey,
+          width: PageWidth.form,
           child: const GoalsScreen(),
         ),
       ),
@@ -2011,6 +2050,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/quiz-builder',
         pageBuilder: (context, state) => AppPageTransitions.slideUp(
           key: state.pageKey,
+          width: PageWidth.form,
           child: const QuizBuilderScreen(),
         ),
       ),
@@ -2042,6 +2082,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/alert-settings',
         pageBuilder: (context, state) => AppPageTransitions.blurFade(
           key: state.pageKey,
+          width: PageWidth.form,
           child: const AlertSettingsScreen(),
         ),
       ),
@@ -2050,6 +2091,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/research-export',
         pageBuilder: (context, state) => AppPageTransitions.blurFade(
           key: state.pageKey,
+          width: PageWidth.form,
           child: const ResearchExportScreen(),
         ),
       ),
@@ -2058,6 +2100,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/sus-survey',
         pageBuilder: (context, state) => AppPageTransitions.slideUp(
           key: state.pageKey,
+          width: PageWidth.form,
           child: const SusSurveyScreen(),
         ),
       ),
@@ -2066,6 +2109,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/smileyometer',
         pageBuilder: (context, state) => AppPageTransitions.slideUp(
           key: state.pageKey,
+          width: PageWidth.form,
           child: const SmileyometerScreen(),
         ),
       ),
@@ -2081,6 +2125,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/experiment-setup',
         pageBuilder: (context, state) => AppPageTransitions.blurFade(
           key: state.pageKey,
+          width: PageWidth.form,
           child: const ExperimentSetupScreen(),
         ),
       ),
@@ -2089,6 +2134,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/word-of-day',
         pageBuilder: (context, state) => AppPageTransitions.slideUp(
           key: state.pageKey,
+          width: PageWidth.form,
           child: const WordOfDayScreen(),
         ),
       ),
@@ -2097,6 +2143,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/focus-mode',
         pageBuilder: (context, state) => AppPageTransitions.blurFade(
           key: state.pageKey,
+          width: PageWidth.form,
           child: const FocusModeScreen(),
         ),
       ),
@@ -2136,6 +2183,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/recovery/show',
         pageBuilder: (context, state) => AppPageTransitions.slideRight(
           key: state.pageKey,
+          width: PageWidth.form,
           child: const ShowRecoveryCodeScreen(),
         ),
       ),
@@ -2146,6 +2194,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/backup-account',
         pageBuilder: (context, state) => AppPageTransitions.slideRight(
           key: state.pageKey,
+          width: PageWidth.form,
           child: const BackupAccountScreen(),
         ),
       ),
@@ -2157,6 +2206,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/recovery/redeem',
         pageBuilder: (context, state) => AppPageTransitions.slideUp(
           key: state.pageKey,
+          width: PageWidth.form,
           child: const RecoverProfileScreen(),
         ),
       ),
@@ -2170,6 +2220,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           final classroomId = state.uri.queryParameters['classroomId'];
           return AppPageTransitions.slideUp(
             key: state.pageKey,
+            width: PageWidth.form,
             child: ExportReportScreen(initialClassroomId: classroomId),
           );
         },
@@ -2215,6 +2266,31 @@ String? _parentalControlsRedirect(String location) {
   if (controls.messagingBlocked && location.startsWith('/messages')) {
     return '/home';
   }
+  // A game or a deck switched off, however it was reached: a tile, a
+  // recommendation, a lesson's step, an address. Back to where the others are.
+  final path = location.split('?').first;
+  for (final game in controls.blockedGames) {
+    if (game == GameType.storyQuiz) {
+      if (path.startsWith('/stories/quiz/')) return '/stories';
+    } else {
+      final route = gameRouteOf(game);
+      if (path == route || path.startsWith('$route/')) return '/games';
+    }
+  }
+  for (final (pattern, back) in const [
+    ('/flashcards/viewer/', '/flashcards'),
+    ('/learning-path-viewer/', '/home'),
+    ('/assessment/category/', '/assessment'),
+  ]) {
+    if (!path.startsWith(pattern)) continue;
+    final index = int.tryParse(path.substring(pattern.length).split('/').first);
+    if (index != null &&
+        index >= 0 &&
+        index < FlashcardCategory.values.length &&
+        controls.blockedCategories.contains(FlashcardCategory.values[index])) {
+      return back;
+    }
+  }
   return null;
 }
 
@@ -2229,13 +2305,14 @@ GameDifficulty _parseDifficulty(GoRouterState state) {
 /// Returns empty list when "All Categories" was chosen (or param absent).
 List<FlashcardCategory> _parseCategories(GoRouterState state) {
   final raw = state.uri.queryParameters['categories'];
-  if (raw == null || raw.isEmpty) return const [];
-  return raw
+  // The one way into every game's word pool: less what a parent blocked.
+  if (raw == null || raw.isEmpty) return LearnerRestrictions.gameCategories(const []);
+  return LearnerRestrictions.gameCategories(raw
       .split(',')
       .map((s) => int.tryParse(s))
       .where((i) => i != null && i >= 0 && i < FlashcardCategory.values.length)
       .map((i) => FlashcardCategory.values[i!])
-      .toList();
+      .toList());
 }
 
 /// Parses timed mode from the query parameter.

@@ -20,6 +20,7 @@ import '../../gamepad/widgets/gamepad_screen_registrar.dart';
 import '../../gamepad/providers/gamepad_screen.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../../../widgets/dpad_focusable.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Hub screen for FSL (Filipino Sign Language) Practice.
 ///
@@ -74,7 +75,7 @@ class FslPracticeHubScreen extends ConsumerWidget {
             // '/games' would strand the last two.
             onPressed: () => context.popOrGo('/games'),
           ),
-          title: Text(
+          title: AppBarTitle(
             l10n.fslPractice,
             style: AppTypography.titleMedium.copyWith(
               fontWeight: FontWeight.w700,
@@ -325,93 +326,99 @@ class _FslModeCardState extends State<_FslModeCard> {
         onTapDown: (_) => setState(() => _pressed = true),
         onTapUp: (_) => setState(() => _pressed = false),
         onTapCancel: () => setState(() => _pressed = false),
-        child: AnimatedScale(
-          scale: _pressed ? 0.96 : 1.0,
-          duration: const Duration(milliseconds: 150),
-          curve: Curves.easeOut,
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: widget.gradient,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: widget.gradient.first.withValues(alpha: 0.35),
-                  blurRadius: 16,
-                  offset: const Offset(0, 6),
+        child: ExcludeSemantics(
+          // The label says it; what is drawn here was read again under it.
+          child: AnimatedScale(
+            scale: _pressed ? 0.96 : 1.0,
+            duration: const Duration(milliseconds: 150),
+            curve: Curves.easeOut,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: widget.gradient,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-              ],
-            ),
-            // No IntrinsicHeight here. It measures children at *unbounded*
-            // width, so the subtitle reports a one-line height, the Row is
-            // then forced to that, and the text wraps to three lines at the
-            // real width — overflowing by ~112 px at large accessibility
-            // fonts. The leading icon and trailing play button are both fixed
-            // size, so nothing needed the intrinsic pass anyway.
-            child: Row(
-              children: [
-                Container(
-                  width: context.scaledHeightCapped(64),
-                  height: context.scaledHeightCapped(64),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.25),
-                    borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: widget.gradient.first.withValues(alpha: 0.35),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
                   ),
-                  child: FittedBox(
-                    child: Padding(
-                      padding: const EdgeInsets.all(14),
-                      child: Icon(widget.icon, size: 36, color: Colors.white),
+                ],
+              ),
+              // No IntrinsicHeight here. It measures children at *unbounded*
+              // width, so the subtitle reports a one-line height, the Row is
+              // then forced to that, and the text wraps to three lines at the
+              // real width — overflowing by ~112 px at large accessibility
+              // fonts. The leading icon and trailing play button are both fixed
+              // size, so nothing needed the intrinsic pass anyway.
+              child: Row(
+                children: [
+                  Container(
+                    width: _iconBox(context, 64),
+                    height: _iconBox(context, 64),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.25),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: FittedBox(
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Icon(widget.icon, size: 36, color: Colors.white),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        widget.title,
-                        style: AppTypography.titleLarge.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Shrinks before it cuts: "Word → Sign" lost its
+                        // end on a phone at the largest Font Size (30 Oct).
+                        FitText(
+                          widget.title,
+                          style: AppTypography.titleLarge.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      // The mode's explanation, in a card that shares its
-                      // row with an icon: it split the first word, "Watc / h".
-                      FitText(
-                        widget.subtitle,
-                        maxLines: 3,
-                        style: AppTypography.bodySmall.copyWith(
-                          color: Colors.white.withValues(alpha: 0.85),
+                        const SizedBox(height: 4),
+                        // The mode's explanation, in a card that shares its
+                        // row with an icon: it split the first word, "Watc / h".
+                        // As many lines as it takes, the card growing to
+                        // hold them: four cut it short on a phone at the
+                        // largest Font Size (3 Nov).
+                        FitText(
+                          widget.subtitle,
+                          maxLines: null,
+                          style: AppTypography.bodySmall.copyWith(
+                            color: Colors.white.withValues(alpha: 0.85),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  width: context.scaledHeightCapped(44),
-                  height: context.scaledHeightCapped(44),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.25),
-                    shape: BoxShape.circle,
+                  const SizedBox(width: 8),
+                  Container(
+                    width: _iconBox(context, 44),
+                    height: _iconBox(context, 44),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.25),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.play_arrow_rounded,
+                      color: Colors.white,
+                      size: context.scaleIcon(28),
+                    ),
                   ),
-                  child: Icon(
-                    Icons.play_arrow_rounded,
-                    color: Colors.white,
-                    size: context.scaleIcon(28),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -419,3 +426,8 @@ class _FslModeCardState extends State<_FslModeCard> {
     );
   }
 }
+
+/// One of a card's two icons. They grow with the Font Size except on a
+/// narrow phone, where together they left the words a column 55 px wide.
+double _iconBox(BuildContext context, double size) =>
+    context.screenWidth < 400 ? size : context.scaledHeightCapped(size);

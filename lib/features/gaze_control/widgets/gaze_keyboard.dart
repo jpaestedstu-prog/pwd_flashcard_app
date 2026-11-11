@@ -46,9 +46,12 @@ class _EditableTarget implements GazeKeyboardTarget {
 }
 
 class _ControllerTarget implements GazeKeyboardTarget {
-  _ControllerTarget(this.controller, this.onSubmit);
+  _ControllerTarget(this.controller, this.onSubmit, this.maxLength);
   final TextEditingController controller;
   final VoidCallback? onSubmit;
+
+  /// The box's limit: writing through its controller goes round the box.
+  final int? maxLength;
 
   @override
   TextEditingValue get value => controller.value;
@@ -57,7 +60,11 @@ class _ControllerTarget implements GazeKeyboardTarget {
   TextCapitalization get capitalization => TextCapitalization.sentences;
 
   @override
-  set value(TextEditingValue next) => controller.value = next;
+  set value(TextEditingValue next) {
+    final limit = maxLength;
+    if (limit != null && next.text.characters.length > limit) return;
+    controller.value = next;
+  }
 
   @override
   void submit() => onSubmit?.call();
@@ -91,9 +98,14 @@ abstract final class GazeKeyboard {
     required TextEditingController controller,
     String? hint,
     VoidCallback? onSubmit,
+    int? maxLength,
   }) {
     hideSystemKeyboard();
-    return _open(context, _ControllerTarget(controller, onSubmit), hint: hint);
+    return _open(
+      context,
+      _ControllerTarget(controller, onSubmit, maxLength),
+      hint: hint,
+    );
   }
 
   /// The text field [context] belongs to, if any.
@@ -375,13 +387,24 @@ class _Preview extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: hc.primary.withValues(alpha: 0.4), width: 2),
         ),
-        child: Text(
-          text.isEmpty ? (hint ?? '') : '$text▏',
-          maxLines: 3,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: 20,
-            color: text.isEmpty ? hc.textHint : hc.textPrimary,
+        // Three lines' room, showing the end: past them, the letter just picked
+        // and the caret were what was cut. Said once, by the label above.
+        child: ExcludeSemantics(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.textScalerOf(context).scale(20) * 1.5 * 3,
+            ),
+            child: SingleChildScrollView(
+              reverse: true,
+              physics: const NeverScrollableScrollPhysics(),
+              child: Text(
+                text.isEmpty ? (hint ?? '') : '$text▏',
+                style: TextStyle(
+                  fontSize: 20,
+                  color: text.isEmpty ? hc.textHint : hc.textPrimary,
+                ),
+              ),
+            ),
           ),
         ),
       ),

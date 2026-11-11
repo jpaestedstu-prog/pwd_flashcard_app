@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../widgets/dpad_focusable.dart';
+import '../../../core/widgets/whole_month_title.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
@@ -12,6 +14,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../navigation/dpad_keys.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Educator / parent screen for configuring parental controls.
 ///
@@ -63,7 +66,7 @@ class _ParentalControlsScreenState
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_t(context).pcTitle),
+        title: AppBarTitle(_t(context).pcTitle),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 8),
@@ -75,6 +78,9 @@ class _ParentalControlsScreenState
         ],
       ),
       body: ListView(
+        // Rows come and go here: no row may stay "alive" in a place another
+        // has taken (see found_by_pressing_test: Scan Mode).
+        addAutomaticKeepAlives: false,
         padding: const EdgeInsets.all(20),
         children: [
           // ─── Info Banner ─────────────────
@@ -141,7 +147,7 @@ class _ParentalControlsScreenState
             subtitle: Builder(
               builder: (context) {
                 final text = _controls.timeLimitEnabled
-                    ? _t(context).pcMinutesPerDay(_controls.dailyTimeLimitMinutes)
+                    ? _t(context).pcMinutesPerDay(_controls.effectiveDailyMinutes)
                     : _t(context).pcNoRestriction;
                 // A ListTile subtitle shares its row with the switch, so the
                 // column is narrow: "restr / iction" at a large scale.
@@ -159,8 +165,12 @@ class _ParentalControlsScreenState
                 color: hc.textSecondary),
             value: _controls.timeLimitEnabled,
             activeTrackColor: AppColors.primary,
-            onChanged: (v) =>
-                _update(_controls.copyWith(timeLimitEnabled: v)),
+            // Switched on with no limit chosen yet: an hour, not 0 minutes.
+            onChanged: (v) => _update(_controls.copyWith(
+              timeLimitEnabled: v,
+              dailyTimeLimitMinutes:
+                  v ? _controls.effectiveDailyMinutes : null,
+            )),
           ),
 
           if (_controls.timeLimitEnabled) ...[
@@ -168,27 +178,34 @@ class _ParentalControlsScreenState
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
                 children: [
-                  Row(
+                  // Said by the slider, which carries the name and value.
+                  ExcludeSemantics(child: Row(
                     children: [
                       Text(_t(context).pcMin(_controls.dailyTimeLimitMinutes),
                           style: AppTypography.titleSmall
                               .copyWith(fontWeight: FontWeight.w700)),
                       const Spacer(),
-                      Text(_timeLimitLabel(_controls.dailyTimeLimitMinutes),
+                      Text(_timeLimitLabel(_controls.effectiveDailyMinutes),
                           style: AppTypography.bodySmall
                               .copyWith(color: hc.textSecondary)),
                     ],
-                  ),
-                  DpadSliderScope(child: Slider(
-                    value: _controls.dailyTimeLimitMinutes.toDouble(),
-                    min: 15,
-                    max: 180,
-                    divisions: 11,
-                    label: _t(context).pcMin(_controls.dailyTimeLimitMinutes),
-                    onChanged: (v) => _update(_controls.copyWith(
-                        dailyTimeLimitMinutes: v.round())),
                   )),
-                  Row(
+                  DpadSliderScope(
+                    name: _t(context).pcDaily,
+                    child: Slider(
+                      value: _controls.effectiveDailyMinutes.toDouble(),
+                      min: ParentalControls.minDailyMinutes.toDouble(),
+                      max: ParentalControls.maxDailyMinutes.toDouble(),
+                      divisions: 11,
+                      semanticFormatterCallback: (v) =>
+                          '${_t(context).pcMin(v.round())}, '
+                          '${_timeLimitLabel(v.round())}',
+                      onChanged: (v) => _update(_controls.copyWith(
+                          dailyTimeLimitMinutes: v.round())),
+                    ),
+                  ),
+                  // The scale's two ends, for the eye.
+                  ExcludeSemantics(child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(_t(context).pc15,
@@ -198,7 +215,7 @@ class _ParentalControlsScreenState
                           style: AppTypography.labelSmall
                               .copyWith(color: hc.textSecondary)),
                     ],
-                  ),
+                  )),
                 ],
               ),
             ),
@@ -241,9 +258,12 @@ class _ParentalControlsScreenState
                           _update(_controls.copyWith(allowedStartHour: h)),
                     ),
                   ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                    child: Text('to', style: TextStyle(fontSize: 16)),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text(
+                      _t(context).pcTo,
+                      style: const TextStyle(fontSize: 16),
+                    ),
                   ),
                   Expanded(
                     child: _TimePickerTile(
@@ -344,7 +364,13 @@ class _ParentalControlsScreenState
                 secondary: Icon(fc.icon, color: fc.color),
                 value: _controls.blockedCategories.contains(fc),
                 activeColor: AppColors.error,
-                onChanged: (v) {
+                // The last category stays: with every one hidden no game has
+                // a word to play with.
+                onChanged: !_controls.blockedCategories.contains(fc) &&
+                        _controls.blockedCategories.length ==
+                            FlashcardCategory.values.length - 1
+                    ? null
+                    : (v) {
                   final cats =
                       Set<FlashcardCategory>.from(_controls.blockedCategories);
                   if (v == true) {
@@ -430,11 +456,15 @@ class _SectionHeader extends StatelessWidget {
         // Wraps at large text ("Feature Restrictions" ran past a phone's
         // edge at 2.0x).
         Expanded(
-          child: Text(
-            title,
-            style: AppTypography.titleSmall.copyWith(
-              fontWeight: FontWeight.w700,
-              color: HCColor.of(context).textPrimary,
+          child: Semantics(
+            container: true,
+            header: true,
+            child: Text(
+              title,
+              style: AppTypography.titleSmall.copyWith(
+                fontWeight: FontWeight.w700,
+                color: HCColor.of(context).textPrimary,
+              ),
             ),
           ),
         ),
@@ -460,14 +490,18 @@ class _TimePickerTile extends StatelessWidget {
     final period = hour >= 12 ? 'PM' : 'AM';
     final displayHour = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
 
-    return GestureDetector(
+    // A button, and a key's and a controller's: a bare GestureDetector was
+    // only a finger's.
+    return Semantics(container: true, button: true, child: DpadGestureDetector(
       onTap: () async {
         final picked = await showTimePicker(
           context: context,
           initialTime: TimeOfDay(hour: hour, minute: 0),
+          // In this order: the outer one copies the page's text size, and the
+          // picker's own smaller size has to be the last word.
           builder: (ctx, child) => MediaQuery(
             data: MediaQuery.of(ctx).copyWith(alwaysUse24HourFormat: false),
-            child: child!,
+            child: wholeTimePicker(ctx, child),
           ),
         );
         if (picked != null) {
@@ -493,7 +527,7 @@ class _TimePickerTile extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ));
   }
 }
 

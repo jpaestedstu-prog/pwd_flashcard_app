@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/avatar_data.dart';
+import '../../../core/theme/accessible_theme.dart' show tonalButtonStyle;
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../widgets/app_snack_bar.dart';
@@ -12,6 +13,7 @@ import '../../../data/local/profile_export_service.dart';
 import '../../../providers/app_providers.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Screen for importing and exporting individual student profiles.
 class ProfileImportExportScreen extends ConsumerStatefulWidget {
@@ -106,7 +108,7 @@ class _ProfileImportExportScreenState
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_t(context).splImportExport),
+        title: AppBarTitle(_t(context).splImportExport),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -327,8 +329,10 @@ class _ExportProfileCard extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             child: Center(
-              child: Text(avatar.emoji,
-                  style: const TextStyle(fontSize: 24)),
+              child: ExcludeSemantics(
+                child: Text(avatar.emoji,
+                    style: const TextStyle(fontSize: 24)),
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -377,13 +381,13 @@ class _ExportProfileCard extends StatelessWidget {
             onPressed: exporting ? null : onExport,
             icon: const Icon(Icons.file_upload_rounded, size: 18),
             label: Text(_t(context).ieExport),
-            style: FilledButton.styleFrom(
+            style: tonalButtonStyle(context).merge(FilledButton.styleFrom(
               padding:
                   const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
-            ),
+            )),
           ),
         ],
       ),

@@ -11,6 +11,7 @@ import '../../../providers/app_providers.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../models/focus_mode_models.dart';
 import '../../../widgets/dpad_focusable.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 class FocusModeScreen extends ConsumerStatefulWidget {
   const FocusModeScreen({super.key});
@@ -181,7 +182,7 @@ class _FocusModeScreenState extends ConsumerState<FocusModeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isFilipino ? 'Focus Mode' : 'Focus Mode'),
+        title: AppBarTitle(isFilipino ? 'Focus Mode' : 'Focus Mode'),
         actions: [
           if (_history.isNotEmpty)
             IconButton(
@@ -296,15 +297,22 @@ class _FocusModeScreenState extends ConsumerState<FocusModeScreen> {
               Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    _isCompleted ? '✅' : (_isPaused ? '⏸️' : '🧘'),
-                    style: const TextStyle(fontSize: 36),
+                  ExcludeSemantics(
+                    child: Text(
+                      _isCompleted ? '✅' : (_isPaused ? '⏸️' : '🧘'),
+                      style: const TextStyle(fontSize: 36),
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     _isCompleted
                         ? (isFilipino ? 'Tapos na!' : 'Done!')
                         : timeStr,
+                    semanticsLabel: _isCompleted
+                        ? null
+                        : (isFilipino
+                            ? 'Natitirang oras: $timeStr'
+                            : 'Time left: $timeStr'),
                     style: AppTypography.headlineLarge.copyWith(
                       fontWeight: FontWeight.bold,
                       color: hc.textPrimary,
@@ -330,15 +338,17 @@ class _FocusModeScreenState extends ConsumerState<FocusModeScreen> {
   Widget _buildDurationPicker(HCColor hc, bool isFilipino) {
     return Column(
       children: [
-        const Text(
-          '🧘',
-          style: TextStyle(fontSize: 64),
-        ).animate().scale(
-              begin: const Offset(0.8, 0.8),
-              end: const Offset(1.0, 1.0),
-              duration: 600.ms,
-              curve: Curves.elasticOut,
-            ),
+        ExcludeSemantics(
+          child: const Text(
+            '🧘',
+            style: TextStyle(fontSize: 64),
+          ).animate().scale(
+                begin: const Offset(0.8, 0.8),
+                end: const Offset(1.0, 1.0),
+                duration: 600.ms,
+                curve: Curves.elasticOut,
+              ),
+        ),
         const SizedBox(height: 16),
         Text(
           isFilipino
@@ -415,31 +425,31 @@ class _FocusModeScreenState extends ConsumerState<FocusModeScreen> {
 
   Widget _buildControls(HCColor hc, bool isFilipino) {
     if (_isCompleted) {
-      return Semantics(
-        button: true,
-        label: isFilipino ? 'Magsimula ulit' : 'Start again',
-        child: FilledButton.icon(
-          onPressed: () => setState(() => _isCompleted = false),
-          icon: const Icon(Icons.replay_rounded),
-          label: Text(isFilipino ? 'Ulitin' : 'Start Again'),
-          style: FilledButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-          ),
+      return FilledButton.icon(
+        onPressed: () => setState(() => _isCompleted = false),
+        icon: const Icon(Icons.replay_rounded),
+        label: Semantics(
+          label: isFilipino ? 'Magsimula ulit' : 'Start again',
+          excludeSemantics: true,
+          child: Text(isFilipino ? 'Ulitin' : 'Start Again'),
+        ),
+        style: FilledButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
         ),
       );
     }
 
     if (!_isRunning) {
-      return Semantics(
-        button: true,
-        label: isFilipino ? 'Simulan ang focus timer' : 'Start focus timer',
-        child: FilledButton.icon(
-          onPressed: _startTimer,
-          icon: const Icon(Icons.play_arrow_rounded),
-          label: Text(isFilipino ? 'Magsimula' : 'Start Focus'),
-          style: FilledButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-          ),
+      return FilledButton.icon(
+        onPressed: _startTimer,
+        icon: const Icon(Icons.play_arrow_rounded),
+        label: Semantics(
+          label: isFilipino ? 'Simulan ang focus timer' : 'Start focus timer',
+          excludeSemantics: true,
+          child: Text(isFilipino ? 'Magsimula' : 'Start Focus'),
+        ),
+        style: FilledButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
         ),
       ).animate().scale(
             begin: const Offset(0.9, 0.9),
@@ -451,36 +461,36 @@ class _FocusModeScreenState extends ConsumerState<FocusModeScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Semantics(
-          button: true,
-          label: isFilipino ? 'Itigil' : 'Stop',
-          child: OutlinedButton.icon(
-            onPressed: _stopTimer,
-            icon: const Icon(Icons.stop_rounded),
-            label: Text(isFilipino ? 'Itigil' : 'Stop'),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-              foregroundColor: hc.error,
-            ),
+        OutlinedButton.icon(
+          onPressed: _stopTimer,
+          icon: const Icon(Icons.stop_rounded),
+          label: Semantics(
+            label: isFilipino ? 'Itigil' : 'Stop',
+            excludeSemantics: true,
+            child: Text(isFilipino ? 'Itigil' : 'Stop'),
+          ),
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+            foregroundColor: hc.error,
           ),
         ),
         const SizedBox(width: 16),
-        Semantics(
-          button: true,
-          label: _isPaused
+        FilledButton.icon(
+          onPressed: _isPaused ? _resumeTimer : _pauseTimer,
+          icon: Icon(
+              _isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded),
+          label: Semantics(
+            label: _isPaused
               ? (isFilipino ? 'Ituloy' : 'Resume')
               : (isFilipino ? 'I-pause' : 'Pause'),
-          child: FilledButton.icon(
-            onPressed: _isPaused ? _resumeTimer : _pauseTimer,
-            icon: Icon(
-                _isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded),
-            label: Text(
+            excludeSemantics: true,
+            child: Text(
                 _isPaused
                     ? (isFilipino ? 'Ituloy' : 'Resume')
                     : (isFilipino ? 'I-pause' : 'Pause')),
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-            ),
+          ),
+          style: FilledButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           ),
         ),
       ],
@@ -503,7 +513,7 @@ class _FocusModeScreenState extends ConsumerState<FocusModeScreen> {
       ),
       child: Column(
         children: [
-          const Text('🌟', style: TextStyle(fontSize: 48)),
+          const ExcludeSemantics(child: Text('🌟', style: TextStyle(fontSize: 48))),
           const SizedBox(height: 8),
           Text(
             isFilipino ? 'Mahusay na Focus!' : 'Great Focus Session!',
@@ -587,7 +597,7 @@ class _FocusModeScreenState extends ConsumerState<FocusModeScreen> {
                             leading: CircleAvatar(
                               backgroundColor:
                                   hc.success.withValues(alpha: 0.15),
-                              child: const Text('🎯'),
+                              child: const ExcludeSemantics(child: Text('🎯')),
                             ),
                             title: Text(
                               '${s.durationMinutes} ${isFilipino ? 'minuto' : 'minutes'}',
@@ -647,30 +657,34 @@ class _StatsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
-      child: Column(
-        children: [
-          Text(emoji, style: const TextStyle(fontSize: 28)),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: AppTypography.titleMedium.copyWith(
-              fontWeight: FontWeight.bold,
-              color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.2)),
+    return MergeSemantics(
+      // One phrase ("12 min Today"): the number alone was a stop that said
+      // only "12".
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
+        ),
+        child: Column(
+          children: [
+            ExcludeSemantics(child: Text(emoji, style: const TextStyle(fontSize: 28))),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: AppTypography.titleMedium.copyWith(
+                fontWeight: FontWeight.bold,
+                color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.2)),
+              ),
             ),
-          ),
-          Text(
-            label,
-            style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
-            textAlign: TextAlign.center,
-          ),
-        ],
+            Text(
+              label,
+              style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -699,37 +713,41 @@ class _DurationChip extends StatelessWidget {
       label: isFilipino ? duration.labelFilipino : duration.label,
       child: DpadFocusable(onActivate: onTap, child: GestureDetector(
         onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? hc.primary.withValues(alpha: 0.2)
-                : hc.cardBackground,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isSelected ? hc.primary : hc.border,
-              width: isSelected ? 2 : 1,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(duration.emoji, style: const TextStyle(fontSize: 20)),
-              const SizedBox(width: 8),
-              Text(
-                isFilipino ? duration.labelFilipino : duration.label,
-                style: AppTypography.labelLarge.copyWith(
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                  color: isSelected
-                      ? hc.readableOver(
-                          hc.primary,
-                          hc.primary.withValues(alpha: 0.2),
-                        )
-                      : hc.textPrimary,
-                ),
+        child: ExcludeSemantics(
+          // The label says the length; the emoji and words drawn here were
+          // read again under it.
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? hc.primary.withValues(alpha: 0.2)
+                  : hc.cardBackground,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isSelected ? hc.primary : hc.border,
+                width: isSelected ? 2 : 1,
               ),
-            ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(duration.emoji, style: const TextStyle(fontSize: 20)),
+                const SizedBox(width: 8),
+                Text(
+                  isFilipino ? duration.labelFilipino : duration.label,
+                  style: AppTypography.labelLarge.copyWith(
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                    color: isSelected
+                        ? hc.readableOver(
+                            hc.primary,
+                            hc.primary.withValues(alpha: 0.2),
+                          )
+                        : hc.textPrimary,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       )),

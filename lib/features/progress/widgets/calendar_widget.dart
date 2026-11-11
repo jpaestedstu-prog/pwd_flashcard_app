@@ -91,7 +91,9 @@ class _StudyCalendarWidgetState extends State<StudyCalendarWidget> {
         const SizedBox(height: 8),
 
         // ─── Weekday Headers ────────────────────
-        Row(
+        // For the eye: each day says its weekday itself. Spoken, the letters
+        // were seven stops of "M", "T" … "S", "S".
+        ExcludeSemantics(child: Row(
           children: LocalizedDate.weekdayInitials(_t(context))
               .map((d) => Expanded(
                     child: Center(
@@ -105,7 +107,7 @@ class _StudyCalendarWidgetState extends State<StudyCalendarWidget> {
                     ),
                   ))
               .toList(),
-        ),
+        )),
         const SizedBox(height: 4),
 
         // ─── Day Grid ───────────────────────────
@@ -133,6 +135,7 @@ class _StudyCalendarWidgetState extends State<StudyCalendarWidget> {
 
             return _DayCell(
               day: day,
+              weekday: LocalizedDate.weekdayLong(date, _t(context)),
               isCompleted: isCompleted,
               isToday: isToday,
               isFuture: isFuture,
@@ -147,12 +150,15 @@ class _StudyCalendarWidgetState extends State<StudyCalendarWidget> {
 
 class _DayCell extends StatelessWidget {
   final int day;
+  /// "Wednesday": said first, the column's letter being for the eye only.
+  final String weekday;
   final bool isCompleted;
   final bool isToday;
   final bool isFuture;
 
   const _DayCell({
     required this.day,
+    required this.weekday,
     required this.isCompleted,
     required this.isToday,
     required this.isFuture,
@@ -179,7 +185,9 @@ class _DayCell extends StatelessWidget {
     }
 
     return Semantics(
-      label: '${_t(context).calDaySemantics(day)}'
+      // The number in the cell is the label's own "Day 10".
+      excludeSemantics: true,
+      label: '$weekday, ${_t(context).calDaySemantics(day)}'
           '${isCompleted ? _t(context).calStudied : ''}'
           '${isToday ? _t(context).calToday : ''}',
       child: Container(
@@ -251,6 +259,8 @@ class StreakMilestoneBadges extends StatelessWidget {
           label: achieved
               ? _t(context).calMilestoneAchieved(label)
               : _t(context).calMilestoneNotYet(label),
+          // The sentence says it; the badge's emoji and words were read again.
+          excludeSemantics: true,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(

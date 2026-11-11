@@ -33,6 +33,7 @@ import '../widgets/routine_over_other_apps.dart';
 import '../widgets/routine_step_card.dart';
 import 'routine_step_screen.dart';
 import '../../../core/utils/platform_caps.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// The learner's own routine — "My Day".
 ///
@@ -282,7 +283,7 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
           backgroundColor: Colors.transparent,
           elevation: 0,
           leading: const AppBackButton(),
-          title: Text(
+          title: AppBarTitle(
             widget.displayName != null
                 ? (l
                     ? 'Araw ni ${widget.displayName}'

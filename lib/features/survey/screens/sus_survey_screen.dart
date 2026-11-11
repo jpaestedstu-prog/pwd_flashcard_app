@@ -13,6 +13,7 @@ import '../services/survey_service.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/dpad_focusable.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Full SUS (System Usability Scale) survey screen.
 ///
@@ -88,7 +89,7 @@ class _SusSurveyScreenState extends ConsumerState<SusSurveyScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isFilipino ? 'Sarbey ng Kakayahang-gamit' : 'Usability Survey'),
+        title: AppBarTitle(isFilipino ? 'Sarbey ng Kakayahang-gamit' : 'Usability Survey'),
         centerTitle: true,
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -163,11 +164,13 @@ class _SusSurveyScreenState extends ConsumerState<SusSurveyScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    '${(answeredCount * 10)}%',
-                    style: AppTypography.labelMedium.copyWith(
-                      color: HCColor.of(context).primary,
-                      fontWeight: FontWeight.bold,
+                  ExcludeSemantics(
+                    child: Text(
+                      '${(answeredCount * 10)}%',
+                      style: AppTypography.labelMedium.copyWith(
+                        color: HCColor.of(context).primary,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
@@ -209,21 +212,20 @@ class _SusSurveyScreenState extends ConsumerState<SusSurveyScreen> {
         // Next button
         Padding(
           padding: EdgeInsets.all(padding),
-          child: Semantics(
-            button: true,
-            enabled: _allAnswered,
-            label: isFilipino ? 'Susunod sa pagsusuri' : 'Next to review',
-            child: SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: _allAnswered
-                    ? () => setState(() => _currentPage = 1)
-                    : null,
-                icon: const Icon(Icons.arrow_forward_rounded),
-                label: Text(isFilipino ? 'Susunod' : 'Review & Submit'),
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
+          child: SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _allAnswered
+                  ? () => setState(() => _currentPage = 1)
+                  : null,
+              icon: const Icon(Icons.arrow_forward_rounded),
+              label: Semantics(
+                label: isFilipino ? 'Susunod sa pagsusuri' : 'Next to review',
+                excludeSemantics: true,
+                child: Text(isFilipino ? 'Susunod' : 'Review & Submit'),
+              ),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
               ),
             ),
           ),
@@ -298,9 +300,13 @@ class _SusSurveyScreenState extends ConsumerState<SusSurveyScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            // Likert scale (1–5)
+            // Likert scale (1–5). The circles in a line along the top, each
+            // label under its circle in as many lines as it needs: in
+            // Filipino "Lubos na Hindi Sang-ayon" was cut in two lines on a
+            // phone at the largest Font Size (3 Nov).
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: List.generate(5, (i) {
                 final value = i + 1;
                 final isSelected = selected == value;
@@ -311,11 +317,15 @@ class _SusSurveyScreenState extends ConsumerState<SusSurveyScreen> {
 
                 return Expanded(
                   child: Semantics(
+                    // Pressable, as the smiley faces and mood faces say.
+                    button: true,
                     selected: isSelected,
                     label: '${scaleLabels[i]}, ${isFilipino ? "tanong" : "question"} ${index + 1}',
                     child: DpadFocusable(onActivate: pick, child: GestureDetector(
                       onTap: pick,
-                      child: Column(
+                      // Said once, by the label: "Strongly Disagree, question
+                      // 1" was followed by "1, Strongly Disagree".
+                      child: ExcludeSemantics(child: Column(
                         children: [
                           AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
@@ -353,16 +363,17 @@ class _SusSurveyScreenState extends ConsumerState<SusSurveyScreen> {
                           // be able to read what they are choosing.
                           FitText(
                             scaleLabels[i],
+                            maxLines: null,
                             style: AppTypography.labelSmall.copyWith(
                               color: isSelected
                                   ? _likertColor(value, isPositive)
                                   : colorScheme.onSurfaceVariant,
-                              fontSize: 9,
+                              fontSize: 11,
                             ),
                             textAlign: TextAlign.center,
                           ),
                         ],
-                      ),
+                      )),
                     )),
                   ),
                 );
@@ -489,25 +500,25 @@ class _SusSurveyScreenState extends ConsumerState<SusSurveyScreen> {
               const SizedBox(width: 12),
               Expanded(
                 flex: 2,
-                child: Semantics(
-                  button: true,
-                  label: isFilipino ? 'I-submit ang sarbey' : 'Submit survey',
-                  child: FilledButton.icon(
-                    onPressed: _saving ? null : _submit,
-                    icon: _saving
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.check_rounded),
-                    label: Text(isFilipino ? 'I-submit' : 'Submit Survey'),
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
+                child: FilledButton.icon(
+                  onPressed: _saving ? null : _submit,
+                  icon: _saving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.check_rounded),
+                  label: Semantics(
+                    label: isFilipino ? 'I-submit ang sarbey' : 'Submit survey',
+                    excludeSemantics: true,
+                    child: Text(isFilipino ? 'I-submit' : 'Submit Survey'),
+                  ),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                 ),
               ),

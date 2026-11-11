@@ -25,6 +25,7 @@ import '../../../core/widgets/fit_text.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../widgets/dpad_focusable.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Wraps [index] into 0…count-1, handling negatives so a left move from the
 /// first tile lands on the last. Returns 0 for an empty set. Pure + testable.
@@ -63,7 +64,10 @@ class _CommunicationBoardScreenState
   /// category set, which for a trimmed board does not start at `greetings`.
   late BoardTileCategory _activeCategory;
 
-  /// Whether to display Filipino labels on tiles (false = English).
+  /// Whether to display Filipino labels on tiles (false = English). Starts
+  /// in the app's language: in Filipino the board opened on "Needs",
+  /// "People" and "Thank you" (3 Nov), one press of EN/FIL from its own
+  /// words.
   bool _useFilipino = false;
 
   /// Whether the TTS is currently speaking.
@@ -107,6 +111,7 @@ class _CommunicationBoardScreenState
     super.initState();
     _activeCategory = ref.read(boardVocabularyProvider).categories.first;
     _tts = ref.read(ttsServiceProvider);
+    _useFilipino = ref.read(settingsProvider).locale == 'fil';
   }
 
   @override
@@ -369,6 +374,12 @@ class _CommunicationBoardScreenState
 
   @override
   Widget build(BuildContext context) {
+    // The app's language changed with the board open (the quick sheet): the
+    // board follows, as it does on opening. Its own EN/FIL button still
+    // switches it for now.
+    ref.listen(settingsProvider.select((s) => s.locale), (_, locale) {
+      setState(() => _useFilipino = locale == 'fil');
+    });
     final hc = HCColor.of(context);
     final padding = context.pagePadding;
     final vocabulary = ref.watch(boardVocabularyProvider);
@@ -396,7 +407,7 @@ class _CommunicationBoardScreenState
           // Matches the "Talk Board" tile every entry point uses; the screen
           // used to be titled "Communication Board", so a learner arrived
           // somewhere apparently different from what they tapped.
-          title: Text(
+          title: AppBarTitle(
             _t(context).tbTitle,
             style: AppTypography.titleLarge.copyWith(color: hc.textPrimary),
           ),
@@ -419,22 +430,26 @@ class _CommunicationBoardScreenState
                 color: hc.primary,
               ),
             ),
-            // Language toggle
-            Semantics(
-              button: true,
-              label: _useFilipino ? _t(context).tbToEnglish : _t(context).tbToFilipino,
-              child: Tooltip(
-                message: _useFilipino
-                    ? _t(context).tbToEnglish
-                    : _t(context).tbToFilipino,
-                child: TextButton.icon(
-                  onPressed: () => setState(() => _useFilipino = !_useFilipino),
-                  icon: Icon(
-                    Icons.translate_rounded,
-                    size: 20,
-                    color: hc.primary,
-                  ),
-                  label: Text(
+            // Language toggle: the switch's name on the button's own node,
+            // with its press and focus (a Semantics around it was a second
+            // "button" with nothing to press, and the button said only "EN").
+            Tooltip(
+              message: _useFilipino
+                  ? _t(context).tbToEnglish
+                  : _t(context).tbToFilipino,
+              child: TextButton.icon(
+                onPressed: () => setState(() => _useFilipino = !_useFilipino),
+                icon: Icon(
+                  Icons.translate_rounded,
+                  size: 20,
+                  color: hc.primary,
+                ),
+                label: Semantics(
+                  label: _useFilipino
+                      ? _t(context).tbToEnglish
+                      : _t(context).tbToFilipino,
+                  excludeSemantics: true,
+                  child: Text(
                     _useFilipino ? 'FIL' : 'EN',
                     style: AppTypography.labelMedium.copyWith(
                       color: hc.primary,
@@ -675,7 +690,7 @@ class _PhraseStrip extends StatelessWidget {
                 : _t(context).tbRecentPhrase(label),
             child: DpadFocusable(onActivate: () => onUse(phrase), child: GestureDetector(
               onTap: () => onUse(phrase),
-              child: Container(
+              child: ExcludeSemantics(child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
                   color: phrase.pinned
@@ -702,21 +717,19 @@ class _PhraseStrip extends StatelessWidget {
                       style: const TextStyle(fontSize: 15),
                     ),
                     const SizedBox(width: 6),
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 140),
-                      child: Text(
-                        label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.labelMedium.copyWith(
-                          color: hc.textPrimary,
-                          fontWeight: FontWeight.w600,
-                        ),
+                    // Whole: the saved sentence is the point of the chip, and
+                    // the row it sits in scrolls sideways.
+                    Text(
+                      label,
+                      softWrap: false,
+                      style: AppTypography.labelMedium.copyWith(
+                        color: hc.textPrimary,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
                 ),
-              ),
+              )),
             )),
           );
         },
@@ -776,10 +789,14 @@ class _SentenceStrip extends StatelessWidget {
           Expanded(
             child: sentence.isEmpty
                 ? Center(
-                    child: Text(
+                    // Shrinks to the strip rather than cutting the
+                    // instruction short (a phone at the largest Font Size,
+                    // 30 Oct). Three lines: in Filipino two were not
+                    // enough even shrunk (3 Nov); the strip grows.
+                    child: FitText(
                       _t(context).tbHint,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                      maxLines: 3,
+                      textAlign: TextAlign.center,
                       style: AppTypography.bodyMedium.copyWith(
                         color: hc.textHint,
                         fontStyle: FontStyle.italic,
@@ -794,11 +811,14 @@ class _SentenceStrip extends StatelessWidget {
                         return Padding(
                           padding: const EdgeInsets.only(right: 6),
                           child: Semantics(
+                            container: true,
                             label: useFilipino ? tile.labelFil : tile.label,
                             button: true,
                             child: DpadFocusable(onActivate: () => onTapTile(tile), child: GestureDetector(
                               onTap: () => onTapTile(tile),
-                              child: Chip(
+                              // The chip's words are the label's: one node,
+                              // with the press and the focus.
+                              child: ExcludeSemantics(child: Chip(
                                 avatar: Text(
                                   tile.emoji,
                                   style: const TextStyle(fontSize: 18),
@@ -814,9 +834,11 @@ class _SentenceStrip extends StatelessWidget {
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
+                                // Padded: a word in the sentence, pressed to
+                                // take it out, was 39 dp high.
                                 materialTapTargetSize:
-                                    MaterialTapTargetSize.shrinkWrap,
-                              ),
+                                    MaterialTapTargetSize.padded,
+                              )),
                             )),
                           ),
                         );
@@ -830,59 +852,47 @@ class _SentenceStrip extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               // Speak button
-              Semantics(
-                button: true,
+              _CircleButton(
                 label: _t(context).tbSpeakSentence,
-                child: _CircleButton(
-                  icon: isSpeaking
-                      ? Icons.volume_up_rounded
-                      : Icons.play_circle_filled_rounded,
-                  color: sentence.isEmpty ? Colors.grey : AppColors.success,
-                  onTap: sentence.isEmpty ? null : onSpeak,
-                  size: 44,
-                ),
+                icon: isSpeaking
+                    ? Icons.volume_up_rounded
+                    : Icons.play_circle_filled_rounded,
+                color: sentence.isEmpty ? Colors.grey : AppColors.success,
+                onTap: sentence.isEmpty ? null : onSpeak,
+                size: 44,
               ),
               const SizedBox(height: 4),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // Save / pin this sentence
-                  Semantics(
-                    button: true,
+                  _CircleButton(
                     label: isPinned
-                        ? _t(context).tbUnsave
-                        : _t(context).tbSave,
-                    child: _CircleButton(
-                      icon: isPinned
-                          ? Icons.star_rounded
-                          : Icons.star_border_rounded,
-                      color: AppColors.warning,
-                      onTap: sentence.isEmpty ? null : onTogglePin,
-                      size: 32,
-                    ),
+                      ? _t(context).tbUnsave
+                      : _t(context).tbSave,
+                    icon: isPinned
+                        ? Icons.star_rounded
+                        : Icons.star_border_rounded,
+                    color: AppColors.warning,
+                    onTap: sentence.isEmpty ? null : onTogglePin,
+                    size: 32,
                   ),
                   const SizedBox(width: 4),
                   // Backspace
-                  Semantics(
-                    button: true,
+                  _CircleButton(
                     label: _t(context).tbRemoveLast,
-                    child: _CircleButton(
-                      icon: Icons.backspace_rounded,
-                      color: AppColors.secondary,
-                      onTap: sentence.isEmpty ? null : onRemoveLast,
-                      size: 32,
-                    ),
+                    icon: Icons.backspace_rounded,
+                    color: AppColors.secondary,
+                    onTap: sentence.isEmpty ? null : onRemoveLast,
+                    size: 32,
                   ),
                   const SizedBox(width: 4),
-                  Semantics(
-                    button: true,
+                  _CircleButton(
                     label: _t(context).tbClearAll,
-                    child: _CircleButton(
-                      icon: Icons.delete_sweep_rounded,
-                      color: AppColors.error,
-                      onTap: sentence.isEmpty ? null : onClear,
-                      size: 32,
-                    ),
+                    icon: Icons.delete_sweep_rounded,
+                    color: AppColors.error,
+                    onTap: sentence.isEmpty ? null : onClear,
+                    size: 32,
                   ),
                 ],
               ),
@@ -902,9 +912,13 @@ class _CircleButton extends StatelessWidget {
   final VoidCallback? onTap;
   final double size;
 
+  /// What a screen reader (and the controller) says.
+  final String label;
+
   const _CircleButton({
     required this.icon,
     required this.color,
+    required this.label,
     this.onTap,
     this.size = 40,
   });
@@ -912,8 +926,24 @@ class _CircleButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final enabled = onTap != null;
-    return DpadFocusable(onActivate: onTap, child: GestureDetector(
+    // One node: the name, whether it can be pressed now (an empty sentence
+    // has nothing to speak, save or clear), the press and the D-pad's focus.
+    // Labelled from outside, the focus and the press sat on another node.
+    return Semantics(
+      container: true,
+      button: true,
+      enabled: enabled,
+      label: label,
+      child: DpadFocusable(onActivate: onTap, child: GestureDetector(
       onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      // The circle may be small; what a finger has to hit may not. The three
+      // beside the sentence were 32 dp: a child with a motor impairment has
+      // 48 at least.
+      child: SizedBox(
+        width: size < 48 ? 48 : size,
+        height: size < 48 ? 48 : size,
+        child: Center(
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         width: size,
@@ -933,7 +963,10 @@ class _CircleButton extends StatelessWidget {
         ),
         child: Icon(icon, color: AppColors.textOnPrimary, size: size * 0.55),
       ),
-    ));
+        ),
+      ),
+    )),
+    );
   }
 }
 
@@ -966,7 +999,9 @@ class _CategoryChip extends StatelessWidget {
       selected: isActive,
       child: DpadFocusable(onActivate: onTap, child: GestureDetector(
         onTap: onTap,
-        child: AnimatedContainer(
+        // Said once, by the label: "Greetings category" was followed by the
+        // emoji's name and "Greetings".
+        child: ExcludeSemantics(child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
@@ -1002,7 +1037,7 @@ class _CategoryChip extends StatelessWidget {
               ),
             ],
           ),
-        ),
+        )),
       )),
     );
   }
@@ -1047,8 +1082,10 @@ class _BoardTileWidget extends StatelessWidget {
       child: DpadFocusable(onActivate: onTap, child: GestureDetector(
         onTap: onTap,
         onLongPress: onLongPress,
+        // Said once, by the label ("Hello. Kumusta. Tap to add…" was
+        // followed by the emoji's name and "Hello").
         child:
-            AnimatedContainer(
+            ExcludeSemantics(child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
                   decoration: BoxDecoration(
                     color: highlighted
@@ -1107,7 +1144,7 @@ class _BoardTileWidget extends StatelessWidget {
                       ),
                     ],
                   ),
-                )
+                ))
                 .animate()
                 .fadeIn(
                   duration: 250.ms,

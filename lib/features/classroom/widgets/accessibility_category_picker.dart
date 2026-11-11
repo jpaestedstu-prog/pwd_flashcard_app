@@ -69,6 +69,7 @@ class _AccessibilityCategoryDialogState
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      scrollable: true,
       title: Text(_tr(context).gmAccessibility),
       content: SingleChildScrollView(
         child: Column(

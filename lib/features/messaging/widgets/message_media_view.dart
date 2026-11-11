@@ -146,31 +146,33 @@ class _MessageMediaBodyState extends State<MessageMediaBody> {
             // InkWell's own, and a screen-reader user double-tapping a label
             // with no action got nothing.
             return Semantics(
+              container: true,
               button: true,
               label: fil ? 'I-play ang video' : 'Play the video',
               onTap: play,
-              excludeSemantics: true,
               child: frame(
                 Material(
                   color: Colors.black,
                   child: InkWell(
                     onTap: play,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.play_circle_fill_rounded,
-                          color: Colors.white,
-                          size: 56,
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          fil ? 'Pindutin para panoorin' : 'Tap to watch',
-                          style: AppTypography.labelSmall.copyWith(
+                    child: ExcludeSemantics(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.play_circle_fill_rounded,
                             color: Colors.white,
+                            size: 56,
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 6),
+                          Text(
+                            fil ? 'Pindutin para panoorin' : 'Tap to watch',
+                            style: AppTypography.labelSmall.copyWith(
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -179,26 +181,32 @@ class _MessageMediaBodyState extends State<MessageMediaBody> {
           }
           void look() =>
               showMessagePhotoViewer(context, source: source, isFilipino: fil);
-          return Semantics(
-            button: true,
-            label: fil ? 'Tingnan ang larawan' : 'Look at the photo',
-            onTap: look,
-            excludeSemantics: true,
-            child: DpadFocusable(onActivate: look, child: GestureDetector(
+          // The D-pad's focus directly on the labelled node, where a browser
+          // and a screen reader follow it (inside the excluded part, it was
+          // dropped with the words).
+          return DpadFocusable(
+            onActivate: look,
+            child: Semantics(
+              button: true,
+              label: fil ? 'Tingnan ang larawan' : 'Look at the photo',
               onTap: look,
-              child: frame(
-                source.image(
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => ColoredBox(
-                    color: hc.surface,
-                    child: Icon(
-                      Icons.broken_image_rounded,
-                      color: hc.textSecondary,
+              excludeSemantics: true,
+              child: GestureDetector(
+                onTap: look,
+                child: frame(
+                  source.image(
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => ColoredBox(
+                      color: hc.surface,
+                      child: Icon(
+                        Icons.broken_image_rounded,
+                        color: hc.textSecondary,
+                      ),
                     ),
                   ),
                 ),
               ),
-            )),
+            ),
           );
         },
       );

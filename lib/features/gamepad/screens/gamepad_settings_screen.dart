@@ -17,8 +17,9 @@ import '../widgets/gaze_uses_controller_notice.dart';
 import '../../../widgets/android_app_notice.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
-import '../../../core/utils/platform_caps.dart';
 import '../../../navigation/dpad_keys.dart';
+import '../../../core/widgets/app_bar_title.dart';
+import '../../../core/utils/platform_caps.dart';
 
 /// Configuration screen for Bluetooth gamepad control, plus the on-screen copy
 /// of the button guide.
@@ -68,11 +69,12 @@ class GamepadSettingsScreen extends ConsumerWidget {
     final name = learnerName ?? '';
     final status = ref.watch(gamepadStatusProvider);
 
-    // No controller bridge here (a browser): only voice navigation can open
-    // this screen, and it should say why nothing on it would work.
-    if (PlatformCaps.isWeb || !GamepadService.isSupported) {
+    // No controller to read here (a browser without the Gamepad API): only
+    // voice navigation can open this screen, and it should say why nothing on
+    // it would work.
+    if (!GamepadService.isSupported) {
       return Scaffold(
-        appBar: AppBar(title: Text(_t(context).gpTitle)),
+        appBar: AppBar(title: AppBarTitle(_t(context).gpTitle)),
         body: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
           children: [
@@ -83,8 +85,11 @@ class GamepadSettingsScreen extends ConsumerWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(_t(context).gpTitle)),
+      appBar: AppBar(title: AppBarTitle(_t(context).gpTitle)),
       body: ListView(
+        // Rows come and go here: no row may stay "alive" in a place another
+        // has taken (see found_by_pressing_test: Scan Mode).
+        addAutomaticKeepAlives: false,
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
         children: [
           if (id != null) ...[
@@ -99,16 +104,18 @@ class GamepadSettingsScreen extends ConsumerWidget {
           // controller input. So a grown-up setting a learner up is told how
           // the learner practises instead of being sent to a dead screen.
           if (id == null) ...[
-            Semantics(
-              button: true,
-              label: _t(context).gpPractise,
-              child: FilledButton.icon(
-                onPressed: () => context.push('/gamepad-practice'),
-                icon: const Icon(Icons.school_rounded),
-                label: Text(_t(context).gpPractiseButtons),
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(52),
-                ),
+            FilledButton.icon(
+              onPressed: () => context.push('/gamepad-practice'),
+              icon: const Icon(Icons.school_rounded),
+              // The spoken name on the button's own node, with its press and
+              // focus (a Semantics around it was a second, dead "button").
+              label: Semantics(
+                label: _t(context).gpPractise,
+                excludeSemantics: true,
+                child: Text(_t(context).gpPractiseButtons),
+              ),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(52),
               ),
             ),
             const SizedBox(height: 6),
@@ -162,7 +169,7 @@ class GamepadSettingsScreen extends ConsumerWidget {
           _SliderTile(
             icon: Icons.speed_rounded,
             title: _t(context).gpSpeed,
-            valueLabel: _speedLabel(_t(context), appSettings.ttsSpeed),
+            valueText: (v) => _speedLabel(_t(context), v),
             value: appSettings.ttsSpeed,
             min: 0.2,
             max: 1.0,
@@ -187,6 +194,19 @@ class GamepadSettingsScreen extends ConsumerWidget {
 
           const SizedBox(height: 20),
           _SectionHeader(_t(context).gpMoving),
+          // The one control that shares a job on purpose — and the one a
+          // learner with an unsteady hand most often knocks, so it can go.
+          SwitchListTile.adaptive(
+            value: settings.leftStickMoves,
+            activeTrackColor: AppColors.primary,
+            contentPadding: EdgeInsets.zero,
+            secondary: const Icon(Icons.gamepad_rounded),
+            title: Text(_t(context).gpLeftStick),
+            subtitle: Text(
+              _t(context).gpLeftStickHelp,
+            ),
+            onChanged: notifier.setLeftStickMoves,
+          ),
           SwitchListTile.adaptive(
             value: settings.confirmSectionChange,
             activeTrackColor: AppColors.primary,
@@ -223,7 +243,7 @@ class GamepadSettingsScreen extends ConsumerWidget {
           _SliderTile(
             icon: Icons.touch_app_rounded,
             title: _t(context).gpDedupe,
-            valueLabel: _t(context).gpMs(settings.dedupeMs),
+            valueText: (v) => _t(context).gpMs((v / 20).round() * 20),
             value: settings.dedupeMs.toDouble(),
             min: GamepadSettings.minDedupeMs.toDouble(),
             max: GamepadSettings.maxDedupeMs.toDouble(),
@@ -247,7 +267,7 @@ class GamepadSettingsScreen extends ConsumerWidget {
             _SliderTile(
               icon: Icons.hourglass_top_rounded,
               title: _t(context).gpWait,
-              valueLabel: _t(context).gpMs(settings.repeatDelayMs),
+              valueText: (v) => _t(context).gpMs((v / 100).round() * 100),
               value: settings.repeatDelayMs.toDouble(),
               min: GamepadSettings.minRepeatDelayMs.toDouble(),
               max: GamepadSettings.maxRepeatDelayMs.toDouble(),
@@ -261,7 +281,7 @@ class GamepadSettingsScreen extends ConsumerWidget {
             _SliderTile(
               icon: Icons.timer_rounded,
               title: _t(context).gpRepeat,
-              valueLabel: _t(context).gpMs(settings.repeatRateMs),
+              valueText: (v) => _t(context).gpMs((v / 50).round() * 50),
               value: settings.repeatRateMs.toDouble(),
               min: GamepadSettings.minRepeatRateMs.toDouble(),
               max: GamepadSettings.maxRepeatRateMs.toDouble(),
@@ -365,6 +385,11 @@ class _LearnerBanner extends StatelessWidget {
   }
 }
 
+/// How to get a controller seen. A browser shows a page a controller only
+/// once one of its buttons is pressed, so there the hint says to press one.
+String _pairHint(BuildContext context) =>
+    PlatformCaps.isWeb ? _t(context).gpPairBrowser : _t(context).gpPair;
+
 class _StatusCard extends StatelessWidget {
   final bool connected;
   final String? name;
@@ -376,9 +401,12 @@ class _StatusCard extends StatelessWidget {
     final color = connected ? HCColor.of(context).primary : Theme.of(context).hintColor;
     return Semantics(
       liveRegion: true,
+      // Its texts are the label's own words: "No controller connected" was
+      // followed by "No controller" and the pairing hint again.
+      excludeSemantics: true,
       label: connected
           ? _t(context).gpConnectedTo(name ?? 'Gamepad')
-          : _t(context).gpNoController,
+          : '${_t(context).gpNoController}. ${_pairHint(context)}',
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -411,7 +439,7 @@ class _StatusCard extends StatelessWidget {
                   Text(
                     connected
                         ? (name ?? 'Gamepad')
-                        : _t(context).gpPair,
+                        : _pairHint(context),
                     style: TextStyle(
                       fontSize: 12.5,
                       color: Theme.of(context).hintColor,
@@ -435,13 +463,17 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 0.5,
-          color: HCColor.of(context).readable(AppColors.primaryDark),
+      child: Semantics(
+        container: true,
+        header: true,
+        child: Text(
+          title,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.5,
+            color: HCColor.of(context).readable(AppColors.primaryDark),
+          ),
         ),
       ),
     );
@@ -451,7 +483,9 @@ class _SectionHeader extends StatelessWidget {
 class _SliderTile extends StatelessWidget {
   final IconData icon;
   final String title;
-  final String valueLabel;
+  /// The value as it is shown and said, for any position — a screen reader
+  /// is told the one the slider moves to before the row rebuilds.
+  final String Function(double value) valueText;
   final double value;
   final double min;
   final double max;
@@ -462,7 +496,7 @@ class _SliderTile extends StatelessWidget {
   const _SliderTile({
     required this.icon,
     required this.title,
-    required this.valueLabel,
+    required this.valueText,
     required this.value,
     required this.min,
     required this.max,
@@ -473,25 +507,27 @@ class _SliderTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // One label for the whole row, carried on the control itself: focus lands
-    // inside the Slider, far below anything wrapping the row, so a label put
-    // further out would never be found.
-    return Semantics(
-      container: true,
-      label: '$title. $valueLabel',
-      child: Padding(
+    final valueLabel = valueText(value);
+    // The slider is the row's stop: named by the title, its value from
+    // [valueText] (see [DpadSliderScope.name]). The controller reads both
+    // from the slider too, so its voice says "Speech speed. Slow" as before.
+    return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          // Said by the slider below.
+          ExcludeSemantics(child: Row(
             children: [
               Icon(icon, size: 20, color: HCColor.of(context).readable(AppColors.primaryDark)),
               const SizedBox(width: 10),
-              // FitText: "pananalita" broke in two at 2x in Filipino.
+              // FitText: "pananalita" broke in two at 2x in Filipino. Every
+              // line it needs: "Huwag pansinin ang umuulit na pindot sa loob
+              // ng" lost its end in two (a phone, largest Font Size, 3 Nov).
               Expanded(
                 child: FitText(
                   title,
+                  maxLines: null,
                   style: DefaultTextStyle.of(context)
                       .style
                       .copyWith(fontWeight: FontWeight.w600),
@@ -505,16 +541,19 @@ class _SliderTile extends StatelessWidget {
                 ),
               ),
             ],
-          ),
-          DpadSliderScope(child: Slider(
-            value: value.clamp(min, max),
-            min: min,
-            max: max,
-            divisions: divisions,
-            activeColor: AppColors.primary,
-            label: valueLabel,
-            onChanged: onChanged,
           )),
+          DpadSliderScope(
+            name: title,
+            child: Slider(
+              value: value.clamp(min, max),
+              min: min,
+              max: max,
+              divisions: divisions,
+              activeColor: AppColors.primary,
+              semanticFormatterCallback: valueText,
+              onChanged: onChanged,
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.only(left: 30, bottom: 4),
             child: Text(
@@ -526,7 +565,6 @@ class _SliderTile extends StatelessWidget {
             ),
           ),
         ],
-      ),
       ),
     );
   }

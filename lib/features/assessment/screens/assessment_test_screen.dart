@@ -34,6 +34,7 @@ import '../widgets/assessment_media_panel.dart';
 import '../widgets/assessment_sign_clip.dart';
 import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/dpad_focusable.dart';
+import '../../../core/widgets/text_limits.dart';
 
 /// Screen that runs an assessment quiz — supports multiple choice,
 /// true/false, and fill-in-the-blank question formats. Fully accessible
@@ -597,6 +598,7 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text(_t.testQuitTitle),
         content: Text(_t.testQuitBody),
         actions: [
@@ -1428,6 +1430,8 @@ class _AssessmentTestScreenState extends ConsumerState<AssessmentTestScreen> {
       children: [
         TextField(
           controller: _fillController,
+          maxLength: TextLimits.title,
+          buildCounter: TextLimits.counter,
           enabled: !_answered,
           autofocus: true,
           textCapitalization: TextCapitalization.words,

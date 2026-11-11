@@ -13,6 +13,7 @@ import '../../../widgets/app_back_button.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../core/utils/platform_caps.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Screen for backing up and restoring all app data.
 class BackupRestoreScreen extends ConsumerStatefulWidget {
@@ -39,7 +40,7 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
     return Scaffold(
       appBar: AppBar(
         leading: const AppBackButton(fallbackRoute: '/settings'),
-        title: Text(_t(context).brTitle),
+        title: AppBarTitle(_t(context).brTitle),
       ),
       body: ListView(
         padding: const EdgeInsets.all(20),
@@ -235,6 +236,7 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text(_t(context).brRestoreTitle),
         content: Text(
           _t(context).brRestoreBody,

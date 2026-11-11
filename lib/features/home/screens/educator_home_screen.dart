@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -22,6 +24,7 @@ import '../../parent/models/educator_audience.dart';
 import '../../messaging/providers/messaging_providers.dart';
 import '../../assessment/providers/assessment_provider.dart';
 import '../models/educator_home_tiles.dart';
+import '../../../core/widgets/stagger_in.dart';
 
 /// Home screen shown to teachers and parents.
 ///
@@ -60,6 +63,10 @@ class EducatorHomeScreen extends ConsumerWidget {
         ? ref.watch(educatorRosterProvider(profile.id))
         : null;
     final students = ref.watch(educatorLearnerRosterProvider);
+    // Under "Recent Students": it was the first five in the roster's own order,
+    // and someone active today could be sixth.
+    final recent = [...students]
+      ..sort((a, b) => b.$2.lastActivityDate.compareTo(a.$2.lastActivityDate));
     // Background housekeeping, once a session: clears what this educator
     // made for learners who have deleted their profiles.
     if (isEducator) ref.watch(deletedLearnerCleanupProvider(profile.id));
@@ -240,13 +247,13 @@ class EducatorHomeScreen extends ConsumerWidget {
                     ),
                     SliverToBoxAdapter(
                       child: SizedBox(
-                        // Taller as the text grows: the deck's name and
-                        // count overflowed a fixed 132 by 51 px at 2.0x.
-                        height: 132 +
-                            56 *
-                                (MediaQuery.textScalerOf(context).scale(1.0) -
-                                        1)
-                                    .clamp(0.0, 1.0),
+                        // As tall as the tiles' words: the deck's name and
+                        // count overflowed a fixed 132 by 51 px at 2.0x, and
+                        // a name on two lines by 1 px at 1.5x (3 Nov).
+                        height: _DeckTile.rowHeight(
+                          context,
+                          _popularDeckCategories,
+                        ),
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           padding: EdgeInsets.symmetric(horizontal: padding),
@@ -257,19 +264,23 @@ class EducatorHomeScreen extends ConsumerWidget {
                             final count = SeedData.getByCategory(
                               category,
                             ).length;
-                            return _DeckTile(
+                            return StaggerIn(
+                              index: i,
+                              base: const Duration(milliseconds: 250),
+                              child: _DeckTile(
                                   category: category,
                                   cardCount: count,
                                   onTap: () => context.push(
                                     '/flashcards/viewer/${category.index}',
                                   ),
-                                )
-                                .animate()
+                                ),
+                              builder: (child, delay) => child.animate()
                                 .fadeIn(
                                   duration: 300.ms,
-                                  delay: (250 + i * 60).ms,
+                                  delay: delay,
                                 )
-                                .slideX(begin: 0.1, end: 0);
+                                .slideX(begin: 0.1, end: 0),
+                            );
                           },
                         ),
                       ),
@@ -287,13 +298,15 @@ class EducatorHomeScreen extends ConsumerWidget {
                                 children: [
                                   // Expanded + ellipsis so a long (or XL-scaled) title
                                   // can't push "View All" off-screen and overflow.
+                                  // Three lines before it is cut: "Mga
+                                  // Kamakailang Mag-aaral" was cut in two
+                                  // beside "View All" on a phone (3 Nov).
                                   Expanded(
-                                    child: Text(
+                                    child: FitText(
                                       isParent
                                           ? _t(context).yourChildren
                                           : _t(context).eduRecentStudents,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 3,
                                       style: AppTypography.titleMedium.copyWith(
                                         fontWeight: FontWeight.w700,
                                         color: hc.textPrimary,
@@ -382,7 +395,7 @@ class EducatorHomeScreen extends ConsumerWidget {
                           // Section headers above still animate.
                           (context, index) {
                             final (studentProfile, studentProgress) =
-                                students[index];
+                                recent[index];
                             return Padding(
                               padding: EdgeInsets.symmetric(
                                 horizontal: padding,
@@ -406,7 +419,7 @@ class EducatorHomeScreen extends ConsumerWidget {
                               ),
                             );
                           },
-                          childCount: students.length.clamp(0, 5),
+                          childCount: recent.length.clamp(0, 5),
                         ),
                       ),
                     ],
@@ -576,12 +589,17 @@ class _GroupLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      text.toUpperCase(),
-      style: AppTypography.labelSmall.copyWith(
-        color: color,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 0.8,
+    return Semantics(
+      container: true,
+      header: true,
+      child: Text(
+        text.toUpperCase(),
+        semanticsLabel: text,
+        style: AppTypography.labelSmall.copyWith(
+          color: color,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.8,
+        ),
       ),
     );
   }
@@ -638,7 +656,7 @@ class _EducatorDashboardCta extends StatelessWidget {
                       .dashboardTitleOf(
                         filipino: _t(context).localeName.startsWith('fil'),
                       ),
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: AppTypography.titleSmall.copyWith(
                     fontWeight: FontWeight.w700,
@@ -703,6 +721,11 @@ class _StudentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final timeUnder = MediaQuery.sizeOf(context).width < 600;
+    final lastSeen = Text(
+      _timeAgo(_t(context), lastActive),
+      style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
+    );
     return AppCard(
       onTap: onTap,
       borderRadius: 16,
@@ -742,13 +765,14 @@ class _StudentCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Every line they need: a thirty-letter name, and the counts
+                // in Filipino, were cut short at the largest Font Size.
                 Text(
                   name,
                   style: AppTypography.titleSmall.copyWith(
                     fontWeight: FontWeight.w600,
                     color: hc.textPrimary,
                   ),
-                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -756,15 +780,17 @@ class _StudentCard extends StatelessWidget {
                   style: AppTypography.bodySmall.copyWith(
                     color: hc.textSecondary,
                   ),
-                  overflow: TextOverflow.ellipsis,
                 ),
+                // When they were last here, under the counts on a phone:
+                // at the row's end it took the room the name needed.
+                if (timeUnder) ...[
+                  const SizedBox(height: 2),
+                  lastSeen,
+                ],
               ],
             ),
           ),
-          Text(
-            _timeAgo(_t(context), lastActive),
-            style: AppTypography.labelSmall.copyWith(color: hc.textSecondary),
-          ),
+          if (!timeUnder) lastSeen,
           const SizedBox(width: 4),
           Icon(Icons.chevron_right_rounded, color: hc.textSecondary, size: 20),
         ],
@@ -793,7 +819,7 @@ class _QuickFilterChip extends StatelessWidget {
     return Material(
       color: color.withValues(alpha: 0.1),
       borderRadius: BorderRadius.circular(20),
-      child: InkWell(
+      child: Semantics(container: true, button: true, child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
         child: Container(
@@ -816,7 +842,7 @@ class _QuickFilterChip extends StatelessWidget {
             ],
           ),
         ),
-      ),
+      )),
     );
   }
 }
@@ -831,6 +857,57 @@ const List<FlashcardCategory> _popularDeckCategories = [
 ];
 
 class _DeckTile extends StatelessWidget {
+  static const double _width = 128;
+  static const double _padding = 12;
+
+  /// The deck name's style, and the card count's under it.
+  static TextStyle get _nameStyle =>
+      AppTypography.labelLarge.copyWith(fontWeight: FontWeight.w700);
+  static TextStyle get _countStyle =>
+      AppTypography.labelSmall.copyWith(fontWeight: FontWeight.w500);
+
+  /// The height a row of these tiles needs at the reader's Font Size: the
+  /// icon, the longest name on as many lines as it takes (one or two), and
+  /// the count — measured, with room to spare between icon and words.
+  static double rowHeight(
+    BuildContext context,
+    List<FlashcardCategory> categories,
+  ) {
+    final t = _t(context);
+    final scaler = MediaQuery.textScalerOf(context);
+    final direction = Directionality.of(context);
+    double lineHeight(TextStyle style) {
+      final painter = TextPainter(
+        text: TextSpan(text: 'Ag', style: style),
+        textDirection: direction,
+        textScaler: scaler,
+      )..layout();
+      final h = painter.height;
+      painter.dispose();
+      return h;
+    }
+
+    const inner = _width - 2 * _padding;
+    final twoLines = categories.any(
+      (c) => !FitText.measurer(
+        context,
+        c.labelOf(t),
+        style: _nameStyle,
+        maxLines: 1,
+      )(inner),
+    );
+    const icon = 8 * 2 + 22 + 2; // the icon's box: padding, icon, border
+    final measured = 2 * _padding +
+        icon +
+        12 + // between the icon and the words
+        lineHeight(_nameStyle) * (twoLines ? 2 : 1) +
+        2 +
+        lineHeight(_countStyle);
+    // Never shorter than the tiles always were, so they keep their shape.
+    final usual = 132 + 56 * (scaler.scale(1.0) - 1).clamp(0.0, 1.0);
+    return math.max(usual, measured);
+  }
+
   final FlashcardCategory category;
   final int cardCount;
   final VoidCallback onTap;
@@ -843,73 +920,75 @@ class _DeckTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: _t(context).eduDeckSemantics(
-        category.labelOf(_t(context)),
-        cardCount,
-      ),
-      child: SizedBox(
-        width: 128,
-        child: Card(
-          elevation: 3,
-          shadowColor: category.color.withValues(alpha: 0.35),
-          clipBehavior: Clip.antiAlias,
-          margin: EdgeInsets.zero,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
+    return SizedBox(
+      width: _width,
+      child: Card(
+        elevation: 3,
+        shadowColor: category.color.withValues(alpha: 0.35),
+        clipBehavior: Clip.antiAlias,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+        ),
+        // The label and the press on one node, the Card's: it merges what
+        // is inside it (the InkWell's press and focus) under this label.
+        // Around the Card, the label sat on a node with nothing to press.
+        child: Semantics(
+          button: true,
+          label: _t(context).eduDeckSemantics(
+            category.labelOf(_t(context)),
+            cardCount,
           ),
           child: InkWell(
             onTap: onTap,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [category.darkColor, category.color],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+            child: ExcludeSemantics(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [category.darkColor, category.color],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                 ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.22),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.15),
+                child: Padding(
+                  padding: const EdgeInsets.all(_padding),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.22),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.15),
+                          ),
                         ),
+                        child: Icon(category.icon, size: 22, color: Colors.white),
                       ),
-                      child: Icon(category.icon, size: 22, color: Colors.white),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          category.labelOf(_t(context)),
-                          style: AppTypography.labelLarge.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Two lines, shrinking first: one cut "Colors &
+                          // Shapes" short on every screen at the largest
+                          // Font Size.
+                          FitText(
+                            category.labelOf(_t(context)),
+                            style: _nameStyle.copyWith(color: Colors.white),
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          _t(context).eduDeckCards(cardCount),
-                          style: AppTypography.labelSmall.copyWith(
-                            color: Colors.white.withValues(alpha: 0.85),
-                            fontWeight: FontWeight.w500,
+                          const SizedBox(height: 2),
+                          Text(
+                            _t(context).eduDeckCards(cardCount),
+                            style: _countStyle.copyWith(
+                              color: Colors.white.withValues(alpha: 0.85),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

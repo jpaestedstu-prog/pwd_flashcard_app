@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../classroom/widgets/cloud_sync_error_view.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -10,6 +11,7 @@ import '../../../widgets/app_back_button.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Settings entry for **Backup & Recovery**: shows the profile's active
 /// recovery code (or invites the user to generate one). Reachable from
@@ -60,8 +62,12 @@ class _ShowRecoveryCodeScreenState
       if (!mounted) return;
       AppSnackBar.error(context, message: e.localizedMessage(_t(context)));
     } catch (e) {
+      debugPrint('recovery code: $e');
       if (!mounted) return;
-      AppSnackBar.error(context, message: e.toString());
+      AppSnackBar.error(
+        context,
+        message: cloudSyncErrorMessage(e, _t(context)).title,
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -74,7 +80,7 @@ class _ShowRecoveryCodeScreenState
       return Scaffold(
         appBar: AppBar(
           leading: const AppBackButton(),
-          title: Text(_t(context).rcBackupTitle),
+          title: AppBarTitle(_t(context).rcBackupTitle),
         ),
         body: Center(
           child: Text(_t(context).rcSelectProfile),
@@ -87,7 +93,7 @@ class _ShowRecoveryCodeScreenState
     return Scaffold(
       appBar: AppBar(
         leading: const AppBackButton(),
-        title: Text(_t(context).rcBackupTitle),
+        title: AppBarTitle(_t(context).rcBackupTitle),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -104,7 +110,9 @@ class _ShowRecoveryCodeScreenState
                     child: CircularProgressIndicator(),
                   ),
                 ),
-                error: (err, _) => _ErrorCard(message: err.toString()),
+                error: (err, _) => _ErrorCard(
+                  message: cloudSyncErrorMessage(err, _t(context)).title,
+                ),
                 data: (record) {
                   // Prefer the just-generated plaintext (we don't store
                   // the user-facing dashes anywhere else; reading the
@@ -141,10 +149,13 @@ class _Header extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          _t(context).rcBackupTitle,
-          style: AppTypography.headlineMedium.copyWith(
-            fontWeight: FontWeight.w800,
+        // For the eye: the app bar names the page with the same words.
+        ExcludeSemantics(
+          child: Text(
+            _t(context).rcBackupTitle,
+            style: AppTypography.headlineMedium.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ),
         const SizedBox(height: 6),

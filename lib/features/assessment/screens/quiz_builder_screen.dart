@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/utils/responsive_utils.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../../../data/models/enums.dart';
 
@@ -16,6 +17,9 @@ import '../../../widgets/app_back_button.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
+import '../../../core/widgets/fit_label.dart';
+import '../../../core/widgets/text_limits.dart';
 
 class QuizBuilderScreen extends ConsumerStatefulWidget {
   const QuizBuilderScreen({super.key});
@@ -56,6 +60,9 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
     final savedQuizzes = ref.watch(quizBuilderProvider);
     final hc = HCColor.of(context);
 
+    final namesFit = _namesFitAcross(context, [
+      for (final d in GameDifficulty.values) d.labelOf(_t(context)),
+    ]);
     final filteredCards = _selectedCategory == null
         ? allCards
         : allCards.where((c) => c.category == _selectedCategory).toList();
@@ -63,8 +70,8 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
     return Scaffold(
       backgroundColor: hc.background,
       appBar: AppBar(
-        leading: const AppBackButton(fallbackRoute: '/assessment-hub'),
-        title: Text(
+        leading: const AppBackButton(fallbackRoute: '/assessment'),
+        title: AppBarTitle(
           _t(context).qbTitle,
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
@@ -86,12 +93,14 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
             // ─── Quiz Title ───────────────────────
             TextField(
               controller: _titleController,
+              maxLength: TextLimits.title,
+              buildCounter: TextLimits.counter,
               style: AppTypography.titleSmall.copyWith(
                 fontWeight: FontWeight.w700,
                 color: hc.textPrimary,
               ),
               decoration: InputDecoration(
-                labelText: _t(context).qbQuizTitle,
+                label: FitLabel(_t(context).qbQuizTitle),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -110,22 +119,40 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
             ),
             const SizedBox(height: 8),
             SegmentedButton<GameDifficulty>(
+              // One above another when three side by side would have to
+              // shrink: see [_namesFitAcross]. A pill stacked three high
+              // came out as a circle, so stacked it takes plain corners.
+              direction: namesFit ? Axis.horizontal : Axis.vertical,
+              style: namesFit
+                  ? null
+                  : ButtonStyle(
+                      shape: WidgetStatePropertyAll(
+                        RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                    ),
               segments: GameDifficulty.values
                   .map((d) => ButtonSegment(
                         value: d,
                         // Three labels share the control and it cannot wrap,
                         // so at a large text scale it ran 90 px off the right.
                         // `fittedStyle`, not `FitText`: a SegmentedButton
-                        // measures its segments' intrinsic widths.
-                        label: Text(
-                          d.labelOf(_t(context)),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: fittedStyle(
-                            context,
+                        // measures its segments' intrinsic widths. Scaled
+                        // down whole where even that is too wide: a third
+                        // of a phone cut "Katamtaman" and "Medium" (3 Nov).
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
                             d.labelOf(_t(context)),
-                            Theme.of(context).textTheme.labelLarge,
-                            longWord: 4,
+                            maxLines: 1,
+                            softWrap: false,
+                            style: fittedStyle(
+                              context,
+                              d.labelOf(_t(context)),
+                              Theme.of(context).textTheme.labelLarge,
+                              longWord: 4,
+                            ),
                           ),
                         ),
                       ))
@@ -229,34 +256,24 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
             ),
             const SizedBox(height: 8),
 
-            // Select/deselect all
-            Row(
+            // Select/deselect all. "Select All" and "Deselect All" together
+            // are wider than the row at 2x, and squeezed side by side both
+            // were cut on a phone (3 Nov): the second goes under the first
+            // when they do not fit.
+            Wrap(
+              spacing: 8,
               children: [
-                // Two rigid text buttons side by side: "Select All" and
-                // "Deselect All" together are wider than the row at 2x.
-                Flexible(
-                  child: TextButton(
-                    onPressed: () => setState(() =>
-                        _selectedCardIds
-                            .addAll(filteredCards.map((c) => c.id))),
-                    child: Text(
-                      _t(context).qbSelectAll,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
+                TextButton(
+                  onPressed: () => setState(() =>
+                      _selectedCardIds
+                          .addAll(filteredCards.map((c) => c.id))),
+                  child: Text(_t(context).qbSelectAll),
                 ),
-                Flexible(
-                  child: TextButton(
-                    onPressed: () => setState(() =>
-                        _selectedCardIds.removeWhere(
-                            (id) => filteredCards.any((c) => c.id == id))),
-                    child: Text(
-                      _t(context).qbDeselectAll,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
+                TextButton(
+                  onPressed: () => setState(() =>
+                      _selectedCardIds.removeWhere(
+                          (id) => filteredCards.any((c) => c.id == id))),
+                  child: Text(_t(context).qbDeselectAll),
                 ),
               ],
             ),
@@ -462,6 +479,7 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text(_t(context).qbDeleteTitle),
         content: Text(_t(context).qbDeleteBody(quiz.title)),
         actions: [
@@ -487,3 +505,27 @@ class _QuizBuilderScreenState extends ConsumerState<QuizBuilderScreen> {
 /// without the delegate would otherwise throw.
 AppLocalizations _t(BuildContext context) =>
     AppLocalizations.of(context) ?? AppLocalizationsEn();
+
+/// Whether [names] side by side in a [SegmentedButton] keep near their size.
+///
+/// They share the page's width, less each segment's padding and the tick on
+/// the selected one: "Katamtaman" was drawn at 8 px on an ordinary phone.
+bool _namesFitAcross(BuildContext context, List<String> names) {
+  const segmentChrome = 52.0; // padding 12 + 12, tick 18 + 8, borders
+  var widest = 0.0;
+  for (final name in names) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: name,
+        style: Theme.of(context).textTheme.labelLarge,
+      ),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+      maxLines: 1,
+    )..layout();
+    if (painter.width > widest) widest = painter.width;
+    painter.dispose();
+  }
+  final page = context.screenWidth - 40; // the page's padding
+  return widest * 0.85 <= page / names.length - segmentChrome;
+}

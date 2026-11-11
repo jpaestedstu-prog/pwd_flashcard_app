@@ -258,115 +258,126 @@ class _RecommendationCard extends ConsumerWidget {
     final hc = HCColor.of(context);
     final rec = recommendation;
 
-    return DpadFocusable(onActivate: () => _navigate(context, ref), child: GestureDetector(
-          onTap: () => _navigate(context, ref),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: hc.cardBackground,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: rec.priorityColor.withValues(alpha: 0.3),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: rec.priorityColor.withValues(alpha: 0.06),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+    return Semantics(
+      container: true,
+      // Pressable: a screen reader says "button", which a bare
+      // GestureDetector does not.
+      button: true,
+      child: DpadFocusable(onActivate: () => _navigate(context, ref), child: GestureDetector(
+            onTap: () => _navigate(context, ref),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: hc.cardBackground,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: rec.priorityColor.withValues(alpha: 0.3),
                 ),
-              ],
-            ),
-            child: Row(
-              children: [
-                // Emoji circle
-                Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: rec.priorityColor.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: rec.priorityColor.withValues(alpha: 0.06),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
                   ),
-                  child: Center(
-                    child: Text(
-                      rec.emoji,
-                      style: const TextStyle(fontSize: 24),
+                ],
+              ),
+              child: Row(
+                children: [
+                  // Emoji circle
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: rec.priorityColor.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: ExcludeSemantics(
+                        child: Text(
+                          rec.emoji,
+                          style: const TextStyle(fontSize: 24),
+                        ),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 14),
-                // Text content
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Priority badge + title row. A Wrap: at 2x the badge
-                      // and icon ran a fraction of a pixel past the column.
-                      Wrap(
-                        spacing: 6,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: rec.priorityColor.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              isFilipino
-                                  ? rec.priorityLabelFilipino
-                                  : rec.priorityLabel,
-                              style: AppTypography.labelSmall.copyWith(
-                                color: HCColor.of(context).readableOver(rec.priorityColor, rec.priorityColor.withValues(alpha: 0.15)),
-                                fontWeight: FontWeight.w600,
-                                fontSize: 10,
+                  const SizedBox(width: 14),
+                  // Text content
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Priority badge + title row. A Wrap: at 2x the badge
+                        // and icon ran a fraction of a pixel past the column.
+                        Wrap(
+                          spacing: 6,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: rec.priorityColor.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                isFilipino
+                                    ? rec.priorityLabelFilipino
+                                    : rec.priorityLabel,
+                                style: AppTypography.labelSmall.copyWith(
+                                  color: HCColor.of(context).readableOver(rec.priorityColor, rec.priorityColor.withValues(alpha: 0.15)),
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 11,
+                                ),
                               ),
                             ),
+                            Icon(rec.typeIcon, size: 14, color: hc.textSecondary),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        // "Ipagpatuloy" broke in two at 2x.
+                        FitText(
+                          isFilipino ? rec.titleFilipino : rec.title,
+                          maxLines: 3,
+                          style: AppTypography.bodyLarge.copyWith(
+                            color: hc.textPrimary,
+                            fontWeight: FontWeight.w600,
                           ),
-                          Icon(rec.typeIcon, size: 14, color: hc.textSecondary),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      // "Ipagpatuloy" broke in two at 2x.
-                      FitText(
-                        isFilipino ? rec.titleFilipino : rec.title,
-                        maxLines: 3,
-                        style: AppTypography.bodyLarge.copyWith(
-                          color: hc.textPrimary,
-                          fontWeight: FontWeight.w600,
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        isFilipino ? rec.descriptionFilipino : rec.description,
-                        style: AppTypography.bodySmall.copyWith(
-                          color: hc.textSecondary,
+                        const SizedBox(height: 4),
+                        // The card grows with it: two lines cut the reason
+                        // for the suggestion short in Filipino (30 Oct).
+                        // FitText: shown whole, "Iminumungkahi" split in
+                        // two at 2x.
+                        FitText(
+                          isFilipino ? rec.descriptionFilipino : rec.description,
+                          style: AppTypography.bodySmall.copyWith(
+                            color: hc.textSecondary,
+                          ),
+                          maxLines: 5,
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                // Arrow
-                Icon(
-                  Icons.chevron_right_rounded,
-                  color: rec.priorityColor.withValues(alpha: 0.6),
-                  size: 24,
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  // Arrow
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: rec.priorityColor.withValues(alpha: 0.6),
+                    size: 24,
+                  ),
+                ],
+              ),
             ),
-          ),
-        ))
-        .animate()
-        .fadeIn(
-          duration: 400.ms,
-          delay: Duration(milliseconds: 150 + index * 80),
-        )
-        .slideX(begin: 0.05, end: 0);
+          ))
+          .animate()
+          .fadeIn(
+            duration: 400.ms,
+            delay: Duration(milliseconds: 150 + index * 80),
+          )
+          .slideX(begin: 0.05, end: 0),
+    );
   }
 
   void _navigate(BuildContext context, WidgetRef ref) {
@@ -440,7 +451,7 @@ class _NewUserBanner extends StatelessWidget {
           ),
           child: Column(
             children: [
-              const Text('🌟', style: TextStyle(fontSize: 48)),
+              const ExcludeSemantics(child: Text('🌟', style: TextStyle(fontSize: 48))),
               const SizedBox(height: 12),
               Text(
                 isFilipino ? 'Maligayang Pagdating!' : 'Welcome!',
@@ -483,7 +494,7 @@ class _AllCaughtUp extends StatelessWidget {
       padding: const EdgeInsets.all(40),
       child: Column(
         children: [
-          const Text('🎉', style: TextStyle(fontSize: 56)),
+          const ExcludeSemantics(child: Text('🎉', style: TextStyle(fontSize: 56))),
           const SizedBox(height: 16),
           Text(
             isFilipino ? 'Lahat ay Ayos Na!' : 'All Caught Up!',

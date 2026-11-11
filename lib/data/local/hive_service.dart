@@ -285,6 +285,15 @@ class HiveService {
   static bool get hasProfiles => getProfiles().isNotEmpty;
 
   /// Deletes a profile by ID and its associated progress data.
+  /// Takes a learner out of this device's list of profiles and nothing else:
+  /// a copy that was here only to be looked at. [deleteProfile] would take the
+  /// device's cached class rows and messages with it.
+  static Future<void> removeViewedCopy(String profileId) async {
+    final profiles = getProfiles();
+    profiles.removeWhere((p) => p['id'] == profileId);
+    await _profileBox.put('profiles', profiles);
+  }
+
   static Future<void> deleteProfile(String profileId) async {
     final profiles = getProfiles();
     profiles.removeWhere((p) => p['id'] == profileId);
@@ -803,6 +812,17 @@ class HiveService {
   static Future<void> dismissUpdateVersion(String version) =>
       _settBox.put('dismissedUpdateVersion', version);
 
+  // ─── "No Filipino voice on this device" (device-wide) ──
+
+  /// Whether someone chose "Don't remind me" on the note that the device has
+  /// no Filipino voice. Device-wide: the voice belongs to the device, not to
+  /// a profile.
+  static bool filipinoVoiceHintOff() =>
+      (_settBox.get('filipinoVoiceHintOff') as bool?) ?? false;
+
+  static Future<void> setFilipinoVoiceHintOff(bool off) =>
+      _settBox.put('filipinoVoiceHintOff', off);
+
   // ─── Collapsed Categories ─────────────────────────────
 
   static Set<String> getCollapsedCategories(String profileId) {
@@ -919,8 +939,10 @@ class HiveService {
   /// A week summary that shrinks when a learner plays *more* is worse than no
   /// week summary at all.
   ///
-  /// Each value holds `games`, `stars` and `words` for that day. Pruned to the
-  /// last 90 days, matching the session logs.
+  /// Each value holds `games`, `stars` and `words` for that day, and
+  /// `activities`: the other learning that keeps a streak going (a story, the
+  /// daily challenge, a review…). Pruned to the last 90 days, matching the
+  /// session logs.
   static Map<String, Map<String, int>> getDailyActivity(String profileId) {
     final raw = _progBox.get('daily_activity_$profileId');
     if (raw is! Map) return {};
@@ -935,12 +957,14 @@ class HiveService {
     return out;
   }
 
-  /// Adds [games] / [stars] / [words] to today's row in the activity ledger.
+  /// Adds [games] / [stars] / [words] / [activities] to today's row in the
+  /// activity ledger.
   static Future<void> addDailyActivity(
     String profileId, {
     int games = 0,
     int stars = 0,
     int words = 0,
+    int activities = 0,
     DateTime? on,
   }) async {
     final ledger = getDailyActivity(profileId);
@@ -950,6 +974,8 @@ class HiveService {
       'games': (today['games'] ?? 0) + games,
       'stars': (today['stars'] ?? 0) + stars,
       'words': (today['words'] ?? 0) + words,
+      if ((today['activities'] ?? 0) + activities > 0)
+        'activities': (today['activities'] ?? 0) + activities,
     };
 
     final cutoff = DateTime.now().subtract(const Duration(days: 90));

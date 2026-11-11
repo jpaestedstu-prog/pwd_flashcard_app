@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_spacing.dart';
+import '../theme/form_factor.dart';
 
 /// Responsive helpers optimized for Honor Pad X8a (1920×1200)
 /// but adaptive down to phone sizes.
@@ -56,13 +57,40 @@ extension ResponsiveExtension on BuildContext {
     return phone;
   }
 
-  /// Horizontal page padding
-  double get pagePadding {
+  /// Phone, tablet or a computer's browser. See [FormFactor]; the sizes
+  /// that differ between them live in [FormMetrics] and [adaptTheme].
+  FormFactor get formFactor => FormFactor.of(this);
+
+  /// The page's edge padding for its size class. For the top and bottom of
+  /// a page, which a wide window does not change ([pagePadding] grows on
+  /// one, and as the space above a grid it opened a gap of 260 px).
+  double get pageInset {
     final side = _classSide;
     if (side >= 1600) return 48.0;
     if (side >= 1200) return 40.0;
     if (side >= 600) return 32.0;
     return 20.0;
+  }
+
+  /// Horizontal page padding. On a wide window it grows, so a page that
+  /// fills the window keeps its content in a column of [hubContentWidth]
+  /// rather than stretching it edge to edge. Sideways only: the top and
+  /// bottom take [pageInset].
+  double get pagePadding {
+    final base = pageInset;
+    final content = hubContentWidth;
+    if (content == null) return base;
+    final gutter = (screenWidth - content) / 2;
+    return gutter > base ? gutter : base;
+  }
+
+  /// How wide a page that fills the window may run its content, on a window
+  /// wide enough for it to matter. Null: no limit (phones and tablets, whose
+  /// layouts are made for the width they have).
+  double? get hubContentWidth {
+    if (screenWidth >= 1600) return 1400;
+    if (screenWidth >= 1200) return 1200;
+    return null;
   }
 
   /// Number of grid columns
@@ -99,17 +127,24 @@ extension ResponsiveExtension on BuildContext {
   /// size is for the secondary "More" grid.
   double hubTileHeight({bool large = true}) {
     final side = _classSide;
+    // A tile on a very narrow screen puts its words on more lines. Android's
+    // Display Size at Largest makes an ordinary phone this narrow too.
+    final narrow = screenWidth < 350;
     final double base = large
         ? (side >= 1200
             ? 184.0
             : side >= 600
                 ? 160.0
-                : 132.0)
+                : narrow
+                    ? 180.0
+                    : 132.0)
         : (side >= 1200
             ? 128.0
             : side >= 600
                 ? 114.0
-                : 100.0);
+                : narrow
+                    ? 116.0
+                    : 100.0);
     // Clamp the scaler so XL fonts enlarge tiles without runaway growth; the
     // tile content also self-protects (FittedBox + ellipsis).
     final scale = MediaQuery.textScalerOf(this).scale(1.0).clamp(1.0, 1.6);
@@ -138,16 +173,6 @@ extension ResponsiveExtension on BuildContext {
     // FittedBox + ellipsis.
     final scale = MediaQuery.textScalerOf(this).scale(1.0).clamp(1.0, 1.6);
     return base * scale;
-  }
-
-  /// Adaptive font size multiplier based on the size class
-  double get fontScaleFactor {
-    final side = _classSide;
-    if (side >= 1600) return 1.25;
-    if (side >= 1200) return 1.15;
-    if (side >= 900) return 1.1;
-    if (side >= 600) return 1.0;
-    return 0.9;
   }
 
   /// Scale any base size by the size-class tier factor.

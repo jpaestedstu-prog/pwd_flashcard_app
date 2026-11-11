@@ -213,6 +213,9 @@
 
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
+        <!-- TalkBack's version: MainActivity.quietSliderEcho only drops the
+             engine's extra slider event on a version it was checked on. -->
+        <package android:name="com.google.android.marvin.talkback"/>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>

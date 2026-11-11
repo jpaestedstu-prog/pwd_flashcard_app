@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter/gestures.dart' show PointerScrollEvent;
 import 'package:flutter/material.dart';
+import '../../../l10n/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/accessibility/stt_service.dart' show sttServiceProvider;
@@ -94,13 +95,16 @@ mixin VoiceControlMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
   Widget? voiceChip() {
     final voice = _voice;
     if (voice == null) return null;
+    final t = AppLocalizations.of(context);
     final text = voice.unavailable
-        ? 'Microphone unavailable'
+        ? (t?.vcMicUnavailable ?? 'Microphone unavailable')
         : voice.pausedForDictation
-        ? 'Paused while you speak your message'
+        ? (t?.vcPausedDictation ?? 'Paused while you speak your message')
         : voice.lastHeard.isNotEmpty
             ? voice.lastHeard
-            : (voice.isListening ? 'Listening…' : 'Voice ready');
+            : (voice.isListening
+                  ? (t?.vcListening ?? 'Listening…')
+                  : (t?.vcReady ?? 'Voice ready'));
     // A transparent Material gives the text the app's own style. This floats
     // beside a screen's Scaffold, not inside it, so without one the text fell
     // back to Flutter's "missing Material" style — red-yellow double

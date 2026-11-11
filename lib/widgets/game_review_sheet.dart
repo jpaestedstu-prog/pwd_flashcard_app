@@ -87,8 +87,6 @@ class _GameReviewSheet extends StatelessWidget {
                   Flexible(
                     child: Text(
                       l10n.gameReviewTitle(gameTitle),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                       style: AppTypography.headlineSmall.copyWith(
                         fontWeight: FontWeight.w800,
                       ),

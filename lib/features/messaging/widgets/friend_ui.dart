@@ -19,6 +19,7 @@ import '../services/friend_service.dart';
 import '../services/profile_directory_service.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/text_limits.dart';
 
 /// Shared "add / manage friends" UI.
 ///
@@ -302,6 +303,8 @@ class _AddFriendDialogState extends State<AddFriendDialog> {
             const SizedBox(height: 12),
             TextField(
               controller: _controller,
+              maxLength: TextLimits.personName,
+              buildCounter: TextLimits.counter,
               // With classmates to pick from, an open keyboard would cover
               // the easier path.
               autofocus: !_hasGroup,
@@ -426,14 +429,17 @@ class _ClassmateSuggestions extends StatelessWidget {
                           color: hc.textPrimary,
                         ),
                       ),
-                      Semantics(
-                        button: true,
-                        label: isFilipino
-                            ? 'Hilingin na maging kaibigan si ${entry.name}'
-                            : 'Ask ${entry.name} to be friends',
-                        excludeSemantics: true,
-                        child: OutlinedButton(
-                          onPressed: busy ? null : () => onAsk(entry),
+                      // The full name on the button's own node, with its
+                      // press and focus (excluded under a label, the button
+                      // could be neither reached nor pressed by a screen
+                      // reader).
+                      OutlinedButton(
+                        onPressed: busy ? null : () => onAsk(entry),
+                        child: Semantics(
+                          label: isFilipino
+                              ? 'Hilingin na maging kaibigan si ${entry.name}'
+                              : 'Ask ${entry.name} to be friends',
+                          excludeSemantics: true,
                           child: Text(isFilipino ? 'Hilingin' : 'Ask'),
                         ),
                       ),
@@ -464,16 +470,16 @@ class FriendRequestsBadgeButton extends StatelessWidget {
     final name = _t(context).frRequests;
     // The badge's number used to *replace* the button's name for a screen
     // reader, which announced a bare "1".
+    // Named by the button's own tooltip, so the name sits on the node with
+    // the press and the focus (excluded under a wrapper label, a screen
+    // reader could neither reach nor press it).
     return Padding(
       padding: const EdgeInsets.only(right: 4),
-      child: Semantics(
-        button: true,
-        label: count > 0 ? '$name, $count' : name,
-        excludeSemantics: true,
-        child: IconButton(
-          tooltip: name,
-          onPressed: onTap,
-          icon: Badge(
+      child: IconButton(
+        tooltip: count > 0 ? '$name, $count' : name,
+        onPressed: onTap,
+        icon: ExcludeSemantics(
+          child: Badge(
             isLabelVisible: count > 0,
             label: Text(count.toString()),
             child: const Icon(Icons.person_outline_rounded),
@@ -700,6 +706,7 @@ class _PeerActionsSheetState extends ConsumerState<PeerActionsSheet> {
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text(title),
         content: Text(body),
         actions: [
@@ -782,14 +789,14 @@ class _PeerActionsSheetState extends ConsumerState<PeerActionsSheet> {
         title: Text(fil ? 'Ano ang nangyari?' : 'What happened?'),
         children: [
           for (final option in _reportReasons(fil))
-            SimpleDialogOption(
+            Semantics(container: true, button: true, child: SimpleDialogOption(
               onPressed: () => Navigator.of(ctx).pop(option),
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: Text(option, style: AppTypography.bodyMedium),
               ),
-            ),
-          SimpleDialogOption(
+            )),
+          Semantics(container: true, button: true, child: SimpleDialogOption(
             onPressed: () => Navigator.of(ctx).pop(),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
@@ -798,7 +805,7 @@ class _PeerActionsSheetState extends ConsumerState<PeerActionsSheet> {
                 style: AppTypography.bodyMedium,
               ),
             ),
-          ),
+          )),
         ],
       ),
     );

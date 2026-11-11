@@ -99,7 +99,7 @@ class LearnerPortfolioScreen extends ConsumerWidget {
                 child: Row(
                   children: [
                     AppBackButton(
-                      fallbackRoute: '/assessment-hub',
+                      fallbackRoute: '/assessment',
                       color: hc.textPrimary,
                     ),
                     const SizedBox(width: 8),
@@ -750,8 +750,6 @@ class _FeedbackCard extends StatelessWidget {
                           const SizedBox(height: 4),
                           Text(
                             note,
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
                             style: AppTypography.bodyMedium.copyWith(
                               color: hc.textPrimary,
                             ),

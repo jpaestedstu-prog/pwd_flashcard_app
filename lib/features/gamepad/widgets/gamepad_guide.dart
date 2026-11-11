@@ -23,7 +23,7 @@ class GamepadGuideGroup {
   const GamepadGuideGroup(this.title, this.entries);
 }
 
-/// The complete control map, as data.
+/// The complete control map, as data — one job per control.
 ///
 /// Kept as a const list rather than inline widgets so a test can assert that
 /// every [GamepadButton] with a real action appears here — a control that
@@ -32,39 +32,40 @@ class GamepadGuideGroup {
 const List<GamepadGuideGroup> kGamepadGuide = [
   GamepadGuideGroup('Moving around', [
     GamepadGuideEntry(
-      'D-pad ◀ / ▶',
-      'Move between sections. The app asks before it switches — “Do you want '
-          'to go to the Cards section?”',
-    ),
-    GamepadGuideEntry(
-      'D-pad ▲ / ▼',
-      'Move between the items on the current screen, one at a time, in '
-          'reading order. Each one is read out with its position.',
+      'D-pad ▲ ▼ ◀ ▶',
+      'Move the highlight up, down, left or right — to the tile beside it, '
+          'or the control below it. A slider under the highlight turns with '
+          '◀ and ▶.',
     ),
     GamepadGuideEntry(
       'Left joystick',
-      'The same as the D-pad — push left or right for sections, up or down '
-          'for items.',
+      'The same as the D-pad. It can be turned off above, for a learner who '
+          'knocks it by accident.',
     ),
-  ]),
-  GamepadGuideGroup('Face buttons', [
-    GamepadGuideEntry('X (left)', 'Previous section — same as D-pad ◀'),
-    GamepadGuideEntry('B (right)', 'Next section — same as D-pad ▶'),
-    GamepadGuideEntry('Y (up)', 'Previous item — same as D-pad ▲'),
-    GamepadGuideEntry('A (down)', 'Next item — same as D-pad ▼'),
     GamepadGuideEntry(
-      'A and B while a question is asked',
-      'A answers yes, B answers no. Every question says so out loud, so the '
-          'change is never a surprise.',
+      'L2 / R2',
+      'The previous or next item, one at a time in reading order — for a '
+          'learner who wants a single, predictable “next”. Each is read out '
+          'with its position.',
+    ),
+    GamepadGuideEntry(
+      'L1 / R1',
+      'The previous or next section. The app asks before it switches — “Do '
+          'you want to go to the Cards section?”',
     ),
   ]),
   GamepadGuideGroup('Choosing and leaving', [
-    GamepadGuideEntry('R1', 'Open the item you are on'),
-    GamepadGuideEntry('L1', 'Go back, or close what is open'),
+    GamepadGuideEntry('A', 'Choose what is highlighted — press it, or open it'),
+    GamepadGuideEntry('B', 'Go back, or close what is open'),
+    GamepadGuideEntry(
+      'A and B when a question is asked',
+      'A answers yes and B answers no — confirm and cancel, as always. Every '
+          'question says so out loud.',
+    ),
   ]),
   GamepadGuideGroup('Listening', [
-    GamepadGuideEntry('R2', 'Read the whole screen — every item on it'),
-    GamepadGuideEntry('L2', 'Say the last thing again'),
+    GamepadGuideEntry('X', 'Read the whole screen — every item on it'),
+    GamepadGuideEntry('Y', 'Say the last thing again'),
     GamepadGuideEntry('Start', 'Where am I? — the section and the item'),
     GamepadGuideEntry('Select', 'Speak this button guide'),
     GamepadGuideEntry(
@@ -87,39 +88,40 @@ const List<GamepadGuideGroup> kGamepadGuide = [
 const List<GamepadGuideGroup> kGamepadGuideFilipino = [
   GamepadGuideGroup('Paggalaw', [
     GamepadGuideEntry(
-      'D-pad ◀ / ▶',
-      'Lumipat ng section. Nagtatanong muna ang app bago lumipat — “Gusto mo '
-          'bang pumunta sa section ng Mga Kard?”',
-    ),
-    GamepadGuideEntry(
-      'D-pad ▲ / ▼',
-      'Lumipat sa mga item sa kasalukuyang screen, isa-isa, ayon sa '
-          'pagkakasunod. Binabasa ang bawat isa kasama ang puwesto nito.',
+      'D-pad ▲ ▼ ◀ ▶',
+      'Igalaw ang highlight pataas, pababa, pakaliwa o pakanan — sa katabing '
+          'tile, o sa control sa ibaba nito. Ang slider na naka-highlight ay '
+          'binabago ng ◀ at ▶.',
     ),
     GamepadGuideEntry(
       'Kaliwang joystick',
-      'Tulad ng D-pad — itulak pakaliwa o pakanan para sa section, pataas o '
-          'pababa para sa item.',
+      'Tulad ng D-pad. Mapapatay ito sa itaas, para sa mag-aaral na '
+          'natatamaan ito nang hindi sinasadya.',
     ),
-  ]),
-  GamepadGuideGroup('Mga button sa harap', [
-    GamepadGuideEntry('X (kaliwa)', 'Nakaraang section — tulad ng D-pad ◀'),
-    GamepadGuideEntry('B (kanan)', 'Susunod na section — tulad ng D-pad ▶'),
-    GamepadGuideEntry('Y (taas)', 'Nakaraang item — tulad ng D-pad ▲'),
-    GamepadGuideEntry('A (baba)', 'Susunod na item — tulad ng D-pad ▼'),
     GamepadGuideEntry(
-      'A at B habang may tanong',
-      'Ang A ay oo, ang B ay hindi. Sinasabi ito nang malakas sa bawat tanong, '
-          'kaya hindi ito nakagugulat.',
+      'L2 / R2',
+      'Ang nakaraan o susunod na item, isa-isa ayon sa pagkakasunod — para sa '
+          'mag-aaral na gusto ng iisang tiyak na “susunod”. Binabasa ang bawat '
+          'isa kasama ang puwesto nito.',
+    ),
+    GamepadGuideEntry(
+      'L1 / R1',
+      'Ang nakaraan o susunod na section. Nagtatanong muna ang app bago '
+          'lumipat — “Gusto mo bang pumunta sa section ng Mga Kard?”',
     ),
   ]),
   GamepadGuideGroup('Pagpili at pag-alis', [
-    GamepadGuideEntry('R1', 'Buksan ang item na kinalalagyan mo'),
-    GamepadGuideEntry('L1', 'Bumalik, o isara ang nakabukas'),
+    GamepadGuideEntry('A', 'Piliin ang naka-highlight — pindutin o buksan ito'),
+    GamepadGuideEntry('B', 'Bumalik, o isara ang nakabukas'),
+    GamepadGuideEntry(
+      'A at B kapag may tanong',
+      'Ang A ay oo at ang B ay hindi — kumpirma at kanselahin, gaya ng dati. '
+          'Sinasabi ito nang malakas sa bawat tanong.',
+    ),
   ]),
   GamepadGuideGroup('Pakikinig', [
-    GamepadGuideEntry('R2', 'Basahin ang buong screen — lahat ng item dito'),
-    GamepadGuideEntry('L2', 'Ulitin ang huling sinabi'),
+    GamepadGuideEntry('X', 'Basahin ang buong screen — lahat ng item dito'),
+    GamepadGuideEntry('Y', 'Ulitin ang huling sinabi'),
     GamepadGuideEntry('Start', 'Nasaan ako? — ang section at ang item'),
     GamepadGuideEntry('Select', 'Sabihin ang gabay na ito sa mga button'),
     GamepadGuideEntry(
@@ -140,7 +142,7 @@ const List<GamepadGuideGroup> kGamepadGuideFilipino = [
 /// The button guide, rendered as a readable page.
 ///
 /// Every row is a [Semantics] pair so a learner using TalkBack alongside the
-/// controller hears "R1, open the item you are on" as one utterance rather
+/// controller hears "A, choose what is highlighted" as one utterance rather
 /// than two disconnected fragments.
 class GamepadGuide extends StatelessWidget {
   const GamepadGuide({super.key});

@@ -1,6 +1,9 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/widgets/auto_fit.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart';
@@ -35,6 +38,7 @@ import '../../../widgets/fullscreen_host.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../unfinished_round_stars.dart';
 import '../../../widgets/dpad_focusable.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 class FlashcardQuizScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
@@ -216,8 +220,8 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
     if (!mounted || _currentIndex >= _cards.length) return;
     final card = _cards[_currentIndex];
     gamepadScreen.announce(
-      '${_currentIndex + 1} of ${_cards.length}. '
-      '${card.wordEnglish}. ${card.wordFilipino}.',
+      '${AppLocalizations.of(context)!.cardNofM(_currentIndex + 1, _cards.length)}. '
+      '${card.spokenWords(separator: '. ')}.',
     );
   }
 
@@ -388,9 +392,10 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
     final card = _cards[_currentIndex];
 
     // A swipe game, which is the one gesture a controller cannot make — so the
-    // two swipe directions are published as ordinary items and answered with
-    // R1. The card itself is the content, and it is read out: a learner
-    // deciding whether they know a word has to be told the word.
+    // two swipe directions are buttons under the card, which the D-pad reaches
+    // and A presses, and X lists them. The card itself is the content, and it
+    // is read out: a learner deciding whether they know a word has to be told
+    // the word.
     return GamepadScreenRegistrar(
       title: GameType.flashcardQuiz.labelOf(l10n),
       narration: [
@@ -400,11 +405,12 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
       ],
       items: [
         GamepadItem(
-          label: l10n.iKnowThisSwipe,
+          // Plain words: the arrows are drawn, not said.
+          label: l10n.iKnowIt,
           onActivate: () => _handleSwipe(true),
         ),
         GamepadItem(
-          label: l10n.stillLearningSwipe,
+          label: l10n.stillLearning,
           onActivate: () => _handleSwipe(false),
         ),
       ],
@@ -427,7 +433,11 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
                     tooltip: l10n.close,
                     onPressed: pauseGame,
                   ),
-                  title: Text('${_currentIndex + 1} / $_totalCards'),
+                  title: AppBarTitle(
+                    '${_currentIndex + 1} / $_totalCards',
+                    semanticsLabel: AppLocalizations.of(context)!
+                        .cardNofM(_currentIndex + 1, _totalCards),
+                  ),
                   actions: [
                     GameBreakAction(onHold: holdForBreak, onResume: resumeFromBreak),
                     IconButton(
@@ -451,13 +461,10 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
                 builder: (context, box) {
                   final progress = Padding(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                    child: Semantics(
-                      label: l10n.flashcardProgressSemantics(
-                        _currentIndex + 1,
-                        _totalCards,
-                        _knowCount,
-                        _learningCount,
-                      ),
+                    // For the eye: the title says "Card 1 of 10" and the two
+                    // chips their counts. As a sentence of its own it said
+                    // both again, between the two.
+                    child: ExcludeSemantics(
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child: LinearProgressIndicator(
@@ -492,30 +499,52 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
                         maxWidth: context.responsive(phone: 320, tablet: 420),
                         maxHeight: context.responsive(phone: 440, tablet: 560),
                       ),
-                      child: AspectRatio(
-                        aspectRatio: 3 / 4,
-                        child: Semantics(
-                          label: l10n.flashcardSemantics(
-                            card.wordEnglish,
-                            card.wordFilipino,
-                            card.category.labelOf(l10n),
-                          ),
-                          child: GestureDetector(
-                            onHorizontalDragUpdate: _onDragUpdate,
-                            onHorizontalDragEnd: _onDragEnd,
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 100),
-                              transform: Matrix4.identity()
-                                ..storage[12] = _dragOffset.dx
-                                ..rotateZ(_dragRotation),
-                              transformAlignment: Alignment.center,
-                              child: _QuizCard(
-                                card: card,
-                                dragX: _dragOffset.dx,
+                      child: LayoutBuilder(
+                        builder: (context, area) {
+                          // 3:4 while that leaves a card its words can sit
+                          // on. In a short space (a small phone, the
+                          // largest Font Size) it made the card as narrow
+                          // as 155 px with both sides of the screen empty,
+                          // and the words were drawn at 3 to 7 px. There it
+                          // takes the width instead.
+                          final threeByFour = area.maxHeight * 3 / 4;
+                          final wide = math.min(area.maxWidth - 32, 280.0);
+                          final enough = 200 *
+                              MediaQuery.textScalerOf(context)
+                                  .scale(1)
+                                  .clamp(1.0, 1.5);
+                          final cardShape =
+                              area.maxHeight > 0 &&
+                                  threeByFour < enough &&
+                                  wide > threeByFour
+                              ? wide / area.maxHeight
+                              : 3 / 4;
+                          return AspectRatio(
+                            aspectRatio: cardShape,
+                            child: Semantics(
+                              label: l10n.flashcardSemantics(
+                                card.wordEnglish,
+                                card.wordFilipino,
+                                card.category.labelOf(l10n),
+                              ),
+                              child: GestureDetector(
+                                onHorizontalDragUpdate: _onDragUpdate,
+                                onHorizontalDragEnd: _onDragEnd,
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 100),
+                                  transform: Matrix4.identity()
+                                    ..storage[12] = _dragOffset.dx
+                                    ..rotateZ(_dragRotation),
+                                  transformAlignment: Alignment.center,
+                                  child: _QuizCard(
+                                    card: card,
+                                    dragX: _dragOffset.dx,
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                        ),
+                          );
+                        },
                       ),
                     ),
                   );
@@ -523,12 +552,14 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
                   final still = _ActionButton(
                     icon: Icons.close_rounded,
                     label: l10n.stillLearningSwipe,
+                    spokenLabel: l10n.stillLearning,
                     color: AppColors.error,
                     onTap: () => _handleSwipe(false),
                   );
                   final know = _ActionButton(
                     icon: Icons.check_rounded,
                     label: l10n.iKnowThisSwipe,
+                    spokenLabel: l10n.iKnowIt,
                     color: AppColors.success,
                     onTap: () => _handleSwipe(true),
                   );
@@ -631,12 +662,18 @@ class _FlashcardQuizScreenState extends ConsumerState<FlashcardQuizScreen>
 class _ActionButton extends StatelessWidget {
   final IconData icon;
   final String label;
+
+  /// What a screen reader says: [label] with its arrow and line break, and
+  /// in the learner's language (" button" was English, and doubled the
+  /// role TalkBack already reads).
+  final String spokenLabel;
   final Color color;
   final VoidCallback onTap;
 
   const _ActionButton({
     required this.icon,
     required this.label,
+    required this.spokenLabel,
     required this.color,
     required this.onTap,
   });
@@ -648,7 +685,8 @@ class _ActionButton extends StatelessWidget {
       onTap: onTap,
       child: Semantics(
         button: true,
-        label: '$label button',
+        label: spokenLabel,
+        excludeSemantics: true,
         child: Builder(
           builder: (context) {
             final size = context.responsiveSize(60);
@@ -703,8 +741,12 @@ class _StatChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // "3 known": the count with its word, once (the bare number inside said
+    // "3" a second time).
     return Semantics(
+      container: true,
       label: semanticLabel,
+      excludeSemantics: true,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
@@ -781,84 +823,93 @@ class _QuizCard extends StatelessWidget {
                 // Category badge (fixed at top)
                 _CategoryBadge(category: cat),
                 const SizedBox(height: 12),
-                // Hero image (upper area) scales down to share the card.
+                // Share what is left of the card.
                 Expanded(
-                  child: Center(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: FlashcardImage(
-                        card: card,
-                        size: context.responsive(phone: 104, tablet: 132),
-                        borderRadius: 18,
+                  child: _PictureAndWords(
+                    picture: Center(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: ExcludeSemantics(
+                          // The word is on the card, just before it.
+                          child: FlashcardImage(
+                            card: card,
+                            size: context.responsive(phone: 104, tablet: 132),
+                            borderRadius: 18,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                // Word block (lower area). The width constraint keeps the
-                // example wrapping at the default font scale (so text stays a
-                // consistent size card-to-card), while the FittedBox scales the
-                // whole group down only when a large font scale would otherwise
-                // overflow the card — never truncating the word being learned.
-                Flexible(
-                  child: LayoutBuilder(
-                    builder: (context, c) => FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: c.maxWidth),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // The word being taught, so it must never be
-                            // split: this showed "Kutsar / a" on the answer
-                            // face of the card.
-                            FitText(
-                              card.wordEnglish,
-                              maxLines: 1,
-                              textAlign: TextAlign.center,
-                              style: AppTypography.headlineMedium.copyWith(
-                                fontWeight: FontWeight.w800,
-                                color: HCColor.of(context).textPrimary,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            FitText(
-                              card.wordFilipino,
-                              maxLines: 1,
-                              textAlign: TextAlign.center,
-                              style: AppTypography.titleLarge.copyWith(
-                                color: HCColor.of(context).readableOver(
-                                  cat.color,
-                                  cat.color.withValues(alpha: 0.15),
-                                ),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            if (card.exampleSentence != null) ...[
-                              const SizedBox(height: 12),
-                              // FitText rather than Text: a single long word in
-                              // the sentence is wider than this column at 2.0x
-                              // and Flutter breaks *inside* it — "Wednesd / ay"
-                              // — on the screen teaching that very word. It
-                              // still wraps across two lines between words; the
-                              // size only steps down far enough that no word
-                              // splits (FitText already caps at two lines). Safe here
-                              // because the Filipino word
-                              // just above already uses FitText, so this parent
-                              // tolerates a LayoutBuilder.
+                    // Word block (lower area). The width constraint keeps the
+                    // example wrapping at the default font scale (so text stays
+                    // a consistent size card-to-card), while the FittedBox scales
+                    // the whole group down only when a large font scale would
+                    // otherwise overflow the card — never truncating the word
+                    // being learned.
+                    words: LayoutBuilder(
+                      builder: (context, c) => FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(maxWidth: c.maxWidth),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // The word being taught, so it must never be
+                              // split: this showed "Kutsar / a" on the answer
+                              // face of the card.
                               FitText(
-                                '“${card.exampleSentence}”',
+                                card.wordEnglish,
+                                maxLines: 1,
                                 textAlign: TextAlign.center,
-                                // Primary: the card face is tinted with the
-                                // category, and the secondary grey sank to
-                                // 3.5:1 on it in the dark theme.
-                                style: AppTypography.bodySmall.copyWith(
+                                style: AppTypography.headlineMedium.copyWith(
+                                  fontWeight: FontWeight.w800,
                                   color: HCColor.of(context).textPrimary,
-                                  fontStyle: FontStyle.italic,
                                 ),
                               ),
+                              const SizedBox(height: 6),
+                              // A word both languages share ("T-shirt", "Bus")
+                              // is said once; TalkBack read "T-shirt, T-shirt".
+                              ExcludeSemantics(
+                                excluding: card.wordFilipino.toLowerCase() ==
+                                    card.wordEnglish.toLowerCase(),
+                                child: FitText(
+                                  card.wordFilipino,
+                                  maxLines: 1,
+                                  textAlign: TextAlign.center,
+                                  style: AppTypography.titleLarge.copyWith(
+                                    color: HCColor.of(context).readableOver(
+                                      cat.color,
+                                      cat.color.withValues(alpha: 0.15),
+                                    ),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              if (card.exampleSentence != null) ...[
+                                const SizedBox(height: 12),
+                                // FitText rather than Text: a single long word in
+                                // the sentence is wider than this column at 2.0x
+                                // and Flutter breaks *inside* it — "Wednesd / ay"
+                                // — on the screen teaching that very word. It
+                                // still wraps across two lines between words; the
+                                // size only steps down far enough that no word
+                                // splits (FitText already caps at two lines). Safe here
+                                // because the Filipino word
+                                // just above already uses FitText, so this parent
+                                // tolerates a LayoutBuilder.
+                                FitText(
+                                  '“${card.exampleSentence}”',
+                                  textAlign: TextAlign.center,
+                                  // Primary: the card face is tinted with the
+                                  // category, and the secondary grey sank to
+                                  // 3.5:1 on it in the dark theme.
+                                  style: AppTypography.bodySmall.copyWith(
+                                    color: HCColor.of(context).textPrimary,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ],
                             ],
-                          ],
+                          ),
                         ),
                       ),
                     ),
@@ -897,6 +948,78 @@ class _QuizCard extends StatelessWidget {
   }
 }
 
+/// The picture and the words of a quiz card, in the room the card has left.
+///
+/// Above each other, half each. When the words need more than their half
+/// (a large Font Size, a small phone) they keep their size and the picture
+/// gives way: with both halves fixed the words were drawn at 7 px beside a
+/// half of empty card. On a card wider than it is tall (a phone on its
+/// side) the two sit next to each other.
+class _PictureAndWords extends StatelessWidget {
+  final Widget picture;
+  final Widget words;
+
+  const _PictureAndWords({required this.picture, required this.words});
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, box) {
+        if (box.maxHeight < 260 && box.maxWidth > box.maxHeight * 1.3) {
+          return Row(
+            children: [
+              Expanded(flex: 2, child: picture),
+              const SizedBox(width: 16),
+              Expanded(flex: 3, child: Center(child: words)),
+            ],
+          );
+        }
+        return CustomMultiChildLayout(
+          delegate: _PictureAndWordsLayout(),
+          children: [
+            LayoutId(id: _PictureAndWordsLayout.picture, child: picture),
+            LayoutId(id: _PictureAndWordsLayout.words, child: words),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _PictureAndWordsLayout extends MultiChildLayoutDelegate {
+  static const picture = 'picture';
+  static const words = 'words';
+  static const _gap = 12.0;
+  static const _smallestPicture = 64.0;
+
+  @override
+  void performLayout(Size size) {
+    final half = (size.height - _gap) / 2;
+    final wordsSize = layoutChild(
+      words,
+      BoxConstraints(
+        maxWidth: size.width,
+        maxHeight: math.max(half, size.height - _gap - _smallestPicture),
+      ),
+    );
+    final pictureHeight = wordsSize.height <= half
+        ? half
+        : size.height - _gap - wordsSize.height;
+    layoutChild(
+      picture,
+      BoxConstraints.tight(Size(size.width, pictureHeight)),
+    );
+    positionChild(picture, Offset.zero);
+    positionChild(
+      words,
+      Offset((size.width - wordsSize.width) / 2, pictureHeight + _gap),
+    );
+  }
+
+  @override
+  bool shouldRelayout(covariant MultiChildLayoutDelegate oldDelegate) => false;
+}
+
 // ────────────────────────────────────────
 // Category Badge
 // ────────────────────────────────────────
@@ -918,17 +1041,18 @@ class _CategoryBadge extends StatelessWidget {
         children: [
           Icon(category.icon, size: 16, color: category.color),
           const SizedBox(width: 6),
-          // Ellipsise a long category name at a large font scale rather than
-          // pushing the pill past the card's width.
+          // Shrink a long category name at a large font scale rather than
+          // push the pill past the card's width, or cut it ("Transpor…",
+          // a phone at the largest Font Size, 30 Oct).
           Flexible(
-            child: Text(
-              category.label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTypography.labelSmall.copyWith(
-                color: HCColor.of(context).readableOver(
-                  category.color,
-                  category.color.withValues(alpha: 0.15),
+            child: AutoFit(
+              child: Text(
+                category.labelOf(AppLocalizations.of(context)!),
+                style: AppTypography.labelSmall.copyWith(
+                  color: HCColor.of(context).readableOver(
+                    category.color,
+                    category.color.withValues(alpha: 0.15),
+                  ),
                 ),
               ),
             ),

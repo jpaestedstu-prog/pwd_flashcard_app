@@ -10,6 +10,7 @@ import '../../../data/models/enums.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Screen that lets users pick a worksheet type, category and difficulty,
 /// then generates a printable/shareable PDF worksheet.
@@ -36,7 +37,7 @@ class _WorksheetScreenState extends ConsumerState<WorksheetScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: const AppBackButton(fallbackRoute: '/progress'),
-        title: Text(
+        title: AppBarTitle(
           _t(context).wscTitle,
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
@@ -211,11 +212,15 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      label,
-      style: AppTypography.titleSmall.copyWith(
-        fontWeight: FontWeight.w700,
-        color: hc.textPrimary,
+    return Semantics(
+      container: true,
+      header: true,
+      child: Text(
+        label,
+        style: AppTypography.titleSmall.copyWith(
+          fontWeight: FontWeight.w700,
+          color: hc.textPrimary,
+        ),
       ),
     );
   }
@@ -237,48 +242,56 @@ class _WorksheetTypeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Material(
-        color: isSelected ? hc.primary.withValues(alpha: 0.08) : hc.surface,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          onTap: onTap,
+      child: Semantics(
+        container: true,
+        // A choice: a screen reader says so, and which one is chosen.
+        button: true,
+        selected: isSelected,
+        child: Material(
+          color: isSelected ? hc.primary.withValues(alpha: 0.08) : hc.surface,
           borderRadius: BorderRadius.circular(12),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isSelected ? hc.primary : hc.border,
-                width: isSelected ? 2 : 1,
-              ),
-            ),
-            child: Row(
-              children: [
-                Text(type.emoji, style: const TextStyle(fontSize: 22)),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        type.labelOf(_t(context)),
-                        style: AppTypography.bodyMedium.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: isSelected ? hc.primary : hc.textPrimary,
-                        ),
-                      ),
-                      Text(
-                        type.descriptionOf(_t(context)),
-                        style: AppTypography.bodySmall.copyWith(
-                          color: hc.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isSelected ? hc.primary : hc.border,
+                  width: isSelected ? 2 : 1,
                 ),
-                if (isSelected)
-                  Icon(Icons.check_circle_rounded, color: hc.primary, size: 22),
-              ],
+              ),
+              child: Row(
+                children: [
+                  ExcludeSemantics(
+                  child: Text(type.emoji, style: const TextStyle(fontSize: 22)),
+                ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          type.labelOf(_t(context)),
+                          style: AppTypography.bodyMedium.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: isSelected ? hc.primary : hc.textPrimary,
+                          ),
+                        ),
+                        Text(
+                          type.descriptionOf(_t(context)),
+                          style: AppTypography.bodySmall.copyWith(
+                            color: hc.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (isSelected)
+                    Icon(Icons.check_circle_rounded, color: hc.primary, size: 22),
+                ],
+              ),
             ),
           ),
         ),
@@ -307,42 +320,48 @@ class _DifficultyButton extends StatelessWidget {
       GameDifficulty.hard => _t(context).wscWords(12),
     };
 
-    return Material(
-      color: isSelected ? hc.primary.withValues(alpha: 0.1) : hc.surface,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onTap,
+    return Semantics(
+      container: true,
+      // A choice: a screen reader says so, and which one is chosen.
+      button: true,
+      selected: isSelected,
+      child: Material(
+        color: isSelected ? hc.primary.withValues(alpha: 0.1) : hc.surface,
         borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isSelected ? hc.primary : hc.border,
-              width: isSelected ? 2 : 1,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isSelected ? hc.primary : hc.border,
+                width: isSelected ? 2 : 1,
+              ),
             ),
-          ),
-          child: Column(
-            children: [
-              // Three difficulties share the row: "Mediu / m" split.
-              FitText(
-                difficulty.labelOf(AppLocalizations.of(context)!),
-                maxLines: 1,
-                // The border says which is chosen; the words stay the
-                // strongest colour the theme has on this tinted page.
-                style: AppTypography.bodyMedium.copyWith(
-                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                  color: hc.textPrimary,
+            child: Column(
+              children: [
+                // Three difficulties share the row: "Mediu / m" split.
+                FitText(
+                  difficulty.labelOf(AppLocalizations.of(context)!),
+                  maxLines: 1,
+                  // The border says which is chosen; the words stay the
+                  // strongest colour the theme has on this tinted page.
+                  style: AppTypography.bodyMedium.copyWith(
+                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                    color: hc.textPrimary,
+                  ),
                 ),
-              ),
-              Text(
-                wordCount,
-                style: AppTypography.bodySmall.copyWith(
-                  color: hc.textPrimary,
-                  fontSize: 11,
+                Text(
+                  wordCount,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: hc.textPrimary,
+                    fontSize: 11,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

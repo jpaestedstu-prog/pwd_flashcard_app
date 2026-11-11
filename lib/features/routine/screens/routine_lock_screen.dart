@@ -854,8 +854,6 @@ class _FirstThenCard extends StatelessWidget {
                 Text(
                   title,
                   textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                   style: AppTypography.bodyMedium.copyWith(
                     fontWeight: FontWeight.w700,
                     color: hc.textPrimary,

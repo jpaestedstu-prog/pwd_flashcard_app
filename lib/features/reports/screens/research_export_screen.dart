@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../classroom/widgets/cloud_sync_error_view.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
@@ -16,6 +17,7 @@ import '../../../providers/app_providers.dart';
 import '../../../core/utils/accessible_sizing.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Educator-only screen for exporting anonymized, cross-student research
 /// data — designed specifically for thesis analysis and academic reporting.
@@ -124,7 +126,7 @@ class _ResearchExportScreenState extends ConsumerState<ResearchExportScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: const AppBackButton(),
-        title: Text(
+        title: AppBarTitle(
           t.rxTitle,
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
@@ -133,6 +135,9 @@ class _ResearchExportScreenState extends ConsumerState<ResearchExportScreen> {
         ),
       ),
       body: ListView(
+        // Rows come and go here: no row may stay "alive" in a place another
+        // has taken (see found_by_pressing_test: Scan Mode).
+        addAutomaticKeepAlives: false,
         padding: const EdgeInsets.all(20),
         children: [
           // ─── Description Card ──────────────────
@@ -397,8 +402,12 @@ class _ResearchExportScreenState extends ConsumerState<ResearchExportScreen> {
         AppSnackBar.success(context, message: t.rxExported);
       }
     } catch (e) {
+      debugPrint('research export failed: $e');
       if (mounted) {
-        AppSnackBar.error(context, message: t.rxExportFailed('$e'));
+        AppSnackBar.error(
+          context,
+          message: t.rxExportFailed(cloudSyncErrorMessage(e, t).title),
+        );
       }
     } finally {
       if (mounted) setState(() => _isExporting = false);

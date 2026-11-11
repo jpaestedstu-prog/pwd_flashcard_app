@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import '../../classroom/widgets/cloud_sync_error_view.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/services/firebase_service.dart';
+import '../../../core/theme/accessible_theme.dart' show tonalButtonStyle;
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../widgets/app_back_button.dart';
@@ -10,6 +12,9 @@ import '../../../widgets/app_snack_bar.dart';
 import '../../../widgets/sync_status_widget.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
+import '../../../core/widgets/fit_label.dart';
+import '../../../core/widgets/text_limits.dart';
 
 /// Settings entry for **Backup & Link Account**.
 ///
@@ -115,8 +120,12 @@ class _BackupAccountScreenState extends ConsumerState<BackupAccountScreen> {
       if (!mounted) return;
       AppSnackBar.error(context, message: _friendlyAuthError(e));
     } catch (e) {
+      debugPrint('backup account: $e');
       if (!mounted) return;
-      AppSnackBar.error(context, message: e.toString());
+      AppSnackBar.error(
+        context,
+        message: cloudSyncErrorMessage(e, _t(context)).title,
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -147,8 +156,12 @@ class _BackupAccountScreenState extends ConsumerState<BackupAccountScreen> {
       if (!mounted) return;
       AppSnackBar.error(context, message: _friendlyAuthError(e));
     } catch (e) {
+      debugPrint('backup account: $e');
       if (!mounted) return;
-      AppSnackBar.error(context, message: e.toString());
+      AppSnackBar.error(
+        context,
+        message: cloudSyncErrorMessage(e, _t(context)).title,
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -181,6 +194,7 @@ class _BackupAccountScreenState extends ConsumerState<BackupAccountScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text(_t(context).baSignOutTitle),
         content: Text(
           _t(context).baSignOutBody,
@@ -218,7 +232,7 @@ class _BackupAccountScreenState extends ConsumerState<BackupAccountScreen> {
     return Scaffold(
       appBar: AppBar(
         leading: const AppBackButton(),
-        title: Text(_t(context).baTitle),
+        title: AppBarTitle(_t(context).baTitle),
       ),
       body: ListView(
         padding: const EdgeInsets.all(20),
@@ -362,12 +376,14 @@ class _LinkForm extends StatelessWidget {
           const SizedBox(height: 16),
           TextFormField(
             controller: emailController,
+            maxLength: TextLimits.email,
+            buildCounter: TextLimits.counter,
             keyboardType: TextInputType.emailAddress,
             autocorrect: false,
             enableSuggestions: false,
             textInputAction: TextInputAction.next,
             decoration: InputDecoration(
-              labelText: _t(context).baEmail,
+              label: FitLabel(_t(context).baEmail),
               prefixIcon: const Icon(Icons.email_outlined),
               border: const OutlineInputBorder(),
             ),
@@ -376,11 +392,13 @@ class _LinkForm extends StatelessWidget {
           const SizedBox(height: 12),
           TextFormField(
             controller: passwordController,
+            maxLength: TextLimits.password,
+            buildCounter: TextLimits.counter,
             obscureText: !passwordVisible,
             textInputAction:
                 signInMode ? TextInputAction.done : TextInputAction.next,
             decoration: InputDecoration(
-              labelText: _t(context).baPassword,
+              label: FitLabel(_t(context).baPassword),
               prefixIcon: const Icon(Icons.lock_outline),
               suffixIcon: IconButton(
                 icon: Icon(passwordVisible
@@ -397,10 +415,12 @@ class _LinkForm extends StatelessWidget {
             const SizedBox(height: 12),
             TextFormField(
               controller: confirmController,
+              maxLength: TextLimits.password,
+              buildCounter: TextLimits.counter,
               obscureText: !passwordVisible,
               textInputAction: TextInputAction.done,
               decoration: InputDecoration(
-                labelText: _t(context).baConfirmPw,
+                label: FitLabel(_t(context).baConfirmPw),
                 prefixIcon: const Icon(Icons.lock_outline),
                 border: const OutlineInputBorder(),
               ),
@@ -463,9 +483,9 @@ class _LinkedAccountActions extends StatelessWidget {
           onPressed: busy ? null : onPasswordReset,
           icon: const Icon(Icons.lock_reset_rounded),
           label: Text(_t(context).baSendReset),
-          style: FilledButton.styleFrom(
+          style: tonalButtonStyle(context).merge(FilledButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 14),
-          ),
+          )),
         ),
         const SizedBox(height: 12),
         OutlinedButton.icon(

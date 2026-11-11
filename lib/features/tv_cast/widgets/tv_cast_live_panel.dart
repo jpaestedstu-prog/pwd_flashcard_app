@@ -21,6 +21,8 @@ import '../providers/tv_cast_provider.dart';
 import '../../../core/utils/seeded_random.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/fit_label.dart';
+import '../../../core/widgets/text_limits.dart';
 
 /// Host-side control panel for the interactive "Live Activity" cast mode.
 /// Lets a Teacher/Parent start a live session, configure star-scoring rules,
@@ -177,7 +179,7 @@ class _SessionStarterState extends ConsumerState<_SessionStarter> {
           initialValue: _selectedKey,
           isExpanded: true,
           decoration: InputDecoration(
-            labelText: _t(context).tlpHost,
+            label: FitLabel(_t(context).tlpHost),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             prefixIcon: const Icon(Icons.groups_rounded),
           ),
@@ -188,7 +190,6 @@ class _SessionStarterState extends ConsumerState<_SessionStarter> {
                   child: Text(
                     '${o.kind == LiveSessionOwnerKind.homeGroup ? '🏠' : '🏫'}  '
                     '${o.label}',
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               )
@@ -196,26 +197,26 @@ class _SessionStarterState extends ConsumerState<_SessionStarter> {
           onChanged: (v) => setState(() => _selectedKey = v),
         ),
         const SizedBox(height: 14),
-        Semantics(
-          button: true,
-          label: _t(context).tlpStartSem,
-          child: FilledButton.icon(
-            onPressed: _starting ? null : _start,
-            icon: _starting
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Icon(Icons.play_circle_fill_rounded),
-            label: Text(_starting ? _t(context).tcStarting : _t(context).tlpStart),
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              textStyle: AppTypography.titleMedium,
-            ),
+        FilledButton.icon(
+          onPressed: _starting ? null : _start,
+          icon: _starting
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Icon(Icons.play_circle_fill_rounded),
+          label: Semantics(
+            label: _t(context).tlpStartSem,
+            excludeSemantics: true,
+            child: Text(_starting ? _t(context).tcStarting : _t(context).tlpStart),
+          ),
+          style: FilledButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            textStyle: AppTypography.titleMedium,
           ),
         ),
       ],
@@ -399,13 +400,13 @@ class _StatusHeader extends StatelessWidget {
               ],
             ),
           ),
-          Semantics(
-            button: true,
-            label: _t(context).tlpEndSem,
-            child: TextButton.icon(
-              onPressed: onEnd,
-              icon: const Icon(Icons.stop_circle_outlined),
-              label: Text(_t(context).tlpEnd),
+          TextButton.icon(
+            onPressed: onEnd,
+            icon: const Icon(Icons.stop_circle_outlined),
+            label: Semantics(
+              label: _t(context).tlpEndSem,
+              excludeSemantics: true,
+              child: Text(_t(context).tlpEnd),
             ),
           ),
         ],
@@ -940,7 +941,6 @@ class _ScoreboardCard extends StatelessWidget {
                         rows[i].name,
                         style: AppTypography.bodyMedium
                             .copyWith(color: hc.textPrimary),
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     Text(
@@ -1091,8 +1091,10 @@ class _ActivityBuilderSheetState extends ConsumerState<_ActivityBuilderSheet> {
         return [
           TextField(
             controller: _promptCtrl,
+            maxLength: TextLimits.sentence,
+            buildCounter: TextLimits.counter,
             decoration: InputDecoration(
-              labelText: _t(context).tlpQuestion,
+              label: FitLabel(_t(context).tlpQuestion),
               border: const OutlineInputBorder(),
             ),
             textInputAction: TextInputAction.next,
@@ -1121,9 +1123,11 @@ class _ActivityBuilderSheetState extends ConsumerState<_ActivityBuilderSheet> {
                   Expanded(
                     child: TextField(
                       controller: _optionCtrls[i],
+                      maxLength: TextLimits.title,
+                      buildCounter: TextLimits.counter,
                       decoration: InputDecoration(
-                        labelText: '${_t(context).tlpOption(i + 1)}'
-                            '${i >= 2 ? _t(context).tlpOptional : ''}',
+                        label: FitLabel('${_t(context).tlpOption(i + 1)}'
+                            '${i >= 2 ? _t(context).tlpOptional : ''}'),
                         border: const OutlineInputBorder(),
                       ),
                     ),
@@ -1136,8 +1140,10 @@ class _ActivityBuilderSheetState extends ConsumerState<_ActivityBuilderSheet> {
         return [
           TextField(
             controller: _statementCtrl,
+            maxLength: TextLimits.sentence,
+            buildCounter: TextLimits.counter,
             decoration: InputDecoration(
-              labelText: _t(context).tlpStatement,
+              label: FitLabel(_t(context).tlpStatement),
               border: const OutlineInputBorder(),
             ),
           ),
@@ -1332,8 +1338,10 @@ class _SetBuilderSheetState extends State<_SetBuilderSheet> {
             const SizedBox(height: 12),
             TextField(
               controller: _titleCtrl,
+              maxLength: TextLimits.title,
+              buildCounter: TextLimits.counter,
               decoration: InputDecoration(
-                labelText: _t(context).tlpQuizTitle,
+                label: FitLabel(_t(context).tlpQuizTitle),
                 border: const OutlineInputBorder(),
               ),
             ),
@@ -1466,7 +1474,7 @@ class _CardPickerState extends ConsumerState<_CardPicker> {
           initialValue: _category,
           isExpanded: true,
           decoration: InputDecoration(
-            labelText: _t(context).cfCategory,
+            label: FitLabel(_t(context).cfCategory),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             prefixIcon: const Icon(Icons.category_rounded),
           ),

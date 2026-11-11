@@ -427,6 +427,7 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
     // dimmed behind it, and the controller reads it out and offers the same
     // two — the main action first.
     return GazeModalRegion(
+      onBack: _skip,
       child: GamepadScreenRegistrar(
         title: step.title,
         narration: [step.description],
@@ -444,10 +445,7 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
               alignment: Alignment.topRight,
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: GamepadFocusable(
-                  index: 1,
-                  expand: false,
-                  child: TextButton(
+                child: TextButton(
                   onPressed: _skip,
                   child: Text(
                     t.skip,
@@ -455,7 +453,6 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
                       color: Colors.white70,
                     ),
                   ),
-                ),
                 ),
               ),
             ),
@@ -504,9 +501,7 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
               padding: const EdgeInsets.symmetric(horizontal: 40),
               child: SizedBox(
                 width: double.infinity,
-                child: GamepadFocusable(
-                  index: 0,
-                  child: ElevatedButton(
+                child: ElevatedButton(
                   onPressed: _next,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: HCColor.of(context).fillFor(step.color),
@@ -525,7 +520,6 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                ),
                 ),
               ),
             ),

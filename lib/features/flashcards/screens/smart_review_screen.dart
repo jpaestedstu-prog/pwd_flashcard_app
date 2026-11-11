@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/widgets/capped_width.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/accessibility/haptic_service.dart';
@@ -21,6 +22,7 @@ import '../../../widgets/fullscreen_host.dart';
 import '../../../core/utils/accessible_sizing.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../navigation/nav_extensions.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Smart Review screen that uses spaced repetition to present
 /// the words the student struggles with most.
@@ -140,7 +142,7 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
           ref,
           AppBar(
             leading: const AppBackButton(fallbackRoute: '/flashcards'),
-            title: Text(AppLocalizations.of(context)!.smartReview),
+            title: AppBarTitle(AppLocalizations.of(context)!.smartReview),
           ),
         ),
         body: Center(
@@ -187,7 +189,7 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
             tooltip: _t(context).close,
             onPressed: () => context.popOrGo('/home'),
           ),
-          title: Text(
+          title: AppBarTitle(
             '${AppLocalizations.of(context)!.smartReview}  ${_currentIndex + 1}/${_reviewCards.length}',
             style: AppTypography.titleMedium.copyWith(
               fontWeight: FontWeight.w700,
@@ -285,6 +287,9 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
                                     Semantics(
                                       label:
                                           _t(context).srEnglishWord(card.wordEnglish),
+                                      // The label says the word; the word
+                                      // drawn here was read again.
+                                      excludeSemantics: true,
                                       child: Text(
                                         card.wordEnglish,
                                         style: AppTypography.flashcardWord
@@ -333,6 +338,7 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
                                                 ),
                                                 const SizedBox(height: 4),
                                                 Semantics(
+                                                  excludeSemantics: true,
                                                   label:
                                                       _t(context).srFilipinoTranslation(card.wordFilipino),
                                                   child: Text(
@@ -388,7 +394,7 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
 
             // ─── Action Buttons ────────
             if (!_showAnswer)
-              SizedBox(
+              CappedWidth(child: SizedBox(
                 width: double.infinity,
                 height: scaledControlHeight(context, 56),
                 child: FilledButton.icon(
@@ -407,7 +413,7 @@ class _SmartReviewScreenState extends ConsumerState<SmartReviewScreen> {
                     ),
                   ),
                 ),
-              ).animate().fadeIn(duration: 300.ms)
+              )).animate().fadeIn(duration: 300.ms)
             else
               Row(
                 children: [

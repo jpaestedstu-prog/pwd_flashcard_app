@@ -57,6 +57,20 @@ class ParentalControls {
       messagingBlocked ||
       scheduleEnabled;
 
+  /// Shortest and longest daily limit the slider offers.
+  static const int minDailyMinutes = 15;
+  static const int maxDailyMinutes = 180;
+
+  /// What a limit starts at when it is switched on, with none chosen yet.
+  static const int defaultDailyMinutes = 60;
+
+  /// The daily limit in force: never below the slider's range. Switching the
+  /// limit on used to leave it at 0 minutes, outside the slider's 15 to 180:
+  /// the slider failed its check, and "0 minutes a day" meant nothing.
+  int get effectiveDailyMinutes => dailyTimeLimitMinutes <= 0
+      ? defaultDailyMinutes
+      : dailyTimeLimitMinutes.clamp(minDailyMinutes, maxDailyMinutes);
+
   /// Whether the current time is within the allowed schedule.
   bool get isWithinSchedule {
     if (!scheduleEnabled) return true;

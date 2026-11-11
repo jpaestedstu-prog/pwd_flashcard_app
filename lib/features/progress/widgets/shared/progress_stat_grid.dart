@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/utils/responsive_utils.dart';
+import '../../../../core/widgets/fit_text.dart';
 import '../../theme/progress_layout.dart';
 import 'progress_stat_card.dart';
 
@@ -58,10 +59,47 @@ class ProgressStatGrid extends StatelessWidget {
     return cols;
   }
 
+  /// [resolveColumns], fewer while a label would not fit its card on one line
+  /// even at the smallest size it may shrink to: three across on a phone at
+  /// the largest Font Size cut "3-star quizzes" and "Nabasang kuwento" (3 Nov).
+  int _columnsThatFit(BuildContext context, double width) {
+    var cols = resolveColumns(context, layout, stats.length);
+    if (!width.isFinite) return cols;
+    final checks = [
+      for (final s in stats) ...[
+        FitText.measurer(
+          context,
+          s.label,
+          style: ProgressStatCard.captionStyle,
+          maxLines: 1,
+        ),
+        if (s.suffix.isNotEmpty)
+          FitText.measurer(
+            context,
+            s.suffix,
+            style: ProgressStatCard.captionStyle,
+            maxLines: 1,
+          ),
+      ],
+    ];
+    while (cols > 1) {
+      final inner = (width - spacing * (cols - 1)) / cols -
+          ProgressStatCard.horizontalInset;
+      if (checks.every((fits) => fits(inner))) break;
+      cols--;
+    }
+    return cols;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (stats.isEmpty) return const SizedBox.shrink();
-    final cols = resolveColumns(context, layout, stats.length);
+    return LayoutBuilder(
+      builder: (context, box) => _grid(_columnsThatFit(context, box.maxWidth)),
+    );
+  }
+
+  Widget _grid(int cols) {
 
     final rows = <Widget>[];
     for (var i = 0; i < stats.length; i += cols) {

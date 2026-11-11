@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/utils/input_trace.dart';
+import '../../gamepad/logic/gamepad_actions.dart' show isLeftStickMove;
 import '../../gamepad/models/gamepad_button.dart';
 import '../../gamepad/services/gamepad_service.dart';
 import '../models/gaze_models.dart';
@@ -76,6 +78,12 @@ class GazeSwitchInput {
   /// Whether the system keyboard is kept away (debug bridge and tests).
   bool get keyboardBypassed => _imeBypass;
 
+  /// Whether the controller's left stick steers the highlight here too — the
+  /// Game Controller's "Left joystick moves too", kept in step with the
+  /// learner's settings by the gamepad host. A learner who turned the stick
+  /// off because they knock it must not find it steering the scan instead.
+  bool leftStickSteers = true;
+
   void setKeyboardBypass(bool on) {
     if (_imeBypass == on) return;
     _imeBypass = on;
@@ -104,6 +112,7 @@ class GazeSwitchInput {
   final List<String> debugHistory = [];
 
   void _note(String source, String outcome) {
+    InputTrace.log('GazeSwitch $source $outcome');
     if (kReleaseMode) return;
     final t = DateTime.now().toIso8601String();
     debugHistory.add('${t.substring(11, 23)} $source $outcome');
@@ -125,6 +134,7 @@ class GazeSwitchInput {
   }) {
     final token = Object();
     _listeners.add((token: token, onPress: onPress, onSteer: onSteer));
+    InputTrace.log('GazeSwitch attach (${_listeners.length})');
     _listen(service);
     _publishClaiming();
     // A screen takes the switch: make sure Android will hand its keys over
@@ -141,6 +151,7 @@ class GazeSwitchInput {
   /// gaze lets go.
   void detach(Object token, {bool gamepadFeatureOn = false}) {
     _listeners.removeWhere((l) => identical(l.token, token));
+    InputTrace.log('GazeSwitch detach (${_listeners.length})');
     if (_listeners.isEmpty) {
       _sub?.cancel();
       _sub = null;
@@ -169,6 +180,10 @@ class GazeSwitchInput {
           final button = event.button;
           final direction = directionOf(button);
           if (direction != null) {
+            if (!leftStickSteers && isLeftStickMove(button)) {
+              _note(button.name, 'left stick turned off');
+              return;
+            }
             steer(direction, source: button.name);
           } else if (picksWith(button)) {
             press(source: button.name);
@@ -301,5 +316,6 @@ class GazeSwitchInput {
     debugHistory.clear();
     clock = DateTime.now;
     _imeBypass = false;
+    leftStickSteers = true;
   }
 }

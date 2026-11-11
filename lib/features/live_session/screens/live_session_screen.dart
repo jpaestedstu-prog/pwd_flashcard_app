@@ -20,6 +20,7 @@ import '../../../widgets/flashcard_image.dart';
 import '../../../core/utils/accessible_sizing.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Real-time live session. Learners (Student / Child) get an accessible
 /// receiver that renders the educator's pushed activities, awards stars for
@@ -38,7 +39,7 @@ class LiveSessionScreen extends ConsumerWidget {
     final isEducator = profile.role.isEducator;
     return Scaffold(
       appBar: AppBar(
-        title: Text(isEducator ? _t(context).lsLiveSession : _t(context).lsJoinClass),
+        title: AppBarTitle(isEducator ? _t(context).lsLiveSession : _t(context).lsJoinClass),
       ),
       body: SafeArea(
         child: isEducator
@@ -825,30 +826,38 @@ class _RaiseHandBar extends StatelessWidget {
       top: false,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-        child: Semantics(
-          button: true,
-          toggled: handRaised,
-          label: handRaised
-              ? _t(context).lsLowerYourHand
-              : _t(context).lsRaiseForHelp,
-          child: SizedBox(
-            height: scaledControlHeight(context, 64),
-            child: FilledButton.icon(
-              onPressed: onToggle,
-              style: FilledButton.styleFrom(
-                backgroundColor: handRaised
-                    ? const Color(0xFFFFB300)
-                    : AppColors.primary,
-                foregroundColor: handRaised ? Colors.black : Colors.white,
-                textStyle: AppTypography.titleMedium.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+        child: SizedBox(
+          height: scaledControlHeight(context, 64),
+          child: FilledButton.icon(
+            onPressed: onToggle,
+            style: FilledButton.styleFrom(
+              backgroundColor: handRaised
+                  ? const Color(0xFFFFB300)
+                  : AppColors.primary,
+              foregroundColor: handRaised ? Colors.black : Colors.white,
+              textStyle: AppTypography.titleMedium.copyWith(
+                fontWeight: FontWeight.w800,
               ),
-              icon: Text(
+            ),
+            // Shown, not read: the label says what the button does.
+            icon: ExcludeSemantics(
+              child: Text(
                 handRaised ? '✋' : '🙋',
                 style: const TextStyle(fontSize: 24),
               ),
-              label: Text(handRaised ? _t(context).lsLowerHand : _t(context).lsRaiseHand),
+            ),
+            // The spoken name and state on the button's own node, with its
+            // press and focus (a Semantics around the button was a second,
+            // dead "button").
+            label: Semantics(
+              toggled: handRaised,
+              label: handRaised
+                  ? _t(context).lsLowerYourHand
+                  : _t(context).lsRaiseForHelp,
+              excludeSemantics: true,
+              child: Text(
+                handRaised ? _t(context).lsLowerHand : _t(context).lsRaiseHand,
+              ),
             ),
           ),
         ),
@@ -872,8 +881,9 @@ class _Notice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
+    // Scrolls: a phone on its side at the largest Font Size was 2 px short.
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,

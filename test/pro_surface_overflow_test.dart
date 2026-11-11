@@ -15,15 +15,19 @@ void main() {
   testWidgets('ProStatTile survives the device matrix', (tester) async {
     await expectNoOverflowAcrossDevices(
       tester,
-      (_) => const SizedBox(
-        width: 200,
-        child: ProStatTile(
-          icon: Icons.groups_rounded,
-          label: 'Students Active This Week',
-          value: '1,284,567',
-          trend: ProTrend.up,
-          delta: '+12.5%',
-          caption: 'vs. previous week',
+      // In a scrolling page, as on every screen that has one: a tile is as tall
+      // as its words, however many lines they take.
+      (_) => const SingleChildScrollView(
+        child: SizedBox(
+          width: 200,
+          child: ProStatTile(
+            icon: Icons.groups_rounded,
+            label: 'Students Active This Week',
+            value: '1,284,567',
+            trend: ProTrend.up,
+            delta: '+12.5%',
+            caption: 'vs. previous week',
+          ),
         ),
       ),
     );
@@ -55,13 +59,15 @@ void main() {
   testWidgets('ProActionTile survives the device matrix', (tester) async {
     await expectNoOverflowAcrossDevices(
       tester,
-      (_) => const SizedBox(
-        width: 200,
-        child: ProActionTile(
-          icon: Icons.assignment_turned_in_rounded,
-          label: 'Assign Tasks To The Whole Class',
-          caption: 'Pick decks, set a due date, and track completion',
-          onTap: _noop,
+      (_) => const SingleChildScrollView(
+        child: SizedBox(
+          width: 200,
+          child: ProActionTile(
+            icon: Icons.assignment_turned_in_rounded,
+            label: 'Assign Tasks To The Whole Class',
+            caption: 'Pick decks, set a due date, and track completion',
+            onTap: _noop,
+          ),
         ),
       ),
     );

@@ -344,6 +344,8 @@ void main() {
         // learner's routine from the same menu.
         'Routine',
         'Unlock screen',
+        // The long press's twin, for every input that has no long press.
+        'Select several',
       ]) {
         expect(find.text(label), findsOneWidget, reason: 'missing "$label"');
       }
@@ -379,6 +381,39 @@ void main() {
       await tester.tap(find.text('Remove (2)'));
       await _advance(tester);
       // Confirmation dialog, then the delegate call.
+      await tester.tap(find.widgetWithText(FilledButton, 'Remove'));
+      await _advance(tester);
+      expect(delegate.calls, contains('removeMembers:p1,p2'));
+    });
+
+    testWidgets('$label: "Select several" starts multi-select without a '
+        'long press', (tester) async {
+      // A keyboard, a switch, the controller and gaze cannot long-press, so
+      // the menu every input reaches starts the same selection.
+      final delegate = _FakeDelegate(
+        isParent: isParent,
+        groups: [_group()],
+        members: _members(),
+      );
+      await _pumpView(
+        tester,
+        delegate,
+        role: isParent ? UserRole.parent : UserRole.teacher,
+      );
+
+      await tester.tap(find.byIcon(Icons.more_horiz_rounded).first);
+      await _advance(tester);
+      await tester.tap(find.text('Select several'));
+      await _advance(tester);
+      expect(find.text('1 selected'), findsOneWidget,
+          reason: 'the row the menu belongs to is the first one selected');
+      expect(find.byType(Checkbox), findsWidgets);
+
+      await tester.tap(find.text('Ben Cruz'));
+      await _advance(tester);
+      expect(find.text('2 selected'), findsOneWidget);
+      await tester.tap(find.text('Remove (2)'));
+      await _advance(tester);
       await tester.tap(find.widgetWithText(FilledButton, 'Remove'));
       await _advance(tester);
       expect(delegate.calls, contains('removeMembers:p1,p2'));

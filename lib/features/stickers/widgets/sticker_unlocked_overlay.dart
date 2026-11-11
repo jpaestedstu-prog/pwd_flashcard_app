@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../gaze_control/widgets/gaze_modal_region.dart';
 import '../../../widgets/celebration_confetti.dart';
 import '../models/sticker_models.dart';
 
@@ -81,7 +82,7 @@ class _StickerUnlockedOverlayState extends State<StickerUnlockedOverlay> {
     final hasMore = _currentIndex < widget.stickers.length - 1;
     final name = sticker.nameOf(isFilipino: isFilipino);
 
-    return Semantics(
+    final card = Semantics(
       // Spoken as one announcement: a learner using a screen reader should
       // hear what they won, not have to sweep a card for it.
       label: isFilipino
@@ -124,20 +125,23 @@ class _StickerUnlockedOverlayState extends State<StickerUnlockedOverlay> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: accent.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        isFilipino
-                            ? '🌟 Bagong Sticker!'
-                            : '🌟 New Sticker!',
-                        style: AppTypography.labelLarge.copyWith(
-                          color: HCColor.of(context).readableOver(accent, accent.withValues(alpha: 0.12)),
-                          fontWeight: FontWeight.w700,
+                    // Said once: the card's own label has these words.
+                    ExcludeSemantics(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: accent.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          isFilipino
+                              ? '🌟 Bagong Sticker!'
+                              : '🌟 New Sticker!',
+                          style: AppTypography.labelLarge.copyWith(
+                            color: HCColor.of(context).readableOver(accent, accent.withValues(alpha: 0.12)),
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ),
@@ -150,13 +154,15 @@ class _StickerUnlockedOverlayState extends State<StickerUnlockedOverlay> {
                       reducedMotion: widget.reducedMotion,
                     ),
                     const SizedBox(height: 20),
-                    Text(
-                      name,
-                      style: AppTypography.headlineSmall.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: hc.textPrimary,
+                    ExcludeSemantics(
+                      child: Text(
+                        name,
+                        style: AppTypography.headlineSmall.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: hc.textPrimary,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                      textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 6),
                     Row(
@@ -208,6 +214,20 @@ class _StickerUnlockedOverlayState extends State<StickerUnlockedOverlay> {
                         ),
                       ),
                     ),
+                    // Nine new stickers were nine presses, each one work for
+                    // some learners. All of them are in the album anyway.
+                    if (hasMore) ...[
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: TextButton(
+                          onPressed: widget.onDismiss,
+                          child: Text(
+                            isFilipino ? 'Tingnan na ang album' : 'Go to the album',
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -216,6 +236,10 @@ class _StickerUnlockedOverlayState extends State<StickerUnlockedOverlay> {
         ),
       ),
     );
+
+    // Back closes the card, as a dialog's would: it left the album behind the
+    // card, and the card came back the next time.
+    return GazeModalRegion(onBack: widget.onDismiss, child: card);
   }
 }
 

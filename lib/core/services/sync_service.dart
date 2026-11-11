@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../data/repository.dart';
 import '../../data/local/local_repository.dart';
+import '../../data/local/hive_service.dart';
 import '../../data/remote/firestore_repository.dart';
 import 'firebase_service.dart';
 import '../utils/error_handler.dart';
@@ -151,7 +152,12 @@ class SyncService {
       if (profiles.isEmpty) return 0;
 
       for (final p in profiles) {
-        await _local.saveProfile(p);
+        // Made for an empty device. On one that holds this profile, what the
+        // cloud never holds stays: this used to erase the PIN and birth date.
+        final here = HiveService.getProfileById(p.id);
+        await _local.saveProfile(
+          here == null ? p : p.keepingPrivateFieldsOf(here),
+        );
 
         final progress = await remote.getProgress(p.id);
         await _local.saveProgress(progress);

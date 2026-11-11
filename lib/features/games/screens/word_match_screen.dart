@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/widgets/auto_fit.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
@@ -38,6 +39,7 @@ import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/fullscreen_host.dart';
 import '../../../core/utils/seeded_random.dart';
 import '../../../widgets/dpad_focusable.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 class WordMatchScreen extends ConsumerStatefulWidget {
   final GameDifficulty difficulty;
@@ -521,8 +523,13 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
                     tooltip: l10n.close,
                     onPressed: pauseGame,
                   ),
-                  title: Text(
+                  title: AppBarTitle(
                     l10n.gameRoundHeader(
+                      GameType.wordMatch.labelOf(l10n),
+                      _currentRound + 1,
+                      _rounds.length,
+                    ),
+                    semanticsLabel: l10n.gameRoundHeaderSpoken(
                       GameType.wordMatch.labelOf(l10n),
                       _currentRound + 1,
                       _rounds.length,
@@ -566,6 +573,7 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
                               const SizedBox(width: 4),
                               Text(
                                 '$_score',
+                                semanticsLabel: l10n.gameScoreChip(_score),
                                 style: AppTypography.labelLarge.copyWith(
                                   color: HCColor.of(context).warningText,
                                 ),
@@ -584,6 +592,9 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
                   children: [
                     // ─── Progress bar ─────────────────────
                     Semantics(
+                      // The round in words; the bar's own percentage read as
+                      // "17.0. 17, Round 1 of 6".
+                      excludeSemantics: true,
                       label: l10n.resumeRoundProgress(
                         _currentRound + 1,
                         _rounds.length,
@@ -610,6 +621,10 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
                         promptFlex: 3,
                         answersFlex: 3,
                         prompt: Semantics(
+                                    // The whole question once. Its words below were read again under
+                                    // it ("… for Bintana? What is this word? Bintana"), and nothing in
+                                    // here is pressed.
+                                    excludeSemantics: true,
                                     label: l10n.questionEnglishFor(
                                       round.correctCard.wordFilipino,
                                     ),
@@ -630,8 +645,7 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
                                       child: Center(
                                         child: Padding(
                                           padding: const EdgeInsets.all(16),
-                                          child: FittedBox(
-                                            fit: BoxFit.scaleDown,
+                                          child: AutoFit(
                                             child: Column(
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
@@ -737,40 +751,44 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
                                       '${showWrong ? l10n.wrongAnswerSuffix : ''}',
                                   child: DpadFocusable(onActivate: () => _selectAnswer(index), child: GestureDetector(
                                     onTap: () => _selectAnswer(index),
-                                    child: AnimatedContainer(
-                                      duration: const Duration(milliseconds: 300),
-                                      decoration: BoxDecoration(
-                                        color: bgColor,
-                                        borderRadius: BorderRadius.circular(16),
-                                        border: Border.all(
-                                          color: borderColor,
-                                          width: highlighted ? 4 : 2,
+                                    child: ExcludeSemantics(
+                                      // The label already says the word; the text under it
+                                      // was read again ("Answer choice: Window, Window").
+                                      child: AnimatedContainer(
+                                        duration: const Duration(milliseconds: 300),
+                                        decoration: BoxDecoration(
+                                          color: bgColor,
+                                          borderRadius: BorderRadius.circular(16),
+                                          border: Border.all(
+                                            color: borderColor,
+                                            width: highlighted ? 4 : 2,
+                                          ),
+                                          boxShadow: highlighted
+                                              ? [
+                                                  BoxShadow(
+                                                    color: AppColors.accent.withValues(
+                                                      alpha: 0.5,
+                                                    ),
+                                                    blurRadius: 14,
+                                                    spreadRadius: 1,
+                                                  ),
+                                                ]
+                                              : AppColors.softShadow,
                                         ),
-                                        boxShadow: highlighted
-                                            ? [
-                                                BoxShadow(
-                                                  color: AppColors.accent.withValues(
-                                                    alpha: 0.5,
-                                                  ),
-                                                  blurRadius: 14,
-                                                  spreadRadius: 1,
-                                                ),
-                                              ]
-                                            : AppColors.softShadow,
-                                      ),
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(8),
-                                        child: Center(
-                                          child: FittedBox(
-                                            fit: BoxFit.scaleDown,
-                                            child: Text(
-                                              choice.wordEnglish,
-                                              style: AppTypography.titleMedium
-                                                  .copyWith(
-                                                    color: textColor,
-                                                    fontWeight: FontWeight.w700,
-                                                  ),
-                                              textAlign: TextAlign.center,
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(8),
+                                          child: Center(
+                                            child: FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              child: Text(
+                                                choice.wordEnglish,
+                                                style: AppTypography.titleMedium
+                                                    .copyWith(
+                                                      color: textColor,
+                                                      fontWeight: FontWeight.w700,
+                                                    ),
+                                                textAlign: TextAlign.center,
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -804,18 +822,15 @@ class _WordMatchScreenState extends ConsumerState<WordMatchScreen>
                                       );
                                 }
 
-                                return GamepadFocusable(
-                                  index: index,
-                                  child: card
-                                      .animate(
-                                        key: ValueKey('$_currentRound-$index'),
-                                      )
-                                      .fadeIn(
-                                        duration: 300.ms,
-                                        delay: (index * 80).ms,
-                                      )
-                                      .slideY(begin: 0.1, end: 0),
-                                );
+                                return card
+                                    .animate(
+                                      key: ValueKey('$_currentRound-$index'),
+                                    )
+                                    .fadeIn(
+                                      duration: 300.ms,
+                                      delay: (index * 80).ms,
+                                    )
+                                    .slideY(begin: 0.1, end: 0);
                               },
                             ),
                           ),

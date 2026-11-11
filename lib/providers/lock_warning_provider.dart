@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../features/parent/services/learner_restrictions.dart';
 
 import '../core/services/lock_warning.dart';
 import '../features/routine/models/routine_models.dart';
@@ -38,7 +39,14 @@ final lockWarningProvider = Provider.family<LockWarning?, String>((
       .valueOrNull;
   if (override != null && override.isActiveAt(now)) return null;
 
-  final limit = ref.watch(childTimeLimitProvider(childProfileId)).valueOrNull;
+  // The limit the lock goes by: their own, or the device's.
+  ref.watch(parentalControlsRevisionProvider);
+  final limit = LearnerRestrictions.limitFor(
+    ref.watch(childTimeLimitProvider(childProfileId)).valueOrNull,
+    childProfileId: childProfileId,
+    supervised:
+        canBeLockedByRoutine(ref.watch(profileRoleProvider(childProfileId))),
+  );
   final alarms =
       ref.watch(childAlarmListProvider(childProfileId)).valueOrNull ?? const [];
   final used = ref.watch(activeTimeProvider(childProfileId));

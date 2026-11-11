@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import '../../../core/widgets/whole_month_title.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,6 +28,7 @@ import '../../../navigation/app_router.dart' show rootNavigatorKey;
 import '../../../widgets/adult_gate_dialog.dart' show requireAdult;
 import '../../../core/accessibility/accessibility_content_policy.dart';
 import '../../../core/accessibility/device_sound.dart';
+import '../../../core/accessibility/tts_service.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../widgets/sync_status_widget.dart';
@@ -41,6 +43,8 @@ import '../../../core/utils/platform_caps.dart';
 import '../models/settings_presentation.dart';
 import '../../../widgets/dpad_focusable.dart';
 import '../../../navigation/dpad_keys.dart';
+import '../../../core/widgets/app_bar_title.dart';
+import '../../../core/widgets/fit_label.dart';
 
 /// Whether the daily study reminder is actually waiting on this device, or
 /// null where that cannot be asked (a browser, a test without the plugin).
@@ -123,13 +127,16 @@ class SettingsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         leading: const AppBackButton(),
-        title: Text(AppLocalizations.of(context)?.settings ?? 'Settings'),
+        title: AppBarTitle(AppLocalizations.of(context)?.settings ?? 'Settings'),
       ),
       body: Align(
         alignment: Alignment.topCenter,
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: maxWidth),
           child: ListView(
+            // Rows come and go here: no row may stay "alive" in a place another
+            // has taken (see found_by_pressing_test: Scan Mode).
+            addAutomaticKeepAlives: false,
             padding: const EdgeInsets.all(20),
             children: [
               // ─── Profile Section ───────────────
@@ -137,60 +144,64 @@ class SettingsScreen extends ConsumerWidget {
                 title: AppLocalizations.of(context)?.profile ?? 'Profile',
               ),
               const SizedBox(height: 8),
-              Semantics(
-                label: (l10n ?? AppLocalizationsEn()).setProfileSemantics(
-                  profile?.name ?? (l10n ?? AppLocalizationsEn()).setNoProfile,
-                  profile?.role.labelOf(l10n) ??
-                      (l10n ?? AppLocalizationsEn()).setUnknownRole,
-                ),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        HCColor.of(context).surface,
-                        AppColors.primary.withValues(alpha: 0.04),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                      color: AppColors.primary.withValues(alpha: 0.12),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.08),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
+              // Read as the visible name and type (merged below) and the
+              // buttons. It had a label of its own on top that said the name
+              // again, and "Tap switch to change profile" over the Switch button.
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      HCColor.of(context).surface,
+                      AppColors.primary.withValues(alpha: 0.04),
                     ],
                   ),
-                  // Avatar + name on the first row; the action buttons sit in a
-                  // Wrap below so they flow to a second line instead of pushing the
-                  // row past its width on a narrow tablet / large font scale.
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          ProfileAvatar(profile: profile, fontSize: 28),
-                          const SizedBox(width: 16),
-                          Expanded(
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.08),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                // Avatar + name on the first row; the action buttons sit in a
+                // Wrap below so they flow to a second line instead of pushing the
+                // row past its width on a narrow tablet / large font scale.
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        ProfileAvatar(profile: profile, fontSize: 28),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: MergeSemantics(
+                            // Name and profile type as one phrase.
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
+                                // The whole name, on as many as three
+                                // lines: on one, a thirty-letter name lost
+                                // its end on a phone (3 Nov).
+                                FitText(
                                   profile?.name ?? 'No profile',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 3,
                                   style: AppTypography.titleMedium.copyWith(
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
+                                // Three lines: one cut "Student - Visual
+                                // Impairment" on a phone at the largest
+                                // Font Size (30 Oct), two the Filipino.
                                 Text(
                                   profile?.profileTypeLabelOf(l10n) ?? '',
-                                  maxLines: 1,
+                                  maxLines: 3,
                                   overflow: TextOverflow.ellipsis,
                                   style: AppTypography.bodySmall.copyWith(
                                     color: HCColor.of(context).textSecondary,
@@ -199,36 +210,42 @@ class SettingsScreen extends ConsumerWidget {
                               ],
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Wrap(
-                        spacing: 4,
-                        children: [
-                          TextButton(
-                            onPressed: () => context.push('/edit-profile'),
-                            child: Text(AppLocalizations.of(context)?.edit ?? 'Edit'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 4,
+                      children: [
+                        TextButton(
+                          onPressed: () => context.push('/edit-profile'),
+                          child: Text(AppLocalizations.of(context)?.edit ?? 'Edit'),
+                        ),
+                        TextButton(
+                          onPressed: () => context.push('/profile-switcher'),
+                          child: Text(
+                            AppLocalizations.of(context)?.switchProfile ??
+                                'Switch',
                           ),
-                          TextButton(
-                            onPressed: () => context.push('/profile-switcher'),
-                            child: Text(
-                              AppLocalizations.of(context)?.switchProfile ??
-                                  'Switch',
-                            ),
+                        ),
+                        TextButton(
+                          onPressed: () =>
+                              _showSetPinDialog(context, ref, profile),
+                          child: Text(
+                            profile?.hasPinProtection == true
+                                ? '🔒 PIN'
+                                : '🔓 ${AppLocalizations.of(context)?.setPin ?? 'Set PIN'}',
+                            // Words, not "locked, PIN": what pressing it does.
+                            semanticsLabel: profile?.hasPinProtection == true
+                                ? (AppLocalizations.of(context)?.changePin ??
+                                    'Change PIN')
+                                : (AppLocalizations.of(context)?.setPin ??
+                                    'Set PIN'),
                           ),
-                          TextButton(
-                            onPressed: () =>
-                                _showSetPinDialog(context, ref, profile),
-                            child: Text(
-                              profile?.hasPinProtection == true
-                                  ? '🔒 PIN'
-                                  : '🔓 ${AppLocalizations.of(context)?.setPin ?? 'Set PIN'}',
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ).animate().fadeIn(duration: 400.ms).slideX(begin: -0.1, end: 0),
 
@@ -330,16 +347,20 @@ class SettingsScreen extends ConsumerWidget {
                 subtitle: _fontSizeLabel(l10n, settings.fontScale),
                 trailing: SizedBox(
                   width: 150,
-                  child: DpadSliderScope(child: Slider(
-                    value: settings.fontScale,
-                    min: 0.8,
-                    max: 1.5,
-                    divisions: 7,
-                    label: '${(settings.fontScale * 100).round()}%',
-                    onChanged: (v) => settingsNotifier.update(
-                      settings.copyWith(fontScale: v),
+                  child: DpadSliderScope(
+                    name: AppLocalizations.of(context)?.fontSize ?? 'Font Size',
+                    child: Slider(
+                      value: settings.fontScale,
+                      min: 0.8,
+                      max: 1.5,
+                      divisions: 7,
+                      semanticFormatterCallback: (v) =>
+                          '${_fontSizeLabel(l10n, v)}, ${(v * 100).round()}%',
+                      onChanged: (v) => settingsNotifier.update(
+                        settings.copyWith(fontScale: v),
+                      ),
                     ),
-                  )),
+                  ),
                 ),
               ),
 
@@ -712,15 +733,21 @@ class SettingsScreen extends ConsumerWidget {
                       '${settings.dailyMissionSize} words per day',
                   trailing: SizedBox(
                     width: 150,
-                    child: DpadSliderScope(child: Slider(
-                      value: settings.dailyMissionSize.clamp(3, 5).toDouble(),
-                      min: 3,
-                      max: 5,
-                      divisions: 2,
-                      label: '${settings.dailyMissionSize}',
-                      onChanged: (v) =>
-                          settingsNotifier.setDailyMissionSize(v.round()),
-                    )),
+                    child: DpadSliderScope(
+                      name: l10n?.settingDailyMissionTitle ??
+                          'Daily Mission Size',
+                      child: Slider(
+                        value: settings.dailyMissionSize.clamp(3, 5).toDouble(),
+                        min: 3,
+                        max: 5,
+                        divisions: 2,
+                        semanticFormatterCallback: (v) =>
+                            l10n?.settingDailyMissionDesc(v.round()) ??
+                            '${v.round()} words per day',
+                        onChanged: (v) =>
+                            settingsNotifier.setDailyMissionSize(v.round()),
+                      ),
+                    ),
                   ),
                 ),
 
@@ -761,24 +788,33 @@ class SettingsScreen extends ConsumerWidget {
                       AppLocalizations.of(context)?.speechSpeed ??
                       'Speech Speed',
                   subtitle: _speedLabel(l10n, settings.ttsSpeed),
-                  // Four bucket names spread over eight stops, so the bucket
-                  // alone cannot tell a learner their press registered.
-                  semanticsValue: _speedSpoken(l10n, settings.ttsSpeed),
                   trailing: SizedBox(
                     width: 150,
-                    child: DpadSliderScope(child: Slider(
-                      value: settings.ttsSpeed,
-                      min: 0.3,
-                      divisions: 7,
-                      label: _speedLabel(l10n, settings.ttsSpeed),
-                      onChanged: settings.ttsEnabled
-                          ? (v) => settingsNotifier.update(
-                              settings.copyWith(ttsSpeed: v),
-                            )
-                          : null,
-                    )),
+                    child: DpadSliderScope(
+                      name: AppLocalizations.of(context)?.speechSpeed ??
+                          'Speech Speed',
+                      child: Slider(
+                        value: settings.ttsSpeed,
+                        min: 0.3,
+                        divisions: 7,
+                        // Four bucket names spread over eight stops, so the
+                        // bucket alone cannot tell a learner their press
+                        // registered: "Slow, 3 of 8".
+                        semanticFormatterCallback: (v) => _speedSpoken(l10n, v),
+                        onChanged: settings.ttsEnabled
+                            ? (v) => settingsNotifier.update(
+                                settings.copyWith(ttsSpeed: v),
+                              )
+                            : null,
+                      ),
+                    ),
                   ),
                 ),
+
+                // Whether Filipino words have a Filipino voice here, and the
+                // way to add one: a device without it read them with the
+                // English voice, and nothing in the app said so.
+                const _FilipinoVoiceRow(),
 
                 _SettingsTile(
                   icon: Icons.volume_up_rounded,
@@ -856,7 +892,7 @@ class SettingsScreen extends ConsumerWidget {
 
                 _SettingsTile(
                   icon: Icons.event_note_rounded,
-                  title: l10n?.settingRoutineTitle ?? 'Routine',
+                  title: l10n?.settingRoutineTitle ?? 'Show on Home',
                   subtitle: settings.routineEnabled
                       ? l10n?.settingRoutineOnDesc ??
                             'My Day shows on your home — plan your day, '
@@ -885,25 +921,23 @@ class SettingsScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 8),
 
-              _SettingsTile(
-                icon: Icons.language_rounded,
-                title: AppLocalizations.of(context)?.language ?? 'App Language',
-                subtitle: settings.locale == 'fil' ? 'Filipino' : 'English',
-                trailing: DropdownButton<String>(
-                  value: settings.locale,
-                  underline: const SizedBox.shrink(),
-                  borderRadius: BorderRadius.circular(12),
-                  items: const [
-                    DropdownMenuItem(value: 'en', child: Text('English')),
-                    DropdownMenuItem(value: 'fil', child: Text('Filipino')),
-                  ],
-                  onChanged: (v) {
-                    if (v != null) {
-                      settingsNotifier.updateLocale(v);
-                    }
-                  },
-                ),
+              _LanguageRow(
+                locale: settings.locale,
+                onChanged: settingsNotifier.updateLocale,
               ),
+
+              // TalkBack on a Filipino app: its own words ("Button") are still
+              // in its own language, and the way to change that is not in the
+              // app. Android keeps a language per app: this opens TalkBack's.
+              if (settings.locale == 'fil' &&
+                  DeviceSound.canOpenVoiceSettings &&
+                  MediaQuery.of(context).accessibleNavigation)
+                _SettingsTile(
+                  icon: Icons.translate_rounded,
+                  title: _t(context).fvTalkBackWords,
+                  subtitle: _t(context).fvTalkBackWordsDesc,
+                  onTap: () => DeviceSound.openTalkBackLanguage(),
+                ),
 
               const SizedBox(height: 28),
 
@@ -954,6 +988,7 @@ class SettingsScreen extends ConsumerWidget {
                       onPressed: () async {
                         final picked = await showTimePicker(
                           context: context,
+                          builder: wholeTimePicker,
                           initialTime: TimeOfDay(
                             hour: settings.reminderHour,
                             minute: settings.reminderMinute,
@@ -1354,6 +1389,7 @@ class SettingsScreen extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text(t.deleteMyProfileConfirmTitle(profile.name)),
         content: Text(
           '${t.deleteMyProfileConfirmBody}'
@@ -1395,6 +1431,7 @@ class SettingsScreen extends ConsumerWidget {
     showAnimatedDialog(
       context,
       child: AlertDialog(
+        scrollable: true,
         title: Text(
           AppLocalizations.of(context)?.confirmResetTitle ?? 'Reset All Data?',
         ),
@@ -1481,6 +1518,7 @@ Future<void> _showSetPinDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(l10n.recoveryCodeTitle),
         content: Column(
@@ -1546,6 +1584,7 @@ class _SetPinDialogState extends State<_SetPinDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      scrollable: true,
       title: Text(
         widget.hasExistingPin
             ? (AppLocalizations.of(context)?.changePinTitle ?? 'Change PIN')
@@ -1566,7 +1605,7 @@ class _SetPinDialogState extends State<_SetPinDialog> {
             maxLength: 4,
             obscureText: true,
             decoration: InputDecoration(
-              labelText: _t(context).setEnterPin,
+              label: FitLabel(_t(context).setEnterPin),
               prefixIcon: const Icon(Icons.lock_outline),
             ),
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -1578,7 +1617,7 @@ class _SetPinDialogState extends State<_SetPinDialog> {
             maxLength: 4,
             obscureText: true,
             decoration: InputDecoration(
-              labelText: _t(context).epConfirmPin,
+              label: FitLabel(_t(context).epConfirmPin),
               prefixIcon: const Icon(Icons.lock_outline),
             ),
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -1649,6 +1688,8 @@ class _SectionHeader extends StatelessWidget {
             Flexible(
               child: Text(
                 title.toUpperCase(),
+                // In its own spelling: a voice can spell capitals out.
+                semanticsLabel: title,
                 style: AppTypography.labelMedium.copyWith(
                   color: HCColor.of(context).textSecondary,
                   fontWeight: FontWeight.w700,
@@ -1743,6 +1784,112 @@ class _UpdateCheckTileState extends ConsumerState<_UpdateCheckTile> {
   }
 }
 
+/// "Filipino voice: Installed", or "Not on this device" with the device's
+/// voice settings a tap away (Android). Nothing while it cannot be told.
+class _FilipinoVoiceRow extends ConsumerStatefulWidget {
+  const _FilipinoVoiceRow();
+
+  @override
+  ConsumerState<_FilipinoVoiceRow> createState() => _FilipinoVoiceRowState();
+}
+
+class _FilipinoVoiceRowState extends ConsumerState<_FilipinoVoiceRow>
+    with WidgetsBindingObserver {
+  bool? _has;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _check();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // Back from the device's voice settings: the voice may be there now.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _check();
+  }
+
+  Future<void> _check() async {
+    final has = await ref.read(ttsServiceProvider).hasFilipinoVoice();
+    if (mounted && has != _has) setState(() => _has = has);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final has = _has;
+    if (has == null) return const SizedBox.shrink();
+    final t = _t(context);
+    if (has || !DeviceSound.canOpenVoiceSettings) {
+      return _SettingsTile.info(
+        icon: Icons.record_voice_over_outlined,
+        title: t.fvSetting,
+        subtitle: has ? t.fvSettingInstalled : t.fvSettingMissing,
+      );
+    }
+    return _SettingsTile(
+      icon: Icons.record_voice_over_outlined,
+      title: t.fvSetting,
+      subtitle: '${t.fvSettingMissing}. ${t.fvOpenSettings}',
+      onTap: () => DeviceSound.openVoiceSettings(),
+    );
+  }
+}
+
+/// The app's language: the whole row opens the menu, as every other row in
+/// Settings answers wherever it is pressed. With a dropdown at its end only the
+/// dropdown answered: a press on the words "Language" did nothing.
+class _LanguageRow extends StatefulWidget {
+  const _LanguageRow({required this.locale, required this.onChanged});
+
+  final String locale;
+  final ValueChanged<String> onChanged;
+
+  @override
+  State<_LanguageRow> createState() => _LanguageRowState();
+}
+
+class _LanguageRowState extends State<_LanguageRow> {
+  final _menu = GlobalKey<PopupMenuButtonState<String>>();
+
+  @override
+  Widget build(BuildContext context) {
+    final current = widget.locale == 'fil' ? 'Filipino' : 'English';
+    return _SettingsTile(
+      icon: Icons.language_rounded,
+      title: AppLocalizations.of(context)?.language ?? 'App Language',
+      subtitle: current,
+      onTap: () => _menu.currentState?.showButtonMenu(),
+      // One stop for a key or a controller: the row.
+      trailing: ExcludeFocus(
+        child: PopupMenuButton<String>(
+          key: _menu,
+          initialValue: widget.locale,
+          tooltip: AppLocalizations.of(context)?.language ?? 'App Language',
+          onSelected: widget.onChanged,
+          itemBuilder: (_) => const [
+            PopupMenuItem(value: 'en', child: Text('English')),
+            PopupMenuItem(value: 'fil', child: Text('Filipino')),
+          ],
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(current),
+              const Icon(Icons.arrow_drop_down_rounded),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _SettingsTile extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -1814,14 +1961,38 @@ class _SettingsTile extends StatelessWidget {
   Widget build(BuildContext context) {
     // One label for the whole row, so a controller (and a screen reader) says
     // "Game Controller. Navigate by Bluetooth gamepad…" rather than naming the
-    // icon button it happened to focus.
+    // icon button it happened to focus — and on that one node the row's
+    // press, its focus and its state. Excluding everything under the label
+    // took those too: a browser's screen reader could neither land on a row
+    // nor press it, and TalkBack had no switch to turn.
+    final label = _spokenLabel(context);
+    if (onTap != null) {
+      return Semantics(
+        container: true,
+        button: true,
+        label: _readerLabel(context),
+        toggled: toggled,
+        child: _wrapTap(context, _row(context)),
+      );
+    }
+    if (trailing != null) {
+      // The control is the thing to operate: its press, state and focus
+      // merge into the row, under the row's words ([_row] keeps those out).
+      // The words come from [_control], beside the focus; given here as
+      // well, the merged row said them twice ("Font Size. Normal. Font
+      // Size. Normal").
+      return MergeSemantics(
+        child: Semantics(
+          toggled: toggled,
+          child: _row(context),
+        ),
+      );
+    }
     return Semantics(
       container: true,
-      button: onTap != null,
-      label: _spokenLabel(context),
-      toggled: toggled,
+      label: label,
       excludeSemantics: true,
-      child: _wrapTap(context, _row(context)),
+      child: _row(context),
     );
   }
 
@@ -1833,6 +2004,7 @@ class _SettingsTile extends StatelessWidget {
   String _spokenLabel(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final detail = semanticsValue ?? subtitle;
+    if (detail.isEmpty) return title;
     if (toggled == null) return '$title. $detail';
     final state =
         toggled! ? (l10n?.settingOn ?? 'On') : (l10n?.settingOff ?? 'Off');
@@ -1843,6 +2015,23 @@ class _SettingsTile extends StatelessWidget {
       return '$title. $state';
     }
     return '$title. $state. $detail';
+  }
+
+  /// [_spokenLabel] as a screen reader is given it: without the state,
+  /// which it says by itself from [toggled] ("on, Dark Mode, …, switch").
+  /// With it, TalkBack said "on. Dark Mode. On. Easier on the eyes" (on the
+  /// tablet, 29 Oct). The controller reads the copy in [_wrapTap], which
+  /// keeps it.
+  String _readerLabel(BuildContext context) {
+    final state = toggled;
+    if (state == null) return _spokenLabel(context);
+    final l10n = AppLocalizations.of(context);
+    final detail = semanticsValue ?? subtitle;
+    if (detail.isEmpty) return title;
+    final word =
+        state ? (l10n?.settingOn ?? 'On') : (l10n?.settingOff ?? 'Off');
+    if (detail.trim().toLowerCase() == word.toLowerCase()) return title;
+    return '$title. $detail';
   }
 
   Widget _wrapTap(BuildContext context, Widget child) {
@@ -1858,8 +2047,11 @@ class _SettingsTile extends StatelessWidget {
         // otherwise hit the title `Text` and stop, announcing "Sound Effects"
         // with neither the state nor the detail. The outer `Semantics` still
         // owns what a screen reader reads; this copy is what the controller
-        // finds. `excludeSemantics` above keeps it out of the a11y tree.
-        child: Semantics(label: _spokenLabel(context), child: child),
+        // finds, and `ExcludeSemantics` keeps it (and the words) out of the
+        // a11y tree while the InkWell's own press and focus stay in it.
+        child: ExcludeSemantics(
+          child: Semantics(label: _spokenLabel(context), child: child),
+        ),
       ),
     );
   }
@@ -1878,40 +2070,48 @@ class _SettingsTile extends StatelessWidget {
           final below = _controlBelow(context, constraints.maxWidth);
           final control =
               trailing == null ? null : _control(context, fullWidth: below);
+          // The row's words are its label's, said once (see [build]): out of
+          // the a11y tree here, so a merged control row does not read them
+          // twice.
           final top = Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: HCColor.of(context).primaryLight,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color:
-                          HCColor.of(context).primary.withValues(alpha: 0.2),
-                      blurRadius: 8,
-                    ),
-                  ],
+              ExcludeSemantics(
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: HCColor.of(context).primaryLight,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color:
+                            HCColor.of(context).primary.withValues(alpha: 0.2),
+                        blurRadius: 8,
+                      ),
+                    ],
+                  ),
+                  child:
+                      Icon(icon, color: HCColor.of(context).primary, size: 20),
                 ),
-                child: Icon(icon, color: HCColor.of(context).primary, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (_fitTitle)
-                      FitText(title, maxLines: null, style: _titleStyle)
-                    else
-                      Text(title, style: _titleStyle),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: _subtitleStyle.copyWith(
-                        color: HCColor.of(context).textSecondary,
+                child: ExcludeSemantics(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (_fitTitle)
+                        FitText(title, maxLines: null, style: _titleStyle)
+                      else
+                        Text(title, style: _titleStyle),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: _subtitleStyle.copyWith(
+                          color: HCColor.of(context).textSecondary,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               if (control == null) ...[
@@ -2003,6 +2203,13 @@ class _SettingsTile extends StatelessWidget {
     var control = trailing!;
     if (fullWidth && control is SizedBox && control.child != null) {
       control = SizedBox(width: double.infinity, child: control.child);
+    }
+    // A named slider says its own name and value (see
+    // [DpadSliderScope.name]). The row's label around it — "Font Size.
+    // Normal" — went stale on every swipe, the old value beside the new.
+    final slider = control is SizedBox ? control.child : null;
+    if (onTap == null && slider is DpadSliderScope && slider.name != null) {
+      return control;
     }
     // When the row itself is the control, the trailing switch must not
     // *also* take focus. A Switch is focusable by default and wins the
@@ -2100,8 +2307,11 @@ class _SizePresetButton extends StatelessWidget {
         onTap: onTap,
         child: Semantics(
           button: true,
+          selected: isActive,
           label: AppLocalizations.of(context)?.setFontSizeTo(label) ??
               'Set font size to $label',
+          // The label says it; the letters drawn here were read again.
+          excludeSemantics: true,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.symmetric(vertical: 12),
@@ -2285,11 +2495,16 @@ class _ChoiceButton extends StatelessWidget {
       button: true,
       selected: isActive,
       label: semanticsLabel,
+      // The press itself: the GestureDetector's is excluded with the words.
+      onTap: onTap,
       excludeSemantics: true,
       child: GestureDetector(
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
+          // 48 high at the least: stacked, an icon and one line of name came
+          // to 46, under the minimum target.
+          constraints: const BoxConstraints(minHeight: 48),
           padding: stacked
               ? const EdgeInsets.symmetric(vertical: 10, horizontal: 12)
               : _acrossPadding,

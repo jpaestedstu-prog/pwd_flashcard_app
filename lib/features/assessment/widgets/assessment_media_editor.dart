@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../../core/accessibility/learner_support.dart';
 import '../../../core/services/shared_media_service.dart';
 import '../../../core/widgets/media_capture_screen.dart';
+import '../../../core/theme/accessible_theme.dart' show tonalButtonStyle;
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart';
@@ -21,6 +22,8 @@ import '../services/assessment_media_cache.dart';
 import '../services/assessment_media_store.dart';
 import 'assessment_media_panel.dart';
 import '../../../core/utils/platform_caps.dart';
+import '../../../core/widgets/fit_label.dart';
+import '../../../core/widgets/text_limits.dart';
 
 AppLocalizations _tr(BuildContext context) =>
     AppLocalizations.of(context) ?? AppLocalizationsEn();
@@ -45,7 +48,7 @@ InputDecoration assessmentFieldDecoration(
     borderSide: BorderSide(color: color, width: width),
   );
   return InputDecoration(
-    labelText: label,
+    label: FitLabel(label),
     helperText: helper,
     helperMaxLines: 4,
     hintText: hint,
@@ -520,6 +523,8 @@ class _AssessmentMediaEditorState extends State<AssessmentMediaEditor> {
           const SizedBox(height: 14),
           TextField(
             controller: _description,
+            maxLength: TextLimits.paragraph,
+            buildCounter: TextLimits.counter,
             maxLines: 3,
             minLines: 1,
             textCapitalization: TextCapitalization.sentences,
@@ -858,9 +863,9 @@ class _MediaSourceSheetState extends State<_MediaSourceSheet> {
                         ? t.assessMediaTakePhoto
                         : t.assessMediaRecordVideo,
                   ),
-                  style: FilledButton.styleFrom(
+                  style: tonalButtonStyle(context).merge(FilledButton.styleFrom(
                     minimumSize: const Size.fromHeight(52),
-                  ),
+                  )),
                 ),
               ),
             FilledButton.icon(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/widgets/fit_text.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -7,6 +8,8 @@ import '../../../providers/app_providers.dart';
 import '../../../providers/wall_clock_provider.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../../../widgets/shared_widgets.dart';
+import '../../gaze_control/providers/gaze_home_grid.dart';
+import '../../gaze_control/widgets/gaze_home_tiles.dart';
 import '../../mood_tracker/models/mood_models.dart';
 import '../../mood_tracker/models/mood_presentation.dart';
 import '../../mood_tracker/services/quick_mood_check_in.dart';
@@ -37,9 +40,11 @@ import '../../routine/widgets/routine_time_timer.dart';
 ///
 /// Each pane is its own tap target and its own **gaze / voice cell**: they
 /// open different screens, and a learner driving the D-pad must be able to
-/// reach Mood without passing through My Day. The home screen therefore builds
-/// each pane as its own gaze entry and hands the wrapped widget in — see
-/// [TodayDayPane] / [TodayMoodPane].
+/// reach Mood without passing through My Day. So are the controls inside
+/// them — each mood face, My Day's Done button — or a D-pad could open the
+/// card but never do what a finger does on it. The home screen registers
+/// those rows, in the order the eye goes down the cards, and hands each pane
+/// its rows — see [TodayDayPane] / [TodayMoodPane].
 class TodayCard extends StatelessWidget {
   const TodayCard({super.key, required this.child});
 
@@ -60,6 +65,12 @@ class TodayCard extends StatelessWidget {
 
 // ─── Mood half ────────────────────────────────────────
 
+/// True while a check-in from Home's faces is being saved, so a learner who
+/// presses twice files one entry. A provider rather than the pane's own state
+/// because a face's D-pad stop belongs to the host screen, and a press there
+/// has to see the same flag as a tap.
+final _moodSavingProvider = StateProvider<bool>((ref) => false);
+
 /// The Mood half of [TodayCard]: today's face if the learner has checked in,
 /// an invitation if not — and either way, the faces themselves, so a check-in
 /// costs one tap from Home.
@@ -68,6 +79,8 @@ class TodayMoodPane extends ConsumerStatefulWidget {
     super.key,
     required this.onOpen,
     this.title = 'Mood Check-In',
+    this.gazeRow,
+    this.gazeFaceRow,
   });
 
   /// Opens the full Mood Check-In screen.
@@ -79,21 +92,32 @@ class TodayMoodPane extends ConsumerStatefulWidget {
   /// have to say another.
   final String title;
 
-  @override
-  ConsumerState<TodayMoodPane> createState() => _TodayMoodPaneState();
-}
+  /// The D-pad row the host registered for opening the screen, ringed around
+  /// the header. Null while no D-pad is in use.
+  final int? gazeRow;
 
-class _TodayMoodPaneState extends ConsumerState<TodayMoodPane> {
-  /// True while a write is in flight, so a learner who taps twice does not
-  /// file two entries.
-  bool _saving = false;
+  /// The D-pad row the host registered for [faceCells], one stop per face.
+  /// Null while no D-pad is in use.
+  final int? gazeFaceRow;
 
-  Future<void> _pick(MoodType mood) async {
-    if (_saving) return;
-    setState(() => _saving = true);
-    final ok = await QuickMoodCheckIn.record(ref, mood: mood);
-    if (!mounted) return;
-    setState(() => _saving = false);
+  /// Records [mood] as today's check-in and says so: what pressing a face
+  /// does, whether a finger pressed it or its D-pad stop ([faceCells]).
+  static Future<void> checkIn(
+    BuildContext context,
+    WidgetRef ref,
+    MoodType mood,
+  ) async {
+    final saving = ref.read(_moodSavingProvider.notifier);
+    if (saving.state) return;
+    saving.state = true;
+    final bool ok;
+    try {
+      ok = await QuickMoodCheckIn.record(ref, mood: mood);
+    } finally {
+      // Through the notifier, which outlives the widget that asked.
+      if (saving.mounted) saving.state = false;
+    }
+    if (!context.mounted) return;
     final isFilipino = ref.read(settingsProvider).locale == 'fil';
     if (!ok) {
       AppSnackBar.error(
@@ -112,6 +136,29 @@ class _TodayMoodPaneState extends ConsumerState<TodayMoodPane> {
     );
   }
 
+  /// The faces' D-pad stops, left to right, for the host screen to register
+  /// as one row straight under this card's own and hand back as
+  /// [gazeFaceRow]. Each does what tapping its face does. Named by the
+  /// feeling alone: that is what the controller says on a press, and what a
+  /// learner says to choose it by voice ("sad" — a spoken word of under four
+  /// letters has to match a whole label).
+  static List<GazeTileCell> faceCells(BuildContext context, WidgetRef ref) {
+    final isFilipino = ref.watch(settingsProvider).locale == 'fil';
+    return [
+      for (final mood in ref.watch(moodPresentationProvider).choices)
+        GazeTileCell(
+          label: mood.labelOf(isFilipino: isFilipino),
+          opens: false,
+          onActivate: () => checkIn(context, ref, mood),
+        ),
+    ];
+  }
+
+  @override
+  ConsumerState<TodayMoodPane> createState() => _TodayMoodPaneState();
+}
+
+class _TodayMoodPaneState extends ConsumerState<TodayMoodPane> {
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
@@ -149,12 +196,14 @@ class _TodayMoodPaneState extends ConsumerState<TodayMoodPane> {
                 'Open for a note and your history.'
           : 'Mood check-in. You have not checked in today. '
                 'Open for a note and your history.',
+      gazeRow: widget.gazeRow,
       action: _MoodFaces(
         choices: presentation.choices,
         selected: todays?.mood,
         isFilipino: isFilipino,
-        enabled: !_saving,
-        onPick: _pick,
+        enabled: !ref.watch(_moodSavingProvider),
+        onPick: (mood) => TodayMoodPane.checkIn(context, ref, mood),
+        gazeRow: widget.gazeFaceRow,
       ),
     );
   }
@@ -171,6 +220,7 @@ class _MoodFaces extends StatelessWidget {
     required this.isFilipino,
     required this.enabled,
     required this.onPick,
+    this.gazeRow,
   });
 
   final List<MoodType> choices;
@@ -178,6 +228,9 @@ class _MoodFaces extends StatelessWidget {
   final bool isFilipino;
   final bool enabled;
   final ValueChanged<MoodType> onPick;
+
+  /// See [TodayMoodPane.gazeFaceRow]: face `i` is the stop at column `i`.
+  final int? gazeRow;
 
   @override
   Widget build(BuildContext context) {
@@ -199,24 +252,43 @@ class _MoodFaces extends StatelessWidget {
         final size = width.isFinite
             ? ((width - spacing * (n - 1)) / n).clamp(44.0, 64.0)
             : (n <= 3 ? 52.0 : 44.0);
+        // Pressed through a box 48 across at the least, whatever size the
+        // face is drawn: on a phone, where six share the card, a face is a
+        // 44dp circle, under the minimum target. The gaps give way first, so
+        // the six still share one row.
+        final target = size < 48 ? 48.0 : size;
+        final gap = width.isFinite && n > 1
+            ? ((width - target * n) / (n - 1)).clamp(0.0, spacing)
+            : spacing;
 
         return Wrap(
-          spacing: spacing,
+          spacing: gap,
           runSpacing: spacing,
           alignment: WrapAlignment.center,
           children: [
-            for (final mood in choices)
-              _MoodFaceButton(
-                mood: mood,
-                size: size,
-                selected: mood == selected,
-                isFilipino: isFilipino,
-                onTap: enabled ? () => onPick(mood) : null,
+            for (final (i, mood) in choices.indexed)
+              _gazeStop(
+                i,
+                _MoodFaceButton(
+                  mood: mood,
+                  size: size,
+                  target: target,
+                  selected: mood == selected,
+                  isFilipino: isFilipino,
+                  onTap: enabled ? () => onPick(mood) : null,
+                ),
               ),
           ],
         );
       },
     );
+  }
+
+  /// [face] with the D-pad's ring while its stop is focused.
+  Widget _gazeStop(int i, Widget face) {
+    final row = gazeRow;
+    if (row == null) return face;
+    return GazeFocusable(row: row, col: i, expand: false, child: face);
   }
 }
 
@@ -224,13 +296,20 @@ class _MoodFaceButton extends StatelessWidget {
   const _MoodFaceButton({
     required this.mood,
     required this.size,
+    required this.target,
     required this.selected,
     required this.isFilipino,
     required this.onTap,
   });
 
   final MoodType mood;
+
+  /// The face's drawn size.
   final double size;
+
+  /// The size it is pressed through: [size], or 48 when that is smaller.
+  final double target;
+
   final bool selected;
   final bool isFilipino;
   final VoidCallback? onTap;
@@ -243,8 +322,14 @@ class _MoodFaceButton extends StatelessWidget {
         ? hc.primary
         : (hc.isDark ? mood.darkColor : mood.color);
 
+    // One node: the label, and the InkWell's press and focus with it. The
+    // words inside are excluded, not the InkWell — excluding that took the
+    // press and the focus too, so a browser's screen reader could neither
+    // land on a face nor choose it.
     return Semantics(
+      container: true,
       button: true,
+      enabled: onTap != null,
       selected: selected,
       label: selected
           ? (isFilipino
@@ -253,36 +338,42 @@ class _MoodFaceButton extends StatelessWidget {
           : (isFilipino
                 ? 'Piliin ang $label'
                 : 'Check in as $label'),
-      excludeSemantics: true,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
           customBorder: const CircleBorder(),
-          child: Container(
-            width: size,
-            height: size,
-            decoration: BoxDecoration(
-              color: tint.withValues(alpha: selected ? 0.40 : 0.14),
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: selected ? tint : Colors.transparent,
-                width: 2.5,
+          child: ExcludeSemantics(
+            child: SizedBox.square(
+              dimension: target,
+              child: Center(
+                child: Container(
+                  width: size,
+                  height: size,
+                  decoration: BoxDecoration(
+                    color: tint.withValues(alpha: selected ? 0.40 : 0.14),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: selected ? tint : Colors.transparent,
+                      width: 2.5,
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    mood.emoji,
+                    textAlign: TextAlign.center,
+                    // A fixed size with even leading: emoji fonts have tall
+                    // metrics, and letting this grow with the learner's font
+                    // setting is what pushes a face out of its own circle.
+                    style: TextStyle(
+                      fontSize: size * 0.46,
+                      height: 1.0,
+                      leadingDistribution: TextLeadingDistribution.even,
+                    ),
+                    textScaler: const TextScaler.linear(1.0),
+                  ),
+                ),
               ),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              mood.emoji,
-              textAlign: TextAlign.center,
-              // A fixed size with even leading: emoji fonts have tall metrics,
-              // and letting this grow with the learner's font setting is what
-              // pushes a face out of its own circle.
-              style: TextStyle(
-                fontSize: size * 0.46,
-                height: 1.0,
-                leadingDistribution: TextLeadingDistribution.even,
-              ),
-              textScaler: const TextScaler.linear(1.0),
             ),
           ),
         ),
@@ -303,7 +394,13 @@ class _MoodFaceButton extends StatelessWidget {
 /// felt once it was finished. That is the pairing worth showing on a
 /// schedule.
 class TodayDayPane extends ConsumerStatefulWidget {
-  const TodayDayPane({super.key, required this.onOpen, this.title = 'My Day'});
+  const TodayDayPane({
+    super.key,
+    required this.onOpen,
+    this.title = 'My Day',
+    this.gazeRow,
+    this.gazeDoneRow,
+  });
 
   /// Opens the full "My Day" screen.
   final VoidCallback onOpen;
@@ -311,35 +408,80 @@ class TodayDayPane extends ConsumerStatefulWidget {
   /// Heading; see [TodayMoodPane.title].
   final String title;
 
+  /// See [TodayMoodPane.gazeRow].
+  final int? gazeRow;
+
+  /// The D-pad row the host registered for [doneCell]. Null while no D-pad
+  /// is in use, or when there is no Done button.
+  final int? gazeDoneRow;
+
+  /// The Done button's D-pad stop, for the host screen to register as a row
+  /// straight under this card's own and hand back as [gazeDoneRow] — or null
+  /// where the card draws no Done button: a Student's or Child's day runs on
+  /// the clock, and a finished day has no next step. The same test the card
+  /// itself makes, so a stop never exists without its button.
+  static GazeTileCell? doneCell(BuildContext context, WidgetRef ref) {
+    if (ref.watch(routineRunsOnClockProvider)) return null;
+    final today = ref.watch(todayRoutineProvider);
+    final next = today.nextStep;
+    if (next == null) return null;
+    return GazeTileCell(
+      label: _doneLabel(next, ref.watch(settingsProvider).locale == 'fil'),
+      opens: false,
+      onActivate: () => complete(context, ref, today, next),
+    );
+  }
+
+  /// Ticks [step] off: what the Done button does, whether a finger pressed
+  /// it or its D-pad stop ([doneCell]). The same flow as the "My Day" list
+  /// and the step screen: a check-in step is answered rather than ticked, a
+  /// step marked "ask how they feel" asks its question, and finishing the
+  /// day asks how it went.
+  static Future<void> complete(
+    BuildContext context,
+    WidgetRef ref,
+    TodayRoutine today,
+    RoutineStep step,
+  ) async {
+    final ticking = ref.read(_dayTickingProvider.notifier);
+    if (ticking.state) return;
+    final profileId = ref.read(profileProvider)?.id;
+    if (profileId == null) return;
+    ticking.state = true;
+    try {
+      await RoutineCompletionFlow.complete(
+        context: context,
+        ref: ref,
+        profileId: profileId,
+        day: DateTime.now(),
+        step: step,
+        todaysSteps: today.steps,
+        presentation: ref.read(routinePresentationProvider),
+        filipino: ref.read(settingsProvider).locale == 'fil',
+      );
+    } finally {
+      if (ticking.mounted) ticking.state = false;
+    }
+  }
+
   @override
   ConsumerState<TodayDayPane> createState() => _TodayDayPaneState();
 }
 
-class _TodayDayPaneState extends ConsumerState<TodayDayPane> {
-  bool _ticking = false;
+/// True while My Day's Done is being saved; see [_moodSavingProvider].
+final _dayTickingProvider = StateProvider<bool>((ref) => false);
 
-  Future<void> _done(TodayRoutine today, RoutineStep step) async {
-    if (_ticking) return;
-    final profileId = ref.read(profileProvider)?.id;
-    if (profileId == null) return;
-    setState(() => _ticking = true);
-
-    // The same flow as the "My Day" list and the step screen: a check-in step
-    // is answered rather than ticked, a step marked "ask how they feel" asks
-    // its question, and finishing the day asks how it went.
-    await RoutineCompletionFlow.complete(
-      context: context,
-      ref: ref,
-      profileId: profileId,
-      day: DateTime.now(),
-      step: step,
-      todaysSteps: today.steps,
-      presentation: ref.read(routinePresentationProvider),
-      filipino: ref.read(settingsProvider).locale == 'fil',
-    );
-    if (mounted) setState(() => _ticking = false);
+/// What the Done button is called, to a screen reader and on its D-pad stop.
+/// A check-in is answered, not ticked, so its button says so.
+String _doneLabel(RoutineStep step, bool isFilipino) {
+  if (step.activity.isMoodCheckIn) {
+    return isFilipino ? 'Gawin na ang check-in ngayon' : 'Do your check-in now';
   }
+  final title = RoutineCatalog.titleFor(step, filipino: isFilipino);
+  return isFilipino ? 'Tapos na ang $title' : 'Mark $title as done';
+}
 
+class _TodayDayPaneState extends ConsumerState<TodayDayPane> {
   @override
   Widget build(BuildContext context) {
     final isFilipino = ref.watch(settingsProvider).locale == 'fil';
@@ -425,6 +567,7 @@ class _TodayDayPaneState extends ConsumerState<TodayDayPane> {
         paused: paused,
         now: now,
       ),
+      gazeRow: widget.gazeRow,
       action: next == null
           ? null
           : _dayAction(today, next, onNow, now, isFilipino, overdue, clock),
@@ -448,13 +591,16 @@ class _TodayDayPaneState extends ConsumerState<TodayDayPane> {
       step: next,
       isFilipino: isFilipino,
       overdue: overdue,
-      busy: _ticking,
+      busy: ref.watch(_dayTickingProvider),
       // A Student or Child has nothing to press: the row only says what is
       // on now, or next.
-      onDone: clock ? null : () => _done(today, next),
+      onDone: clock
+          ? null
+          : () => TodayDayPane.complete(context, ref, today, next),
       isNow: onNow != null,
       paused: isPaused,
       endsAt: endsAt,
+      gazeRow: widget.gazeDoneRow,
     );
     final start = onNow?.startsOn(now);
     if (onNow == null || start == null || endsAt == null) return row;
@@ -606,12 +752,23 @@ class _NextStepRow extends StatelessWidget {
     this.isNow = false,
     this.paused = false,
     this.endsAt,
+    this.gazeRow,
   });
 
   final RoutineStep step;
   final bool isFilipino;
   final bool overdue;
   final bool busy;
+
+  /// See [TodayDayPane.gazeDoneRow].
+  final int? gazeRow;
+
+  /// [button] with the D-pad's ring while its stop is focused.
+  Widget _gazeStop(Widget button) {
+    final row = gazeRow;
+    if (row == null) return button;
+    return GazeFocusable(row: row, col: 0, expand: false, child: button);
+  }
 
   /// Null for a Student or Child: nothing to tick, so no button.
   final VoidCallback? onDone;
@@ -667,8 +824,7 @@ class _NextStepRow extends StatelessWidget {
                     color: late ? HCColor.of(context).errorText : hc.textSecondary,
                     fontWeight: late ? FontWeight.w700 : FontWeight.w500,
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                  // Whole: a step's title is the learner's next thing to do.
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -677,56 +833,56 @@ class _NextStepRow extends StatelessWidget {
         ),
         if (onDone != null) ...[
           const SizedBox(height: 6),
-          Semantics(
-            button: true,
-            // A check-in is answered, not ticked, so its button says so.
-            label: step.activity.isMoodCheckIn
-                ? (isFilipino
-                      ? 'Gawin na ang check-in ngayon'
-                      : 'Do your check-in now')
-                : (isFilipino ? 'Tapos na ang $title' : 'Mark $title as done'),
-            excludeSemantics: true,
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: busy ? null : onDone,
-                borderRadius: BorderRadius.circular(22),
-                child: Container(
-                  // 44 high, so the one control a learner is meant to hit from
-                  // Home clears the minimum target on every profile.
-                  constraints: const BoxConstraints(minHeight: 44),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: hc.primary.withValues(alpha: hc.hc ? 0.30 : 0.16),
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(color: hc.primary, width: 1.5),
-                  ),
-                  alignment: Alignment.center,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        step.activity.isMoodCheckIn
-                            ? Icons.chat_bubble_rounded
-                            : Icons.check_rounded,
-                        size: 18,
-                        color: hc.primary,
+          _gazeStop(
+            Semantics(
+              container: true,
+              enabled: !busy,
+              button: true,
+              label: _doneLabel(step, isFilipino),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: busy ? null : onDone,
+                  borderRadius: BorderRadius.circular(22),
+                  child: ExcludeSemantics(
+                    child: Container(
+                      // 44 high, so the one control a learner is meant to hit from
+                      // Home clears the minimum target on every profile.
+                      constraints: const BoxConstraints(minHeight: 44),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: hc.primary.withValues(alpha: hc.hc ? 0.30 : 0.16),
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(color: hc.primary, width: 1.5),
                       ),
-                      const SizedBox(width: 6),
-                      Flexible(
-                        child: Text(
-                          step.activity.isMoodCheckIn
-                              ? (isFilipino ? 'Mag-check in' : 'Check in')
-                              : (isFilipino ? 'Tapos na' : 'Done'),
-                          style: AppTypography.labelMedium.copyWith(
+                      alignment: Alignment.center,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            step.activity.isMoodCheckIn
+                                ? Icons.chat_bubble_rounded
+                                : Icons.check_rounded,
+                            size: 18,
                             color: hc.primary,
-                            fontWeight: FontWeight.w800,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              step.activity.isMoodCheckIn
+                                  ? (isFilipino ? 'Mag-check in' : 'Check in')
+                                  : (isFilipino ? 'Tapos na' : 'Done'),
+                              style: AppTypography.labelMedium.copyWith(
+                                color: hc.primary,
+                                fontWeight: FontWeight.w800,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -764,6 +920,7 @@ class _TodayPane extends StatelessWidget {
     this.progress,
     this.streak = 0,
     this.moodChip,
+    this.gazeRow,
   });
 
   final VoidCallback onOpen;
@@ -774,6 +931,12 @@ class _TodayPane extends StatelessWidget {
 
   /// Label for the "open the full screen" target — the header, not the pane.
   final String openSemanticLabel;
+
+  /// The D-pad row that opens the full screen, ringed around the header
+  /// alone: around the whole pane it took in the faces and the Done button,
+  /// which have stops of their own, and pressing would not do what the ring
+  /// seemed to promise.
+  final int? gazeRow;
 
   /// The half's in-place control (mood faces / Done button). Sits *outside*
   /// the open-the-screen tap target: a learner reaching for a face must never
@@ -806,15 +969,15 @@ class _TodayPane extends StatelessWidget {
     final titleRow = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        // Two lines before it is cut: "Check-in ng Damdamin" lost its end
+        // beside the streak on a phone (3 Nov).
         Flexible(
-          child: Text(
+          child: FitText(
             title,
             style: AppTypography.titleSmall.copyWith(
               fontWeight: FontWeight.w800,
               color: hc.textPrimary,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
         ),
         if (streak > 0) ...[
@@ -830,44 +993,48 @@ class _TodayPane extends StatelessWidget {
     final subtitleText = Text(
       subtitle,
       style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
-      maxLines: 2,
-      overflow: TextOverflow.ellipsis,
     );
 
     final header = Semantics(
+      container: true,
       button: true,
       label: openSemanticLabel,
-      excludeSemantics: true,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onOpen,
           borderRadius: BorderRadius.circular(14),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            child: Row(
-              children: [
-                badge,
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [titleRow, subtitleText],
+          child: ExcludeSemantics(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              child: Row(
+                children: [
+                  badge,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [titleRow, subtitleText],
+                    ),
                   ),
-                ),
-                Icon(Icons.chevron_right_rounded, color: hc.textSecondary),
-              ],
+                  Icon(Icons.chevron_right_rounded, color: hc.textSecondary),
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
 
+    final row = gazeRow;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        header,
+        if (row == null)
+          header
+        else
+          GazeFocusable(row: row, col: 0, expand: false, child: header),
         if (action != null)
           Padding(
             padding: const EdgeInsets.only(left: 8, right: 8, bottom: 6),

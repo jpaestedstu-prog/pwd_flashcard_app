@@ -14,6 +14,8 @@ import '../../../core/utils/accessible_sizing.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../navigation/nav_extensions.dart';
+import '../../../core/widgets/app_bar_title.dart';
+import '../../../core/widgets/text_limits.dart';
 
 class CreateFlashcardScreen extends ConsumerStatefulWidget {
   final Flashcard? editCard;
@@ -91,7 +93,7 @@ class _CreateFlashcardScreenState
     return SafeScaffold(
       appBar: AppBar(
         leading: const AppBackButton(fallbackRoute: '/flashcards'),
-        title: Text(_isEditing ? _t(context).cfEditTitle : _t(context).cfCreateTitle),
+        title: AppBarTitle(_isEditing ? _t(context).cfEditTitle : _t(context).cfCreateTitle),
       ),
       body: Form(
         key: _formKey,
@@ -141,6 +143,8 @@ class _CreateFlashcardScreenState
               const SizedBox(height: 8),
               TextFormField(
                 controller: _wordEnController,
+                maxLength: TextLimits.label,
+                buildCounter: TextLimits.counter,
                 style: AppTypography.bodyLarge,
                 decoration: InputDecoration(
                   hintText: _t(context).cfHintEn,
@@ -161,6 +165,8 @@ class _CreateFlashcardScreenState
               const SizedBox(height: 8),
               TextFormField(
                 controller: _wordFlController,
+                maxLength: TextLimits.label,
+                buildCounter: TextLimits.counter,
                 style: AppTypography.bodyLarge,
                 decoration: InputDecoration(
                   hintText: _t(context).cfHintFil,
@@ -182,6 +188,8 @@ class _CreateFlashcardScreenState
               const SizedBox(height: 8),
               TextFormField(
                 controller: _exampleController,
+                maxLength: TextLimits.sentence,
+                buildCounter: TextLimits.counter,
                 style: AppTypography.bodyLarge,
                 decoration: InputDecoration(
                   hintText: _t(context).cfExampleHint,

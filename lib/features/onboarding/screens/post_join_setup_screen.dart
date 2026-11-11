@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import '../../../core/widgets/whole_month_title.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/accessibility/accessibility_presets.dart';
+import '../../../core/services/join_code_service.dart' show JoinCodeError;
 import '../../../core/accessibility/learner_support.dart';
 import '../../../core/security/pin_credential_helper.dart';
 import '../../../core/services/learning_level_service.dart';
@@ -27,6 +29,7 @@ import '../../gamepad/providers/gamepad_settings_provider.dart';
 import '../../gaze_control/providers/gaze_settings_provider.dart';
 import '../widgets/profile_setup_form.dart';
 import '../../../core/utils/keyboard.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Identifies which join flow led the user to the post-join setup screen.
 ///
@@ -138,6 +141,7 @@ class _PostJoinSetupScreenState extends ConsumerState<PostJoinSetupScreen> {
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
+      builder: wholeMonthTitle,
       initialDate: _selectedBirthDate ?? DateTime(now.year - 7),
       firstDate: DateTime(now.year - 100),
       lastDate: now,
@@ -272,7 +276,19 @@ class _PostJoinSetupScreenState extends ConsumerState<PostJoinSetupScreen> {
         classState is JoinCodeLoading || homeState is HomeGroupJoinLoading;
     final classFailure = classState is JoinCodeFailure ? classState : null;
     final homeFailure = homeState is HomeGroupJoinFailure ? homeState : null;
-    final failureMessage = classFailure?.message ?? homeFailure?.message;
+    // In the reader's language: the services write theirs in English, and
+    // the banner showed "No class found with that code." in Filipino.
+    String joinError(JoinCodeError error, {required bool home}) =>
+        switch (error) {
+          JoinCodeError.notFound => home ? l10n.jcNoGroup : l10n.jcNoClass,
+          JoinCodeError.network => l10n.jcNetwork,
+          JoinCodeError.collision || JoinCodeError.unknown => l10n.jcUnknown,
+        };
+    final failureMessage = classFailure != null
+        ? joinError(classFailure.error, home: false)
+        : homeFailure != null
+        ? joinError(homeFailure.error, home: true)
+        : null;
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final colorScheme = Theme.of(context).colorScheme;
@@ -285,7 +301,7 @@ class _PostJoinSetupScreenState extends ConsumerState<PostJoinSetupScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.setUpProfileTitle),
+        title: AppBarTitle(l10n.setUpProfileTitle),
         leading: IconButton(
           tooltip: l10n.back,
           icon: const Icon(Icons.arrow_back),

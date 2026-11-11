@@ -11,6 +11,8 @@ import '../providers/notebook_provider.dart';
 import '../widgets/flashcard_link_picker.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../navigation/nav_extensions.dart';
+import '../../../core/widgets/app_bar_title.dart';
+import '../../../core/widgets/text_limits.dart';
 
 class NoteEditorScreen extends ConsumerStatefulWidget {
   final NoteEntry? existingNote;
@@ -184,6 +186,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text(isFilipino ? 'Itapon ang mga pagbabago?' : 'Discard changes?'),
         content: Text(
           isFilipino
@@ -231,7 +234,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
             // returning false cancels the pop and leaves the draft on screen.
             onBeforePop: () => _confirmDiscard(isFilipino),
           ),
-          title: Text(
+          title: AppBarTitle(
             _isEditing
                 ? (isFilipino ? 'I-edit ang Tala' : 'Edit Note')
                 : (isFilipino ? 'Bagong Tala' : 'New Note'),
@@ -295,6 +298,8 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
                 // ─── Title Field ──────────────────────
                 TextField(
                   controller: _titleController,
+                  maxLength: TextLimits.title,
+                  buildCounter: TextLimits.counter,
                   style: AppTypography.titleMedium.copyWith(
                     fontWeight: FontWeight.w700,
                     color: hc.textPrimary,
@@ -332,7 +337,11 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
                     ),
                     ...FlashcardCategory.values.map(
                       (cat) => ChoiceChip(
-                        label: Text(cat.label),
+                        // In the note's language: the chips said
+                        // "Animals" and "Body Parts" in Filipino (3 Nov).
+                        label: Text(
+                          isFilipino ? cat.labelFilipino : cat.label,
+                        ),
                         avatar: Icon(cat.icon, size: 16),
                         selected: _selectedCategory == cat,
                         onSelected: (_) => setState(
@@ -466,27 +475,27 @@ class _DictateButton extends StatelessWidget {
         ? (isFilipino ? 'Nakikinig… pindutin para itigil' : 'Listening… tap to stop')
         : (isFilipino ? 'Sabihin ang tala' : 'Speak your note');
 
-    return Semantics(
-      button: true,
-      toggled: listening,
-      label: label,
-      child: OutlinedButton.icon(
-        onPressed: onPressed,
-        icon: Icon(
-          listening ? Icons.stop_circle_rounded : Icons.mic_rounded,
-          color: listening ? HCColor.of(context).graphic(AppColors.error) : hc.primary,
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(
+        listening ? Icons.stop_circle_rounded : Icons.mic_rounded,
+        color: listening ? HCColor.of(context).graphic(AppColors.error) : hc.primary,
+      ),
+      label: Semantics(
+        label: label,
+        toggled: listening,
+        excludeSemantics: true,
+        child: Text(label),
+      ),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: listening ? AppColors.error : hc.primary,
+        side: BorderSide(
+          color: (listening ? AppColors.error : hc.primary)
+              .withValues(alpha: 0.5),
         ),
-        label: Text(label),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: listening ? AppColors.error : hc.primary,
-          side: BorderSide(
-            color: (listening ? AppColors.error : hc.primary)
-                .withValues(alpha: 0.5),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
         ),
       ),
     );

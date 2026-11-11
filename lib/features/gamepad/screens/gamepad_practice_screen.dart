@@ -22,20 +22,20 @@ import '../../../core/widgets/fit_text.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../core/theme/accessible_theme.dart';
-import '../../../core/utils/platform_caps.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// A place to press every button and be told what it does, with nothing at
 /// stake.
 ///
-/// Learning a controller by using it means discovering R1 by opening something
-/// unexpected, and discovering L1 by leaving the screen you were on. For a
+/// Learning a controller by using it means discovering A by opening something
+/// unexpected, and discovering B by leaving the screen you were on. For a
 /// learner who cannot see where they ended up, that is not learning — it is
 /// getting lost. Here the app stands down completely ([gamepadPractice]) and
 /// every press only produces its own name and its own job.
 ///
-/// **L1 is the way out, and it takes two presses.** Pressed once it is
+/// **B is the way out, and it takes two presses.** Pressed once it is
 /// announced like any other button; pressed again within a few seconds it
-/// leaves. Without that pause a learner exploring what L1 does would be
+/// leaves. Without that pause a learner exploring what B does would be
 /// ejected by the very press they were trying to learn about.
 ///
 /// The counting lives in `GamepadHost`, not here — the host is always alive, so
@@ -88,7 +88,7 @@ class _GamepadPracticeScreenState extends ConsumerState<GamepadPracticeScreen> {
   void _start() {
     if (!mounted) return;
     // Nothing to practise with (see build): no "press a button" spoken.
-    if (PlatformCaps.isWeb || !GamepadService.isSupported) return;
+    if (!GamepadService.isSupported) return;
     final service = ref.read(gamepadServiceProvider);
     service.start();
     _announcer = GamepadAnnouncer(ref.read(ttsServiceProvider))
@@ -117,13 +117,25 @@ class _GamepadPracticeScreenState extends ConsumerState<GamepadPracticeScreen> {
 
   void _onButton(GamepadEvent event) {
     if (!mounted || !event.pressed) return;
-    final button = event.button;
-    final action = resolveGamepadAction(button);
+    // With the learner's own settings, as the host resolves it: a Nintendo
+    // pad with A and B swapped, or a stick turned off, must be taught as it
+    // will actually behave.
+    final settings = ref.read(gamepadSettingsProvider);
+    // The swap exists because such a pad reports the button *labelled* A as
+    // B. So the swapped button is also the one to name and light up: naming
+    // the report told a learner who pressed A that they had pressed B.
+    final button = settings.swapConfirmButtons
+        ? swapConfirmButton(event.button)
+        : event.button;
+    final action = resolveGamepadAction(
+      button,
+      leftStickMoves: settings.leftStickMoves,
+    );
     final phrases = _phrases;
 
     // The *second* back press is the one the host acts on, and it already says
     // "Going back". Naming the button again on the way out leaves the learner
-    // hearing "Going back. L1. Go back. Press L1 again to leave." as the screen
+    // hearing "Going back. B. Go back. Press B again to leave." as the screen
     // disappears. Mirror the host's window just closely enough to stay quiet.
     if (action == GamepadAction.back) {
       final now = DateTime.now();
@@ -142,9 +154,11 @@ class _GamepadPracticeScreenState extends ConsumerState<GamepadPracticeScreen> {
     }
 
     final wasNew = _tried.add(button);
+    final stickOff = !settings.leftStickMoves && isLeftStickMove(button);
     setState(() {
       _last = button;
-      _lastAction = phrases.actionName(action);
+      _lastAction =
+          stickOff ? phrases.leftStickOff : phrases.actionName(action);
     });
 
     final name = phrases.buttonName(button);
@@ -153,8 +167,8 @@ class _GamepadPracticeScreenState extends ConsumerState<GamepadPracticeScreen> {
     // to know the second will leave.
     final leaveHint = action == GamepadAction.back
         ? (phrases.locale == 'fil'
-            ? ' Pindutin muli ang L1 para umalis.'
-            : ' Press L1 again to leave.')
+            ? ' Pindutin muli ang B para umalis.'
+            : ' Press B again to leave.')
         : '';
 
     var line = '$name. $_lastAction$leaveHint';
@@ -173,10 +187,10 @@ class _GamepadPracticeScreenState extends ConsumerState<GamepadPracticeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // As on the settings screen: no controller bridge in a browser.
-    if (PlatformCaps.isWeb || !GamepadService.isSupported) {
+    // As on the settings screen: no controller to read in this browser.
+    if (!GamepadService.isSupported) {
       return Scaffold(
-        appBar: AppBar(title: Text(_t(context).gppTitle)),
+        appBar: AppBar(title: AppBarTitle(_t(context).gppTitle)),
         body: ListView(
           padding: const EdgeInsets.all(16),
           children: [
@@ -190,7 +204,7 @@ class _GamepadPracticeScreenState extends ConsumerState<GamepadPracticeScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: Text(_t(context).gppTitle)),
+      appBar: AppBar(title: AppBarTitle(_t(context).gppTitle)),
       body: SafeArea(
         // Scrollable, but still an `Expanded` layout when there is room.
         //

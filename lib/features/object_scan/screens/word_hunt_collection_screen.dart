@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../core/widgets/capped_width.dart';
+import '../../../core/widgets/fit_text.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/accessibility/haptic_service.dart'
@@ -7,6 +9,7 @@ import '../../../core/accessibility/tts_service.dart' show ttsServiceProvider;
 import '../../../core/services/fsl_assets_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/auto_fit.dart';
 import '../../../data/models/achievements.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
@@ -21,6 +24,7 @@ import '../services/label_word_mapper.dart';
 import '../services/object_scan_discovery_service.dart';
 import '../widgets/discovered_word_sheet.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// "My Finds" — the payoff for Word Hunt: every word the learner has ever
 /// photographed, grouped by category, next to the ones still out there.
@@ -148,13 +152,11 @@ class _WordHuntCollectionScreenState
         ref,
         AppBar(
           leading: const AppBackButton(),
-          title: Text(
+          title: AppBarTitle(
             l10n.wordHuntCollectionTitle,
             style: AppTypography.titleMedium.copyWith(
               fontWeight: FontWeight.w700,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
         ),
       ),
@@ -307,7 +309,7 @@ class _ProgressHeader extends StatelessWidget {
           const SizedBox(height: 14),
           SizedBox(
             width: double.infinity,
-            child: FilledButton.icon(
+            child: CappedWidth(child: FilledButton.icon(
               style: FilledButton.styleFrom(
                 backgroundColor: Colors.white,
                 foregroundColor: hc.readableOver(
@@ -321,12 +323,10 @@ class _ProgressHeader extends StatelessWidget {
               ),
               onPressed: onHunt,
               icon: const Icon(Icons.camera_alt_rounded),
-              label: Text(
-                l10n.wordHuntStartHunting,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
+              // Whole at the largest Font Size: every button's label
+              // fits itself (autoFitButtonForeground).
+              label: Text(l10n.wordHuntStartHunting),
+            )),
           ),
         ],
       ),
@@ -373,8 +373,6 @@ class _HeaderChip extends StatelessWidget {
                   color: Colors.white,
                   fontWeight: FontWeight.w600,
                 ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -433,15 +431,15 @@ class _CategorySection extends StatelessWidget {
             children: [
               Container(width: 6, height: 26, color: color),
               const SizedBox(width: 10),
+              // Two lines before it is cut: "Mga Bahagi ng Katawan" lost its
+              // end on a phone (3 Nov).
               Expanded(
-                child: Text(
+                child: FitText(
                   category.labelOf(_t(context)),
                   style: AppTypography.titleMedium.copyWith(
                     fontWeight: FontWeight.w700,
                     color: hc.textPrimary,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               Text(
@@ -521,7 +519,7 @@ class _WordTileGrid extends StatelessWidget {
         // Two columns on a phone, three once there is room — one column at a
         // big text scale, where two would truncate every word.
         final scale = MediaQuery.textScalerOf(context).scale(16) / 16;
-        final columns = scale >= 1.6
+        final columns = scale >= 1.6 || constraints.maxWidth / scale < 230
             ? 1
             : constraints.maxWidth >= 560
             ? 3
@@ -574,7 +572,7 @@ class _WordTile extends StatelessWidget {
     return Semantics(
       button: true,
       label:
-          '${card.wordEnglish}, ${card.wordFilipino}'
+          '${card.spokenWords()}'
           '${dimmed ? '' : ', ${l10n.wordHuntFound}'}',
       child: Material(
         color: dimmed
@@ -584,57 +582,66 @@ class _WordTile extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(18),
           onTap: onTap,
-          child: Container(
-            // PWD-friendly tap target with room for two lines of large type.
-            constraints: const BoxConstraints(minHeight: 72),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: dimmed ? hc.border : accent,
-                width: dimmed ? 1 : 2,
+          child: ExcludeSemantics(
+            // The label says the word in both languages; the words drawn here
+            // were read again under it.
+            child: Container(
+              // PWD-friendly tap target with room for two lines of large type.
+              constraints: const BoxConstraints(minHeight: 72),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: dimmed ? hc.border : accent,
+                  width: dimmed ? 1 : 2,
+                ),
               ),
-            ),
-            child: Row(
-              children: [
-                Opacity(
-                  // Not-yet-found words keep their picture but faded, so the
-                  // list reads as a checklist rather than a locked vault.
-                  opacity: dimmed ? 0.45 : 1,
-                  child: FlashcardPicture(card: card, extent: 40),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        card.wordEnglish,
-                        style: AppTypography.bodyLarge.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: dimmed ? hc.textSecondary : hc.textPrimary,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        card.wordFilipino,
-                        style: AppTypography.bodySmall.copyWith(
-                          color: hc.textSecondary,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+              child: Row(
+                children: [
+                  Opacity(
+                    // Not-yet-found words keep their picture but faded, so the
+                    // list reads as a checklist rather than a locked vault.
+                    opacity: dimmed ? 0.45 : 1,
+                    child: FlashcardPicture(card: card, extent: 40),
                   ),
-                ),
-                if (showFsl)
-                  const Padding(
-                    padding: EdgeInsets.only(left: 4),
-                    child: Text('🤟', style: TextStyle(fontSize: 18)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      // The whole word, smaller if it must be: at the
+                      // largest Font Size "Butterfly" was cut short (30 Oct).
+                      children: [
+                        AutoFit(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Text(
+                            card.wordEnglish,
+                            style: AppTypography.bodyLarge.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color:
+                                  dimmed ? hc.textSecondary : hc.textPrimary,
+                            ),
+                          ),
+                        ),
+                        AutoFit(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Text(
+                            card.wordFilipino,
+                            style: AppTypography.bodySmall.copyWith(
+                              color: hc.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-              ],
+                  if (showFsl)
+                    const Padding(
+                      padding: EdgeInsets.only(left: 4),
+                      child: Text('🤟', style: TextStyle(fontSize: 18)),
+                    ),
+                ],
+              ),
             ),
           ),
         ),

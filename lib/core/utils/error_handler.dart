@@ -154,6 +154,22 @@ class ErrorHandler {
     // background work the learner did not start. A failure leaves the
     // version unapplied, so it is tried again on the next snapshot or start.
     'AssignedAccessibilityGate:silent',
+    // The live listeners behind the Messages tile's number on every Home:
+    // the inbox, friend requests, friends (whose messages count) and a
+    // parent's approvals. They start when a Home opens, with nothing asked
+    // for; on a failure each keeps showing what it last had (its cache) and
+    // starts again when the profile is next opened. A refusal (a profile
+    // switch, the cloud sign-in still renewing after a restart) put
+    // "Something went wrong" over a learner's Home with nothing to do about
+    // it: a guest's refused inbox on the Villaon, and possibly once on the
+    // emulator's test Student (9 Nov). What a learner does (send, read,
+    // accept, remove) still reports loudly.
+    'CloudMessageRepository.watch.received:silent',
+    'CloudMessageRepository.watch.sent:silent',
+    'FriendService.watchIncomingRequests:silent',
+    'FriendService.watchFriends.a:silent',
+    'FriendService.watchFriends.b:silent',
+    'FriendService.watchApprovals:silent',
   };
 
   /// Whether [source] is suppressed from the global snackbar.
@@ -253,6 +269,18 @@ class ErrorHandler {
         (context != null && context.contains('image'))) {
       if (kDebugMode) {
         debugPrint('│ [ErrorHandler] Suppressed asset error: $errorStr');
+      }
+      return;
+    }
+
+    // The PDF preview's own page drawing, when the preview is left while a page
+    // is still being drawn (a RangeError in the printing package). Nothing is
+    // lost: leaving a report's preview put "Something went wrong" in front of
+    // a teacher (on the tablet, 4 Nov).
+    if ((stack?.toString() ?? '')
+        .contains('package:printing/src/preview/raster.dart')) {
+      if (kDebugMode) {
+        debugPrint('│ [ErrorHandler] PDF preview left while drawing: $errorStr');
       }
       return;
     }

@@ -29,6 +29,7 @@ class AppActionBar extends StatelessWidget {
     this.alignment = WrapAlignment.center,
     this.equalWidth = false,
     this.minCellWidth = 120,
+    this.minGrowsWithText = true,
   });
 
   final List<Widget> children;
@@ -49,6 +50,10 @@ class AppActionBar extends StatelessWidget {
   /// row breaks to a new line — keeps buttons comfortably tappable on narrow
   /// widths. Ignored in Wrap mode.
   final double minCellWidth;
+
+  /// Whether [minCellWidth] grows with the text. False only for children that
+  /// keep their words whole in a narrower cell by themselves.
+  final bool minGrowsWithText;
 
   @override
   Widget build(BuildContext context) {
@@ -76,8 +81,10 @@ class AppActionBar extends StatelessWidget {
         // sign-check screen under the dyslexia theme). Scaling the threshold
         // instead drops the row to one button per line, which is the accessible
         // answer: the label keeps its size and gets the space.
-        final minCell = minCellWidth *
-            MediaQuery.textScalerOf(context).scale(1.0).clamp(1.0, 2.0);
+        final minCell = !minGrowsWithText
+            ? minCellWidth
+            : minCellWidth *
+                  MediaQuery.textScalerOf(context).scale(1.0).clamp(1.0, 2.0);
         var perRow = children.length;
         if (maxW.isFinite) {
           perRow = ((maxW + spacing) / (minCell + spacing)).floor();

@@ -26,10 +26,13 @@ class MembershipEvictionGate extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(profileProvider);
+    // Not while a teacher or parent is looking at a learner: it would clear the
+    // learner's link and sign the educator out.
     final isLearner = profile != null &&
         (profile.role == UserRole.student ||
             profile.role == UserRole.child) &&
-        !profile.isGuestPlayer;
+        !profile.isGuestPlayer &&
+        !ref.read(profileProvider.notifier).isViewingAsStudent;
 
     if (isLearner) {
       // Classroom-side eviction (student profile in a class).

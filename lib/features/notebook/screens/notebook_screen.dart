@@ -10,8 +10,10 @@ import '../../../data/models/enums.dart';
 import '../models/notebook_models.dart';
 import '../providers/notebook_provider.dart';
 import '../../../widgets/app_back_button.dart';
+import '../../../core/utils/localized_date.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 class NotebookScreen extends ConsumerStatefulWidget {
   const NotebookScreen({super.key});
@@ -80,7 +82,7 @@ class _NotebookScreenState extends ConsumerState<NotebookScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: const AppBackButton(),
-        title: Text(
+        title: AppBarTitle(
           isFilipino ? 'Aking Kuwaderno' : 'My Notebook',
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
@@ -189,8 +191,8 @@ class _NotebookScreenState extends ConsumerState<NotebookScreen> {
                     ),
                   )
                 : ListView.builder(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 8),
+                    // The last note can scroll clear of the New Note button.
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
                     itemCount: notes.length,
                     itemBuilder: (context, index) {
                       final note = notes[index];
@@ -230,6 +232,7 @@ class _NotebookScreenState extends ConsumerState<NotebookScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text(isFilipino ? 'Burahin ang tala?' : 'Delete Note?'),
         content: Text(
           isFilipino
@@ -299,24 +302,28 @@ class _NoteCard extends StatelessWidget {
     final hc = HCColor.of(context);
     final catColor = note.category?.color ?? hc.primary;
 
-    return Semantics(
-      button: true,
-      label: isFilipino
-          ? 'Tala: ${note.title}. ${note.isVoiceNote ? "Tala sa boses. " : ""}'
-              '${note.category != null ? "Kategorya: ${note.category!.labelFilipino}. " : ""}'
-              'Huling binago ${_formatDate(note.updatedAt, true)}.'
-          : 'Note: ${note.title}. ${note.isVoiceNote ? "Voice note. " : ""}'
-              '${note.category != null ? "Category: ${note.category!.label}. " : ""}'
-              'Last edited ${_formatDate(note.updatedAt, false)}.',
-      child: Card(
-        elevation: 0,
-        clipBehavior: Clip.antiAlias,
-        margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: catColor.withValues(alpha: 0.3), width: 0.5),
-        ),
-        color: hc.surface,
+    return Card(
+      elevation: 0,
+      clipBehavior: Clip.antiAlias,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: catColor.withValues(alpha: 0.3), width: 0.5),
+      ),
+      color: hc.surface,
+      // Inside the Card, beside the InkWell, so the label lands on the node
+      // that has the tap: around the Card it made a second "button" that
+      // could not be pressed. The words it speaks for are left out below;
+      // the Options menu keeps a node of its own.
+      child: Semantics(
+        button: true,
+        label: isFilipino
+            ? 'Tala: ${note.title}. ${note.isVoiceNote ? "Tala sa boses. " : ""}'
+                '${note.category != null ? "Kategorya: ${note.category!.labelFilipino}. " : ""}'
+                'Huling binago ${_spokenDate(context, note.updatedAt, true)}.'
+            : 'Note: ${note.title}. ${note.isVoiceNote ? "Voice note. " : ""}'
+                '${note.category != null ? "Category: ${note.category!.label}. " : ""}'
+                'Last edited ${_spokenDate(context, note.updatedAt, false)}.',
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(16),
@@ -347,29 +354,33 @@ class _NoteCard extends StatelessWidget {
                           size: 16, color: catColor),
                     ),
                   Expanded(
-                    child: Text(
-                      note.title,
-                      style: AppTypography.titleSmall.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: hc.textPrimary,
+                    child: ExcludeSemantics(
+                      // The title whole (the note itself, two lines of it,
+                      // is the preview below, and opens with a tap).
+                      child: Text(
+                        note.title,
+                        style: AppTypography.titleSmall.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: hc.textPrimary,
+                        ),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   if (note.category != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: catColor.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        note.category!.labelOf(_t(context)),
-                        style: AppTypography.labelSmall.copyWith(
-                          color: HCColor.of(context).readableOver(catColor, catColor.withValues(alpha: 0.12)),
-                          fontWeight: FontWeight.w600,
+                    ExcludeSemantics(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: catColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          note.category!.labelOf(_t(context)),
+                          style: AppTypography.labelSmall.copyWith(
+                            color: HCColor.of(context).readableOver(catColor, catColor.withValues(alpha: 0.12)),
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
@@ -397,40 +408,44 @@ class _NoteCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 6),
-              Text(
-                note.content,
-                style: AppTypography.bodySmall.copyWith(
-                  color: hc.textSecondary,
+              ExcludeSemantics(
+                child: Text(
+                  note.content,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: hc.textSecondary,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 8),
-              Row(
-                children: [
-                  Icon(Icons.access_time_rounded,
-                      size: 12, color: hc.textHint),
-                  const SizedBox(width: 4),
-                  Text(
-                    _formatDate(note.updatedAt, isFilipino),
-                    style: AppTypography.labelSmall.copyWith(
-                      color: hc.textHint,
-                    ),
-                  ),
-                  if (note.linkedFlashcardIds.isNotEmpty) ...[
-                    const SizedBox(width: 12),
-                    Icon(Icons.link_rounded, size: 12, color: hc.textHint),
+              ExcludeSemantics(
+                child: Row(
+                  children: [
+                    Icon(Icons.access_time_rounded,
+                        size: 12, color: hc.textHint),
                     const SizedBox(width: 4),
                     Text(
-                      isFilipino
-                          ? '${note.linkedFlashcardIds.length} nakaugnay'
-                          : '${note.linkedFlashcardIds.length} linked',
+                      _formatDate(note.updatedAt, isFilipino),
                       style: AppTypography.labelSmall.copyWith(
                         color: hc.textHint,
                       ),
                     ),
+                    if (note.linkedFlashcardIds.isNotEmpty) ...[
+                      const SizedBox(width: 12),
+                      Icon(Icons.link_rounded, size: 12, color: hc.textHint),
+                      const SizedBox(width: 4),
+                      Text(
+                        isFilipino
+                            ? '${note.linkedFlashcardIds.length} nakaugnay'
+                            : '${note.linkedFlashcardIds.length} linked',
+                        style: AppTypography.labelSmall.copyWith(
+                          color: hc.textHint,
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ],
           ),
@@ -439,6 +454,15 @@ class _NoteCard extends StatelessWidget {
       ),
     );
   }
+
+  /// [_formatDate] as a voice should say it: "5 minutes ago" ("5m ago" is
+  /// read "5 meters ago"), and an older date in words.
+  String _spokenDate(BuildContext context, DateTime date, bool isFilipino) =>
+      LocalizedDuration.ago(
+        DateTime.now().difference(date),
+        filipino: isFilipino,
+      ) ??
+      LocalizedDate.monthDayYear(date, _t(context));
 
   String _formatDate(DateTime date, bool isFilipino) {
     final now = DateTime.now();

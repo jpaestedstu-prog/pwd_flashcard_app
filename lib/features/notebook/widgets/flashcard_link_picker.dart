@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/models/enums.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../data/models/models.dart';
 import '../../../providers/app_providers.dart';
 
@@ -175,7 +176,7 @@ class _FlashcardLinkPickerState extends ConsumerState<_FlashcardLinkPicker> {
                     Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: FilterChip(
-                        label: Text(cat.label),
+                        label: Text(cat.labelOf(AppLocalizations.of(context)!)),
                         selected: _category == cat,
                         onSelected: (_) => setState(
                           () => _category = _category == cat ? null : cat,
@@ -207,7 +208,11 @@ class _FlashcardLinkPickerState extends ConsumerState<_FlashcardLinkPicker> {
                       itemBuilder: (context, i) {
                         final card = visible[i];
                         final checked = _selected.contains(card.id);
-                        return CheckboxListTile(
+                        // On its own Material: the sheet's colour hid the
+                        // row's press.
+                        return Material(
+                          type: MaterialType.transparency,
+                          child: CheckboxListTile(
                           value: checked,
                           onChanged: (v) => setState(() {
                             if (v ?? false) {
@@ -222,12 +227,14 @@ class _FlashcardLinkPickerState extends ConsumerState<_FlashcardLinkPicker> {
                                 .copyWith(color: hc.textPrimary),
                           ),
                           subtitle: Text(
-                            '${card.wordFilipino} · ${card.category.label}',
+                            '${card.wordFilipino} · '
+                            '${card.category.labelOf(AppLocalizations.of(context)!)}',
                             style: AppTypography.labelSmall
                                 .copyWith(color: hc.textSecondary),
                           ),
                           controlAffinity: ListTileControlAffinity.leading,
                           dense: true,
+                          ),
                         );
                       },
                     ),

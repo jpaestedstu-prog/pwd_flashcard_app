@@ -194,6 +194,9 @@ class EducatorRoutineAlertsButton extends ConsumerWidget {
       ),
       onPressed: () => showModalBottomSheet<void>(
         context: context,
+        // Without it the dismiss area is read as "Scrim", Material's
+        // untranslated default.
+        barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
         showDragHandle: true,
         builder: (_) => _AlertModeSheet(
           educatorProfileId: profile.id,

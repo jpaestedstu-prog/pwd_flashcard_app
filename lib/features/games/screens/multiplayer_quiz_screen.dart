@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../../../core/widgets/capped_width.dart';
+import '../../../widgets/dpad_focusable.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
@@ -19,6 +21,7 @@ import '../../../core/utils/reduced_motion.dart';
 import '../../../core/utils/seeded_random.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/text_limits.dart';
 
 /// Turn-based multiplayer vocabulary quiz for two players on the same device.
 ///
@@ -221,55 +224,73 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
                   icon: const Icon(Icons.close_rounded),
                   onPressed: () => context.popOrGo('/games'),
                 ),
-                const Spacer(),
-                Flexible(
+                // All the middle, centred: beside two Spacers the title had a
+                // third of it and was cut short at the largest Font Size.
+                Expanded(
                   child: FitText(
                     _t(context).mqTitle,
                     maxLines: 1,
+                    textAlign: TextAlign.center,
                     style: AppTypography.titleLarge.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
                   ),
                 ),
-                const Spacer(),
                 const SizedBox(width: 48),
               ],
             ),
 
             const SizedBox(height: 32),
 
-            // Player avatars
-            Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Flexible: two setup cards plus the VS badge are wider
-                    // than a phone once the names inside them grow.
-                    Flexible(
-                      child: _PlayerSetupCard(
-                        controller: _player1Controller,
-                        playerNum: 1,
-                        color: AppColors.info,
-                        emoji: '🔵',
-                      ),
-                    ),
-                    const SizedBox(width: 24),
-                    Text(
+            // Player avatars: side by side where both cards fit whole, one
+            // above the other where they do not. Squeezed beside each other
+            // on a phone, "Player 1" in an empty name field was cut to
+            // "Pla…" (3 Nov).
+            LayoutBuilder(
+                  builder: (context, box) {
+                    final card = _PlayerSetupCard.widthFor(context);
+                    final vs = Text(
                       'VS',
                       style: AppTypography.displaySmall.copyWith(
                         fontWeight: FontWeight.w900,
                         color: HCColor.of(context).textSecondary,
                       ),
-                    ),
-                    const SizedBox(width: 24),
-                    Flexible(
-                      child: _PlayerSetupCard(
-                        controller: _player2Controller,
-                        playerNum: 2,
-                        color: AppColors.error,
-                        emoji: '🔴',
-                      ),
-                    ),
-                  ],
+                    );
+                    final first = _PlayerSetupCard(
+                      controller: _player1Controller,
+                      playerNum: 1,
+                      color: AppColors.info,
+                      emoji: '🔵',
+                    );
+                    final second = _PlayerSetupCard(
+                      controller: _player2Controller,
+                      playerNum: 2,
+                      color: AppColors.error,
+                      emoji: '🔴',
+                    );
+                    final vsWidth = MediaQuery.textScalerOf(context).scale(36) * 1.6;
+                    if (box.maxWidth < 2 * card + 48 + vsWidth) {
+                      return Column(
+                        children: [
+                          first,
+                          const SizedBox(height: 8),
+                          vs,
+                          const SizedBox(height: 8),
+                          second,
+                        ],
+                      );
+                    }
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Flexible(child: first),
+                        const SizedBox(width: 24),
+                        vs,
+                        const SizedBox(width: 24),
+                        Flexible(child: second),
+                      ],
+                    );
+                  },
                 )
                 .animate()
                 .fadeIn(duration: 600.ms)
@@ -305,7 +326,11 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
                           padding:
                               const EdgeInsets.symmetric(horizontal: 4),
                           child: ChoiceChip(
-                          label: Text('$count'),
+                          label: Text(
+                            '$count',
+                            semanticsLabel:
+                                '$count ${_t(context).mqRoundsPerPlayer}',
+                          ),
                           selected: isSelected,
                           onSelected: (_) =>
                               setState(() => _roundsPerPlayer = count),
@@ -328,7 +353,7 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
             const SizedBox(height: 40),
 
             // Start button
-            SizedBox(
+            CappedWidth(child: SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed: _startGame,
@@ -345,7 +370,7 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
                       ),
                     ),
                   ),
-                )
+                ))
                 .animate(delay: 400.ms)
                 .fadeIn(duration: 400.ms)
                 .slideY(begin: 0.2),
@@ -365,7 +390,7 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
     final color = isP1 ? AppColors.info : AppColors.error;
     final emoji = isP1 ? '🔵' : '🔴';
 
-    return GestureDetector(
+    return Semantics(container: true, button: true, child: DpadFocusable(onActivate: _startQuestion, child: GestureDetector(
       onTap: _startQuestion,
       child: Container(
         color: color.withValues(alpha: 0.08),
@@ -373,16 +398,18 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(emoji, style: const TextStyle(fontSize: 64))
-                  .animate(
-                    key: motionKey(context, 'turn-emoji'),
-                    onPlay: motionLoop(context, reverse: true),
-                  )
-                  .scale(
-                    begin: const Offset(1, 1),
-                    end: const Offset(1.2, 1.2),
-                    duration: 800.ms,
-                  ),
+              ExcludeSemantics(
+                child: Text(emoji, style: const TextStyle(fontSize: 64))
+                    .animate(
+                      key: motionKey(context, 'turn-emoji'),
+                      onPlay: motionLoop(context, reverse: true),
+                    )
+                    .scale(
+                      begin: const Offset(1, 1),
+                      end: const Offset(1.2, 1.2),
+                      duration: 800.ms,
+                    ),
+              ),
               const SizedBox(height: 16),
               Text(
                 _t(context).mqTurn(name),
@@ -427,7 +454,7 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
           ),
         ),
       ),
-    );
+    )));
   }
 
   // ─── Playing Phase ────────────────────────────────────
@@ -458,11 +485,11 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
                   ),
                   child: Text(
                     '${isP1 ? "🔵" : "🔴"} $playerName',
+                    semanticsLabel: playerName,
                     style: AppTypography.labelMedium.copyWith(
                       fontWeight: FontWeight.w700,
                       color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.15)),
                     ),
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ),
@@ -488,6 +515,7 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
                   fit: BoxFit.scaleDown,
                   child: Text(
                     '$_timeRemaining',
+                    semanticsLabel: _t(context).secondsLeftLabel(_timeRemaining),
                     style: AppTypography.titleLarge.copyWith(
                       fontWeight: FontWeight.w900,
                       color: _timeRemaining <= 3
@@ -547,85 +575,12 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
 
           const SizedBox(height: 24),
 
-          // Answer Options (responsive grid).
-          // shrinkWrap + NeverScrollableScrollPhysics means the GridView sizes
-          // itself to its content — no Expanded needed (and Expanded would
-          // break the parent OverflowSafeBody's scroll wrapper at large scale).
-          // childAspectRatio shrinks as text scales up so cells stay tall
-          // enough to hold the scaled label text.
-          GridView.count(
-            crossAxisCount: context.responsiveTier<int>(
-              phone: 2,
-              tablet: 2,
-              large: 3,
-              xl: 4,
-            ),
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio:
-                (2.2 / MediaQuery.textScalerOf(context).scale(1.0)).clamp(
-                  1.2,
-                  2.2,
-                ),
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            children: List.generate(question.options.length, (idx) {
-              final option = question.options[idx];
-              final isCorrect = idx == question.correctIndex;
-              final isSelected = _selectedAnswer == idx;
-
-              Color bgColor = HCColor.of(context).surface;
-              Color borderColor = AppColors.border;
-              Color textColor = HCColor.of(context).textPrimary;
-
-              if (_answered) {
-                if (isCorrect) {
-                  bgColor = AppColors.success.withValues(alpha: 0.15);
-                  borderColor = AppColors.success;
-                  textColor = HCColor.of(
-                    context,
-                  ).readableOver(AppColors.success, bgColor);
-                } else if (isSelected && !isCorrect) {
-                  bgColor = AppColors.error.withValues(alpha: 0.15);
-                  borderColor = AppColors.error;
-                  textColor = HCColor.of(
-                    context,
-                  ).readableOver(AppColors.error, bgColor);
-                }
-              } else if (isSelected) {
-                bgColor = color.withValues(alpha: 0.1);
-                borderColor = color;
-              }
-
-              return GestureDetector(
-                onTap: _answered ? null : () => _selectAnswer(idx),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 250),
-                  decoration: BoxDecoration(
-                    color: bgColor,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: borderColor, width: 2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: borderColor.withValues(alpha: 0.15),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    option,
-                    style: AppTypography.titleMedium.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: textColor,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ).animate(delay: (100 * idx).ms).fadeIn().slideY(begin: 0.1);
-            }),
-          ),
+          // Answer Options: rows of cells as tall as the words in them. They
+          // were a shrink-wrapped GridView, which cannot tell OverflowSafeBody's
+          // IntrinsicHeight its height: from the Large Font Size up, the whole
+          // screen failed to lay out as the first question opened.
+          ..._answerRows(question, color),
+          const SizedBox(height: 16),
 
           // Score bar
           Container(
@@ -639,20 +594,26 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
               children: [
                 Flexible(child: Text(
                   '🔵 ${_player1Controller.text}: $_player1Score',
+                      semanticsLabel:
+                          '${_player1Controller.text}: $_player1Score',
                   style: AppTypography.labelMedium.copyWith(
                     fontWeight: FontWeight.w700,
                     color: HCColor.of(context).infoText,
                   ),
-  maxLines: 2,
-  overflow: TextOverflow.ellipsis,
 )),
-                Text(
+                const SizedBox(width: 8),
+                // Each within its half: the second name alone ran past the
+                // edge at the largest Font Size.
+                Flexible(child: Text(
                   '🔴 ${_player2Controller.text}: $_player2Score',
+                      semanticsLabel:
+                          '${_player2Controller.text}: $_player2Score',
+                  textAlign: TextAlign.end,
                   style: AppTypography.labelMedium.copyWith(
                     fontWeight: FontWeight.w700,
                     color: HCColor.of(context).errorText,
                   ),
-                ),
+                )),
               ],
             ),
           ),
@@ -685,7 +646,8 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
           ),
           const SizedBox(height: 16),
           Text(
-            isCorrect ? 'Correct! 🎉' : 'Wrong! 😅',
+            isCorrect ? '${_t(context).correct} 🎉' : '${_t(context).mqWrong} 😅',
+            semanticsLabel: isCorrect ? _t(context).correct : _t(context).mqWrong,
             style: AppTypography.displaySmall.copyWith(
               fontWeight: FontWeight.w800,
               color: isCorrect ? HCColor.of(context).successText : HCColor.of(context).errorText,
@@ -694,7 +656,7 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
           const SizedBox(height: 8),
           if (!isCorrect)
             Text(
-              'Answer: ${question.options[question.correctIndex]}',
+              _t(context).mqAnswerIs(question.options[question.correctIndex]),
               style: AppTypography.titleMedium.copyWith(
                 color: HCColor.of(context).textSecondary,
               ),
@@ -702,7 +664,7 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
           const SizedBox(height: 8),
           if (isCorrect)
             Text(
-              '+${_calculatePoints()} points!',
+              _t(context).mqPlusPoints(_calculatePoints()),
               style: AppTypography.titleLarge.copyWith(
                 fontWeight: FontWeight.w800,
                 color: color,
@@ -715,12 +677,111 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
 
   // ─── Game Over ────────────────────────────────────────
 
+  List<Widget> _answerRows(_QuizQuestion question, Color color) {
+    final columns = context.responsiveTier<int>(
+      phone: 2,
+      tablet: 2,
+      large: 3,
+      xl: 4,
+    );
+    return [
+      for (var start = 0; start < question.options.length; start += columns) ...[
+        if (start > 0) const SizedBox(height: 12),
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (var c = 0; c < columns; c++) ...[
+                if (c > 0) const SizedBox(width: 12),
+                Expanded(
+                  child: start + c < question.options.length
+                      ? _answerCell(question, start + c, color)
+                      : const SizedBox.shrink(),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    ];
+  }
+
+  /// One answer: a real button for a screen reader, a key and a controller, as
+  /// well as for a finger.
+  Widget _answerCell(_QuizQuestion question, int idx, Color color) {
+    final option = question.options[idx];
+    final isCorrect = idx == question.correctIndex;
+    final isSelected = _selectedAnswer == idx;
+
+    Color bgColor = HCColor.of(context).surface;
+    Color borderColor = AppColors.border;
+    Color textColor = HCColor.of(context).textPrimary;
+
+    if (_answered) {
+      if (isCorrect) {
+        bgColor = AppColors.success.withValues(alpha: 0.15);
+        borderColor = AppColors.success;
+        textColor = HCColor.of(
+          context,
+        ).readableOver(AppColors.success, bgColor);
+      } else if (isSelected && !isCorrect) {
+        bgColor = AppColors.error.withValues(alpha: 0.15);
+        borderColor = AppColors.error;
+        textColor = HCColor.of(
+          context,
+        ).readableOver(AppColors.error, bgColor);
+      }
+    } else if (isSelected) {
+      bgColor = color.withValues(alpha: 0.1);
+      borderColor = color;
+    }
+
+    return Semantics(
+      container: true,
+      button: true,
+      enabled: !_answered,
+      selected: isSelected,
+      child: DpadFocusable(
+        onActivate: _answered ? null : () => _selectAnswer(idx),
+        child: GestureDetector(
+          onTap: _answered ? null : () => _selectAnswer(idx),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            constraints: const BoxConstraints(minHeight: 72),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: borderColor, width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: borderColor.withValues(alpha: 0.15),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              option,
+              style: AppTypography.titleMedium.copyWith(
+                fontWeight: FontWeight.w700,
+                color: textColor,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ),
+    ).animate(delay: (100 * idx).ms).fadeIn().slideY(begin: 0.1);
+  }
+
   Widget _buildGameOver() {
     final p1Name = _player1Controller.text;
     final p2Name = _player2Controller.text;
     final isDraw = _player1Score == _player2Score;
     final p1Wins = _player1Score > _player2Score;
-    final winnerName = isDraw ? 'Draw!' : (p1Wins ? p1Name : p2Name);
+    final winnerName = p1Wins ? p1Name : p2Name;
     final winnerEmoji = isDraw ? '🤝' : (p1Wins ? '🔵' : '🔴');
     final winnerColor = isDraw
         ? AppColors.warning
@@ -744,7 +805,7 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
             ),
             const SizedBox(height: 16),
             Text(
-              isDraw ? _t(context).mqDraw : '$winnerName Wins!',
+              isDraw ? _t(context).mqDraw : _t(context).mqWins(winnerName),
               style: AppTypography.displayMedium.copyWith(
                 fontWeight: FontWeight.w900,
                 color: winnerColor,
@@ -789,7 +850,7 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
                   child: OutlinedButton.icon(
                     onPressed: () => context.popOrGo('/games'),
                     icon: const Icon(Icons.home_rounded),
-                    label: const Text('Home'),
+                    label: Text(_t(context).mqHome),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
@@ -1051,6 +1112,10 @@ class _MultiplayerQuizScreenState extends ConsumerState<MultiplayerQuizScreen>
 // ─── Supporting Widgets ─────────────────────────────────
 
 class _PlayerSetupCard extends StatelessWidget {
+  /// How wide a card is at the reader's Font Size.
+  static double widthFor(BuildContext context) =>
+      150 * MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.5);
+
   final TextEditingController controller;
   final int playerNum;
   final Color color;
@@ -1066,7 +1131,9 @@ class _PlayerSetupCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 150,
+      // As wide as the name grows (the Flexible around it still fits a
+      // phone): at a fixed 150 the largest Font Size cut "Manlalaro 1".
+      width: widthFor(context),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
@@ -1075,10 +1142,12 @@ class _PlayerSetupCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 40)),
+          ExcludeSemantics(child: Text(emoji, style: const TextStyle(fontSize: 40))),
           const SizedBox(height: 8),
           TextField(
             controller: controller,
+            maxLength: TextLimits.playerName,
+            buildCounter: TextLimits.counter,
             textAlign: TextAlign.center,
             style: AppTypography.titleMedium.copyWith(
               fontWeight: FontWeight.w700,
@@ -1148,8 +1217,8 @@ class _PlayerResultCard extends StatelessWidget {
         ),
         child: Column(
           children: [
-            if (isWinner) const Text('👑', style: TextStyle(fontSize: 28)),
-            Text(emoji, style: const TextStyle(fontSize: 36)),
+            if (isWinner) const ExcludeSemantics(child: Text('👑', style: TextStyle(fontSize: 28))),
+            ExcludeSemantics(child: Text(emoji, style: const TextStyle(fontSize: 36))),
             const SizedBox(height: 8),
             Text(
               name,
@@ -1167,7 +1236,7 @@ class _PlayerResultCard extends StatelessWidget {
               ),
             ),
             Text(
-              'points',
+              _t(context).mqPoints,
               style: AppTypography.labelSmall.copyWith(
                 color: HCColor.of(context).textSecondary,
               ),
@@ -1175,11 +1244,11 @@ class _PlayerResultCard extends StatelessWidget {
             const SizedBox(height: 8),
             const Divider(),
             const SizedBox(height: 4),
-            _resultRow(context, '✅', 'Correct', '$correct/$total'),
+            _resultRow(context, '✅', _t(context).sumCorrect, '$correct/$total'),
             _resultRow(
               context,
               '🎯',
-              'Accuracy',
+              _t(context).accuracy,
               '${total > 0 ? (correct / total * 100).toStringAsFixed(0) : 0}%',
             ),
             _resultRow(context, '🔥', _t(context).mqBestStreak, '$bestStreak'),
@@ -1202,6 +1271,7 @@ class _PlayerResultCard extends StatelessWidget {
         children: [
           Flexible(child: Text(
             '$emoji $label',
+            semanticsLabel: label,
             style: AppTypography.bodySmall.copyWith(
               color: HCColor.of(context).textSecondary,
             ),

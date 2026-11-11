@@ -1,5 +1,6 @@
 import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
+import '../../../core/widgets/app_bar_title.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
@@ -118,12 +119,10 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
               children: [
                 const Icon(Icons.store_rounded, size: 24),
                 const SizedBox(width: 8),
+                // Two lines and smaller before it is cut: "Tindahan ng
+                // Bituin" lost its end beside the stars on a phone (3 Nov).
                 Flexible(
-                  child: Text(
-                    AppLocalizations.of(context)!.starShop,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  child: AppBarTitle(AppLocalizations.of(context)!.starShop),
                 ),
               ],
             ),
@@ -136,6 +135,9 @@ class _ShopScreenState extends ConsumerState<ShopScreen>
                       size: 18, color: HCColor.of(context).graphic(AppColors.warning)),
                   label: Text(
                     '$balance',
+                    // The star icon is silent: "12" alone meant nothing.
+                    semanticsLabel:
+                        '$balance ${AppLocalizations.of(context)!.stars}',
                     style: AppTypography.labelLarge.copyWith(
                       color: HCColor.of(context).warningText,
                       fontWeight: FontWeight.w800,
@@ -755,161 +757,167 @@ class _ShopItemCard extends StatelessWidget {
     final adviceLine = _ShopScreenState.adviceText(context, advice);
     final recommendedLine = recommended ? '${l10n.recommendedForYou}. ' : '';
 
-    return Semantics(
-      button: true,
-      label: '${item.localizedName(isFilipino)}, '
-          '${item.localizedDescription(isFilipino)}, $recommendedLine$status'
-          '${adviceLine == null ? '' : '. $adviceLine'}',
-      child: Card(
-        elevation: 2,
-        clipBehavior: Clip.antiAlias,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(
-            color: isEquipped
-                ? AppColors.primary
-                : owned
-                    ? AppColors.success
-                    : canAfford
-                        ? item.color.withValues(alpha: 0.5)
-                        : AppColors.border,
-            width: isEquipped ? 2.5 : owned ? 2 : 1,
-          ),
+    return Card(
+      elevation: 2,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: isEquipped
+              ? AppColors.primary
+              : owned
+                  ? AppColors.success
+                  : canAfford
+                      ? item.color.withValues(alpha: 0.5)
+                      : AppColors.border,
+          width: isEquipped ? 2.5 : owned ? 2 : 1,
         ),
-        color: isEquipped
-            ? item.color.withValues(alpha: 0.25)
-            : owned
-                ? item.color.withValues(alpha: 0.15)
-                : HCColor.of(context).surface,
+      ),
+      color: isEquipped
+          ? item.color.withValues(alpha: 0.25)
+          : owned
+              ? item.color.withValues(alpha: 0.15)
+              : HCColor.of(context).surface,
+      // The label and the press on one node, the Card's: it merges
+      // what is inside it (the InkWell's press and focus) under this
+      // label. Around the Card, the label sat on a node with nothing
+      // to press.
+      child: Semantics(
+        button: true,
+        label: '${item.localizedName(isFilipino)}, '
+            '${item.localizedDescription(isFilipino)}, $recommendedLine$status'
+            '${adviceLine == null ? '' : '. $adviceLine'}',
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(20),
-          child: Stack(
-            children: [
-              // Positioned.fill, not a bare child: a Stack lays its
-              // non-positioned children out *loosely* and then aligns them to
-              // its own `alignment`, which defaults to the top start. The
-              // padded Column therefore took only the width of its widest word
-              // and was parked against the left edge of a 315 dp card — the
-              // emoji, the name and the price all hugging one side of an
-              // otherwise empty card, vertically centred because the Column
-              // still filled the height. Filling the Stack gives the Column the
-              // card's full width back, which is all its own
-              // `CrossAxisAlignment.center` ever needed to centre the contents.
-              Positioned.fill(
-                child: Padding(
-                  // The corner markers are drawn over this box, so when one is
-                  // there the content starts below it. Without the inset a
-                  // picture that fills its card slides straight under the
-                  // Recommended thumb — the two shelves that carry advice
-                  // (Effects under Reduced Motion, Sounds with sound off) are
-                  // exactly the ones an accessibility preset turns on.
-                  padding: EdgeInsets.fromLTRB(
-                    12,
-                    adviceLine != null || recommended ? 30 : 12,
-                    12,
-                    12,
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Emoji, drawn at whatever size the space left over by
-                      // the words allows.
-                      //
-                      // Flexible gives the name and the price first claim on
-                      // the card — for a pre-literate learner the picture is
-                      // the product, but a picture nobody can price is worse —
-                      // and the leftover then sets a real `fontSize` rather
-                      // than a `FittedBox` scale. Android's colour emoji are
-                      // bitmaps, so a transform that blows a 48 dp glyph up to
-                      // fill a card upscales a bitmap and softens it; asking
-                      // for the size outright renders it sharp.
-                      Flexible(
-                        child: LayoutBuilder(
-                          builder: (context, box) {
-                            final room = box.maxHeight.isFinite
-                                ? box.maxHeight
-                                : 64.0;
-                            // 1.25 covers the emoji face's line height; the
-                            // width bound keeps a short, wide cell (landscape,
-                            // five columns) from asking for a glyph wider than
-                            // the card.
-                            final size = (room / 1.25)
-                                .clamp(20.0, box.maxWidth.isFinite
-                                    ? box.maxWidth.clamp(20.0, 120.0)
-                                    : 120.0);
-                            return Text(
-                              item.emoji,
-                              // The room was measured *after* the text scaler
-                              // had already stretched the words below, so
-                              // scaling this size again would spend the same
-                              // font setting twice and overflow the card.
-                              textScaler: TextScaler.noScaling,
-                              style: TextStyle(
-                                fontSize: size,
-                                color: owned || canAfford
-                                    ? null
-                                    : HCColor.of(context).textHint,
-                              ),
-                            );
-                          },
+          child: ExcludeSemantics(
+            child: Stack(
+              children: [
+                // Positioned.fill, not a bare child: a Stack lays its
+                // non-positioned children out *loosely* and then aligns them to
+                // its own `alignment`, which defaults to the top start. The
+                // padded Column therefore took only the width of its widest word
+                // and was parked against the left edge of a 315 dp card — the
+                // emoji, the name and the price all hugging one side of an
+                // otherwise empty card, vertically centred because the Column
+                // still filled the height. Filling the Stack gives the Column the
+                // card's full width back, which is all its own
+                // `CrossAxisAlignment.center` ever needed to centre the contents.
+                Positioned.fill(
+                  child: Padding(
+                    // The corner markers are drawn over this box, so when one is
+                    // there the content starts below it. Without the inset a
+                    // picture that fills its card slides straight under the
+                    // Recommended thumb — the two shelves that carry advice
+                    // (Effects under Reduced Motion, Sounds with sound off) are
+                    // exactly the ones an accessibility preset turns on.
+                    padding: EdgeInsets.fromLTRB(
+                      12,
+                      adviceLine != null || recommended ? 30 : 12,
+                      12,
+                      12,
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Emoji, drawn at whatever size the space left over by
+                        // the words allows.
+                        //
+                        // Flexible gives the name and the price first claim on
+                        // the card — for a pre-literate learner the picture is
+                        // the product, but a picture nobody can price is worse —
+                        // and the leftover then sets a real `fontSize` rather
+                        // than a `FittedBox` scale. Android's colour emoji are
+                        // bitmaps, so a transform that blows a 48 dp glyph up to
+                        // fill a card upscales a bitmap and softens it; asking
+                        // for the size outright renders it sharp.
+                        Flexible(
+                          child: LayoutBuilder(
+                            builder: (context, box) {
+                              final room = box.maxHeight.isFinite
+                                  ? box.maxHeight
+                                  : 64.0;
+                              // 1.25 covers the emoji face's line height; the
+                              // width bound keeps a short, wide cell (landscape,
+                              // five columns) from asking for a glyph wider than
+                              // the card.
+                              final size = (room / 1.25)
+                                  .clamp(20.0, box.maxWidth.isFinite
+                                      ? box.maxWidth.clamp(20.0, 120.0)
+                                      : 120.0);
+                              return Text(
+                                item.emoji,
+                                // The room was measured *after* the text scaler
+                                // had already stretched the words below, so
+                                // scaling this size again would spend the same
+                                // font setting twice and overflow the card.
+                                textScaler: TextScaler.noScaling,
+                                style: TextStyle(
+                                  fontSize: size,
+                                  color: owned || canAfford
+                                      ? null
+                                      : HCColor.of(context).textHint,
+                                ),
+                              );
+                            },
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      // Name
-                      // Item names split as "Flamin / go" and "Unicor / n" in
-                      // the fixed grid cell.
-                      FitText(
-                        item.localizedName(isFilipino),
-                        style: AppTypography.titleSmall.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: isEquipped
-                              ? HCColor.of(context).primary
-                              : owned
-                                  ? HCColor.of(context).successText
-                                  : HCColor.of(context).textPrimary,
+                        const SizedBox(height: 8),
+                        // Name
+                        // Item names split as "Flamin / go" and "Unicor / n" in
+                        // the fixed grid cell.
+                        FitText(
+                          item.localizedName(isFilipino),
+                          style: AppTypography.titleSmall.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: isEquipped
+                                ? HCColor.of(context).primary
+                                : owned
+                                    ? HCColor.of(context).successText
+                                    : HCColor.of(context).textPrimary,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                      // Status badge
-                      if (isEquipped)
-                        ShopBadge.equipped(context)
-                      else if (owned)
-                        ShopBadge.owned(context)
-                      else
-                        ShopBadge.price(
-                          context,
-                          cost: item.cost,
-                          canAfford: canAfford,
-                        ),
-                    ],
+                        const SizedBox(height: 8),
+                        // Status badge
+                        if (isEquipped)
+                          ShopBadge.equipped(context)
+                        else if (owned)
+                          ShopBadge.owned(context)
+                        else
+                          ShopBadge.price(
+                            context,
+                            cost: item.cost,
+                            canAfford: canAfford,
+                          ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              // Corner markers last so they paint over the card body and their
-              // tooltips stay reachable.
-              if (adviceLine != null)
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Tooltip(
-                    message: adviceLine,
-                    child: Icon(Icons.info_outline_rounded,
-                        size: 18, color: HCColor.of(context).graphic(AppColors.info)),
+                // Corner markers last so they paint over the card body and their
+                // tooltips stay reachable.
+                if (adviceLine != null)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Tooltip(
+                      message: adviceLine,
+                      child: Icon(Icons.info_outline_rounded,
+                          size: 18, color: HCColor.of(context).graphic(AppColors.info)),
+                    ),
                   ),
-                ),
-              if (recommended)
-                Positioned(
-                  top: 8,
-                  left: 8,
-                  child: Tooltip(
-                    message: l10n.recommendedForYou,
-                    child: Icon(Icons.thumb_up_rounded,
-                        size: 16, color: HCColor.of(context).graphic(AppColors.success)),
+                if (recommended)
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: Tooltip(
+                      message: l10n.recommendedForYou,
+                      child: Icon(Icons.thumb_up_rounded,
+                          size: 16, color: HCColor.of(context).graphic(AppColors.success)),
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

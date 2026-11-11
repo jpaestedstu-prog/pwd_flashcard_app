@@ -1667,7 +1667,7 @@ abstract class AppLocalizations {
   /// No description provided for @dragInstruction.
   ///
   /// In en, this message translates to:
-  /// **'Drag the English word to its Filipino match!'**
+  /// **'Drag the English word to its Filipino match — or tap it, then tap the match!'**
   String get dragInstruction;
 
   /// No description provided for @tracing.
@@ -3775,7 +3775,7 @@ abstract class AppLocalizations {
   /// No description provided for @gameDescDragAndDrop.
   ///
   /// In en, this message translates to:
-  /// **'Drag each word to its matching picture!'**
+  /// **'Match each English word to its Filipino word!'**
   String get gameDescDragAndDrop;
 
   /// No description provided for @gameDescFlashcardQuiz.
@@ -3910,6 +3910,12 @@ abstract class AppLocalizations {
   /// **'{game}  •  {current}/{total}'**
   String gameRoundHeader(String game, int current, int total);
 
+  /// Spoken for the game title bar (shown as gameRoundHeader).
+  ///
+  /// In en, this message translates to:
+  /// **'{game}, round {current} of {total}'**
+  String gameRoundHeaderSpoken(String game, int current, int total);
+
   /// No description provided for @findPictureFor.
   ///
   /// In en, this message translates to:
@@ -4000,6 +4006,18 @@ abstract class AppLocalizations {
   /// **'Answer: {answer}'**
   String answerSemantics(String answer);
 
+  /// Spoken for the Sentence Builder sentence; the gap is said as sbBlankWord.
+  ///
+  /// In en, this message translates to:
+  /// **'Sentence: {sentence}'**
+  String sbSentenceSemantics(String sentence);
+
+  /// No description provided for @sbBlankWord.
+  ///
+  /// In en, this message translates to:
+  /// **'blank'**
+  String get sbBlankWord;
+
   /// No description provided for @correctAnswerSuffix.
   ///
   /// In en, this message translates to:
@@ -4030,11 +4048,11 @@ abstract class AppLocalizations {
   /// **'Picture of {word}'**
   String pictureOfSemantics(String word);
 
-  /// No description provided for @whichWordMatchesSemantics.
+  /// No description provided for @whichWordMatchesPicture.
   ///
   /// In en, this message translates to:
-  /// **'Which word matches this picture? {word}'**
-  String whichWordMatchesSemantics(String word);
+  /// **'Which word matches this picture?'**
+  String get whichWordMatchesPicture;
 
   /// No description provided for @firstLetterQuestion.
   ///
@@ -4054,22 +4072,17 @@ abstract class AppLocalizations {
   /// **'Flashcard: {english}, {filipino}, category {category}. Swipe right for I Know, left for Still Learning'**
   String flashcardSemantics(String english, String filipino, String category);
 
-  /// No description provided for @flashcardProgressSemantics.
-  ///
-  /// In en, this message translates to:
-  /// **'Card {current} of {total}, {known} known, {learning} still learning'**
-  String flashcardProgressSemantics(
-    int current,
-    int total,
-    int known,
-    int learning,
-  );
-
   /// No description provided for @draggableWordSemantics.
   ///
   /// In en, this message translates to:
-  /// **'Draggable word: {word}, drag to matching Filipino word'**
+  /// **'{word}. Press to pick it up, or drag it to its Filipino match'**
   String draggableWordSemantics(String word);
+
+  /// A word the learner picked up by pressing it rather than dragging it — keys, a switch, a controller, gaze or a screen reader.
+  ///
+  /// In en, this message translates to:
+  /// **'{word}, picked up. Now press its Filipino match'**
+  String draggableWordPicked(String word);
 
   /// No description provided for @dropTargetMatched.
   ///
@@ -4095,17 +4108,17 @@ abstract class AppLocalizations {
   /// **'Slot {position}: empty'**
   String slotEmpty(int position);
 
-  /// No description provided for @letterAlreadyUsed.
+  /// A Spelling Bee tile already placed. The position tells two tiles with the same letter apart.
   ///
   /// In en, this message translates to:
-  /// **'Letter {letter}, already used'**
-  String letterAlreadyUsed(String letter);
+  /// **'Letter {letter}, {position} of {total}, already used'**
+  String letterAlreadyUsed(String letter, int position, int total);
 
-  /// No description provided for @letterTapToPlace.
+  /// A Spelling Bee tile. A word with a letter twice had two tiles that said exactly the same.
   ///
   /// In en, this message translates to:
-  /// **'Letter {letter}, tap to place'**
-  String letterTapToPlace(String letter);
+  /// **'Letter {letter}, {position} of {total}, tap to place'**
+  String letterTapToPlace(String letter, int position, int total);
 
   /// No description provided for @playSoundEnglish.
   ///
@@ -4124,6 +4137,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Round {current} of {total}, score {score}'**
   String roundScoreSemantics(int current, int total, int score);
+
+  /// Spoken for the star score chip at the top of a game (the chip shows only the number).
+  ///
+  /// In en, this message translates to:
+  /// **'Score: {score}'**
+  String gameScoreChip(int score);
 
   /// No description provided for @spelledSoFar.
   ///
@@ -4185,6 +4204,12 @@ abstract class AppLocalizations {
   /// **'Drop target: {filipino}, empty, drop English match here'**
   String dropTargetEmptyHint(String filipino);
 
+  /// A Filipino row while a word is picked up: pressing it places the word there.
+  ///
+  /// In en, this message translates to:
+  /// **'{filipino}. Press to put {word} here'**
+  String dropTargetPlace(String filipino, String word);
+
   /// No description provided for @memoryCardMatched.
   ///
   /// In en, this message translates to:
@@ -4197,11 +4222,11 @@ abstract class AppLocalizations {
   /// **'Card showing: {word}'**
   String memoryCardShowing(String word);
 
-  /// No description provided for @memoryCardFaceDown.
+  /// Screen-reader label of an unturned card; the number tells one card from the next, which otherwise all said the same.
   ///
   /// In en, this message translates to:
-  /// **'Face-down card, tap to flip'**
-  String get memoryCardFaceDown;
+  /// **'Face-down card {number}, tap to flip'**
+  String memoryCardFaceDown(int number);
 
   /// No description provided for @breakButton.
   ///
@@ -4944,7 +4969,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingRoutineTitle.
   ///
   /// In en, this message translates to:
-  /// **'Routine'**
+  /// **'Show on Home'**
   String get settingRoutineTitle;
 
   /// No description provided for @settingRoutineOnDesc.
@@ -7826,6 +7851,18 @@ abstract class AppLocalizations {
   /// **'{count} selected'**
   String gmSelected(int count);
 
+  /// No description provided for @gmSelectSeveral.
+  ///
+  /// In en, this message translates to:
+  /// **'Select several'**
+  String get gmSelectSeveral;
+
+  /// No description provided for @seasonalBannerHide.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide the {event} banner'**
+  String seasonalBannerHide(String event);
+
   /// No description provided for @gmRemoveCount.
   ///
   /// In en, this message translates to:
@@ -8249,7 +8286,7 @@ abstract class AppLocalizations {
   /// No description provided for @homePlayerProfile.
   ///
   /// In en, this message translates to:
-  /// **'Player Profile'**
+  /// **'My Profile'**
   String get homePlayerProfile;
 
   /// No description provided for @homeMyDay.
@@ -8534,6 +8571,18 @@ abstract class AppLocalizations {
   /// **'Collect! 🌟'**
   String get homeCollectStar;
 
+  /// No description provided for @rewardStarsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 star} other{{count} stars}}'**
+  String rewardStarsCount(int count);
+
+  /// No description provided for @rewardCollected.
+  ///
+  /// In en, this message translates to:
+  /// **'collected'**
+  String get rewardCollected;
+
   /// No description provided for @homeDailyChallengeChip.
   ///
   /// In en, this message translates to:
@@ -8591,7 +8640,7 @@ abstract class AppLocalizations {
   /// No description provided for @homeLevelSemantics.
   ///
   /// In en, this message translates to:
-  /// **'Player Profile. Level {level} {title}, {xp} XP total, {next}. Opens your stats, rewards and achievements.'**
+  /// **'My Profile. Level {level} {title}, {xp} XP total, {next}. Opens your stats, rewards and achievements.'**
   String homeLevelSemantics(int level, String title, int xp, String next);
 
   /// No description provided for @homeXpToLevel.
@@ -8894,12 +8943,6 @@ abstract class AppLocalizations {
   /// **'{english}, {category} category. Tap to see details.'**
   String viewerFrontSemantics(String english, String category);
 
-  /// No description provided for @viewerButton.
-  ///
-  /// In en, this message translates to:
-  /// **'{label} button'**
-  String viewerButton(String label);
-
   /// No description provided for @viewerGazeStarting.
   ///
   /// In en, this message translates to:
@@ -8936,17 +8979,23 @@ abstract class AppLocalizations {
   /// **'⭐ {count} stars collected!'**
   String progStarsCollected(int count);
 
-  /// No description provided for @progAchievementUnlocked.
+  /// What a screen reader says for the achievement badges on Progress, in place of each badge: the earned ones by name.
   ///
   /// In en, this message translates to:
-  /// **'{title} achievement, unlocked'**
-  String progAchievementUnlocked(String title);
+  /// **'Earned: {names}.'**
+  String progBadgesSpoken(String names);
 
-  /// No description provided for @progAchievementLocked.
+  /// No description provided for @progBadgesSpokenNone.
   ///
   /// In en, this message translates to:
-  /// **'{title} achievement, locked'**
-  String progAchievementLocked(String title);
+  /// **'None earned yet.'**
+  String get progBadgesSpokenNone;
+
+  /// No description provided for @progBadgesSpokenLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} more to earn.'**
+  String progBadgesSpokenLeft(int count);
 
   /// No description provided for @progJustNow.
   ///
@@ -9013,6 +9062,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Word {index} of {total}'**
   String dcWordNofM(int index, int total);
+
+  /// The first-visit tour's page counter. It said "1 of 6" in English whatever the language.
+  ///
+  /// In en, this message translates to:
+  /// **'Step {current} of {total}'**
+  String obStepNofM(int current, int total);
+
+  /// Spoken for a card counter (shown as 3 / 12).
+  ///
+  /// In en, this message translates to:
+  /// **'Card {index} of {total}'**
+  String cardNofM(int index, int total);
+
+  /// Spoken for the Drag and Drop counter (shown as 3 / 5).
+  ///
+  /// In en, this message translates to:
+  /// **'{matched} of {total} matched'**
+  String ddMatchedOf(int matched, int total);
+
+  /// Spoken for a seconds timer (shown as 12s).
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 second} other{{count} seconds}}'**
+  String secondsCount(int count);
+
+  /// Spoken for a time with tenths of a second (shown as 12.5s).
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds} seconds'**
+  String secondsDecimal(String seconds);
+
+  /// Spoken for an hours value (shown as 2h).
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 hour} other{{count} hours}}'**
+  String hoursCount(int count);
+
+  /// The seasonal banner's countdown (it read "3d left", in English, which a voice says as "3 D left").
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 day left} other{{count} days left}}'**
+  String seasonDaysLeft(int count);
+
+  /// Spoken for a minutes value (shown as 12m).
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 minute} other{{count} minutes}}'**
+  String minutesCount(int count);
 
   /// No description provided for @dcListen.
   ///
@@ -9434,6 +9531,24 @@ abstract class AppLocalizations {
   /// **'Locked'**
   String get lpNodeLocked;
 
+  /// Spoken by a screen reader on a learning-path region: how far the learner is.
+  ///
+  /// In en, this message translates to:
+  /// **'{done} of {total} steps done'**
+  String lpStepsDone(int done, int total);
+
+  /// No description provided for @lpRegionsDone.
+  ///
+  /// In en, this message translates to:
+  /// **'{done} of {total} regions done'**
+  String lpRegionsDone(int done, int total);
+
+  /// Spoken after an educator tile name: how many new items wait (messages, alerts).
+  ///
+  /// In en, this message translates to:
+  /// **'{count} new'**
+  String proNewCount(int count);
+
   /// No description provided for @srEnglishWord.
   ///
   /// In en, this message translates to:
@@ -9607,6 +9722,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **', today'**
   String get calToday;
+
+  /// No description provided for @dcDayDone.
+  ///
+  /// In en, this message translates to:
+  /// **', challenge done'**
+  String get dcDayDone;
 
   /// No description provided for @calM3.
   ///
@@ -9949,12 +10070,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Set a deadline'**
   String get goalsDeadline;
-
-  /// No description provided for @goalsDaysShort.
-  ///
-  /// In en, this message translates to:
-  /// **'{days}d'**
-  String goalsDaysShort(int days);
 
   /// No description provided for @goalsCreate.
   ///
@@ -10801,12 +10916,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count} pts'**
   String lbPts(int count);
-
-  /// No description provided for @setProfileSemantics.
-  ///
-  /// In en, this message translates to:
-  /// **'Profile: {name}, {role}. Tap switch to change profile.'**
-  String setProfileSemantics(String name, String role);
 
   /// No description provided for @setNoProfile.
   ///
@@ -11725,6 +11834,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{minutes} minutes of notice'**
   String tlNotice(int minutes);
+
+  /// Screen-reader name of the slider that sets how many minutes of warning come before the lock; its value says the minutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Notice before the lock'**
+  String get tlNoticeLength;
 
   /// No description provided for @tlAlarm.
   ///
@@ -13787,7 +13902,7 @@ abstract class AppLocalizations {
   /// No description provided for @rcRestoreFailed.
   ///
   /// In en, this message translates to:
-  /// **'Something went wrong while restoring your profile: {error}'**
+  /// **'Your profile could not be restored: {error}'**
   String rcRestoreFailed(String error);
 
   /// No description provided for @rcTitle.
@@ -14399,7 +14514,7 @@ abstract class AppLocalizations {
   /// No description provided for @gpPractiseHelp.
   ///
   /// In en, this message translates to:
-  /// **'Press anything and hear what it does. Nothing in the app moves while practising.'**
+  /// **'Press anything to see and hear what it does. Nothing in the app moves while practising.'**
   String get gpPractiseHelp;
 
   /// No description provided for @gpEnable.
@@ -14465,7 +14580,7 @@ abstract class AppLocalizations {
   /// No description provided for @gpMoving.
   ///
   /// In en, this message translates to:
-  /// **'Moving between sections'**
+  /// **'Moving around'**
   String get gpMoving;
 
   /// No description provided for @gpAsk.
@@ -14477,8 +14592,20 @@ abstract class AppLocalizations {
   /// No description provided for @gpAskHelp.
   ///
   /// In en, this message translates to:
-  /// **'Left and right ask “Do you want to go to the Cards section?” — A for yes, B for no. Turn off to switch straight away.'**
+  /// **'L1 and R1 ask “Do you want to go to the Cards section?” — A for yes, B for no. Turn off to switch straight away.'**
   String get gpAskHelp;
+
+  /// No description provided for @gpLeftStick.
+  ///
+  /// In en, this message translates to:
+  /// **'Left joystick moves too'**
+  String get gpLeftStick;
+
+  /// No description provided for @gpLeftStickHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'The left joystick moves the highlight just like the D-pad. Turn it off if it gets knocked by accident.'**
+  String get gpLeftStickHelp;
 
   /// No description provided for @gpComfort.
   ///
@@ -14525,7 +14652,7 @@ abstract class AppLocalizations {
   /// No description provided for @gpHoldHelp.
   ///
   /// In en, this message translates to:
-  /// **'Holding up or down keeps stepping through items, instead of one press per step. Opening, going back and switching section never repeat.'**
+  /// **'Holding the D-pad, the left joystick, L2 or R2 keeps moving, instead of one press per step. Choosing, going back and switching section never repeat.'**
   String get gpHoldHelp;
 
   /// No description provided for @gpWait.
@@ -14561,7 +14688,7 @@ abstract class AppLocalizations {
   /// No description provided for @gpSwapHelp.
   ///
   /// In en, this message translates to:
-  /// **'Only if “yes” and “no” come out backwards — some controllers label the bottom button B rather than A.'**
+  /// **'Only if A and B work the wrong way round — A going back and B choosing. Some controllers label the bottom button B rather than A.'**
   String get gpSwapHelp;
 
   /// No description provided for @gpGuide.
@@ -14663,7 +14790,7 @@ abstract class AppLocalizations {
   /// No description provided for @gppLeave.
   ///
   /// In en, this message translates to:
-  /// **'Press L1 twice to leave.'**
+  /// **'Press B twice to leave.'**
   String get gppLeave;
 
   /// No description provided for @hfReasonSign.
@@ -15332,6 +15459,24 @@ abstract class AppLocalizations {
   /// **'Multiplayer Quiz'**
   String get mqTitle;
 
+  /// No description provided for @mqWrong.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong!'**
+  String get mqWrong;
+
+  /// No description provided for @mqAnswerIs.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer: {answer}'**
+  String mqAnswerIs(String answer);
+
+  /// No description provided for @mqPoints.
+  ///
+  /// In en, this message translates to:
+  /// **'points'**
+  String get mqPoints;
+
   /// No description provided for @mqStart.
   ///
   /// In en, this message translates to:
@@ -15899,7 +16044,7 @@ abstract class AppLocalizations {
   /// No description provided for @sqListenTl.
   ///
   /// In en, this message translates to:
-  /// **'Listen to this choice in Tagalog'**
+  /// **'Listen to this choice in Filipino'**
   String get sqListenTl;
 
   /// No description provided for @sqSeeResults.
@@ -17819,7 +17964,7 @@ abstract class AppLocalizations {
   /// No description provided for @alEnabled.
   ///
   /// In en, this message translates to:
-  /// **'Enabled'**
+  /// **'Use this alarm'**
   String get alEnabled;
 
   /// No description provided for @alUnnamed.
@@ -17975,7 +18120,7 @@ abstract class AppLocalizations {
   /// No description provided for @sqTagalog.
   ///
   /// In en, this message translates to:
-  /// **'Tagalog'**
+  /// **'Filipino'**
   String get sqTagalog;
 
   /// No description provided for @srPrevPage.
@@ -17995,6 +18140,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Avg Accuracy'**
   String get taAvgAccuracy;
+
+  /// No description provided for @taNoAccuracyYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No games yet'**
+  String get taNoAccuracyYet;
 
   /// No description provided for @nfIllustration.
   ///
@@ -18847,6 +18998,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Watch in FSL'**
   String get tcWatchFsl;
+
+  /// No description provided for @storyWatchInFsl.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch in Filipino Sign Language'**
+  String get storyWatchInFsl;
+
+  /// No description provided for @storyWatchChoiceInFsl.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch this choice in Filipino Sign Language'**
+  String get storyWatchChoiceInFsl;
 
   /// No description provided for @tcFslPlaying.
   ///
@@ -22085,7 +22248,7 @@ abstract class AppLocalizations {
   /// No description provided for @webControllerNeedsApp.
   ///
   /// In en, this message translates to:
-  /// **'Game controllers work in the Android app.'**
+  /// **'This browser can’t read a game controller. Use the latest Chrome or Edge, or the Android app.'**
   String get webControllerNeedsApp;
 
   /// No description provided for @webMediaNeedsApp.
@@ -22237,6 +22400,504 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{audience, select, parent{Your parent updated your accessibility settings.} other{Your teacher updated your accessibility settings.}}'**
   String assignedAccessibilityNotice(String audience);
+
+  /// No description provided for @chartActiveDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 active day} other{{count} active days}}'**
+  String chartActiveDays(int count);
+
+  /// No description provided for @chartReviewHeatmapSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Last {weeks} weeks of learning activity'**
+  String chartReviewHeatmapSubtitle(int weeks);
+
+  /// No description provided for @chartCellSessions.
+  ///
+  /// In en, this message translates to:
+  /// **'{date}: {count, plural, =1{1 session} other{{count} sessions}}'**
+  String chartCellSessions(String date, int count);
+
+  /// No description provided for @achUnlockedBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'🏆 Achievement Unlocked!'**
+  String get achUnlockedBanner;
+
+  /// No description provided for @achNextButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Next Achievement'**
+  String get achNextButton;
+
+  /// No description provided for @achDoneButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Awesome! 🎉'**
+  String get achDoneButton;
+
+  /// No description provided for @achCountOf.
+  ///
+  /// In en, this message translates to:
+  /// **'{index} of {total}'**
+  String achCountOf(int index, int total);
+
+  /// No description provided for @fvTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No Filipino voice on this device'**
+  String get fvTitle;
+
+  /// No description provided for @fvBodyAndroid.
+  ///
+  /// In en, this message translates to:
+  /// **'Filipino words are read with the English voice, by the app and by TalkBack. Add a Filipino voice in the device’s speech settings.'**
+  String get fvBodyAndroid;
+
+  /// No description provided for @fvBodyOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Filipino words are read with the English voice. Add a Filipino voice in this computer’s or phone’s speech settings.'**
+  String get fvBodyOther;
+
+  /// No description provided for @fvOpenSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open voice settings'**
+  String get fvOpenSettings;
+
+  /// No description provided for @fvSetting.
+  ///
+  /// In en, this message translates to:
+  /// **'Filipino voice'**
+  String get fvSetting;
+
+  /// No description provided for @fvSettingInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed: Filipino words have a Filipino voice'**
+  String get fvSettingInstalled;
+
+  /// No description provided for @fvSettingMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Not on this device: Filipino words use the English voice'**
+  String get fvSettingMissing;
+
+  /// No description provided for @gpPairBrowser.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect it to this computer or phone, then press any of its buttons: a browser finds a controller only after a press.'**
+  String get gpPairBrowser;
+
+  /// No description provided for @fieldCountOf.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} of {max} letters'**
+  String fieldCountOf(int count, int max);
+
+  /// No description provided for @alThisAlarm.
+  ///
+  /// In en, this message translates to:
+  /// **'This alarm'**
+  String get alThisAlarm;
+
+  /// No description provided for @fvTalkBackWords.
+  ///
+  /// In en, this message translates to:
+  /// **'TalkBack’s own words'**
+  String get fvTalkBackWords;
+
+  /// No description provided for @fvTalkBackWordsDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'“On”, “Off” and “selected” are TalkBack’s own words. They follow the language of TalkBack, usually the tablet’s. Tap to open the language settings.'**
+  String get fvTalkBackWordsDesc;
+
+  /// No description provided for @breakAlwaysOkay.
+  ///
+  /// In en, this message translates to:
+  /// **'Breaks are always okay. You’ll go right back to where you were.'**
+  String get breakAlwaysOkay;
+
+  /// No description provided for @btCalmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Let’s take a calm break'**
+  String get btCalmTitle;
+
+  /// No description provided for @btTakeYourTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Take your time. Head back when you’re ready.'**
+  String get btTakeYourTime;
+
+  /// No description provided for @crbStillOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Still offline. Check the connection and try again.'**
+  String get crbStillOffline;
+
+  /// No description provided for @crbRetrying.
+  ///
+  /// In en, this message translates to:
+  /// **'Retrying…'**
+  String get crbRetrying;
+
+  /// No description provided for @crbRetryNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry now'**
+  String get crbRetryNow;
+
+  /// No description provided for @exFeaturesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{on}/{total} features'**
+  String exFeaturesCount(int on, int total);
+
+  /// No description provided for @egTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Examples — {word}'**
+  String egTitle(String word);
+
+  /// No description provided for @egUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'These examples aren’t available right now.'**
+  String get egUnavailable;
+
+  /// No description provided for @smClipUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This clip isn’t available right now.'**
+  String get smClipUnavailable;
+
+  /// No description provided for @mqPlusPoints.
+  ///
+  /// In en, this message translates to:
+  /// **'+{points} points!'**
+  String mqPlusPoints(int points);
+
+  /// No description provided for @mqWins.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} Wins!'**
+  String mqWins(String name);
+
+  /// No description provided for @mqHome.
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get mqHome;
+
+  /// No description provided for @alTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Alarms'**
+  String get alTitle;
+
+  /// No description provided for @alTitleFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Alarms — {name}'**
+  String alTitleFor(String name);
+
+  /// No description provided for @alLastSynced.
+  ///
+  /// In en, this message translates to:
+  /// **'Last synced {when}'**
+  String alLastSynced(String when);
+
+  /// No description provided for @tlLastSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Last saved {when}'**
+  String tlLastSaved(String when);
+
+  /// No description provided for @tlOnlyBetween.
+  ///
+  /// In en, this message translates to:
+  /// **'Only {start} – {end}'**
+  String tlOnlyBetween(String start, String end);
+
+  /// No description provided for @lcVisibleDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Members can see the rankings.'**
+  String get lcVisibleDesc;
+
+  /// No description provided for @lcHiddenDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Hidden — members see “not enabled yet”.'**
+  String get lcHiddenDesc;
+
+  /// No description provided for @lcRankNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly/Monthly and seasons rank by recent activity. Lifetime stars are always shown for reference.'**
+  String get lcRankNote;
+
+  /// No description provided for @chartTotalStars.
+  ///
+  /// In en, this message translates to:
+  /// **'Total: {count} ⭐'**
+  String chartTotalStars(int count);
+
+  /// No description provided for @hwCorrect.
+  ///
+  /// In en, this message translates to:
+  /// **'correct'**
+  String get hwCorrect;
+
+  /// No description provided for @tcPaused.
+  ///
+  /// In en, this message translates to:
+  /// **'paused'**
+  String get tcPaused;
+
+  /// No description provided for @fwsSignN.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign {n}'**
+  String fwsSignN(int n);
+
+  /// No description provided for @scNamesPortfolio.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}’s Portfolio'**
+  String scNamesPortfolio(String name);
+
+  /// No description provided for @rtMoreSteps.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} more'**
+  String rtMoreSteps(int count);
+
+  /// No description provided for @secondsLeftLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} seconds left'**
+  String secondsLeftLabel(int count);
+
+  /// No description provided for @collabBlank.
+  ///
+  /// In en, this message translates to:
+  /// **'blank'**
+  String get collabBlank;
+
+  /// No description provided for @gameGo.
+  ///
+  /// In en, this message translates to:
+  /// **'GO!'**
+  String get gameGo;
+
+  /// No description provided for @stickerNotYet.
+  ///
+  /// In en, this message translates to:
+  /// **'Not collected yet'**
+  String get stickerNotYet;
+
+  /// No description provided for @btBreatheIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Breathe in…'**
+  String get btBreatheIn;
+
+  /// No description provided for @btHold.
+  ///
+  /// In en, this message translates to:
+  /// **'Hold…'**
+  String get btHold;
+
+  /// No description provided for @btBreatheOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Breathe out…'**
+  String get btBreatheOut;
+
+  /// No description provided for @vcMicUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Microphone unavailable'**
+  String get vcMicUnavailable;
+
+  /// No description provided for @vcPausedDictation.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused while you speak your message'**
+  String get vcPausedDictation;
+
+  /// No description provided for @vcListening.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening…'**
+  String get vcListening;
+
+  /// No description provided for @vcReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice ready'**
+  String get vcReady;
+
+  /// No description provided for @pcTo.
+  ///
+  /// In en, this message translates to:
+  /// **'to'**
+  String get pcTo;
+
+  /// No description provided for @fslLoadingVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading video…'**
+  String get fslLoadingVideo;
+
+  /// No description provided for @plComfortable.
+  ///
+  /// In en, this message translates to:
+  /// **'Comfortable'**
+  String get plComfortable;
+
+  /// No description provided for @plComfortableBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Roomy & easy to read'**
+  String get plComfortableBlurb;
+
+  /// No description provided for @plCompact.
+  ///
+  /// In en, this message translates to:
+  /// **'Compact'**
+  String get plCompact;
+
+  /// No description provided for @plCompactBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Tighter, fits more'**
+  String get plCompactBlurb;
+
+  /// No description provided for @plShowcase.
+  ///
+  /// In en, this message translates to:
+  /// **'Showcase'**
+  String get plShowcase;
+
+  /// No description provided for @plShowcaseBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Big & bold visuals'**
+  String get plShowcaseBlurb;
+
+  /// No description provided for @ptClassic.
+  ///
+  /// In en, this message translates to:
+  /// **'Classic'**
+  String get ptClassic;
+
+  /// No description provided for @ptOcean.
+  ///
+  /// In en, this message translates to:
+  /// **'Ocean'**
+  String get ptOcean;
+
+  /// No description provided for @ptSunset.
+  ///
+  /// In en, this message translates to:
+  /// **'Sunset'**
+  String get ptSunset;
+
+  /// No description provided for @ptForest.
+  ///
+  /// In en, this message translates to:
+  /// **'Forest'**
+  String get ptForest;
+
+  /// No description provided for @ptCandy.
+  ///
+  /// In en, this message translates to:
+  /// **'Candy'**
+  String get ptCandy;
+
+  /// No description provided for @ptNight.
+  ///
+  /// In en, this message translates to:
+  /// **'Night'**
+  String get ptNight;
+
+  /// No description provided for @ptGalaxy.
+  ///
+  /// In en, this message translates to:
+  /// **'Galaxy'**
+  String get ptGalaxy;
+
+  /// No description provided for @ptAutumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Autumn'**
+  String get ptAutumn;
+
+  /// No description provided for @ptRainbow.
+  ///
+  /// In en, this message translates to:
+  /// **'Rainbow'**
+  String get ptRainbow;
+
+  /// No description provided for @ptCocoa.
+  ///
+  /// In en, this message translates to:
+  /// **'Cocoa'**
+  String get ptCocoa;
+
+  /// No description provided for @abQuestionNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Question {n}'**
+  String abQuestionNumber(int n);
+
+  /// No description provided for @dcStreakTomorrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Get tomorrow’s mission right to start a streak'**
+  String get dcStreakTomorrow;
+
+  /// No description provided for @chartWordsLearnedSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{total} words learned in all, {recent} of them in the last 30 days'**
+  String chartWordsLearnedSummary(int total, int recent);
+
+  /// No description provided for @chartPercentOf.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}: {percent} percent'**
+  String chartPercentOf(String name, int percent);
+
+  /// No description provided for @chartActivitySummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Active on {days} of the last 56 days, {minutes} minutes in all'**
+  String chartActivitySummary(int days, int minutes);
+
+  /// No description provided for @chartScoresSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} results, average {average} percent, latest {latest} percent'**
+  String chartScoresSummary(int count, int average, int latest);
+
+  /// No description provided for @chartStudySummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} minutes in the last 30 days'**
+  String chartStudySummary(int minutes);
+
+  /// No description provided for @chartPrePost.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}: before {before} percent, after {after} percent'**
+  String chartPrePost(String name, int before, int after);
 }
 
 class _AppLocalizationsDelegate

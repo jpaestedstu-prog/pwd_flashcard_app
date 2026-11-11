@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'companion_clearance.dart';
 import '../../../core/services/fsl_assets_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../navigation/app_router.dart'
@@ -25,6 +26,7 @@ import '../../gaze_control/widgets/gaze_modal_region.dart';
 import '../../gaze_control/widgets/shell_modal_observer.dart';
 import '../../../navigation/dpad_keys.dart' show dpadFloatingParent;
 import '../../../widgets/dpad_focusable.dart';
+import '../../../core/widgets/text_limits.dart';
 
 /// Mounts the floating AI Companion above the whole app. Placed in the
 /// `MaterialApp.builder` (below the lock / eviction gates) so the companion
@@ -77,10 +79,6 @@ class CompanionOverlay extends ConsumerStatefulWidget {
 }
 
 class _CompanionOverlayState extends ConsumerState<CompanionOverlay> {
-  /// Custom dragged position of the launcher (playful profiles only); null =
-  /// docked at the default bottom-right anchor.
-  Offset? _dragPos;
-
   @override
   void dispose() {
     // The launcher's D-pad cell outlives this widget otherwise, leaving an
@@ -105,8 +103,10 @@ class _CompanionOverlayState extends ConsumerState<CompanionOverlay> {
     final isOpen =
         ref.watch(companionControllerProvider.select((s) => s.isOpen));
     final router = ref.watch(routerProvider);
-    // Re-anchor on a profile switch: a guest's launcher sits lower.
-    ref.watch(profileProvider.select((p) => p?.isGuestPlayer));
+    // A guest has no tab bar: its button rests lower.
+    final hasTabBar = !ref.watch(
+      profileProvider.select((p) => p?.isGuestPlayer ?? false),
+    );
 
     // Rebuild on navigation so the companion appears/disappears with the route.
     //
@@ -126,15 +126,19 @@ class _CompanionOverlayState extends ConsumerState<CompanionOverlay> {
       // on top of them, over the picker's options.
       listenable: Listenable.merge([
         router.routerDelegate,
-        shellModalObserver.covering,
+        shellModalObserver.popupCovering,
         rootPopupObserver.covering,
+        // Home's first-visit tour, a level-up or a new sticker's card: drawn
+        // in the screen, with no route, and the button floated over them.
+        GazeModalRegion.openCount,
       ]),
       builder: (context, _) {
         final loc =
             router.routerDelegate.currentConfiguration.last.matchedLocation;
         final covered = !isOpen &&
-            (shellModalObserver.covering.value ||
-                rootPopupObserver.covering.value);
+            (shellModalObserver.popupCovering.value ||
+                rootPopupObserver.covering.value ||
+                GazeModalRegion.openCount.value > 0);
         if (!companionShownOn(loc) || covered) {
           // Off the hubs the launcher is not drawn, so it must not linger on
           // the D-pad either.
@@ -149,6 +153,11 @@ class _CompanionOverlayState extends ConsumerState<CompanionOverlay> {
         // own — otherwise a learner who cannot see it, or cannot touch it, has
         // no way to open the tutor at all.
         _publishLauncher(context, open: isOpen);
+        final resting = CompanionFab.rect(
+          context,
+          presentation,
+          hasTabBar: hasTabBar,
+        );
         return Stack(
           children: [
             if (isOpen) _Scrim(onTap: () => _controller.close()),
@@ -156,9 +165,14 @@ class _CompanionOverlayState extends ConsumerState<CompanionOverlay> {
               // A gaze modal: the hub underneath stops answering the D-pad,
               // and the panel takes the focus, so head moves, the arrow keys
               // and the controller step through the panel's own controls.
-              _PanelAnchor(presentation: presentation)
+              _PanelAnchor(
+                presentation: presentation,
+                button: resting,
+                floor: resting.bottom + CompanionFab.margin(context),
+                onClose: () => _controller.close(),
+              )
             else
-              _positionedLauncher(context, presentation),
+              _floatingLauncher(context, presentation, resting),
           ],
         );
       },
@@ -198,49 +212,37 @@ class _CompanionOverlayState extends ConsumerState<CompanionOverlay> {
     });
   }
 
-  Widget _positionedLauncher(
-      BuildContext context, CompanionPresentation presentation) {
-    final size = MediaQuery.sizeOf(context);
-    final safeBottom = MediaQuery.paddingOf(context).bottom;
-    final scale = MediaQuery.textScalerOf(context).scale(1.0).clamp(1.0, 1.5);
-    final launcher = presentation.launcherSize * scale;
-
-    // Default anchor: bottom-right, lifted clear of the ~72px bottom nav bar.
-    // A Guest Player has no bar, and the lift put the bubble on top of the
-    // guest home's "Join group" button — so a guest's sits in the corner.
-    final hasTabBar = !(ref.read(profileProvider)?.isGuestPlayer ?? false);
-    final defaultPos = Offset(
-      size.width - launcher - 12,
-      size.height - launcher - safeBottom - (hasTabBar ? 84 : 16),
-    );
-    final pos = _dragPos ?? defaultPos;
-
-    return Positioned(
-      left: pos.dx,
-      top: pos.dy,
+  /// The floating button, resting at [at] ([CompanionFab.rect]): above the
+  /// tab bar in the bottom-right corner, clear of the system's gesture area.
+  ///
+  /// It rises and fades with the tab bar when a hub comes back from a game,
+  /// rather than waiting in the corner for a bar still on its way up. It is
+  /// not dragged about: it rests in the same place on every hub, the corner
+  /// each hub keeps room for at the end of its list.
+  Widget _floatingLauncher(
+    BuildContext context,
+    CompanionPresentation presentation,
+    Rect at,
+  ) {
+    final media = MediaQuery.of(context);
+    final below = media.size.height - at.top;
+    return ValueListenableBuilder<double>(
+      valueListenable: CompanionFab.reveal,
+      builder: (context, shown, launcher) => Positioned.fromRect(
+        rect: at.translate(0, (1 - shown) * below),
+        child: Opacity(opacity: shown.clamp(0.0, 1.0), child: launcher),
+      ),
       child: GazeShellFocusable(
         owner: _floatingToken,
         // Hung under the shell's focus scope: this overlay is beside the
         // router, so otherwise no arrow from the hub could reach it.
         child: ValueListenableBuilder<FocusNode?>(
           valueListenable: dpadFloatingParent,
-          builder: (context, parent, _) => DpadFocusable(
-        onActivate: _controller.open,
-        parentNode: parent,
-        child: _CompanionLauncher(
-        presentation: presentation,
-        size: launcher,
-        onTap: _controller.open,
-        onDrag: presentation.draggable
-            ? (delta) => setState(() {
-                  final x = (pos.dx + delta.dx)
-                      .clamp(4.0, size.width - launcher - 4);
-                  final y = (pos.dy + delta.dy)
-                      .clamp(safeBottom + 4, size.height - launcher - 4);
-                  _dragPos = Offset(x, y);
-                })
-            : null,
-      ),
+          builder: (context, parent, _) => _CompanionLauncher(
+            presentation: presentation,
+            size: at.width,
+            onTap: _controller.open,
+            focusParent: parent,
           ),
         ),
       ),
@@ -279,13 +281,15 @@ class _CompanionLauncher extends ConsumerWidget {
   final CompanionPresentation presentation;
   final double size;
   final VoidCallback onTap;
-  final void Function(Offset delta)? onDrag;
+
+  /// The focus node the launcher's own hangs under ([dpadFloatingParent]).
+  final FocusNode? focusParent;
 
   const _CompanionLauncher({
     required this.presentation,
     required this.size,
     required this.onTap,
-    this.onDrag,
+    this.focusParent,
   });
 
   @override
@@ -311,47 +315,58 @@ class _CompanionLauncher extends ConsumerWidget {
     final button = Semantics(
       container: true,
       button: true,
+      // The unread dot, in words: a learner who cannot see it is told.
       label: isFilipino
-          ? 'Buksan ang AI Buddy'
-          : 'Open ${persona.title(false)}',
-      child: GestureDetector(
-        onTap: onTap,
-        onPanUpdate:
-            onDrag == null ? null : (d) => onDrag!(d.delta),
-        child: SizedBox(
-          width: size,
-          height: size,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(size * 0.32),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.bannerAiTutorEnd.withValues(alpha: 0.45),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                child: face,
-              ),
-              if (hasUnread)
-                Positioned(
-                  right: -1,
-                  top: -1,
-                  child: Container(
-                    width: size * 0.26,
-                    height: size * 0.26,
+          ? 'Buksan ang ${persona.title(true)}${hasUnread ? ', may bagong mensahe' : ''}'
+          : 'Open ${persona.title(false)}${hasUnread ? ', new message' : ''}',
+      // The D-pad's focus on this node, under its label, so a browser and
+      // a screen reader follow it here (above the container it fell on
+      // the screen-sized root).
+      child: DpadFocusable(
+        onActivate: onTap,
+        parentNode: focusParent,
+        child: GestureDetector(
+          onTap: onTap,
+          child: _Entrance(
+            enabled: presentation.animate,
+            child: SizedBox(
+              width: size,
+              height: size,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  DecoratedBox(
                     decoration: BoxDecoration(
-                      color: AppColors.accent,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
+                      borderRadius: BorderRadius.circular(size * 0.32),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.bannerAiTutorEnd.withValues(alpha: 0.45),
+                          blurRadius: 16,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
                     ),
+                    // The label says who it is; the face read aloud added
+                    // "robot" to every visit.
+                    child: ExcludeSemantics(child: face),
                   ),
-                ),
-            ],
+                  if (hasUnread)
+                    Positioned(
+                      right: -1,
+                      top: -1,
+                      child: Container(
+                        width: size * 0.26,
+                        height: size * 0.26,
+                        decoration: BoxDecoration(
+                          color: AppColors.accent,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -364,6 +379,57 @@ class _CompanionLauncher extends ConsumerWidget {
     // screen. The panel already wraps itself this way; the launcher never did.
     return Material(type: MaterialType.transparency, child: button);
   }
+}
+
+/// The button's arrival: a small pop, for the playful presentation only (calm
+/// profiles and Reduced Motion see it simply there). Plays when the button
+/// appears (opening the app, back from a game, the panel closed), not as the
+/// learner moves between hubs, where it stays put.
+class _Entrance extends StatefulWidget {
+  const _Entrance({required this.enabled, required this.child});
+
+  final bool enabled;
+  final Widget child;
+
+  @override
+  State<_Entrance> createState() => _EntranceState();
+}
+
+class _EntranceState extends State<_Entrance>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pop = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 320),
+    value: widget.enabled ? 0 : 1,
+  );
+  late final Animation<double> _scale = Tween<double>(
+    begin: 0.6,
+    end: 1,
+  ).chain(CurveTween(curve: Curves.easeOutBack)).animate(_pop);
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.enabled) _pop.forward();
+  }
+
+  @override
+  void didUpdateWidget(_Entrance old) {
+    super.didUpdateWidget(old);
+    if (!widget.enabled) _pop.value = 1;
+  }
+
+  @override
+  void dispose() {
+    _pop.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => FadeTransition(
+    opacity: _pop,
+    child: ScaleTransition(scale: _scale, child: widget.child),
+  );
 }
 
 /// Non-animated twin of [TutorAvatar] for calm / reduced-motion profiles.
@@ -391,10 +457,27 @@ class _StillAvatar extends StatelessWidget {
   }
 }
 
-/// Positions the chat panel above the launcher, lifting clear of the keyboard.
+/// Positions the chat panel where the button rests, its right edge on the
+/// button's, its foot just above the tab bar, lifting clear of the keyboard.
 class _PanelAnchor extends StatelessWidget {
   final CompanionPresentation presentation;
-  const _PanelAnchor({required this.presentation});
+
+  /// Where the floating button rests ([CompanionFab.rect]).
+  final Rect button;
+
+  /// The top of the tab bar (or of the safe area's bottom inset): the panel
+  /// stands on it.
+  final double floor;
+
+  /// Escape and the controller's B: the panel is no route, so Back had
+  /// nothing to close, and a learner on the controller could not leave it.
+  final VoidCallback onClose;
+  const _PanelAnchor({
+    required this.presentation,
+    required this.button,
+    required this.floor,
+    required this.onClose,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -404,22 +487,92 @@ class _PanelAnchor extends StatelessWidget {
     final topInset = media.padding.top;
 
     final width = math.min(400.0, size.width - 24);
-    final bottom = math.max(84.0 + media.padding.bottom, keyboard + 12);
+    final right = math.max(12.0, size.width - button.right);
+    final bottom = math.max(size.height - floor + 8, keyboard + 12);
     final maxHeight = size.height - topInset - bottom - 12;
-    final height = math.min(560.0, maxHeight);
+    final height = math.max(0.0, math.min(560.0, maxHeight));
 
     return Positioned(
-      right: 12,
+      right: right,
       bottom: bottom,
       child: SizedBox(
         width: width,
         height: height,
-        child: GazeModalRegion(
-          child: _CompanionPanel(presentation: presentation),
+        child: _BackClosesPanel(
+          onClose: onClose,
+          child: Actions(
+            actions: {
+              DismissIntent: CallbackAction<DismissIntent>(
+                onInvoke: (_) {
+                  onClose();
+                  return null;
+                },
+              ),
+            },
+            child: GazeModalRegion(
+              child: _CompanionPanel(presentation: presentation),
+            ),
+          ),
         ),
       ),
     );
   }
+}
+
+/// Android's Back closes the panel, as it closes a dialog.
+///
+/// The panel floats above the router, so Back went straight through it: out of
+/// the app on Home (found on the tablet, 4 Nov), across to Home from the other
+/// tabs with the panel still open. Asks the router first, so it comes before the
+/// tabs' own handling, and steps aside for a sheet or dialog opened from the
+/// panel, which Back closes first.
+class _BackClosesPanel extends ConsumerStatefulWidget {
+  final VoidCallback onClose;
+  final Widget child;
+  const _BackClosesPanel({required this.onClose, required this.child});
+
+  @override
+  ConsumerState<_BackClosesPanel> createState() => _BackClosesPanelState();
+}
+
+class _BackClosesPanelState extends ConsumerState<_BackClosesPanel> {
+  late final BackButtonDispatcher _parent;
+  late final ChildBackButtonDispatcher _back;
+
+  @override
+  void initState() {
+    super.initState();
+    _parent = ref.read(routerProvider).backButtonDispatcher;
+    _back = _parent.createChildBackButtonDispatcher()
+      ..addCallback(_onBack)
+      ..takePriority();
+    // Android's predictive Back asks beforehand whether the app wants Back at
+    // all, and on Home the answer was no: the key would never get here.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        const NavigationNotification(canHandlePop: true).dispatch(context);
+      }
+    });
+  }
+
+  Future<bool> _onBack() async {
+    if (shellModalObserver.popupCovering.value ||
+        rootPopupObserver.covering.value) {
+      return false;
+    }
+    widget.onClose();
+    return true;
+  }
+
+  @override
+  void dispose() {
+    _back.removeCallback(_onBack);
+    _parent.forget(_back);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 /// Owns the input + scroll controllers and hosts the chat in a nested [Overlay]
@@ -535,7 +688,7 @@ class _CompanionPanelState extends State<_CompanionPanel> {
         for (final quick in _quickChipActions(isFilipino))
           GamepadItem(
             label: quick.$2,
-            onActivate: () => controller.sendQuick(quick.$1),
+            onActivate: () => controller.sendQuick(quick.$1, quick.$2),
           ),
         GamepadItem(
           label: isFilipino ? 'Buksan nang buo' : 'Open full screen',
@@ -785,7 +938,8 @@ class _Header extends StatelessWidget {
 
 class _QuickChips extends StatelessWidget {
   final bool isFilipino;
-  final ValueChanged<String> onTap;
+  /// A chip's command and its words.
+  final void Function(String command, String shown) onTap;
   const _QuickChips({required this.isFilipino, required this.onTap});
 
   @override
@@ -804,7 +958,7 @@ class _QuickChips extends StatelessWidget {
             TutorQuickChip(
               label: chips[i].$2,
               emoji: chips[i].$3,
-              onTap: () => onTap(chips[i].$1),
+              onTap: () => onTap(chips[i].$1, chips[i].$2),
             ),
           ],
         ],
@@ -888,6 +1042,8 @@ class _InputRow extends StatelessWidget {
               label: isFilipino ? 'I-type ang tanong' : 'Type your question',
               child: TextField(
                 controller: controller,
+                maxLength: TextLimits.message,
+                buildCounter: TextLimits.counter,
                 onSubmitted: (_) => onSend(),
                 textInputAction: TextInputAction.send,
                 minLines: 1,

@@ -8,9 +8,12 @@ switch box sending arrows or a TV-style remote could not reach a single tab
 or tile there. From a freshly onboarded profile (as tool/web_smoke.py makes
 one: build with WEB_TEST=1 so nothing reaches the cloud) this checks that:
 
-  1. down-arrow steps from control to control on Home;
+  0. the Daily Reward that greets the profile collects on the first Enter;
+  1. down-arrow steps from control to control on Home, and the page's own
+     focus moves with it every time, which is what a screen reader follows;
   2. it carries on down to the tab bar, and right-arrow walks the tabs;
-  3. Enter on a tab opens it, and the arrows and Enter open a deck there.
+  3. Enter on a tab opens it, and the arrows and Enter open a deck there;
+  4. Escape goes back from the deck, as a phone's Back does.
 
 Flutter mirrors its keyboard focus into the page's accessibility layer, which
 the smoke test switches on, so the focused control is read from
@@ -24,11 +27,13 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from web_smoke import Smoke, WebDriver, capabilities  # noqa: E402
+import web_focus_log  # noqa: E402
 
 KEYS = {
     "down": "", "up": "", "left": "", "right": "",
     "enter": "",
 }
+KEYS["escape"] = ""
 TABS = ("Home", "Cards", "Games", "Stories", "Progress")
 
 
@@ -74,6 +79,7 @@ def main():
     os.makedirs(args.out, exist_ok=True)
 
     wd = WebDriver(args.driver, capabilities(args.browser))
+    logging_focus = web_focus_log.install(wd)
     smoke = Smoke(wd, args.url, args.out)
     problems, log = [], []
 
@@ -84,9 +90,27 @@ def main():
 
     def run():
         wd.window(1280, 900)
+        reward = {}
+
+        def collect_by_keyboard():
+            # Its one control holds the focus as it opens, so the first press
+            # acts: with nothing focused it fell on the empty dialog.
+            time.sleep(1.5)
+            reward["focused"] = focused(wd)
+            press(wd, "enter", pause=2)
+            reward["closed"] = not smoke.find("Collect")
+            if not reward["closed"]:
+                smoke.click("Collect")
+
+        smoke.on_reward = collect_by_keyboard
         if not smoke.onboard():
             problems.append("could not onboard a profile")
             return
+        if reward:
+            check(reward["closed"], "the first Enter collects the Daily Reward "
+                  f"(focus: {reward['focused']})")
+        else:
+            log.append("NOTE the Daily Reward did not show")
         start = location(wd)
 
         # 1. Down steps through Home's controls (and only moves focus: the
@@ -102,6 +126,10 @@ def main():
         # on them in the screenshot — but leave the page's focus where it was.
         distinct = [s for s in dict.fromkeys(seen) if s and s != "(unnamed)"]
         check(len(distinct) >= 3, f"down-arrow steps through Home: {seen}")
+        # Strict now that every control's own node takes the focus: no step
+        # may leave the page's focus behind on the control before it.
+        check(len(distinct) == len(seen),
+              f"the page's focus moves on every step: {seen}")
         check(location(wd) == start, f"arrows move focus, not the page ({location(wd)})")
 
         # 2. On down to the tab bar, then along it to Cards from whichever
@@ -147,19 +175,33 @@ def main():
         # the address, so it is known by its own buttons.
         check(bool(smoke.find("Flip") and smoke.find("Next")),
               f"Enter opens the deck (on screen: {smoke.text()[:120]})")
+        press(wd, "escape", pause=2.5)
+        smoke.shot("dpad_escape_back")
+        check(not smoke.find("Flip") and "/flashcards" in location(wd),
+              f"Escape goes back to Cards (at {location(wd)})")
         errors = smoke.page_errors()
         check(not errors, f"no page errors ({errors[:2]})")
+        if logging_focus:
+            focus = web_focus_log.read(wd)
+            with open(os.path.join(args.out, "focus_log.json"), "w", encoding="utf-8") as f:
+                json.dump(focus, f, indent=1, ensure_ascii=False)
+            bad = web_focus_log.unnamed_focus(focus)
+            check(not bad, f"every focus has a name a screen reader can say "
+                  f"({len(focus)} focuses; {bad[:3]})")
 
     try:
         run()
     finally:
         wd.quit()
+        # Saved first: a label with an emoji ("Collect! 🌟") cannot be printed
+        # to a Windows console, and that once lost the whole run's results.
+        with open(os.path.join(args.out, "result.json"), "w", encoding="utf-8") as f:
+            json.dump({"log": log, "problems": problems}, f, indent=1)
+        sys.stdout.reconfigure(errors="replace")
         print(f"WEB DPAD {args.browser}: {len(log) - len(problems)} passed, "
               f"{len(problems)} failed")
         for line in log:
             print("  " + line)
-        with open(os.path.join(args.out, "result.json"), "w", encoding="utf-8") as f:
-            json.dump({"log": log, "problems": problems}, f, indent=1)
     sys.exit(1 if problems else 0)
 
 

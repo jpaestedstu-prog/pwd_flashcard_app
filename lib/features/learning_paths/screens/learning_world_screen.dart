@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/fit_text.dart';
 import '../../../data/local/learning_path_data.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/learning_path.dart';
@@ -12,6 +13,7 @@ import '../../../widgets/app_back_button.dart';
 import '../widgets/winding_trail.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Top-level "learning world": every learning path is a region on one big
 /// winding trail. Completed regions show a check, the next region to tackle
@@ -60,7 +62,7 @@ class LearningWorldScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         leading: const AppBackButton(fallbackRoute: '/learning-paths'),
-        title: Text(_t(context).lpAdventureMap),
+        title: AppBarTitle(_t(context).lpAdventureMap),
         centerTitle: true,
       ),
       body: SafeArea(
@@ -119,6 +121,9 @@ class LearningWorldScreen extends ConsumerWidget {
       label: path.titleOf(filipino: _t(context).localeName.startsWith('fil')),
       accent: path.category.color,
       pillText: pill,
+      spokenDetail: state == TrailNodeState.current && completedSteps > 0
+          ? _t(context).lpStepsDone(completedSteps, total)
+          : null,
       onTap: state == TrailNodeState.locked
           ? null
           : () => context.push('/learning-paths/${path.id}/trail'),
@@ -155,18 +160,21 @@ class _WorldHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Text('🗺️', style: TextStyle(fontSize: 32)),
+          const ExcludeSemantics(
+            child: Text('🗺️', style: TextStyle(fontSize: 32)),
+          ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                // Three lines, shrinking first: two cut it short on a phone
+                // at the largest Font Size (30 Oct).
+                FitText(
                   completedRegions >= totalRegions && totalRegions > 0
                       ? _t(context).lpWorldMastered
                       : _t(context).lpWorldExplore,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                  maxLines: 3,
                   style: AppTypography.labelLarge.copyWith(
                     fontWeight: FontWeight.w700,
                     color: hc.textPrimary,
@@ -188,6 +196,7 @@ class _WorldHeader extends StatelessWidget {
           const SizedBox(width: 12),
           Text(
             '$completedRegions/$totalRegions',
+            semanticsLabel: _t(context).lpRegionsDone(completedRegions, totalRegions),
             style: AppTypography.labelLarge.copyWith(
               fontWeight: FontWeight.w800,
               color: HCColor.of(context).primary,

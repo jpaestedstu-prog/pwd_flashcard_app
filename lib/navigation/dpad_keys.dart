@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -23,15 +24,140 @@ Map<ShortcutActivator, Intent> get dpadShortcuts => <ShortcutActivator, Intent>{
       const DirectionalFocusIntent(TraversalDirection.left),
   const SingleActivator(LogicalKeyboardKey.arrowRight):
       const DirectionalFocusIntent(TraversalDirection.right),
+  const SingleActivator(LogicalKeyboardKey.escape): const DpadBackIntent(),
 };
 
 /// The app-level actions: Flutter's own, with the arrows' move taken over by
-/// [DpadDirectionalFocusAction].
+/// [DpadDirectionalFocusAction], Escape made Back ([DpadBackAction]), and
+/// up and down able to leave a one-line text field ([DpadFieldExits]).
 Map<Type, Action<Intent>> get dpadActions => <Type, Action<Intent>>{
   ...WidgetsApp.defaultActions,
   ScrollIntent: ScrollAction(),
   DirectionalFocusIntent: DpadDirectionalFocusAction(),
+  DpadBackIntent: DpadBackAction(),
+  DpadLeaveFieldIntent: DpadLeaveFieldAction(),
 };
+
+/// Escape, as Back.
+class DpadBackIntent extends Intent {
+  const DpadBackIntent();
+}
+
+/// Escape is Back: the step back the system Back button takes on Android —
+/// out of a dialog or a sheet, back a screen, a game to its pause menu — and,
+/// like it, nothing at the very start of the app. It never closes the app.
+///
+/// A web keyboard, a TV remote in a browser and a switch box set to Escape
+/// had no way back but steering to the on-screen arrow, and a pushed screen
+/// in the web app is one the browser's own Back does not know about. A
+/// dialog that may be dismissed, or an open menu, still closes the way Escape
+/// always closed it; this takes the rest, as Back does.
+///
+/// Its own intent, not Flutter's [DismissIntent]: every page route answers
+/// that one with a dismiss that is switched off for pages, and Flutter stops
+/// at the nearest answer, switched off or not — so on a page, Escape never
+/// got past it.
+///
+/// In a text field Escape only leaves the field, as Back first closes the
+/// keyboard: a learner halfway through a message keeps the screen.
+class DpadBackAction extends Action<DpadBackIntent> {
+  @override
+  Object? invoke(DpadBackIntent intent) {
+    final node = FocusManager.instance.primaryFocus;
+    final context = node?.context;
+    if (node == null || context == null || !context.mounted) return null;
+    if (isInTextField(node)) {
+      leaveTextField(node);
+      return null;
+    }
+    if (dpadDismiss(context)) return null;
+    Router.maybeOf(context)?.backButtonDispatcher?.invokeCallback(
+      SynchronousFuture<bool>(false),
+    );
+    return null;
+  }
+}
+
+/// Closes what [context] sits in when that answers a dismiss: a dialog that
+/// may be dismissed, an open menu, the AI Buddy's panel. Returns whether it
+/// did — a page does not answer, and Back then goes back.
+///
+/// Shared by Escape and the controller's B, which had only the router's
+/// back: the AI Buddy's panel is no route, so B said "nothing to go back
+/// to" and the panel stayed (found on the tablet, 29 Oct).
+bool dpadDismiss(BuildContext context) {
+  const dismiss = DismissIntent();
+  final closes = Actions.maybeFind<DismissIntent>(context, intent: dismiss);
+  if (closes == null) return false;
+  final (enabled, _) = Actions.of(
+    context,
+  ).invokeActionIfEnabled(closes, dismiss, context);
+  return enabled;
+}
+
+/// Whether [node] is a text field's own focus — where Escape, and the
+/// controller's B, leave the field rather than the screen.
+bool isInTextField(FocusNode node) =>
+    node.context?.findAncestorStateOfType<EditableTextState>() != null;
+
+/// Leaves the text field [node] for the control the learner came to it from.
+///
+/// A plain unfocus left the focus on the page itself, so the next arrow
+/// started again from the top of the screen — a learner who stepped out of
+/// a search box at the bottom of a list was thrown back to its first item.
+void leaveTextField(FocusNode node) =>
+    node.unfocus(disposition: UnfocusDisposition.previouslyFocusedChild);
+
+/// Up or down, asked of a one-line text field: leave it.
+class DpadLeaveFieldIntent extends Intent {
+  const DpadLeaveFieldIntent(this.direction);
+
+  final TraversalDirection direction;
+}
+
+/// Lets up and down leave a one-line text field, as they leave a button.
+///
+/// Flutter's text shortcuts give a one-line field up and down too — they jump
+/// the caret to the start or the end — so a learner with a remote or a
+/// switch box who arrowed into a search box or the Messages field could
+/// never arrow out of it again. A field of several lines keeps them: there
+/// they move between its lines. Sits below Flutter's text shortcuts (in
+/// `MaterialApp.builder`), so it is asked first.
+class DpadFieldExits extends StatelessWidget {
+  const DpadFieldExits({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Shortcuts(
+    shortcuts: const <ShortcutActivator, Intent>{
+      SingleActivator(LogicalKeyboardKey.arrowUp):
+          DpadLeaveFieldIntent(TraversalDirection.up),
+      SingleActivator(LogicalKeyboardKey.arrowDown):
+          DpadLeaveFieldIntent(TraversalDirection.down),
+    },
+    child: child,
+  );
+}
+
+/// See [DpadFieldExits]. Enabled only in a one-line field; anywhere else the
+/// key goes on to whatever handled it before.
+class DpadLeaveFieldAction extends Action<DpadLeaveFieldIntent> {
+  @override
+  bool isEnabled(DpadLeaveFieldIntent intent, [BuildContext? context]) {
+    final field = FocusManager.instance.primaryFocus?.context
+        ?.findAncestorStateOfType<EditableTextState>();
+    return field != null && field.widget.maxLines == 1;
+  }
+
+  @override
+  Object? invoke(DpadLeaveFieldIntent intent) {
+    DpadDirectionalFocusAction().invoke(
+      DirectionalFocusIntent(intent.direction),
+    );
+    return null;
+  }
+}
 
 /// Moves the focus for an arrow key the way gaze's and the game controller's
 /// traversal already do ([GazeFocusDriver.move]), so all three D-pads step
@@ -58,6 +184,10 @@ class DpadDirectionalFocusAction extends DirectionalFocusAction {
         direction == TraversalDirection.down;
     final forward = direction == TraversalDirection.down ||
         direction == TraversalDirection.right;
+    // A focus with no place on the screen — scrolled away under a finger or
+    // a screen reader, or let go to its scope — starts again from what is on
+    // screen; the edge checks below cannot measure from it.
+    if (GazeFocusDriver.startOnScreen(forward: forward)) return;
     if (vertical &&
         (forward ? GazeFocusDriver.isLast() : GazeFocusDriver.isFirst()) &&
         scrollPage(forward: forward)) {
@@ -87,6 +217,7 @@ class DpadDirectionalFocusAction extends DirectionalFocusAction {
     if (scope == null) return false;
     for (final other in scope.traversalDescendants) {
       if (identical(other, node) || other is FocusScopeNode) continue;
+      if (!GazeFocusDriver.countsAhead(node, other)) continue;
       final Rect r;
       try {
         r = other.rect;
@@ -176,15 +307,32 @@ final ValueNotifier<FocusNode?> dpadFloatingParent = ValueNotifier(null);
 /// every disabled button a stop. The game controller's adjust mode only ever
 /// sends left and right, so it is unaffected.
 class DpadSliderScope extends StatelessWidget {
-  const DpadSliderScope({super.key, required this.child});
+  const DpadSliderScope({super.key, this.name, required this.child});
+
+  /// What the slider sets ("Voice Speed"), joined to the slider so a screen
+  /// reader says name and value as one stop: "Slow, Voice Speed, slider".
+  ///
+  /// Flutter's [Slider] gives a screen reader its value bubble
+  /// ([Slider.label]) as its name, so a slider showing "60%" was named "60%"
+  /// and said nothing of what it set. And swiped up or down, TalkBack reads
+  /// the value it moves to from [Slider.semanticFormatterCallback] at once,
+  /// before the screen rebuilds — beside the old bubble ("65%, 60%"). So a
+  /// named slider has no bubble: its formatter says the value, the value
+  /// shows in its row, and the words in that row stay out of the a11y tree.
+  final String? name;
 
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => MediaQuery(
-    data: MediaQuery.of(
-      context,
-    ).copyWith(navigationMode: NavigationMode.directional),
-    child: child,
-  );
+  Widget build(BuildContext context) {
+    final scoped = MediaQuery(
+      data: MediaQuery.of(
+        context,
+      ).copyWith(navigationMode: NavigationMode.directional),
+      child: child,
+    );
+    final name = this.name;
+    if (name == null) return scoped;
+    return MergeSemantics(child: Semantics(label: name, child: scoped));
+  }
 }

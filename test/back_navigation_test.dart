@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pwdpwdpwd/navigation/app_page_transitions.dart';
@@ -18,6 +20,14 @@ import 'package:pwdpwdpwd/navigation/nav_extensions.dart';
 ///   * bottom-nav tab roots are still switched with `go()` (they cannot be
 ///     pushed — see [kShellTabRoutes]).
 void main() {
+  test('Add New Profile can be backed out of: it left the app', () {
+    final source = File(
+      'lib/features/onboarding/screens/profile_switcher_screen.dart',
+    ).readAsStringSync();
+    expect(source, isNot(contains("context.go('/profile')")));
+    expect(source, contains("context.push('/profile')"));
+  });
+
   final rootKey = GlobalKey<NavigatorState>();
 
   /// A miniature of the real router: a ShellRoute with tab roots, an activity

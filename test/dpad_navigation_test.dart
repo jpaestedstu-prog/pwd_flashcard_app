@@ -404,6 +404,27 @@ void main() {
     );
   });
 
+  testWidgets('a named slider is read with its value', (tester) async {
+    // DpadSliderScope(name:) labels a slider with its name only — the value
+    // is in its formatter, for a screen reader. The app's own voices (the
+    // controller, Gaze Control's spoken highlight) read both.
+    await tester.pumpWidget(_app(Column(children: [
+      DpadSliderScope(
+        name: 'Voice Speed',
+        child: Slider(
+          value: 0.5,
+          divisions: 2,
+          semanticFormatterCallback: (v) => v < 0.75 ? 'Slow' : 'Fast',
+          onChanged: (_) {},
+        ),
+      ),
+    ])));
+    await _press(tester, LogicalKeyboardKey.arrowDown);
+    final focused = FocusManager.instance.primaryFocus?.context;
+    expect(FocusedLabel.sliderAt(focused), isNotNull);
+    expect(FocusedLabel.of(focused), 'Voice Speed. Slow');
+  });
+
   group('DpadFocusable', () {
     testWidgets('a tap-only tile takes focus and Enter presses it',
         (tester) async {

@@ -217,8 +217,6 @@ class RoutineNowCountdown extends StatelessWidget {
                     fontWeight: FontWeight.w900,
                     color: hc.textPrimary,
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   detail,

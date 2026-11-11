@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/widgets/capped_width.dart';
+import '../../../core/utils/localized_date.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../core/constants/avatar_data.dart';
 import '../../../core/security/pin_auth_service.dart';
@@ -100,7 +102,7 @@ class _ProfileSwitcherScreenState extends ConsumerState<ProfileSwitcherScreen> {
       [
         GazeDpadCell(
           label: _t(context).psAddNew,
-          onActivate: () => context.go('/profile'),
+          onActivate: () => context.push('/profile'),
         ),
       ],
     ];
@@ -187,11 +189,12 @@ class _ProfileSwitcherScreenState extends ConsumerState<ProfileSwitcherScreen> {
                   horizontal: 24,
                   vertical: 16,
                 ),
-                child: SizedBox(
+                child: CappedWidth(child: SizedBox(
                   width: double.infinity,
                   height: scaledControlHeight(context, 56),
                   child: OutlinedButton.icon(
-                    onPressed: () => context.go('/profile'),
+                    // Pushed: Back returns to this list. It left the app.
+                    onPressed: () => context.push('/profile'),
                     icon: const Icon(Icons.person_add_rounded),
                     label: Text(AppLocalizations.of(context)!.addNewProfile),
                     style: OutlinedButton.styleFrom(
@@ -209,7 +212,7 @@ class _ProfileSwitcherScreenState extends ConsumerState<ProfileSwitcherScreen> {
                       textStyle: AppTypography.buttonText,
                     ),
                   ),
-                ),
+                )),
               ).animate().fadeIn(duration: 400.ms, delay: 600.ms),
             ],
           ),
@@ -238,7 +241,12 @@ class _ProfileCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
 
-    return DpadFocusable(onActivate: onTap, child: GestureDetector(
+    // A button to a screen reader, named by the profile: TalkBack read
+    // "rabbit face, Visual Impairment Student" with no role at all.
+    return Semantics(
+      container: true,
+      button: true,
+      child: DpadFocusable(onActivate: onTap, child: GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(20),
@@ -282,8 +290,11 @@ class _ProfileCard extends StatelessWidget {
                   ),
                 ],
               ),
+              // The avatar is for the eye; the name says who it is.
               child: Center(
-                child: Text(avatar.emoji, style: const TextStyle(fontSize: 32)),
+                child: ExcludeSemantics(
+                  child: Text(avatar.emoji, style: const TextStyle(fontSize: 32)),
+                ),
               ),
             ),
             const SizedBox(width: 16),
@@ -350,7 +361,7 @@ class _ProfileCard extends StatelessWidget {
           ],
         ),
       ),
-    ));
+    )));
   }
 }
 
@@ -526,7 +537,10 @@ class _PinEntryDialogState extends State<_PinEntryDialog> {
             if (_isLocked) ...[
               const SizedBox(height: 12),
               Text(
-                l10n.pinLockedTryAgainIn(_formatDuration(_remainingLockout!)),
+                // In words: "4m 30s" is read "4 meters 30 s".
+                l10n.pinLockedTryAgainIn(
+                  LocalizedDuration.long(_remainingLockout!, l10n),
+                ),
                 style: AppTypography.bodySmall.copyWith(color: HCColor.of(context).errorText),
                 textAlign: TextAlign.center,
               ),
@@ -614,17 +628,6 @@ class _PinEntryDialogState extends State<_PinEntryDialog> {
   }
 }
 
-String _formatDuration(Duration d) {
-  if (d.inHours >= 1) {
-    final m = d.inMinutes.remainder(60);
-    return '${d.inHours}h ${m}m';
-  }
-  if (d.inMinutes >= 1) {
-    final s = d.inSeconds.remainder(60);
-    return '${d.inMinutes}m ${s}s';
-  }
-  return '${d.inSeconds}s';
-}
 
 /// Branches on profile.role to present either the recovery-code entry sheet
 /// (teacher/parent) or the educator-override sheet (student). Pops `true` if
@@ -935,6 +938,7 @@ class _RecoveryCodeRevealDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return AlertDialog(
+      scrollable: true,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: Text(l10n.recoveryCodeTitle),
       content: Column(

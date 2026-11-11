@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/parental_controls.dart';
 
@@ -11,6 +12,9 @@ class ParentalControlsService {
 
   static Box get _box => Hive.box(_boxName);
 
+  /// Counts the saves, so what the controls hide can show the change at once.
+  static final ValueNotifier<int> revision = ValueNotifier(0);
+
   /// Get the current parental controls (defaults to no restrictions).
   static ParentalControls getControls() {
     final raw = _box.get(_key);
@@ -21,10 +25,12 @@ class ParentalControlsService {
   /// Save parental controls.
   static Future<void> saveControls(ParentalControls controls) async {
     await _box.put(_key, controls.toJson());
+    revision.value++;
   }
 
   /// Reset all controls to defaults (no restrictions).
   static Future<void> resetControls() async {
     await _box.delete(_key);
+    revision.value++;
   }
 }

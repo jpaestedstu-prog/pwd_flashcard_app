@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/widgets/auto_fit.dart';
 import '../../../core/accessibility/tts_service.dart';
 import '../../../core/constants/flashcard_emojis.dart';
 import '../../../core/theme/app_colors.dart';
@@ -24,6 +25,9 @@ import '../widgets/scramble_race_player.dart';
 import '../../../core/utils/seeded_random.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
+import '../../../core/widgets/fit_label.dart';
+import '../../../core/widgets/text_limits.dart';
 
 /// Same-device "pass-and-play" race. Two players share one tablet: Player 1
 /// plays the whole challenge, then Player 2 plays the **identical** content,
@@ -371,7 +375,7 @@ class _LocalRaceScreenState extends ConsumerState<LocalRaceScreen>
         Scaffold(
           backgroundColor: HCColor.of(context).background,
           appBar: AppBar(
-            title: Text(title),
+            title: AppBarTitle(title),
             backgroundColor: Colors.transparent,
             elevation: 0,
             // During play the top-left control is the Pause button (its menu is
@@ -426,7 +430,9 @@ class _LocalRaceScreenState extends ConsumerState<LocalRaceScreen>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(widget.mode.emoji, style: const TextStyle(fontSize: 64)),
+          ExcludeSemantics(
+            child: Text(widget.mode.emoji, style: const TextStyle(fontSize: 64)),
+          ),
           const SizedBox(height: 12),
           Text(
             isFilipino ? 'Sino ang maglalaro?' : "Who's playing?",
@@ -473,13 +479,17 @@ class _LocalRaceScreenState extends ConsumerState<LocalRaceScreen>
       TextEditingController c, String label, Color color, String emoji) {
     return TextField(
       controller: c,
+      maxLength: TextLimits.playerName,
+      buildCounter: TextLimits.counter,
       textInputAction: TextInputAction.next,
       decoration: InputDecoration(
         prefixIcon: Padding(
           padding: const EdgeInsets.all(12),
-          child: Text(emoji, style: const TextStyle(fontSize: 20)),
+          child: ExcludeSemantics(
+            child: Text(emoji, style: const TextStyle(fontSize: 20)),
+          ),
         ),
-        labelText: label,
+        label: FitLabel(label),
         filled: true,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
@@ -509,10 +519,11 @@ class _LocalRaceScreenState extends ConsumerState<LocalRaceScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(emoji, style: const TextStyle(fontSize: 72)),
+              ExcludeSemantics(
+                child: Text(emoji, style: const TextStyle(fontSize: 72)),
+              ),
               const SizedBox(height: 16),
-              FittedBox(
-                fit: BoxFit.scaleDown,
+              AutoFit(
                 child: Text(
                   title,
                   style: AppTypography.displaySmall

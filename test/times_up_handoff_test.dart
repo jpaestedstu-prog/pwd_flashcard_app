@@ -173,6 +173,80 @@ void main() {
     });
   });
 
+  group('The hand-off in Filipino reads as Filipino', () {
+    test('a limit stamped "your parent" on the educator\'s device', () {
+      // Seen on a Filipino screen: "ibalik ang device kay your parent".
+      final target = HandoffTarget.resolve(
+        limit: _limit(guardianHonorific: 'your parent', role: UserRole.parent),
+        educators: const [],
+        filipino: true,
+      );
+      expect(target.address, 'sa iyong magulang');
+      expect(
+        GuardianAddress.timesUpMessageFilipino(
+          address: target.address,
+          setterRole: UserRole.parent,
+        ),
+        'Tapos na ang oras. Pakisuyong ibalik ang device sa iyong magulang.',
+      );
+      expect(
+        GuardianAddress.timesUpMessageSimpleFilipino(address: target.address),
+        'Tapos na. Ibigay ang tablet sa iyong magulang.',
+      );
+    });
+
+    test('with no stamp at all: never "kay sa iyong guro"', () {
+      final address = GuardianAddress.resolve(
+        preferredName: '',
+        stampedHonorific: '',
+        role: UserRole.teacher,
+        filipino: true,
+      );
+      expect(address, 'sa iyong guro');
+      expect(
+        GuardianAddress.timesUpMessageFilipino(
+          address: address,
+          setterRole: UserRole.teacher,
+        ),
+        'Tapos na ang oras. Pakisuyong ibigay ang device sa iyong guro.',
+      );
+      expect(
+        GuardianAddress.resolve(
+          preferredName: '',
+          stampedHonorific: '',
+          filipino: true,
+        ),
+        'sa nakatatanda',
+      );
+    });
+
+    test('a name and a title still take "kay"', () {
+      for (final who in const ["Ma'am", 'Sir', 'Mommy', 'Daddy', 'Teacher Ana']) {
+        expect(
+          GuardianAddress.timesUpMessageFilipino(
+            address: GuardianAddress.resolve(
+              preferredName: who == 'Teacher Ana' ? who : '',
+              stampedHonorific: who == 'Teacher Ana' ? '' : who,
+              filipino: true,
+            ),
+            setterRole: UserRole.parent,
+          ),
+          endsWith('ang device kay $who.'),
+        );
+      }
+    });
+
+    test('and an English device reads a Filipino stamp in English', () {
+      expect(
+        GuardianAddress.resolve(
+          preferredName: '',
+          stampedHonorific: 'sa iyong magulang',
+        ),
+        'your parent',
+      );
+    });
+  });
+
   group('Hand-off picture', () {
     test('each gendered educator avatar maps to its own artwork', () {
       final pairs = <HandoffFigure, (UserRole, int)>{

@@ -27,6 +27,7 @@ class TrailNode {
     required this.accent,
     this.emoji,
     this.pillText,
+    this.spokenDetail,
     this.onTap,
   });
 
@@ -44,6 +45,11 @@ class TrailNode {
 
   /// Optional pill beneath the label (e.g. "START", "REPLAY", "2/5").
   final String? pillText;
+
+  /// What only the pill shows, in words, for a screen reader ("2 of 5 steps
+  /// done"). The node reads its name and state; the drawing under it is
+  /// silent, or the name came twice.
+  final String? spokenDetail;
 
   final VoidCallback? onTap;
 }
@@ -211,9 +217,11 @@ class _TrailNodeView extends StatelessWidget {
           );
     }
 
-    // FitText: "Nararamdaman" broke in two under its node at 2x.
+    // FitText: "Nararamdaman" broke in two under its node at 2x. Three
+    // lines: "Ang Nararamdaman Ko" needs them under a node (30 Oct).
     final label = FitText(
       node.label,
+      maxLines: 3,
       textAlign: TextAlign.center,
       style: AppTypography.labelSmall.copyWith(
         fontWeight: isCurrent ? FontWeight.w800 : FontWeight.w600,
@@ -223,11 +231,12 @@ class _TrailNodeView extends StatelessWidget {
 
     return Semantics(
       button: node.onTap != null,
-      label: '${node.label}. ${isDone ? _t(context).lpNodeCompleted : isCurrent ? _t(context).lpNodeCurrent : isAvailable ? _t(context).lpNodeAvailable : _t(context).lpNodeLocked}',
+      label: '${node.label}. ${isDone ? _t(context).lpNodeCompleted : isCurrent ? _t(context).lpNodeCurrent : isAvailable ? _t(context).lpNodeAvailable : _t(context).lpNodeLocked}'
+          '${node.spokenDetail == null ? '' : '. ${node.spokenDetail}'}',
       child: DpadFocusable(onActivate: node.onTap, child: GestureDetector(
         onTap: node.onTap,
         behavior: HitTestBehavior.opaque,
-        child: Column(
+        child: ExcludeSemantics(child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -242,7 +251,7 @@ class _TrailNodeView extends StatelessWidget {
               ),
             ],
           ],
-        ),
+        )),
       )),
     );
   }

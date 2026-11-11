@@ -9,6 +9,7 @@ import '../../../core/utils/localized_date.dart';
 import '../models/showcase_models.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../core/widgets/fit_text.dart';
+import '../../../core/widgets/app_bar_title.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 
@@ -51,14 +52,13 @@ class ShowcaseDetailScreen extends ConsumerWidget {
               color: AppColors.textOnPrimary,
             ),
             flexibleSpace: FlexibleSpaceBar(
-              title: Text(
+              // The only place the title is shown: it stays whole.
+              title: AppBarTitle(
                 item.title,
                 style: AppTypography.titleSmall.copyWith(
                   color: AppColors.textOnPrimary,
                   fontWeight: FontWeight.w700,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
               background: Container(
                 decoration: BoxDecoration(

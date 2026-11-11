@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../../../core/utils/localized_date.dart';
 
 /// Bar chart showing daily study minutes over the last 7 days.
 class StudyTimeChart extends StatelessWidget {
@@ -50,7 +51,17 @@ class StudyTimeChart extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          SizedBox(
+          // Said as the days and their minutes, not as the axis: a screen
+          // reader read the bars as "Huw, Biy, Sab, Lin, Lun, Mar, Miy" and
+          // the scale's numbers, and never what the bars show (3 Nov).
+          Semantics(
+            label: [
+              for (var i = 0; i < days.length; i++)
+                '${LocalizedDate.weekdayLong(DateTime.parse(days[i]), l10n)}: '
+                    '${l10n.minutesCount(values[i].round())}',
+            ].join(', '),
+            excludeSemantics: true,
+            child: SizedBox(
             height: 180,
             child: BarChart(
               BarChartData(
@@ -77,7 +88,10 @@ class StudyTimeChart extends StatelessWidget {
                         final i = value.toInt();
                         if (i < 0 || i >= days.length) return const SizedBox();
                         final day = DateTime.parse(days[i]);
-                        final label = _dayLabel(day);
+                        final label = LocalizedDate.weekdayShort(
+                          day.weekday,
+                          AppLocalizations.of(context),
+                        );
                         return Padding(
                           padding: const EdgeInsets.only(top: 8),
                           child: Text(
@@ -100,7 +114,7 @@ class StudyTimeChart extends StatelessWidget {
                         return Text(
                           '${value.toInt()}',
                           style: AppTypography.labelSmall.copyWith(
-                            fontSize: 9,
+                            fontSize: 10,
                             color: hc.textSecondary,
                           ),
                         );
@@ -145,13 +159,10 @@ class StudyTimeChart extends StatelessWidget {
               ),
             ),
           ),
+          ),
         ],
       ),
     );
   }
 
-  String _dayLabel(DateTime date) {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    return days[date.weekday - 1];
-  }
 }

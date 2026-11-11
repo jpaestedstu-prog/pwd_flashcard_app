@@ -27,6 +27,7 @@ import '../../../widgets/fullscreen_host.dart';
 import '../../gamepad/providers/gamepad_screen.dart';
 import '../../gamepad/widgets/gamepad_screen_registrar.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Reading-comprehension quiz — 3 multiple-choice questions per story.
 class StoryQuizScreen extends ConsumerStatefulWidget {
@@ -159,7 +160,7 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
       return Scaffold(
         appBar: fullscreenBar(
           ref,
-          AppBar(title: Text(AppLocalizations.of(context)!.quizNotFound)),
+          AppBar(title: AppBarTitle(AppLocalizations.of(context)!.quizNotFound)),
         ),
         body: Center(
           child: Column(
@@ -241,7 +242,9 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
     // choices are withdrawn and replaced by the single way forward, so a
     // learner driving by ear is never left guessing what happens next.
     return GamepadScreenRegistrar(
-      title: _t(context).sqQuizTitle(_story!.titleEn),
+      title: _t(context).sqQuizTitle(
+        _story!.titleIn(filipino: _t(context).localeName.startsWith('fil')),
+      ),
       narration: [
         '${_t(context).sqQuestionNofM(_currentQ + 1, _story!.questions.length)}.',
         question.questionEn,
@@ -269,7 +272,11 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
             tooltip: _t(context).close,
             onPressed: () => context.popOrGo('/stories'),
           ),
-          title: Text(_t(context).sqQuizTitle(_story!.titleEn)),
+          // The story's own title in the reader's language: in Filipino
+          // the bar said "Pagsusulit: A Day at the Farm" (3 Nov).
+          title: AppBarTitle(_t(context).sqQuizTitle(
+            settings.locale == 'fil' ? _story!.titleFil : _story!.titleEn,
+          )),
         ),
       ),
       body: SafeArea(
@@ -284,10 +291,9 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Progress (fixed at top)
-                  Semantics(
-                    label:
-                        _t(context).sqQuestionNofM(_currentQ + 1, _story!.questions.length),
+                  // Progress (fixed at top). For the eye: the line under it
+                  // says "Question 1 of 3", which a label here said first.
+                  ExcludeSemantics(
                     child: LinearProgressIndicator(
                       value: (_currentQ + 1) / _story!.questions.length,
                       backgroundColor: AppColors.border,
@@ -481,7 +487,11 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 12),
                               child: Semantics(
-                                label: '$text, $textFil',
+                                container: true,
+                                button: true,
+                                label: '$text, $textFil'
+                                    '${_answered && isCorrect ? AppLocalizations.of(context)!.correctAnswerSuffix : ''}'
+                                    '${_answered && isSelected && !isCorrect ? AppLocalizations.of(context)!.wrongAnswerSuffix : ''}',
                                 selected: isSelected,
                                 child: InkWell(
                                   onTap: _answered
@@ -532,79 +542,83 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                                           ),
                                           const SizedBox(height: 14),
                                         ],
-                                        Row(
-                                          children: [
-                                            // Option letter
-                                            Container(
-                                              width: context.scaleIcon(36),
-                                              height: context.scaleIcon(36),
-                                              decoration: BoxDecoration(
-                                                color: borderColor.withValues(
-                                                  alpha: 0.15,
+                                        ExcludeSemantics(
+                                          // The label says the answer; its letter and words were read again.
+                                          // The picture above keeps its own press (see the real picture).
+                                          child: Row(
+                                            children: [
+                                              // Option letter
+                                              Container(
+                                                width: context.scaleIcon(36),
+                                                height: context.scaleIcon(36),
+                                                decoration: BoxDecoration(
+                                                  color: borderColor.withValues(
+                                                    alpha: 0.15,
+                                                  ),
+                                                  shape: BoxShape.circle,
                                                 ),
-                                                shape: BoxShape.circle,
-                                              ),
-                                              child: Center(
-                                                child: Text(
-                                                  String.fromCharCode(
-                                                    65 + idx,
-                                                  ), // A, B, C
-                                                  style: AppTypography
-                                                      .titleSmall
-                                                      .copyWith(
-                                                        color: textColor,
-                                                      ),
-                                                ),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 14),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  // English — the main line.
-                                                  Text(
-                                                    text,
+                                                child: Center(
+                                                  child: Text(
+                                                    String.fromCharCode(
+                                                      65 + idx,
+                                                    ), // A, B, C
                                                     style: AppTypography
-                                                        .bodyLarge
+                                                        .titleSmall
                                                         .copyWith(
                                                           color: textColor,
                                                         ),
                                                   ),
-                                                  const SizedBox(height: 2),
-                                                  // Tagalog translation beneath,
-                                                  // smaller, like the flashcard
-                                                  // card's Filipino word.
-                                                  Text(
-                                                    textFil,
-                                                    style: AppTypography
-                                                        .bodyMedium
-                                                        .copyWith(
-                                                          color: subColor,
-                                                          fontWeight:
-                                                              FontWeight.w500,
-                                                        ),
-                                                  ),
-                                                ],
+                                                ),
                                               ),
-                                            ),
-                                            if (_answered && isCorrect)
-                                              Icon(
-                                                Icons.check_circle_rounded,
-                                                color: HCColor.of(context).graphic(AppColors.success),
-                                                size: context.scaleIcon(24),
+                                              const SizedBox(width: 14),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    // English — the main line.
+                                                    Text(
+                                                      text,
+                                                      style: AppTypography
+                                                          .bodyLarge
+                                                          .copyWith(
+                                                            color: textColor,
+                                                          ),
+                                                    ),
+                                                    const SizedBox(height: 2),
+                                                    // Tagalog translation beneath,
+                                                    // smaller, like the flashcard
+                                                    // card's Filipino word.
+                                                    Text(
+                                                      textFil,
+                                                      style: AppTypography
+                                                          .bodyMedium
+                                                          .copyWith(
+                                                            color: subColor,
+                                                            fontWeight:
+                                                                FontWeight.w500,
+                                                          ),
+                                                    ),
+                                                  ],
+                                                ),
                                               ),
-                                            if (_answered &&
-                                                isSelected &&
-                                                !isCorrect)
-                                              Icon(
-                                                Icons.cancel_rounded,
-                                                color: HCColor.of(context).graphic(AppColors.error),
-                                                size: context.scaleIcon(24),
-                                              ),
-                                          ],
+                                              if (_answered && isCorrect)
+                                                Icon(
+                                                  Icons.check_circle_rounded,
+                                                  color: HCColor.of(context).graphic(AppColors.success),
+                                                  size: context.scaleIcon(24),
+                                                ),
+                                              if (_answered &&
+                                                  isSelected &&
+                                                  !isCorrect)
+                                                Icon(
+                                                  Icons.cancel_rounded,
+                                                  color: HCColor.of(context).graphic(AppColors.error),
+                                                  size: context.scaleIcon(24),
+                                                ),
+                                            ],
+                                          ),
                                         ),
                                         // Per-choice helpers: hear this choice in
                                         // English and in Tagalog (mirroring the
@@ -699,8 +713,6 @@ class _StoryQuizScreenState extends ConsumerState<StoryQuizScreen> {
                           ),
                           label: Text(
                             _isLastQuestion ? _t(context).sqSeeResults : _t(context).sqNextQuestionCap,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: HCColor.of(context).fillFor(_story!.category.color),
@@ -754,29 +766,27 @@ class _ChoiceListenButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: semanticLabel,
-      child: ExcludeSemantics(
-        child: OutlinedButton.icon(
-          onPressed: onTap,
-          icon: Icon(Icons.volume_up_rounded, size: context.scaleIcon(18)),
-          label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: color,
-            side: BorderSide(color: color.withValues(alpha: 0.6), width: 1.4),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            // 44dp floor keeps the target above the accessibility minimum while
-            // staying compact enough to sit two-up beside the FSL button.
-            minimumSize: const Size(0, 44),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            textStyle: AppTypography.labelLarge.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+    return OutlinedButton.icon(
+      onPressed: onTap,
+      icon: Icon(Icons.volume_up_rounded, size: context.scaleIcon(18)),
+      label: Semantics(
+        label: semanticLabel,
+        excludeSemantics: true,
+        child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+      ),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: color,
+        side: BorderSide(color: color.withValues(alpha: 0.6), width: 1.4),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        // 48 dp floor: the accessibility minimum, and still compact enough to
+        // sit two-up beside the FSL button.
+        minimumSize: const Size(0, 48),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        textStyle: AppTypography.labelLarge.copyWith(
+          fontWeight: FontWeight.w700,
         ),
       ),
     );

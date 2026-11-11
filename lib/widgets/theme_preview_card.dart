@@ -136,6 +136,7 @@ class _ThemePreviewCardState extends State<ThemePreviewCard> {
                 : '$price, ${l10n.starsToGo(widget.starsShort)}';
 
     return Semantics(
+      container: true,
       button: true,
       label: '${widget.item.localizedName(widget.isFilipino)}, '
           '${widget.item.localizedDescription(widget.isFilipino)}, $status'
@@ -145,23 +146,15 @@ class _ThemePreviewCardState extends State<ThemePreviewCard> {
       // gaze grid — the Star Shop included. Every other shelf is built from
       // InkWells and was reachable; Themes was the one tab a hands-free
       // learner could open and then do nothing on. Same fix as the game
-      // pickers: FocusableActionDetector supplies the focus node and the
-      // ActivateIntent handling, and changes nothing visually.
-      child: FocusableActionDetector(
-        actions: <Type, Action<Intent>>{
-          ActivateIntent: CallbackAction<ActivateIntent>(
-            onInvoke: (_) {
-              widget.onTap();
-              return null;
-            },
-          ),
-        },
-        child: DpadFocusable(onActivate: widget.onTap, child: GestureDetector(
+      // pickers: DpadFocusable supplies the focus node and the press, and
+      // changes nothing visually. (FocusableActionDetector under it made a
+      // second focus stop, and kept the label off the node with the press.)
+      child: DpadFocusable(onActivate: widget.onTap, child: GestureDetector(
         onTap: widget.onTap,
         onTapDown: _onTapDown,
         onTapUp: _onTapUp,
         onTapCancel: _onTapCancel,
-        child: AnimatedScale(
+        child: ExcludeSemantics(child: AnimatedScale(
           scale: _scale,
           duration: const Duration(milliseconds: 150),
           curve: Curves.easeOut,
@@ -269,9 +262,8 @@ class _ThemePreviewCardState extends State<ThemePreviewCard> {
               ],
             ),
           ),
-        ),
+        )),
       )),
-      ),
     );
   }
 }

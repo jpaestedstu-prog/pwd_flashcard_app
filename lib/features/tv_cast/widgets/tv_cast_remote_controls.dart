@@ -91,9 +91,9 @@ class _RemoteButton extends StatelessWidget {
     final fg = primary ? Colors.white : hc.primary;
 
     return Semantics(
+      container: true,
       button: true,
       label: label,
-      excludeSemantics: true,
       child: Material(
         color: bg,
         clipBehavior: Clip.antiAlias,
@@ -108,37 +108,39 @@ class _RemoteButton extends StatelessWidget {
         ),
         child: InkWell(
           onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.sm,
-              vertical: 14,
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Fixed size in a FittedBox, exactly like a ProActionTile's
-                // icon badge: the glyph never grows with the font setting, so
-                // the label keeps its room in a third of a narrow phone.
-                SizedBox(
-                  height: 32,
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Icon(icon, size: 32, color: fg),
+          child: ExcludeSemantics(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: 14,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Fixed size in a FittedBox, exactly like a ProActionTile's
+                  // icon badge: the glyph never grows with the font setting, so
+                  // the label keeps its room in a third of a narrow phone.
+                  SizedBox(
+                    height: 32,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Icon(icon, size: 32, color: fg),
+                    ),
                   ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: fg,
-                    fontWeight: FontWeight.w700,
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: fg,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

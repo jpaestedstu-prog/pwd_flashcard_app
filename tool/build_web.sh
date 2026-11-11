@@ -46,6 +46,11 @@ else
   OUT=${WEB_DIR:-build/web-v$V}
   DEFINES=(--release)
 fi
+# WEB_TRACE=1: every controller, key and switch press, and where the focus
+# landed, written to the browser console (lib/core/utils/input_trace.dart).
+if [ "${WEB_TRACE:-0}" = 1 ]; then
+  DEFINES+=(--dart-define=FLASHLEARN_TRACE_INPUT=true)
+fi
 
 echo "== $(date +%H:%M:%S) flutter build web ${DEFINES[0]} -> $OUT (base $BASE)"
 flutter build web "${DEFINES[@]}" --no-wasm-dry-run --base-href "$BASE" --output "$OUT"

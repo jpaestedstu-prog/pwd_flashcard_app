@@ -60,7 +60,7 @@ class DeckTemplateSeedData {
     color: AppColors.sectionCommunication,
     category: FlashcardCategory.familyAndGreetings,
     cards: [
-      DeckTemplateCard(wordEnglish: 'Hello', wordFilipino: 'Kamusta'),
+      DeckTemplateCard(wordEnglish: 'Hello', wordFilipino: 'Kumusta'),
       DeckTemplateCard(wordEnglish: 'Thank you', wordFilipino: 'Salamat'),
       DeckTemplateCard(wordEnglish: 'Please', wordFilipino: 'Pakiusap'),
       DeckTemplateCard(wordEnglish: 'Yes', wordFilipino: 'Oo'),

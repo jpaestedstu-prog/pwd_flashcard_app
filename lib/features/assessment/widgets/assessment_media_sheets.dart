@@ -16,6 +16,7 @@ import '../services/assessment_media_store.dart';
 import '../services/assessment_service.dart';
 import 'assessment_media_editor.dart';
 import 'assessment_media_panel.dart';
+import '../../../core/widgets/text_limits.dart';
 
 AppLocalizations _tr(BuildContext context) =>
     AppLocalizations.of(context) ?? AppLocalizationsEn();
@@ -629,6 +630,8 @@ class _FeedbackEditorSheetState extends State<_FeedbackEditorSheet> {
             const SizedBox(height: 16),
             TextField(
               controller: _note,
+              maxLength: TextLimits.message,
+              buildCounter: TextLimits.counter,
               maxLines: 5,
               minLines: 2,
               textCapitalization: TextCapitalization.sentences,

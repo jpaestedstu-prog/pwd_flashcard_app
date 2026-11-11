@@ -21,7 +21,7 @@ const double kFullscreenToolbarHeight = 48.0;
 ///
 /// ```dart
 /// Scaffold(
-///   appBar: fullscreenBar(ref, AppBar(title: Text('Spelling Bee'))),
+///   appBar: fullscreenBar(ref, AppBar(title: AppBarTitle('Spelling Bee'))),
 ///   body: ...,
 /// )
 /// ```

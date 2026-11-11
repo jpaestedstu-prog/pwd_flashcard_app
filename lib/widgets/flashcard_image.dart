@@ -153,7 +153,7 @@ class _FlashcardImageState extends State<FlashcardImage> {
   /// which is exactly the kind of drift that would make this bug come back
   /// only on a warm cache.
   String get _label => widget.revealsAnswer
-      ? '${widget.card.wordEnglish}, ${widget.card.wordFilipino}'
+      ? widget.card.spokenWords()
       : _t(context).fiPictureClue;
 
   @override
@@ -379,7 +379,13 @@ class _FlashcardImageState extends State<FlashcardImage> {
     if (widget.expand) {
       return RepaintBoundary(
         child: Semantics(
+          // Its own node: merged into the card around it, the picture's
+          // image role spread to the whole card.
+          container: true,
           image: true,
+          // The label only: the emoji or photo inside must never speak — a
+          // quiz picture of 🟢 read out "green circle" for the word Green.
+          excludeSemantics: true,
           label: _label,
           child: _maybeFrame(
             ClipRRect(
@@ -420,7 +426,13 @@ class _FlashcardImageState extends State<FlashcardImage> {
     final boxSize = widget.size * 1.6;
     return RepaintBoundary(
       child: Semantics(
+        // Its own node: merged into the card around it, the picture's
+        // image role spread to the whole card.
+        container: true,
         image: true,
+        // The label only: the emoji or photo inside must never speak — a
+        // quiz picture of 🟢 read out "green circle" for the word Green.
+        excludeSemantics: true,
         label: _label,
         child: _maybeFrame(
           ClipRRect(
@@ -486,7 +498,13 @@ class _FlashcardImageState extends State<FlashcardImage> {
           );
 
     return Semantics(
+      // Its own node: merged into the card around it, the picture's
+      // image role spread to the whole card.
+      container: true,
       image: true,
+      // The label only: the emoji or photo inside must never speak — a
+      // quiz picture of 🟢 read out "green circle" for the word Green.
+      excludeSemantics: true,
       label: _label,
       // The emoji card gets the same black frame as the photo face.
       child: _maybeFrame(box, BorderRadius.circular(widget.borderRadius)),

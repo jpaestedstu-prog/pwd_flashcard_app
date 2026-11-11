@@ -6,6 +6,10 @@ import '../core/utils/error_handler.dart';
 import '../l10n/app_localizations.dart';
 import '../l10n/app_localizations_en.dart';
 
+/// How long "Something went wrong" stays before it goes by itself: time to
+/// read its one sentence slowly.
+const errorSnackBarDuration = Duration(seconds: 6);
+
 /// A widget that catches errors in its child widget tree and displays
 /// a friendly fallback UI instead of a red error screen.
 ///
@@ -57,6 +61,14 @@ class _ErrorBoundaryState extends State<ErrorBoundary> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
+          // It goes away by itself, as it did before Flutter 3.44: since then
+          // a snack bar with an action stays until the action is tapped, and
+          // this one sat over a learner's page for good (on the emulator's
+          // test Student it covered the Daily Challenge's answers, 9 Nov).
+          // Someone using a screen reader or switch access keeps it until OK,
+          // so they can reach it.
+          duration: errorSnackBarDuration,
+          persist: MediaQuery.maybeAccessibleNavigationOf(context) ?? false,
           action: SnackBarAction(
             label: 'OK',
             textColor: AppColors.textOnPrimary,

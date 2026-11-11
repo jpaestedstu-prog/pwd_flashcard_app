@@ -21,6 +21,8 @@ import '../../../widgets/depth_3d.dart';
 import '../../gaze_control/providers/gaze_home_grid.dart';
 import '../../../providers/tile_grid_active_provider.dart';
 import '../../gaze_control/widgets/gaze_home_tiles.dart';
+import '../../companion/widgets/companion_clearance.dart';
+import '../../../core/widgets/stagger_in.dart';
 
 /// Height of one game card, sized by the text scale alone.
 ///
@@ -29,7 +31,9 @@ import '../../gaze_control/widgets/gaze_home_tiles.dart';
 /// cell got *shorter* as the grid got wider, and shorter still once the text
 /// grew.
 double _gameCardHeight(BuildContext context) =>
-    60 + 92 * MediaQuery.textScalerOf(context).scale(1.0);
+    // A very narrow card puts its words on more lines.
+    (context.screenWidth < 350 ? 84 : 60) +
+    92 * MediaQuery.textScalerOf(context).scale(1.0);
 
 /// Width of one grid cell, before the card's own padding.
 double _gameCellWidth(BuildContext context, int columns) {
@@ -204,7 +208,10 @@ class GameHubScreen extends ConsumerWidget {
                       SliverToBoxAdapter(
                         child: Padding(
                           padding: EdgeInsets.fromLTRB(padding, 4, padding, 0),
-                          child: _CategoryHeader(type: catalog.category!),
+                          child: _CategoryHeader(
+                            type: catalog.category!,
+                            count: games.length,
+                          ),
                         ),
                       ),
 
@@ -216,7 +223,10 @@ class GameHubScreen extends ConsumerWidget {
                     // Extra Large font (1.5×) — otherwise the label + 2-line
                     // description column overflows the card by ~10 px.
                     SliverPadding(
-                      padding: EdgeInsets.all(padding),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: padding,
+                        vertical: context.pageInset,
+                      ),
                       sliver: SliverGrid(
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: _gameGridColumns(context),
@@ -239,7 +249,11 @@ class GameHubScreen extends ConsumerWidget {
                                 (
                                   tile: RepaintBoundary(
                                     child:
-                                        _GameCard(
+                                        StaggerIn(
+                                          // Built as it scrolls in: there at once, not faded in.
+                                          index: 0,
+                                          step: Duration.zero,
+                                          child: _GameCard(
                                               game: game,
                                               bestStars: bests[game.name],
                                               resume: resumes[game],
@@ -248,10 +262,11 @@ class GameHubScreen extends ConsumerWidget {
                                                 ref,
                                                 game,
                                               ),
-                                            )
-                                            .animate()
-                                            .fadeIn(duration: 350.ms)
+                                            ),
+                                          builder: (child, delay) => child.animate()
+                                            .fadeIn(duration: 350.ms, delay: delay)
                                             .slideY(begin: 0.1, end: 0),
+                                        ),
                                   ),
                                   cell: GazeTileCell(
                                     label: game.labelOf(
@@ -267,7 +282,8 @@ class GameHubScreen extends ConsumerWidget {
                       ),
                     ),
 
-                    const SliverToBoxAdapter(child: SizedBox(height: 20)),
+                    // The last game clear of the floating AI Buddy.
+                    const CompanionClearanceSliver(),
                   ],
                 ),
               ),
@@ -372,6 +388,7 @@ class GameHubScreen extends ConsumerWidget {
     return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text(l10n.resumeTitle),
         content: Text(
           l10n.resumeBody(saved.roundIndex + 1, saved.cardIds.length),
@@ -399,23 +416,7 @@ class GameHubScreen extends ConsumerWidget {
     required bool timedMode,
     required bool resume,
   }) {
-    final route = switch (game) {
-      GameType.wordMatch => '/games/word-match',
-      GameType.spellingBee => '/games/spelling-bee',
-      GameType.memoryMatch => '/games/memory-match',
-      GameType.dragAndDrop => '/games/drag-drop',
-      GameType.flashcardQuiz => '/games/flashcard-quiz',
-      GameType.pronunciation => '/games/pronunciation',
-      GameType.sentenceBuilder => '/games/sentence-builder',
-      GameType.tracing => '/games/tracing',
-      GameType.storyQuiz => '/stories',
-      GameType.fslPractice => '/games/fsl-practice',
-      GameType.jigsawPuzzle => '/games/jigsaw-puzzle',
-      GameType.pictureWord => '/games/picture-word',
-      GameType.yesOrNo => '/games/yes-or-no',
-      GameType.oddOneOut => '/games/odd-one-out',
-      GameType.firstLetter => '/games/first-letter',
-    };
+    final route = gameRouteOf(game);
     final catParam = categories.isEmpty
         ? ''
         : '&categories=${categories.map((c) => c.index).join(',')}';
@@ -515,7 +516,8 @@ class _PlayTogetherBanner extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         depth: true,
         depthBubbles: true,
-        child: Row(
+        // Said once, by the label above.
+        child: ExcludeSemantics(child: Row(
           children: [
             const Badge3D(
               size: 52,
@@ -530,19 +532,20 @@ class _PlayTogetherBanner extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  // Shrinks before it cuts ("Maglaro Nang Sab…" on a
+                  // phone at the largest Font Size, 30 Oct).
+                  FitText(
                     AppLocalizations.of(context)!.playTogether,
                     style: AppTypography.titleMedium.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.w800,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
                   // "Makipagkarera" broke in two at 2x.
                   FitText(
                     AppLocalizations.of(context)!.playTogetherSubtitle,
+                    maxLines: 3,
                     style: AppTypography.bodySmall.copyWith(
                       color: Colors.white.withValues(alpha: 0.9),
                     ),
@@ -557,7 +560,7 @@ class _PlayTogetherBanner extends StatelessWidget {
               size: 18,
             ),
           ],
-        ),
+        )),
       ),
     );
   }
@@ -569,12 +572,14 @@ class _PlayTogetherBanner extends StatelessWidget {
 /// two learners on different categories can tell their Games tabs apart.
 class _CategoryHeader extends StatelessWidget {
   final DisabilityType type;
-  const _CategoryHeader({required this.type});
+  const _CategoryHeader({required this.type, required this.count});
+
+  /// The games offered: fewer than the category's when a parent blocked some.
+  final int count;
 
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
-    final count = GameCatalog.forCategory(type).length;
     final label = type.profileTypeLabelOf(AppLocalizations.of(context)!);
     return Semantics(
       header: true,
@@ -620,7 +625,7 @@ class _CategoryHeader extends StatelessWidget {
                       style: AppTypography.bodySmall.copyWith(
                         color: hc.textSecondary,
                       ),
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
@@ -766,7 +771,9 @@ class _GameCardState extends State<_GameCard> {
         // AppCard's depth mode lays content out in a top-start Stack, so without
         // this the row would hug the top of the (taller) grid cell, leaving an
         // uneven gap below. Center fills the bounded cell and centres the row.
-        child: Center(
+        // Said once, by the label above (it was read again as icon, name,
+        // description and stars).
+        child: ExcludeSemantics(child: Center(
           child: Row(
             children: [
               // Game icon — raised 3D coin
@@ -812,11 +819,11 @@ class _GameCardState extends State<_GameCard> {
                         // so a large-text card is proportionally taller and has
                         // room for another line. Without this the descriptions
                         // ellipsed to "Listen and pick the cor..." for exactly
-                        // the learners who most need to read them.
-                        maxLines:
-                            MediaQuery.textScalerOf(context).scale(1.0) >= 1.3
-                                ? 3
-                                : 2,
+                        // the learners who most need to read them. Four at
+                        // the largest sizes and on a narrow phone: Filipino's
+                        // "I-swipe pakanan kung alam mo, pakaliwa para
+                        // matuto!" ran past three.
+                        maxLines: 4,
                       ),
                     ),
                   ],
@@ -849,7 +856,7 @@ class _GameCardState extends State<_GameCard> {
               ),
             ],
           ),
-        ),
+        )),
       ),
     );
   }
@@ -883,7 +890,7 @@ class _ResumeBadge extends StatelessWidget {
             maxLines: 1,
             // Fixed size on purpose — see [_BestBadge]'s class doc.
             style: const TextStyle(
-              fontSize: 9,
+              fontSize: 11,
               height: 1.2,
               letterSpacing: 0.5,
               fontWeight: FontWeight.w800,
@@ -921,7 +928,7 @@ class _BestBadge extends StatelessWidget {
           maxLines: 1,
           // Fixed size on purpose — see the class doc.
           style: const TextStyle(
-            fontSize: 9,
+            fontSize: 11,
             height: 1.2,
             letterSpacing: 0.5,
             fontWeight: FontWeight.w800,

@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../core/theme/accessible_theme.dart' show tonalButtonStyle;
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../../../providers/app_providers.dart' show profileProvider;
@@ -19,6 +20,7 @@ import '../services/gaze_switch_input.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../navigation/dpad_keys.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Configuration + launch screen for the Gaze (head + blink) accessibility
 /// control. Persists to [GazeSettings] and offers a "Try it now" button into
@@ -64,9 +66,12 @@ class GazeSettingsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(t.gzsTitle),
+        title: AppBarTitle(t.gzsTitle),
       ),
       body: ListView(
+        // Rows come and go here: no row may stay "alive" in a place another
+        // has taken (see found_by_pressing_test: Scan Mode).
+        addAutomaticKeepAlives: false,
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
         children: [
           if (id != null) ...[
@@ -106,21 +111,24 @@ class GazeSettingsScreen extends ConsumerWidget {
           ),
 
           const SizedBox(height: 8),
-          Semantics(
-            button: true,
-            label: t.gzsTryNow,
-            child: FilledButton.icon(
-              // A grown-up trying a learner's setup practises with the
-              // learner's settings, switched on for the practice.
-              onPressed: () => context.push(
-                '/gaze-control',
-                extra: id == null ? null : settings.copyWith(enabled: true),
-              ),
-              icon: const Icon(Icons.play_arrow_rounded),
-              label: Text(t.gzsTryIt),
-              style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(52),
-              ),
+          FilledButton.icon(
+            // A grown-up trying a learner's setup practises with the
+            // learner's settings, switched on for the practice.
+            onPressed: () => context.push(
+              '/gaze-control',
+              extra: id == null ? null : settings.copyWith(enabled: true),
+            ),
+            icon: const Icon(Icons.play_arrow_rounded),
+            // The spoken name on the button's own node, with its press and
+            // focus: a Semantics around the button made a second "button"
+            // with nothing to press.
+            label: Semantics(
+              label: t.gzsTryNow,
+              excludeSemantics: true,
+              child: Text(t.gzsTryIt),
+            ),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(52),
             ),
           ),
 
@@ -226,9 +234,7 @@ class GazeSettingsScreen extends ConsumerWidget {
             _SliderTile(
               icon: Icons.hourglass_bottom_rounded,
               title: t.gzsDwellSelectMs,
-              valueLabel: t.gzsSeconds(
-                (settings.dwellSelectMs / 1000).toStringAsFixed(1),
-              ),
+              valueText: (v) => t.gzsSeconds((v / 1000).toStringAsFixed(1)),
               value: settings.dwellSelectMs.toDouble(),
               min: GazeSettings.minDwellSelectMs.toDouble(),
               max: GazeSettings.maxDwellSelectMs.toDouble(),
@@ -268,7 +274,7 @@ class GazeSettingsScreen extends ConsumerWidget {
             _SliderTile(
               icon: Icons.speed_rounded,
               title: t.gzsSensitivity,
-              valueLabel: _sensitivityLabel(t, settings.sensitivity),
+              valueText: (v) => _sensitivityLabel(t, v.round()),
               value: settings.sensitivity.toDouble(),
               min: GazeSettings.minSensitivity.toDouble(),
               max: GazeSettings.maxSensitivity.toDouble(),
@@ -280,8 +286,7 @@ class GazeSettingsScreen extends ConsumerWidget {
             _SliderTile(
               icon: Icons.timer_rounded,
               title: t.gzsHold,
-              valueLabel:
-                  t.gzsSeconds((settings.dwellMs / 1000).toStringAsFixed(1)),
+              valueText: (v) => t.gzsSeconds((v / 1000).toStringAsFixed(1)),
               value: settings.dwellMs.toDouble(),
               min: GazeSettings.minDwellMs.toDouble(),
               max: GazeSettings.maxDwellMs.toDouble(),
@@ -332,9 +337,7 @@ class GazeSettingsScreen extends ConsumerWidget {
             _SliderTile(
               icon: Icons.timelapse_rounded,
               title: t.gzsScanSpeed,
-              valueLabel: t.gzsSeconds(
-                (settings.scanStepMs / 1000).toStringAsFixed(1),
-              ),
+              valueText: (v) => t.gzsSeconds((v / 1000).toStringAsFixed(1)),
               value: settings.scanStepMs.toDouble(),
               min: GazeSettings.minScanStepMs.toDouble(),
               max: GazeSettings.maxScanStepMs.toDouble(),
@@ -662,7 +665,8 @@ class _ChoiceOption extends StatelessWidget {
       inMutuallyExclusiveGroup: true,
       selected: selected,
       button: true,
-      label: title,
+      // Title and explanation once; the title drawn below was read again.
+      label: '$title. $subtitle',
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Material(
@@ -673,50 +677,52 @@ class _ChoiceOption extends StatelessWidget {
           child: InkWell(
             onTap: onTap,
             borderRadius: BorderRadius.circular(14),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    selected
-                        ? Icons.radio_button_checked_rounded
-                        : Icons.radio_button_unchecked_rounded,
-                    color: selected
-                        ? HCColor.of(context).primary
-                        : HCColor.of(context).textSecondary,
-                    size: 22,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(icon,
-                                size: 18, color: HCColor.of(context).readable(AppColors.primaryDark)),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                title,
-                                style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          subtitle,
-                          style: TextStyle(
-                              color: HCColor.of(context).textSecondary, fontSize: 13),
-                        ),
-                      ],
+            child: ExcludeSemantics(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      selected
+                          ? Icons.radio_button_checked_rounded
+                          : Icons.radio_button_unchecked_rounded,
+                      color: selected
+                          ? HCColor.of(context).primary
+                          : HCColor.of(context).textSecondary,
+                      size: 22,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(icon,
+                                  size: 18, color: HCColor.of(context).readable(AppColors.primaryDark)),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  title,
+                                  style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            subtitle,
+                            style: TextStyle(
+                                color: HCColor.of(context).textSecondary, fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -787,6 +793,7 @@ class _RestPositionTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               FilledButton.tonalIcon(
+                style: tonalButtonStyle(context),
                 onPressed: onSet,
                 icon: const Icon(Icons.my_location_rounded),
                 label: Text(t.gzsRestButton),
@@ -913,13 +920,17 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 0.5,
-          color: HCColor.of(context).readable(AppColors.primaryDark),
+      child: Semantics(
+        container: true,
+        header: true,
+        child: Text(
+          title,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.5,
+            color: HCColor.of(context).readable(AppColors.primaryDark),
+          ),
         ),
       ),
     );
@@ -935,9 +946,13 @@ class _SubHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 2),
-      child: Text(
-        title,
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+      child: Semantics(
+        container: true,
+        header: true,
+        child: Text(
+          title,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
       ),
     );
   }
@@ -946,7 +961,9 @@ class _SubHeader extends StatelessWidget {
 class _SliderTile extends StatelessWidget {
   final IconData icon;
   final String title;
-  final String valueLabel;
+  /// The value as it is shown and said, for any position — a screen reader
+  /// is told the one the slider moves to before the row rebuilds.
+  final String Function(double value) valueText;
   final double value;
   final double min;
   final double max;
@@ -957,7 +974,7 @@ class _SliderTile extends StatelessWidget {
   const _SliderTile({
     required this.icon,
     required this.title,
-    required this.valueLabel,
+    required this.valueText,
     required this.value,
     required this.min,
     required this.max,
@@ -972,13 +989,16 @@ class _SliderTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final current = value.clamp(min, max);
+    final valueLabel = valueText(current);
     final t = _t(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Builder(builder: (context) {
+          // Said by the slider, which carries the name and the value (see
+          // [DpadSliderScope.name]).
+          ExcludeSemantics(child: Builder(builder: (context) {
             final titleText = FitText(title,
                 style: const TextStyle(
                     fontSize: 16, fontWeight: FontWeight.w600));
@@ -1014,7 +1034,7 @@ class _SliderTile extends StatelessWidget {
                 ],
               ],
             );
-          }),
+          })),
           // − / + beside the slider: a hands-free learner reaches these by
           // gaze (a slider can be focused but not moved by a head gesture),
           // and they are easier than a drag for anyone with limited hand
@@ -1029,15 +1049,18 @@ class _SliderTile extends StatelessWidget {
                     : () => onChanged((current - _step).clamp(min, max)),
               ),
               Expanded(
-                child: DpadSliderScope(child: Slider(
-                  value: current,
-                  min: min,
-                  max: max,
-                  divisions: divisions,
-                  label: valueLabel,
-                  activeColor: AppColors.primary,
-                  onChanged: onChanged,
-                )),
+                child: DpadSliderScope(
+                  name: title,
+                  child: Slider(
+                    value: current,
+                    min: min,
+                    max: max,
+                    divisions: divisions,
+                    semanticFormatterCallback: valueText,
+                    activeColor: AppColors.primary,
+                    onChanged: onChanged,
+                  ),
+                ),
               ),
               IconButton(
                 icon: const Icon(Icons.add_circle_outline_rounded),

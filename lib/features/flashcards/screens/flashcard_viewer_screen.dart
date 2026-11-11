@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/widgets/auto_fit.dart';
 import '../../../core/services/action_clip_service.dart';
 import '../../../core/services/flashcard_photo_service.dart';
 import '../../../core/services/fsl_assets_service.dart';
@@ -36,6 +37,7 @@ import '../../gamepad/widgets/gamepad_screen_registrar.dart';
 import '../../gaze_control/widgets/gaze_dpad_scope.dart';
 import '../../../widgets/fullscreen_host.dart';
 import '../../../widgets/dpad_focusable.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 class FlashcardViewerScreen extends ConsumerStatefulWidget {
   final FlashcardCategory category;
@@ -233,7 +235,7 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
     final card = _cards[index];
     gamepadScreen.announce(
       '${AppLocalizations.of(context)!.viewerNofM(index + 1, _cards.length)} '
-      '${card.wordEnglish}. ${card.wordFilipino}.',
+      '${card.spokenWords(separator: '. ')}.',
     );
   }
 
@@ -283,6 +285,7 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text(AppLocalizations.of(context)!.deleteFlashcard),
         content: Text(AppLocalizations.of(context)!.viewerDeleteConfirm(card.wordEnglish)),
         actions: [
@@ -319,6 +322,34 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
       });
     }
   }
+
+  /// Whether the card counter fits in the top bar beside the title. On a
+  /// phone it took the title's room: with the bar's three buttons and the
+  /// back arrow, "Animals" had 30 px and was cut (a 360 dp phone at the
+  /// largest Font Size, 3 Nov).
+  bool _counterInBar(BuildContext context) =>
+      MediaQuery.sizeOf(context).width >= 600;
+
+  /// "3 / 20", read as "Card 3 of 20".
+  Widget _counter(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: widget.category.color.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          '${_currentIndex + 1} / ${_cards.length}',
+          semanticsLabel: AppLocalizations.of(context)!
+              .cardNofM(_currentIndex + 1, _cards.length),
+          style: AppTypography.labelMedium.copyWith(
+            color: HCColor.of(context).readableOver(
+              widget.category.darkColor,
+              widget.category.color.withValues(alpha: 0.2),
+            ),
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -449,7 +480,7 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
               ref,
               AppBar(
                 leading: const AppBackButton(fallbackRoute: '/flashcards'),
-                title: Text(widget.category.labelOf(AppLocalizations.of(context)!)),
+                title: AppBarTitle(widget.category.labelOf(AppLocalizations.of(context)!)),
                 actions: [
                   // "I Need a Break" — always visible so a student who feels
                   // overwhelmed can pause the lesson and choose a calming activity,
@@ -489,32 +520,13 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
                         ? AppLocalizations.of(context)!.viewerPauseAuto
                         : AppLocalizations.of(context)!.viewerStartAuto,
                   ),
-                  // Card counter
-                  Padding(
-                    padding: const EdgeInsets.only(right: 16),
-                    child: Center(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: widget.category.color.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          '${_currentIndex + 1} / ${_cards.length}',
-                          style: AppTypography.labelMedium.copyWith(
-                            color: HCColor.of(context).readableOver(
-                              widget.category.darkColor,
-                              widget.category.color.withValues(alpha: 0.2),
-                            ),
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
+                  // Card counter, in the bar where it leaves the title room
+                  // (beside the dots below it on a phone).
+                  if (_counterInBar(context))
+                    Padding(
+                      padding: const EdgeInsets.only(right: 16),
+                      child: Center(child: _counter(context)),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -531,6 +543,9 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
                         vertical: 8,
                       ),
                       child: Row(
+                        children: [
+                          Expanded(
+                            child: Row(
                         children: List.generate(_cards.length, (i) {
                           final isActive = i == _currentIndex;
                           final isPast = i < _currentIndex;
@@ -563,6 +578,15 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
                             ),
                           );
                         }),
+                      ),
+                          ),
+                          // The counter, when the bar above has no room for
+                          // it beside the title.
+                          if (!_counterInBar(context)) ...[
+                            const SizedBox(width: 12),
+                            _counter(context),
+                          ],
+                        ],
                       ),
                     );
 
@@ -699,20 +723,56 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
                         // Main controls — also the hands-free D-pad row. Each
                         // button shows a bright ring while the head-driven
                         // highlight rests on it (blink / look-up opens it).
-                        AppActionBar(
-                          alignment: WrapAlignment.spaceEvenly,
-                          children: [
-                            for (final (i, a) in actions.indexed)
-                              _ActionButton(
-                                icon: a.icon,
-                                label: a.label,
-                                semanticLabel: a.semanticLabel,
-                                color: a.color,
-                                onTap: a.onTap,
-                                enabled: a.enabled,
-                                focused: gaze.isFocused(0, i),
-                              ),
-                          ],
+                        LayoutBuilder(
+                          builder: (context, strip) {
+                            // One row of equal cells where the buttons would
+                            // otherwise wrap, as long as a cell still holds a
+                            // 48 dp button: on a second row they took 100 px
+                            // from the card on a phone at the largest Font
+                            // Size (8 Nov).
+                            final natural =
+                                context.scaledHeightCapped(54, max: 1.3) + 24;
+                            final n = actions.length;
+                            final cell = strip.maxWidth / n;
+                            final wraps =
+                                n * natural + (n - 1) * 8 > strip.maxWidth;
+                            if (!wraps || cell < 52) {
+                              return AppActionBar(
+                                alignment: WrapAlignment.spaceEvenly,
+                                children: [
+                                  for (final (i, a) in actions.indexed)
+                                    _ActionButton(
+                                      icon: a.icon,
+                                      label: a.label,
+                                      semanticLabel: a.semanticLabel,
+                                      color: a.color,
+                                      onTap: a.onTap,
+                                      enabled: a.enabled,
+                                      focused: gaze.isFocused(0, i),
+                                    ),
+                                ],
+                              );
+                            }
+                            return Row(
+                              children: [
+                                for (final (i, a) in actions.indexed)
+                                  Expanded(
+                                    child: Center(
+                                      child: _ActionButton(
+                                        icon: a.icon,
+                                        label: a.label,
+                                        semanticLabel: a.semanticLabel,
+                                        color: a.color,
+                                        onTap: a.onTap,
+                                        enabled: a.enabled,
+                                        focused: gaze.isFocused(0, i),
+                                        cellWidth: cell,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            );
+                          },
                         ),
                       ],
                     );
@@ -733,7 +793,23 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
                               children: [
                                 Expanded(child: cards),
                                 Container(
-                                  width: (box.maxWidth * 0.38).clamp(240.0, 360.0),
+                                  // Wide enough for the controls on one row
+                                  // where that leaves the card half the
+                                  // screen: at the largest Display size and
+                                  // text, on its side, they wrapped below the
+                                  // fold of this panel (the Villaon, 9 Nov).
+                                  width: math
+                                      .min(
+                                        math.max(
+                                          box.maxWidth * 0.38,
+                                          // 52 a control (see the strip),
+                                          // the 16 + 16 padding and the
+                                          // border: one short, and they wrapped.
+                                          actions.length * 52.0 + 40,
+                                        ),
+                                        box.maxWidth * 0.5,
+                                      )
+                                      .clamp(240.0, 360.0),
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 16,
                                     vertical: 12,
@@ -765,8 +841,11 @@ class _FlashcardViewerScreenState extends ConsumerState<FlashcardViewerScreen> {
                         Expanded(child: cards),
                         // ─── Bottom Action Bar ──────────────────
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
+                          // Narrower sides on a very narrow screen: at 24 the
+                          // five controls no longer fitted one row, and two
+                          // more rows left the card a thin strip (9 Nov).
+                          padding: EdgeInsets.symmetric(
+                            horizontal: box.maxWidth < 350 ? 12 : 24,
                             vertical: 16,
                           ),
                           decoration: BoxDecoration(
@@ -873,7 +952,9 @@ class _FlipCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Flips on a press: a button to a screen reader, as to a finger.
     return Semantics(
+      button: true,
       label: isFlipped
           ? AppLocalizations.of(context)!.viewerFlippedSemantics(
               card.wordEnglish,
@@ -933,7 +1014,9 @@ class _FlipCard extends StatelessWidget {
                   child: Stack(
                     children: [
                       isFront
-                          ? _buildFront(context)
+                          // The card's label says the front: nothing on it
+                          // is pressed, and its words were read again.
+                          ? ExcludeSemantics(child: _buildFront(context))
                           : Transform(
                               alignment: Alignment.center,
                               transform: Matrix4.identity()..rotateY(math.pi),
@@ -1046,120 +1129,219 @@ class _FlipCard extends StatelessWidget {
           Center(
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Category color strip
-                    Container(
-                      height: 6,
-                      width: 60,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [category.darkColor, category.color],
-                        ),
-                        borderRadius: BorderRadius.circular(3),
-                        boxShadow: [
-                          BoxShadow(
-                            color: category.color.withValues(alpha: 0.4),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    // Category badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: category.color.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: category.color.withValues(alpha: 0.2),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            category.icon,
-                            size: context.scaleIcon(14),
-                            color: category.darkColor,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            category.labelOf(AppLocalizations.of(context)!),
-                            style: AppTypography.labelSmall.copyWith(
-                              color: category.darkColor,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    // Per-word image — tap to switch between the emoji and the
-                    // real photograph (smooth 3D flip), with a black outline on
-                    // both faces. Instruction shown beneath.
-                    FlashcardImage(
-                      card: card,
-                      size: 160,
-                      interactive: true,
-                      outlined: true,
-                      reducedMotion: reducedMotion,
-                    ),
-                    const SizedBox(height: 32),
-                    // Word
-                    Text(
-                      card.wordEnglish,
-                      style: AppTypography.flashcardWord.copyWith(
-                        color: HCColor.of(context).textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      card.wordFilipino,
-                      style: AppTypography.titleLarge.copyWith(
-                        color: category.darkColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    // Tap hint
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.touch_app_rounded,
-                          size: context.scaleIcon(14),
-                          color: HCColor.of(
-                            context,
-                          ).textSecondary.withValues(alpha: 0.5),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          AppLocalizations.of(context)!.tapToSeeMore,
-                          style: AppTypography.bodySmall.copyWith(
-                            color: HCColor.of(
-                              context,
-                            ).textSecondary.withValues(alpha: 0.6),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+              child: LayoutBuilder(
+                builder: (context, box) => _frontContent(context, box),
               ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  /// The front of the card, laid out for the room it has.
+  ///
+  /// The words keep their size and the picture takes what is left. A phone's
+  /// card was too short for a 160 px picture over the words, and the whole
+  /// face was drawn at 63% to fit (8 px on the category badge, 0 px at the
+  /// largest Font Size on a small phone, 8 Nov). The FittedBox around it is
+  /// left as the last resort only.
+  Widget _frontContent(BuildContext context, BoxConstraints box) {
+    final l10n = AppLocalizations.of(context)!;
+    final hc = HCColor.of(context);
+    final scaler = MediaQuery.textScalerOf(context);
+    final direction = Directionality.of(context);
+    final width = box.maxWidth;
+    double heightOf(String text, TextStyle style, double maxWidth) {
+      final painter = TextPainter(
+        text: TextSpan(text: text, style: style),
+        textDirection: direction,
+        textScaler: scaler,
+      )..layout(maxWidth: math.max(1.0, maxWidth));
+      final h = painter.height;
+      painter.dispose();
+      return h;
+    }
+
+    final label = category.labelOf(l10n);
+    final iconSize = context.scaleIcon(14);
+    final badgeStyle = AppTypography.labelSmall.copyWith(
+      color: category.darkColor,
+      fontWeight: FontWeight.w700,
+    );
+    final wordStyle = AppTypography.flashcardWord.copyWith(
+      color: hc.textPrimary,
+    );
+    final filipinoStyle = AppTypography.titleLarge.copyWith(
+      color: category.darkColor,
+      fontWeight: FontWeight.w600,
+    );
+    final hintStyle = AppTypography.bodySmall.copyWith(
+      color: hc.textSecondary.withValues(alpha: 0.6),
+    );
+    final pillStyle = AppTypography.titleSmall.copyWith(
+      fontWeight: FontWeight.w700,
+    );
+
+    // A side-by-side card (a phone on its side): the picture beside the words.
+    final short = box.maxHeight < 300 && width > box.maxHeight * 1.2;
+    final wordsWidth = short ? width * 0.55 : width;
+
+    // What the words need, at their size, in their width.
+    final badgeH =
+        math.max(iconSize, heightOf(label, badgeStyle, wordsWidth - 40 - iconSize)) +
+        10;
+    final wordH = heightOf(card.wordEnglish, wordStyle, wordsWidth);
+    final filipinoH = heightOf(card.wordFilipino, filipinoStyle, wordsWidth);
+    final hintH = math.max(
+      iconSize,
+      heightOf(l10n.tapToSeeMore, hintStyle, wordsWidth - iconSize - 4),
+    );
+    // The picture's own caption under it ("Tap to see the real picture").
+    final pillH = 12 + 20 + math.max(20.0, heightOf('Ag', pillStyle, width));
+    final words = badgeH + wordH + filipinoH + hintH;
+
+    const roomyGaps = 8.0 + 20 + 32 + 8 + 20;
+    const tightGaps = 10.0 + 14 + 4 + 10;
+    final roomy =
+        !short && box.maxHeight >= 6 + roomyGaps + words + pillH + 160;
+    final pictureSize = short
+        ? (box.maxHeight - pillH).clamp(72.0, 160.0)
+        : roomy
+        ? 160.0
+        : (box.maxHeight - tightGaps - words - pillH).clamp(72.0, 160.0);
+
+    final strip = Container(
+      height: 6,
+      width: 60,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [category.darkColor, category.color],
+        ),
+        borderRadius: BorderRadius.circular(3),
+        boxShadow: [
+          BoxShadow(
+            color: category.color.withValues(alpha: 0.4),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+    );
+    final badge = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: category.color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: category.color.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(category.icon, size: iconSize, color: category.darkColor),
+          const SizedBox(width: 4),
+          Flexible(
+            child: AutoFit(
+              child: Text(label, style: badgeStyle, textAlign: TextAlign.center),
+            ),
+          ),
+        ],
+      ),
+    );
+    // Its caption may be wider than the card: the two shrink together.
+    final picture = FittedBox(
+      fit: BoxFit.scaleDown,
+      child: FlashcardImage(
+        card: card,
+        size: pictureSize,
+        interactive: true,
+        outlined: true,
+        reducedMotion: reducedMotion,
+      ),
+    );
+    // A long word stays whole: a little smaller rather than split.
+    final word = AutoFit(
+      child: Text(
+        card.wordEnglish,
+        style: wordStyle,
+        textAlign: TextAlign.center,
+      ),
+    );
+    final filipino = AutoFit(
+      child: Text(
+        card.wordFilipino,
+        style: filipinoStyle,
+        textAlign: TextAlign.center,
+      ),
+    );
+    final hint = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          Icons.touch_app_rounded,
+          size: iconSize,
+          color: hc.textSecondary.withValues(alpha: 0.5),
+        ),
+        const SizedBox(width: 4),
+        Flexible(
+          child: AutoFit(
+            child: Text(
+              l10n.tapToSeeMore,
+              style: hintStyle,
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ],
+    );
+
+    final Widget content;
+    if (short) {
+      content = SizedBox(
+        width: width,
+        child: Row(
+          children: [
+            Expanded(flex: 45, child: picture),
+            const SizedBox(width: 16),
+            Expanded(
+              flex: 55,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  badge,
+                  const SizedBox(height: 8),
+                  word,
+                  const SizedBox(height: 4),
+                  filipino,
+                  const SizedBox(height: 10),
+                  hint,
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      content = SizedBox(
+        width: width,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (roomy) ...[strip, const SizedBox(height: 8)],
+            badge,
+            SizedBox(height: roomy ? 20 : 10),
+            picture,
+            SizedBox(height: roomy ? 32 : 14),
+            word,
+            SizedBox(height: roomy ? 8 : 4),
+            filipino,
+            SizedBox(height: roomy ? 20 : 10),
+            hint,
+          ],
+        ),
+      );
+    }
+    return FittedBox(fit: BoxFit.scaleDown, child: content);
   }
 
   Widget _buildBack(BuildContext context) {
@@ -1241,17 +1423,22 @@ class _FlipCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 24),
                     // Word pair
-                    Text(
-                      '${card.wordEnglish} — ${card.wordFilipino}',
-                      style: AppTypography.headlineMedium.copyWith(
-                        color: HCColor.of(context).textPrimary,
+                    ExcludeSemantics(
+                      child: Text(
+                        '${card.wordEnglish} — ${card.wordFilipino}',
+                        style: AppTypography.headlineMedium.copyWith(
+                          color: HCColor.of(context).textPrimary,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                      textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 16),
-                    // Listen buttons
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    // Listen buttons, one under the other where they do not
+                    // fit (31 px over on a phone at the largest text size).
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 12,
+                      runSpacing: 8,
                       children: [
                         _MiniListenButton(
                           label: AppLocalizations.of(context)!.english,
@@ -1259,7 +1446,6 @@ class _FlipCard extends StatelessWidget {
                           color: AppColors.info,
                           onTap: onSpeak,
                         ),
-                        const SizedBox(width: 12),
                         _MiniListenButton(
                           label: AppLocalizations.of(context)!.filipino,
                           icon: Icons.volume_up_rounded,
@@ -1353,12 +1539,15 @@ class _FlipCard extends StatelessWidget {
                           ).textSecondary.withValues(alpha: 0.5),
                         ),
                         const SizedBox(width: 4),
-                        Text(
-                          AppLocalizations.of(context)!.tapToFlipBack,
-                          style: AppTypography.bodySmall.copyWith(
-                            color: HCColor.of(
-                              context,
-                            ).textSecondary.withValues(alpha: 0.6),
+                        Flexible(
+                          child: Text(
+                            AppLocalizations.of(context)!.tapToFlipBack,
+                            textAlign: TextAlign.center,
+                            style: AppTypography.bodySmall.copyWith(
+                              color: HCColor.of(
+                                context,
+                              ).textSecondary.withValues(alpha: 0.6),
+                            ),
                           ),
                         ),
                       ],
@@ -1498,13 +1687,16 @@ class _MiniListenButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
+    return Semantics(container: true, button: true, child: Material(
       color: color.withValues(alpha: 0.12),
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: onTap,
-        child: Padding(
+        child: ConstrainedBox(
+          // A finger's 48 dp: it was 37.
+          constraints: const BoxConstraints(minHeight: 48),
+          child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -1521,8 +1713,9 @@ class _MiniListenButton extends StatelessWidget {
             ],
           ),
         ),
+        ),
       ),
-    );
+    ));
   }
 }
 
@@ -1531,7 +1724,7 @@ class _ActionButton extends StatelessWidget {
   final IconData icon;
   final String label;
 
-  /// Read out instead of "[label] button" when set.
+  /// Read out instead of [label] when set.
   final String? semanticLabel;
   final VoidCallback? onTap;
   final Color? color;
@@ -1542,6 +1735,10 @@ class _ActionButton extends StatelessWidget {
   /// learner can see what a blink / look-up would open.
   final bool focused;
 
+  /// The width of the cell it sits in, when the strip is one row of equal
+  /// cells: the square and its label fit that, never under 48 dp.
+  final double? cellWidth;
+
   const _ActionButton({
     required this.icon,
     required this.label,
@@ -1550,6 +1747,7 @@ class _ActionButton extends StatelessWidget {
     this.color,
     this.enabled = true,
     this.focused = false,
+    this.cellWidth,
   });
 
   @override
@@ -1560,77 +1758,86 @@ class _ActionButton extends StatelessWidget {
     // The tap target grows with the Font Size setting but stays capped so the
     // strip never balloons; a 54dp base keeps it comfortably above the 48dp
     // accessibility floor for child / motor-impaired users.
-    final box = context.scaledHeightCapped(54, max: 1.3);
+    final natural = context.scaledHeightCapped(54, max: 1.3);
+    final cell = cellWidth;
+    final box = cell == null
+        ? natural
+        : math.max(48.0, math.min(natural, cell - 8));
     return Semantics(
+      container: true,
       button: true,
       enabled: enabled,
-      label: semanticLabel ?? AppLocalizations.of(context)!.viewerButton(label),
+      // Not "Previous button": the role already says "button" — it was said
+      // twice, and the word drawn below a third time.
+      label: semanticLabel ?? label,
       child: DpadFocusable(onActivate: enabled ? onTap : null, child: GestureDetector(
         onTap: enabled ? onTap : null,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Container(
-                  width: box,
-                  height: box,
-                  decoration: BoxDecoration(
-                    color: c.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: c.withValues(alpha: 0.15)),
-                    boxShadow: enabled
-                        ? [
-                            BoxShadow(
-                              color: c.withValues(alpha: 0.15),
-                              blurRadius: 8,
-                            ),
-                          ]
-                        : [],
+        child: ExcludeSemantics(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: box,
+                    height: box,
+                    decoration: BoxDecoration(
+                      color: c.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: c.withValues(alpha: 0.15)),
+                      boxShadow: enabled
+                          ? [
+                              BoxShadow(
+                                color: c.withValues(alpha: 0.15),
+                                blurRadius: 8,
+                              ),
+                            ]
+                          : [],
+                    ),
+                    // Icon scales with the box (text-scale aware) so it never
+                    // clips, and never grows past the box at XL font sizes.
+                    child: Icon(icon, color: c, size: box * 0.48),
                   ),
-                  // Icon scales with the box (text-scale aware) so it never
-                  // clips, and never grows past the box at XL font sizes.
-                  child: Icon(icon, color: c, size: box * 0.48),
-                ),
-                if (focused)
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppColors.accent, width: 3),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.accent.withValues(alpha: 0.5),
-                              blurRadius: 12,
-                              spreadRadius: 1,
-                            ),
-                          ],
+                  if (focused)
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppColors.accent, width: 3),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.accent.withValues(alpha: 0.5),
+                                blurRadius: 12,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            // Fixed-width label that scales DOWN to fit (FittedBox) instead of
-            // wrapping or pushing the button wider than its cell — so the strip
-            // can never overflow horizontally at any font scale or translation.
-            SizedBox(
-              width: box + 24,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  style: AppTypography.labelSmall.copyWith(
-                    color: enabled ? HCColor.of(context).readable(c) : c,
+                ],
+              ),
+              const SizedBox(height: 4),
+              // Fixed-width label that scales DOWN to fit (FittedBox) instead of
+              // wrapping or pushing the button wider than its cell — so the strip
+              // can never overflow horizontally at any font scale or translation.
+              SizedBox(
+                width: cell ?? box + 24,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    style: AppTypography.labelSmall.copyWith(
+                      color: enabled ? HCColor.of(context).readable(c) : c,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       )),
     );

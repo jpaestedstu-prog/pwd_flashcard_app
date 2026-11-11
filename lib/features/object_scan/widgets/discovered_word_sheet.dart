@@ -371,15 +371,15 @@ class _SheetAction extends StatelessWidget {
               Text(emoji, style: const TextStyle(fontSize: 24)),
               const SizedBox(width: 8),
               Flexible(
-                child: Text(
+                // Whole, and no word broken in two: smaller first, then a second
+                // line.
+                child: FitText(
                   label,
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 16,
                     color: HCColor.of(context).textPrimary,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],

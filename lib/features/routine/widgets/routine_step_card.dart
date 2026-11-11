@@ -81,52 +81,59 @@ class RoutineStepCard extends StatelessWidget {
             : (filipino ? 'hindi pa tapos' : 'not done yet'))
         : routineMomentSpoken(step, moment, filipino: filipino, endsAt: endsAt);
 
-    return Semantics(
-      container: true,
-      button: true,
-      // One label for the whole card: a screen-reader learner hears
-      // "Brushing teeth, 6:45 AM, 2 minutes, happening now" rather than
-      // sweeping four separate nodes. Curly apostrophes only — a straight
-      // quote empties the whole content description on Android.
-      label: [
-        title,
-        timeLabel,
-        if (step.hasTimer) _durationLabel(),
-        if (spokenState.isNotEmpty) spokenState,
-      ].join(', '),
-      child: ExcludeSemantics(
-        child: Card(
-          elevation: isNext ? 3 : 0,
-          margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-            side: BorderSide(
-              color: isNext
-                  ? hc.primary.withValues(alpha: 0.6)
-                  : hc.textHint.withValues(alpha: 0.25),
-              width: isNext ? 2 : 1,
-            ),
-          ),
-          color: over
-              ? Color.alphaBlend(
-                  AppColors.success.withValues(alpha: 0.12),
-                  hc.surface,
-                )
-              : hc.surface,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(20),
-            onTap: onOpen,
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(emoji, style: const TextStyle(fontSize: 34)),
-                      const SizedBox(width: 12),
-                      Expanded(
+    return Card(
+      elevation: isNext ? 3 : 0,
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: isNext
+              ? hc.primary.withValues(alpha: 0.6)
+              : hc.textHint.withValues(alpha: 0.25),
+          width: isNext ? 2 : 1,
+        ),
+      ),
+      color: over
+          ? Color.alphaBlend(
+              AppColors.success.withValues(alpha: 0.12),
+              hc.surface,
+            )
+          : hc.surface,
+      child: Semantics(
+        button: true,
+        // One label for the whole card: a screen-reader learner hears
+        // "Brushing teeth, 6:45 AM, 2 minutes, happening now" rather than
+        // sweeping four separate nodes. Curly apostrophes only — a straight
+        // quote empties the whole content description on Android.
+        //
+        // Inside the Card, beside the InkWell, so the label lands on the node
+        // that has the tap. The words below are left out of it one by one,
+        // not as a whole card: the tick and "Mark as done" keep nodes of
+        // their own. The card was once wrapped whole in ExcludeSemantics,
+        // which hid both from a screen reader along with the card's tap.
+        label: [
+          title,
+          timeLabel,
+          if (step.hasTimer) _durationLabel(),
+          if (spokenState.isNotEmpty) spokenState,
+        ].join(', '),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: onOpen,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ExcludeSemantics(
+                      child: Text(emoji, style: const TextStyle(fontSize: 34)),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ExcludeSemantics(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -211,49 +218,51 @@ class RoutineStepCard extends StatelessWidget {
                           ],
                         ),
                       ),
-                      if (canTick && !presentation.largeCompleteTarget)
-                        Checkbox(
-                          value: done,
-                          onChanged: (_) => onToggle(),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                        ),
-                    ],
-                  ),
-                  if (canTick && presentation.largeCompleteTarget) ...[
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      // 56 high: the motor / cognitive configurations tick off
-                      // from this button alone, so it has to clear the 48 dp
-                      // minimum with room for an unsteady tap.
-                      height: 56,
-                      child: FilledButton.icon(
-                        onPressed: onToggle,
-                        icon: Icon(
-                          done
-                              ? Icons.check_circle_rounded
-                              : Icons.radio_button_unchecked_rounded,
-                        ),
-                        label: Text(
-                          done
-                              ? (filipino ? 'Tapos na!' : 'Done!')
-                              : (filipino ? 'Markahang tapos' : 'Mark as done'),
-                          style: AppTypography.titleSmall.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        style: FilledButton.styleFrom(
-                          backgroundColor:
-                              HCColor.of(context).fillFor(done ? AppColors.success : hc.primary),
-                          foregroundColor: Colors.white,
+                    ),
+                    if (canTick && !presentation.largeCompleteTarget)
+                      Checkbox(
+                        value: done,
+                        onChanged: (_) => onToggle(),
+                        semanticLabel:
+                            filipino ? 'Tapos na: $title' : 'Done: $title',
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6),
                         ),
                       ),
-                    ),
                   ],
+                ),
+                if (canTick && presentation.largeCompleteTarget) ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    // 56 high: the motor / cognitive configurations tick off
+                    // from this button alone, so it has to clear the 48 dp
+                    // minimum with room for an unsteady tap.
+                    height: 56,
+                    child: FilledButton.icon(
+                      onPressed: onToggle,
+                      icon: Icon(
+                        done
+                            ? Icons.check_circle_rounded
+                            : Icons.radio_button_unchecked_rounded,
+                      ),
+                      label: Text(
+                        done
+                            ? (filipino ? 'Tapos na!' : 'Done!')
+                            : (filipino ? 'Markahang tapos' : 'Mark as done'),
+                        style: AppTypography.titleSmall.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor:
+                            HCColor.of(context).fillFor(done ? AppColors.success : hc.primary),
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ),
                 ],
-              ),
+              ],
             ),
           ),
         ),
@@ -287,11 +296,14 @@ class _MetaChip extends StatelessWidget {
         Icon(icon, size: 14, color: color),
         if (label.isNotEmpty) ...[
           const SizedBox(width: 3),
-          Text(
-            label,
-            style: AppTypography.labelSmall.copyWith(
-              color: color,
-              fontWeight: strong ? FontWeight.w800 : FontWeight.w600,
+          // Flexible: a long one ran 31 px past a phone's edge.
+          Flexible(
+            child: Text(
+              label,
+              style: AppTypography.labelSmall.copyWith(
+                color: color,
+                fontWeight: strong ? FontWeight.w800 : FontWeight.w600,
+              ),
             ),
           ),
         ],

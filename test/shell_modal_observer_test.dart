@@ -120,6 +120,19 @@ void main() {
       expect(observer.isCovering, isTrue);
     });
 
+    test('a new navigator starts uncovered, whatever the last one left', () {
+      // Settings is pushed on the shell's navigator. Switch profile goes to
+      // the profile list, outside the shell, and that navigator is simply
+      // thrown away: nobody reports Settings popped.
+      final home = route();
+      observer.didPush(home, null);
+      observer.didPush(route(), home);
+      expect(observer.isCovering, isTrue);
+      // The next learner's shell: a new navigator, its first page.
+      observer.didPush(route(), null);
+      expect(observer.isCovering, isFalse);
+    });
+
     test('nested layers need every one popped before the shell is clear', () {
       observer.didPush(route(), null);
       final sheet = route();
@@ -131,6 +144,43 @@ void main() {
       observer.didPop(sheet, route());
       expect(observer.isCovering, isFalse);
     });
+  });
+
+  testWidgets('a page left open on a navigator that goes away does not '
+      'cover the next one', (tester) async {
+    // The real shape of the Villaon find: a page pushed on the observed
+    // navigator, then that whole navigator replaced by a new one.
+    late BuildContext hostContext;
+    await tester.pumpWidget(
+      MaterialApp(
+        key: const ValueKey('first learner'),
+        navigatorObservers: [shellModalObserver],
+        home: Builder(
+          builder: (context) {
+            hostContext = context;
+            return const Scaffold(body: Text('home'));
+          },
+        ),
+      ),
+    );
+    unawaited(
+      Navigator.of(hostContext).push(
+        MaterialPageRoute<void>(builder: (_) => const Text('settings')),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(shellModalObserver.isCovering, isTrue);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        key: const ValueKey('next learner'),
+        navigatorObservers: [shellModalObserver],
+        home: const Scaffold(body: Text('guest home')),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(shellModalObserver.isCovering, isFalse);
+    expect(shellModalObserver.covering.value, isFalse);
   });
 
   testWidgets('a real dialog on the observed navigator reports covering', (
@@ -208,6 +258,58 @@ void main() {
     expect(seen, [true, false]);
   });
 
+  // A page pushed inside the shell (Settings from Home's gear) covers the hub
+  // for the D-pad, whose grid is still published under it, but it is no
+  // pop-up: the tab bar stays live, readable by TalkBack, with the AI Buddy in
+  // it. Both were hidden on Settings (10 Nov).
+  testWidgets('a pushed page covers the hub but is no pop-up; a sheet is both', (
+    tester,
+  ) async {
+    late BuildContext hostContext;
+    await tester.pumpWidget(
+      MaterialApp(
+        navigatorObservers: [shellModalObserver],
+        home: Builder(
+          builder: (context) {
+            hostContext = context;
+            return const Scaffold(body: Text('hub'));
+          },
+        ),
+      ),
+    );
+    unawaited(
+      Navigator.of(hostContext).push(
+        MaterialPageRoute<void>(
+          builder: (_) => const Scaffold(body: Text('settings')),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(shellModalObserver.covering.value, isTrue, reason: 'a page');
+    expect(shellModalObserver.popupCovering.value, isFalse, reason: 'a page');
+
+    final settings = tester.element(find.text('settings'));
+    unawaited(
+      showModalBottomSheet<void>(
+        context: settings,
+        builder: (_) => const SizedBox(height: 120, child: Text('picker')),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(shellModalObserver.covering.value, isTrue, reason: 'a sheet');
+    expect(shellModalObserver.popupCovering.value, isTrue, reason: 'a sheet');
+
+    Navigator.of(settings).pop();
+    await tester.pumpAndSettle();
+    expect(shellModalObserver.popupCovering.value, isFalse, reason: 'closed');
+    expect(shellModalObserver.covering.value, isTrue, reason: 'still a page');
+
+    Navigator.of(hostContext).pop();
+    await tester.pumpAndSettle();
+    expect(shellModalObserver.covering.value, isFalse, reason: 'back on hub');
+    expect(shellModalObserver.popupCovering.value, isFalse);
+  });
+
   group('root popup observer', () {
     setUp(rootPopupObserver.reset);
     tearDown(rootPopupObserver.reset);
@@ -242,6 +344,23 @@ void main() {
       Navigator.of(context).pop();
       await tester.pumpAndSettle();
       expect(rootPopupObserver.covering.value, isFalse);
+    });
+
+    test('a new root navigator starts uncovered', () {
+      final popup = RawDialogRoute<void>(
+        pageBuilder: (_, _, _) => const SizedBox.shrink(),
+      );
+      final page = MaterialPageRoute<void>(
+        builder: (_) => const SizedBox.shrink(),
+      );
+      rootPopupObserver.didPush(page, null);
+      rootPopupObserver.didPush(popup, page);
+      expect(rootPopupObserver.isCovering, isTrue);
+      rootPopupObserver.didPush(
+        MaterialPageRoute<void>(builder: (_) => const SizedBox.shrink()),
+        null,
+      );
+      expect(rootPopupObserver.isCovering, isFalse);
     });
 
     testWidgets('a full page pushed on the root navigator does not', (

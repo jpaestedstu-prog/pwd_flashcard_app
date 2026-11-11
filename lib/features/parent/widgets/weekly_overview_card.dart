@@ -5,6 +5,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/pro_surface.dart';
 import '../../../providers/parent_provider.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../core/utils/localized_date.dart';
 import '../../../l10n/app_localizations_en.dart';
 
 /// Shows a weekly summary card comparing study times across a roster.
@@ -47,7 +48,10 @@ class WeeklyOverviewCard extends StatelessWidget {
     final now = DateTime.now();
     final dayLabels = List.generate(7, (i) {
       final date = now.subtract(Duration(days: 6 - i));
-      return _shortDay(date.weekday);
+      return LocalizedDate.weekdayShort(
+        date.weekday,
+        AppLocalizations.of(context),
+      );
     });
 
     // Collect total minutes per day across all children
@@ -115,11 +119,13 @@ class WeeklyOverviewCard extends StatelessWidget {
               _WeekStatChip(
                 label: _t(context).total,
                 value: '${totalThisWeek}m',
+                spokenValue: _t(context).minutesCount(totalThisWeek),
                 color: AppColors.primary,
               ),
               _WeekStatChip(
                 label: _t(context).woAvgPer(learnerNoun),
                 value: '${avgPerChild}m',
+                spokenValue: _t(context).minutesCount(avgPerChild),
                 color: AppColors.secondary,
               ),
             ],
@@ -150,9 +156,10 @@ class WeeklyOverviewCard extends StatelessWidget {
                       if (minutes > 0)
                         Text(
                           '${minutes}m',
+                          semanticsLabel: _t(context).minutesCount(minutes),
                           textAlign: TextAlign.center,
                           style: AppTypography.labelSmall.copyWith(
-                            fontSize: 9,
+                            fontSize: 10,
                             fontWeight: FontWeight.w700,
                             color: isToday
                                 ? HCColor.of(context).primary
@@ -274,10 +281,6 @@ class WeeklyOverviewCard extends StatelessWidget {
     );
   }
 
-  String _shortDay(int weekday) {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    return days[(weekday - 1) % 7];
-  }
 }
 
 /// One learner's share of the week: name, minutes, and a share-of-total bar.
@@ -305,7 +308,9 @@ class _ChildMinutesRow extends StatelessWidget {
     final name = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(child.avatarEmoji, style: const TextStyle(fontSize: 18)),
+        ExcludeSemantics(
+          child: Text(child.avatarEmoji, style: const TextStyle(fontSize: 18)),
+        ),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
@@ -313,8 +318,6 @@ class _ChildMinutesRow extends StatelessWidget {
             style: AppTypography.labelMedium.copyWith(
               fontWeight: FontWeight.w600,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
@@ -331,6 +334,7 @@ class _ChildMinutesRow extends StatelessWidget {
           ),
           child: Text(
             '${child.studyMinutesThisWeek}m',
+            semanticsLabel: _t(context).minutesCount(child.studyMinutesThisWeek),
             style: AppTypography.labelMedium.copyWith(
               fontWeight: FontWeight.w700,
               color: HCColor.of(context).primary,
@@ -380,48 +384,57 @@ class _ChildMinutesRow extends StatelessWidget {
 class _WeekStatChip extends StatelessWidget {
   final String label;
   final String value;
+
+  /// [value] in words, where its short form reads badly aloud ("12m").
+  final String? spokenValue;
   final Color color;
 
   const _WeekStatChip({
     required this.label,
     required this.value,
+    this.spokenValue,
     required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            color.withValues(alpha: 0.14),
-            color.withValues(alpha: 0.06),
-          ],
+    return Semantics(
+      // "Total: 45 minutes" as one phrase, not "Total" and "45m".
+      label: '$label: ${spokenValue ?? value}',
+      excludeSemantics: true,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              color.withValues(alpha: 0.14),
+              color.withValues(alpha: 0.06),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
         ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Flexible(
-            child: Text(
-              label,
-              style: AppTypography.labelSmall.copyWith(
-                color: HCColor.of(context).textSecondary,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                label,
+                style: AppTypography.labelSmall.copyWith(
+                  color: HCColor.of(context).textSecondary,
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 4),
-          Text(
-            value,
-            style: AppTypography.labelMedium.copyWith(
-              fontWeight: FontWeight.w700,
-              color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.2)),
+            const SizedBox(width: 4),
+            Text(
+              value,
+              style: AppTypography.labelMedium.copyWith(
+                fontWeight: FontWeight.w700,
+                color: HCColor.of(context).readableOver(color, color.withValues(alpha: 0.2)),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

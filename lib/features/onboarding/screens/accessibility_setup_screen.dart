@@ -395,7 +395,9 @@ class _AccessibilitySetupScreenState
           Text(
             type == DisabilityType.none
                 ? _t(context).asNoSpecial
-                : 'We\'ll apply these settings for ${type.labelOf(AppLocalizations.of(context))}:',
+                // In the learner's language: it was English on a Filipino
+                // screen (the 9 Nov crawl).
+                : _t(context).weWillApplySettings(type.labelOf(_t(context))),
             textAlign: TextAlign.center,
             style: AppTypography.bodyLarge.copyWith(
               color: HCColor.of(context).textSecondary,
@@ -404,8 +406,13 @@ class _AccessibilitySetupScreenState
 
           const SizedBox(height: 24),
 
-          // Selected type badge
-          Container(
+          // Selected type badge. The sentence above names the type, so a
+          // screen reader would say it twice in a row; it hears the sentence
+          // only. "No needs" has a sentence without the type: there the badge
+          // is what says it.
+          ExcludeSemantics(
+            excluding: type != DisabilityType.none,
+            child: Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 20,
                   vertical: 12,
@@ -418,13 +425,15 @@ class _AccessibilitySetupScreenState
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(type.emoji, style: const TextStyle(fontSize: 24)),
+                    ExcludeSemantics(child: Text(type.emoji, style: const TextStyle(fontSize: 24))),
                     const SizedBox(width: 12),
-                    Text(
-                      type.labelOf(AppLocalizations.of(context)),
-                      style: AppTypography.titleMedium.copyWith(
-                        color: HCColor.of(context).readableOver(type.color, type.color.withValues(alpha: 0.3)),
-                        fontWeight: FontWeight.w700,
+                    Flexible(
+                      child: Text(
+                        type.labelOf(AppLocalizations.of(context)),
+                        style: AppTypography.titleMedium.copyWith(
+                          color: HCColor.of(context).readableOver(type.color, type.color.withValues(alpha: 0.3)),
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ],
@@ -436,6 +445,7 @@ class _AccessibilitySetupScreenState
                 begin: const Offset(0.9, 0.9),
                 end: const Offset(1.0, 1.0),
               ),
+          ),
 
           const SizedBox(height: 24),
 
@@ -489,10 +499,10 @@ class _AccessibilitySetupScreenState
                             ),
                             child: Row(
                               children: [
-                                Text(
+                                ExcludeSemantics(child: Text(
                                   change.emoji,
                                   style: const TextStyle(fontSize: 22),
-                                ),
+                                )),
                                 const SizedBox(width: 14),
                                 Expanded(
                                   child: Column(
@@ -764,106 +774,109 @@ class _DisabilityCard extends StatelessWidget {
       selected: isSelected,
       label:
           '${type.labelOf(AppLocalizations.of(context))}: '
-        '${type.descriptionOf(AppLocalizations.of(context))}'
-        '${isSelected ? ", selected" : ""}',
+        '${type.descriptionOf(AppLocalizations.of(context))}',
       child: DpadFocusable(onActivate: onTap, child: GestureDetector(
         onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: isSelected
-                ? LinearGradient(
-                    colors: [type.color, type.color.withValues(alpha: 0.8)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  )
-                : null,
-            color: isSelected ? null : HCColor.of(context).surface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isSelected
-                  ? type.color
-                  : AppColors.primary.withValues(alpha: 0.12),
-              width: isSelected ? 2.5 : 1.5,
+        child: ExcludeSemantics(
+          // The label says the need and what it means; the card's emoji and
+          // words were read again under it.
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOutCubic,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: isSelected
+                  ? LinearGradient(
+                      colors: [type.color, type.color.withValues(alpha: 0.8)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : null,
+              color: isSelected ? null : HCColor.of(context).surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isSelected
+                    ? type.color
+                    : AppColors.primary.withValues(alpha: 0.12),
+                width: isSelected ? 2.5 : 1.5,
+              ),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: type.color.withValues(alpha: 0.3),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ]
+                  : AppColors.softShadow,
             ),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: type.color.withValues(alpha: 0.3),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
-                    ),
-                  ]
-                : AppColors.softShadow,
-          ),
-          child: Row(
-            children: [
-              // Emoji circle
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? Colors.white.withValues(alpha: 0.25)
-                      : type.color.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
+            child: Row(
+              children: [
+                // Emoji circle
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? Colors.white.withValues(alpha: 0.25)
+                        : type.color.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(type.emoji, style: const TextStyle(fontSize: 26)),
+                  ),
                 ),
-                child: Center(
-                  child: Text(type.emoji, style: const TextStyle(fontSize: 26)),
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // FitText: "Pangangailangan" broke in two at 2x.
-                    FitText(
-                      type.labelOf(AppLocalizations.of(context)),
-                      maxLines: 4,
-                      style: AppTypography.titleSmall.copyWith(
-                        color: isSelected
-                            ? Colors.white
-                            : HCColor.of(context).textPrimary,
-                        fontWeight: FontWeight.w700,
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // FitText: "Pangangailangan" broke in two at 2x.
+                      FitText(
+                        type.labelOf(AppLocalizations.of(context)),
+                        maxLines: 4,
+                        style: AppTypography.titleSmall.copyWith(
+                          color: isSelected
+                              ? Colors.white
+                              : HCColor.of(context).textPrimary,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 3),
-                    FitText(
-                      type.descriptionOf(AppLocalizations.of(context)),
-                      maxLines: null,
-                      style: AppTypography.bodySmall.copyWith(
-                        color: isSelected
-                            ? Colors.white.withValues(alpha: 0.85)
-                            : HCColor.of(context).textSecondary,
+                      const SizedBox(height: 3),
+                      FitText(
+                        type.descriptionOf(AppLocalizations.of(context)),
+                        maxLines: null,
+                        style: AppTypography.bodySmall.copyWith(
+                          color: isSelected
+                              ? Colors.white.withValues(alpha: 0.85)
+                              : HCColor.of(context).textSecondary,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? Colors.white
-                      : type.color.withValues(alpha: 0.08),
-                  shape: BoxShape.circle,
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? Colors.white
+                        : type.color.withValues(alpha: 0.08),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    isSelected
+                        ? Icons.check_rounded
+                        : Icons.arrow_forward_ios_rounded,
+                    size: 16,
+                    color: isSelected
+                        ? type.color
+                        : HCColor.of(context).textSecondary,
+                  ),
                 ),
-                child: Icon(
-                  isSelected
-                      ? Icons.check_rounded
-                      : Icons.arrow_forward_ios_rounded,
-                  size: 16,
-                  color: isSelected
-                      ? type.color
-                      : HCColor.of(context).textSecondary,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       )),
@@ -915,11 +928,13 @@ class _OptionalComfortTipsCard extends StatelessWidget {
                 color: HCColor.of(context).readable(AppColors.primaryDark),
               ),
               const SizedBox(width: 8),
-              Text(
-                _t(context).asComfort,
-                style: AppTypography.labelLarge.copyWith(
-                  color: HCColor.of(context).readable(AppColors.primaryDark),
-                  fontWeight: FontWeight.w700,
+              Expanded(
+                child: Text(
+                  _t(context).asComfort,
+                  style: AppTypography.labelLarge.copyWith(
+                    color: HCColor.of(context).readable(AppColors.primaryDark),
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
@@ -945,7 +960,7 @@ class _ComfortTipRow extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(tip.emoji, style: const TextStyle(fontSize: 18)),
+        ExcludeSemantics(child: Text(tip.emoji, style: const TextStyle(fontSize: 18))),
         const SizedBox(width: 10),
         Expanded(
           child: Column(

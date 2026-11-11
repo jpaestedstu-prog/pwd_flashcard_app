@@ -51,6 +51,14 @@ class Flashcard {
     );
   }
 
+  /// The word in English and in Filipino, for a voice: "Dog, Aso". A word
+  /// the two languages share ("T-shirt", "Bus") is said once: TalkBack read
+  /// "T-shirt, T-shirt".
+  String spokenWords({String separator = ', '}) =>
+      wordFilipino.trim().toLowerCase() == wordEnglish.trim().toLowerCase()
+          ? wordEnglish
+          : '$wordEnglish$separator$wordFilipino';
+
   /// Serializes to a JSON-compatible map for export/import.
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -336,6 +344,26 @@ class UserProfile {
           (disabilityType != DisabilityType.none || supportOptions.isNotEmpty)
       ? copyWith(disabilityType: DisabilityType.none, supportOptions: const {})
       : this;
+
+  /// This copy, from the cloud, with what the cloud never holds taken from
+  /// [onThisDevice]: the PIN, the recovery code, the birth date, the grade.
+  /// Saving a cloud copy as it is erases them (`ProfileCloudFields`).
+  UserProfile keepingPrivateFieldsOf(UserProfile onThisDevice) => copyWith(
+        pin: () => onThisDevice.pin,
+        pinHash: () => onThisDevice.pinHash,
+        pinSalt: () => onThisDevice.pinSalt,
+        pinHashAlgorithm: () => onThisDevice.pinHashAlgorithm,
+        failedAttempts: onThisDevice.failedAttempts,
+        lockedUntil: () => onThisDevice.lockedUntil,
+        recoveryCodeHash: () => onThisDevice.recoveryCodeHash,
+        recoveryCodeSalt: () => onThisDevice.recoveryCodeSalt,
+        birthDate: () => onThisDevice.birthDate,
+        gradeLevel: () => onThisDevice.gradeLevel,
+        section: () => onThisDevice.section,
+        classroomId: () => classroomId ?? onThisDevice.classroomId,
+        homeGroupId: () => homeGroupId ?? onThisDevice.homeGroupId,
+        learningLevel: () => learningLevel ?? onThisDevice.learningLevel,
+      );
 
   /// Computed age from birthDate, or null if not set.
   int? get age {

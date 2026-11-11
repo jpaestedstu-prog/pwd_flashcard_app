@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/widgets/text_limits.dart';
 import '../../../core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -8,6 +9,7 @@ import 'accessibility_category_picker.dart';
 import 'cloud_sync_error_view.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/fit_label.dart';
 
 /// Shared "single text field → submit → wait → success/error" dialog
 /// used across the Manage Classes (teacher) and Manage Home Groups
@@ -69,6 +71,9 @@ class CloudAwareTextDialog extends ConsumerStatefulWidget {
   /// profile is created..." explainer used by the add-manual dialogs).
   final String? helperText;
 
+  /// How long the name may be ([TextLimits]).
+  final int maxLength;
+
   /// Called when the user taps the action button with a non-empty,
   /// changed name. Throws on failure; the dialog catches and displays
   /// the error inline without popping.
@@ -101,6 +106,7 @@ class CloudAwareTextDialog extends ConsumerStatefulWidget {
     this.initialAccessibility,
     this.initialValue,
     this.helperText,
+    this.maxLength = TextLimits.label,
   }) : assert(
           (onSubmit != null) ^ (onSubmitWithAccessibility != null),
           'Provide exactly one of onSubmit / onSubmitWithAccessibility.',
@@ -126,6 +132,7 @@ class CloudAwareTextDialog extends ConsumerStatefulWidget {
     DisabilityType? initialAccessibility,
     String? initialValue,
     String? helperText,
+    int maxLength = TextLimits.label,
   }) {
     return showDialog<bool>(
       context: context,
@@ -141,6 +148,7 @@ class CloudAwareTextDialog extends ConsumerStatefulWidget {
         initialAccessibility: initialAccessibility,
         initialValue: initialValue,
         helperText: helperText,
+        maxLength: maxLength,
       ),
     );
   }
@@ -210,6 +218,7 @@ class _CloudAwareTextDialogState extends ConsumerState<CloudAwareTextDialog> {
   Widget build(BuildContext context) {
     final submitErr = _submitError;
     return AlertDialog(
+      scrollable: true,
       title: Text(widget.title),
       // Scrollable so the optional accessibility picker (6 chips) can't
       // overflow the dialog on a small screen or at a large font scale.
@@ -220,6 +229,8 @@ class _CloudAwareTextDialogState extends ConsumerState<CloudAwareTextDialog> {
         children: [
           TextField(
             controller: _controller,
+            maxLength: widget.maxLength,
+            buildCounter: TextLimits.counter,
             autofocus: true,
             enabled: !_busy,
             textCapitalization: TextCapitalization.words,
@@ -231,7 +242,7 @@ class _CloudAwareTextDialogState extends ConsumerState<CloudAwareTextDialog> {
               }
             },
             decoration: InputDecoration(
-              labelText: widget.inputLabel,
+              label: FitLabel(widget.inputLabel),
               hintText: widget.inputHint,
               errorText: _validationError,
             ),

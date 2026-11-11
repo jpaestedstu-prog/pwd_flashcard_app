@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../classroom/widgets/cloud_sync_error_view.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:printing/printing.dart';
@@ -12,6 +13,7 @@ import '../models/category_mastery.dart';
 import '../../../widgets/app_back_button.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 class CertificateScreen extends ConsumerWidget {
   const CertificateScreen({super.key});
@@ -110,7 +112,7 @@ class CertificateScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: const AppBackButton(fallbackRoute: '/progress'),
-        title: Text(
+        title: AppBarTitle(
           _t(context).certTitle,
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
@@ -287,10 +289,13 @@ class _CertificateCardState extends State<_CertificateCard> {
         name: _t(context).certFileName(widget.item.title),
       );
     } catch (e) {
+      debugPrint('certificate failed: $e');
       if (!mounted) return;
       AppSnackBar.error(
         context,
-        message: _t(context).certFailed('$e'),
+        message: _t(context).certFailed(
+          cloudSyncErrorMessage(e, _t(context)).title,
+        ),
       );
     } finally {
       if (mounted) setState(() => _isGenerating = false);

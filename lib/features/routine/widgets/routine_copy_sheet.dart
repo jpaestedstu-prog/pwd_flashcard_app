@@ -101,6 +101,7 @@ Future<void> showRoutineCopySheet(
       .toList();
   final picked = await showModalBottomSheet<Set<String>>(
     context: context,
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
     isScrollControlled: true,
     useSafeArea: true,
     builder: (_) => RoutineCopySheet(

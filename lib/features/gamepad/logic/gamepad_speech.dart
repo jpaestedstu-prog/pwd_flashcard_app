@@ -9,8 +9,8 @@ import 'gamepad_actions.dart';
 ///
 /// * **Say where you are before what to do.** "Cards, 2 of 8" orients first.
 /// * **Never ask a question without saying how to answer it.** Every prompt
-///   ends with the two buttons that answer it, because A and B change meaning
-///   while a question is open.
+///   ends with the two buttons that answer it: A confirms and B cancels, so
+///   while a question is open they answer yes and no.
 /// * **Count out loud.** "2 of 8" is the only way to know a list has an end.
 class GamepadPhrases {
   /// 'en' or 'fil' — anything else falls back to English.
@@ -73,6 +73,13 @@ class GamepadPhrases {
       ? '$label ay hindi pa magagamit.'
       : '$label is not available yet.';
 
+  /// A choice in a screen reading that is listed but cannot be used yet — a
+  /// letter already placed, a card already matched — so the list says which
+  /// ones are worth looking for.
+  String unavailableChoice(String label) => _fil
+      ? '$label (hindi pa magagamit)'
+      : '$label (not available)';
+
   /// The full reading of a screen that published itself: its prose first, then
   /// what can be chosen.
   ///
@@ -97,8 +104,8 @@ class GamepadPhrases {
     }
     if (choices.isEmpty) {
       parts.add(_fil
-          ? 'Walang mapipili dito. Pindutin ang L1 para bumalik.'
-          : 'There is nothing to choose here. Press L1 to go back.');
+          ? 'Walang mapipili dito. Pindutin ang B para bumalik.'
+          : 'There is nothing to choose here. Press B to go back.');
     } else {
       final named = choices.take(maxSpokenItems).toList();
       final remaining = choices.length - named.length;
@@ -128,9 +135,9 @@ class GamepadPhrases {
   /// The screen published nothing addressable.
   String get nothingHere => _fil
       ? 'Walang mapipiling item sa screen na ito. '
-          'Pindutin ang L1 para bumalik.'
+          'Pindutin ang B para bumalik.'
       : 'There are no items to choose on this screen. '
-          'Press L1 to go back.';
+          'Press B to go back.';
 
   /// Opening something.
   String opening(String label) =>
@@ -142,6 +149,9 @@ class GamepadPhrases {
       : 'There is nothing to open here.';
 
   String get goingBack => _fil ? 'Bumabalik.' : 'Going back.';
+
+  /// B on a pop-up with no page under it to go back to (the AI Buddy).
+  String get closing => _fil ? 'Isinasara.' : 'Closing.';
 
   /// Back was pressed at the root — there is nowhere further back to go.
   String get cannotGoBack => _fil
@@ -166,7 +176,7 @@ class GamepadPhrases {
   /// worse than no list at all.
   static const int maxSpokenItems = 12;
 
-  /// Answer to R2 — everything reachable here, read as one list.
+  /// Answer to X on a hub — everything reachable here, read as one list.
   String screenContents(String section, List<String> items) {
     if (items.isEmpty) {
       return _fil
@@ -184,38 +194,90 @@ class GamepadPhrases {
         : 'The $section section, with ${items.length} items: $list$tail';
   }
 
-  /// Answer to Select — the full control guide.
-  String get buttonGuide => _fil
-      ? 'Gabay sa mga button. '
-          'D-pad kaliwa at kanan: lumipat ng section. '
-          'D-pad taas at baba: lumipat ng item. '
-          'X kaliwa, B kanan, Y taas, A baba, tulad ng D-pad. '
-          'R1: buksan ang napiling item. '
-          'L1: bumalik. '
-          'R2: basahin ang buong screen. '
-          'L2: ulitin ang huling sinabi. '
-          'Start: nasaan ako. '
-          'Select: ang gabay na ito. '
-          'Kaliwang joystick: tulad ng D-pad. '
-          'Kanang joystick pataas at pababa: mag-scroll; kaliwa at kanan: '
-          'unang o huling item. '
-          'Pindutin ang kaliwang joystick para bumalik sa Home. '
-          'Pindutin ang kanang joystick para itigil ang pagsasalita.'
-      : 'Button guide. '
-          'D-pad left and right: move between sections. '
-          'D-pad up and down: move between items. '
-          'X is left, B is right, Y is up, A is down, the same as the D-pad. '
-          'R1: open the item you are on. '
-          'L1: go back. '
-          'R2: read the whole screen. '
-          'L2: repeat the last thing I said. '
-          'Start: where am I. '
-          'Select: this guide. '
-          'Left joystick: the same as the D-pad. '
-          'Right joystick up and down scrolls; left and right jump to the '
-          'first or last item. '
-          'Click the left joystick to go straight Home. '
-          'Click the right joystick to stop me talking.';
+  /// Answer to X anywhere else — a pushed screen, a dialog: every control on
+  /// it, in the order the D-pad reaches them.
+  String screenItems(List<String> items) {
+    final named = items.take(maxSpokenItems).toList();
+    final remaining = items.length - named.length;
+    final list = named.join(', ');
+    final tail = remaining <= 0
+        ? '.'
+        : (_fil ? ', at $remaining pa.' : ', and $remaining more.');
+    if (_fil) return 'May ${items.length} item dito: $list$tail';
+    final noun = items.length == 1 ? 'item' : 'items';
+    return '${items.length} $noun here: $list$tail';
+  }
+
+  /// [label] with the state of the switch or tick box it names, the way a
+  /// screen reader says it — unless the label already says it, as the
+  /// Settings rows do ("Sound Effects. On. Game sounds & feedback").
+  ///
+  /// Without it, a row like "Left joystick moves too" read the same before
+  /// and after A, so a learner who cannot see the switch never knew which way
+  /// it was set.
+  String withState(String label, bool on) {
+    final head = label.trim();
+    final words = _fil ? const ['Naka-on', 'Naka-off'] : const ['On', 'Off'];
+    final saysIt = RegExp(
+      '(^|[.,:]\\s*)(${words.join('|')})(?=[.,:]|\$)',
+      caseSensitive: false,
+    );
+    if (saysIt.hasMatch(head)) return label;
+    final bare = head.endsWith('.') ? head.substring(0, head.length - 1) : head;
+    final state = _fil ? (on ? 'naka-on' : 'naka-off') : (on ? 'on' : 'off');
+    return '$bare, $state';
+  }
+
+  /// B in a text box: out of the box, still on the screen.
+  String get leftTextBox =>
+      _fil ? 'Umalis sa kahon ng teksto.' : 'Left the text box.';
+
+  /// Answer to Select — the full control guide. One job per control, in the
+  /// order a learner meets them: moving, choosing, then listening.
+  ///
+  /// [leftStickMoves] mirrors the setting, so the guide never describes a
+  /// stick that has been turned off.
+  String buttonGuideFor({bool leftStickMoves = true}) {
+    final stick = !leftStickMoves
+        ? ''
+        : (_fil
+              ? 'Kaliwang joystick: tulad ng D-pad. '
+              : 'Left joystick: the same as the D-pad. ');
+    return _fil
+        ? 'Gabay sa mga button. '
+              'D-pad: gumalaw pataas, pababa, pakaliwa at pakanan. '
+              '$stick'
+              'A: piliin ang naka-highlight, o oo kapag may tanong. '
+              'B: bumalik o isara, o hindi kapag may tanong. '
+              'L2 at R2: ang nakaraan o susunod na item, isa-isa. '
+              'L1 at R1: ang nakaraan o susunod na section. '
+              'X: basahin ang buong screen. '
+              'Y: ulitin ang huling sinabi. '
+              'Start: nasaan ako. '
+              'Select: ang gabay na ito. '
+              'Kanang joystick pataas at pababa: mag-scroll; kaliwa at kanan: '
+              'ang una o huling item. '
+              'Pindutin ang kaliwang joystick para bumalik sa Home. '
+              'Pindutin ang kanang joystick para itigil ang pagsasalita.'
+        : 'Button guide. '
+              'D-pad: move up, down, left and right. '
+              '$stick'
+              'A: choose what is highlighted, or yes when I ask a question. '
+              'B: go back or close, or no when I ask a question. '
+              'L2 and R2: the previous or next item, one at a time. '
+              'L1 and R1: the previous or next section. '
+              'X: read the whole screen. '
+              'Y: say the last thing again. '
+              'Start: where am I. '
+              'Select: this guide. '
+              'Right joystick up and down scrolls; left and right jump to the '
+              'first or last item. '
+              'Click the left joystick to go straight Home. '
+              'Click the right joystick to stop me talking.';
+  }
+
+  /// [buttonGuideFor] with the stick on, the default.
+  String get buttonGuide => buttonGuideFor();
 
   /// A controller has connected — but the app is not yet ready to say where
   /// the learner is (no section published). Kept short; the full welcome
@@ -245,10 +307,23 @@ class GamepadPhrases {
   /// Spoken when the learner steps onto a screen the gamepad can only drive
   /// with plain focus movement (a dialog, a game, a pushed screen).
   String get traversalMode => _fil
-      ? 'Bagong screen. Gamitin ang D-pad taas at baba para maghanap, R1 para '
-          'piliin, L1 para bumalik.'
-      : 'New screen. Use D-pad up and down to look around, R1 to choose, '
-          'L1 to go back.';
+      ? 'Bagong screen. Gamitin ang D-pad para gumalaw, A para pumili, B para '
+          'bumalik.'
+      : 'New screen. Use the D-pad to move around, A to choose, B to go back.';
+
+  /// A move with nothing that way: the highlight stayed where it was.
+  String stillOn(String label) => _fil
+      ? 'Wala nang iba roon. Nasa $label ka pa rin.'
+      : 'Nothing more that way. Still on $label.';
+
+  /// A on a slider, which is turned rather than pressed.
+  String sliderHint(String label) {
+    final head = label.trim();
+    final stop = _endsSentence(head) ? head : '$head.';
+    return _fil
+        ? '$stop Gamitin ang kaliwa at kanan para baguhin ito.'
+        : '$stop Use left and right to change it.';
+  }
 
   /// Nothing was said yet, so there is nothing to repeat.
   String get nothingToRepeat =>
@@ -306,18 +381,6 @@ class GamepadPhrases {
   String get hearWordAgain =>
       _fil ? 'Pakinggan muli ang salita.' : 'Hear the word again.';
 
-  /// Entering value-adjust mode. Names the new meaning of the buttons, the
-  /// same way the yes/no question does — this is a mode, and an unannounced
-  /// mode is how a learner loses track of what their controller does.
-  String adjustEnter(String label) => _fil
-      ? 'Isinasaayos ang $label. Kaliwa at kanan para baguhin. '
-          'R1 kapag tapos na.'
-      : 'Adjusting $label. Left and right to change. R1 when done.';
-
-  /// Leaving it again, with the value that was settled on.
-  String adjustDone(String label) =>
-      _fil ? 'Tapos na. $label' : 'Done. $label';
-
   /// The value did not move, because it is already at one end.
   ///
   /// Only truthful because every slider the controller can reach now changes
@@ -333,11 +396,6 @@ class GamepadPhrases {
     final stop = _endsSentence(head) ? head : '$head.';
     return '$stop $adjustAtLimit';
   }
-
-  /// Pressed on something that cannot be nudged.
-  String get adjustUnavailable => _fil
-      ? 'Hindi ito mababago gamit ang kaliwa at kanan.'
-      : 'This one cannot be changed with left and right.';
 
   /// Nothing has been spelled yet — "Answer:" on its own reads as a bare
   /// colon, which tells a learner nothing about whether their first letter
@@ -408,18 +466,32 @@ class GamepadPhrases {
   /// the practice screen can never teach a mapping that is no longer true.
   String actionName(GamepadAction action) {
     switch (action) {
+      case GamepadAction.moveUp:
+        return _fil ? 'Gumalaw pataas.' : 'Move up.';
+      case GamepadAction.moveDown:
+        return _fil ? 'Gumalaw pababa.' : 'Move down.';
+      case GamepadAction.moveLeft:
+        return _fil ? 'Gumalaw pakaliwa.' : 'Move left.';
+      case GamepadAction.moveRight:
+        return _fil ? 'Gumalaw pakanan.' : 'Move right.';
       case GamepadAction.previousSection:
         return _fil ? 'Nakaraang section.' : 'Previous section.';
       case GamepadAction.nextSection:
         return _fil ? 'Susunod na section.' : 'Next section.';
       case GamepadAction.previousItem:
-        return _fil ? 'Nakaraang item.' : 'Previous item.';
+        return _fil
+            ? 'Nakaraang item, isa-isa.'
+            : 'Previous item, one at a time.';
       case GamepadAction.nextItem:
-        return _fil ? 'Susunod na item.' : 'Next item.';
+        return _fil
+            ? 'Susunod na item, isa-isa.'
+            : 'Next item, one at a time.';
       case GamepadAction.activate:
-        return _fil ? 'Buksan ang napili.' : 'Open the item you are on.';
+        return _fil
+            ? 'Piliin ang naka-highlight.'
+            : 'Choose what is highlighted.';
       case GamepadAction.back:
-        return _fil ? 'Bumalik.' : 'Go back.';
+        return _fil ? 'Bumalik, o isara.' : 'Go back, or close.';
       case GamepadAction.answerYes:
         return _fil ? 'Sagot na oo.' : 'Answer yes.';
       case GamepadAction.answerNo:
@@ -444,12 +516,6 @@ class GamepadPhrases {
         return _fil ? 'Unang item.' : 'First item.';
       case GamepadAction.lastItem:
         return _fil ? 'Huling item.' : 'Last item.';
-      case GamepadAction.decrease:
-        return _fil ? 'Bawasan ang halaga.' : 'Turn the value down.';
-      case GamepadAction.increase:
-        return _fil ? 'Dagdagan ang halaga.' : 'Turn the value up.';
-      case GamepadAction.finishAdjust:
-        return _fil ? 'Tapusin ang pagsasaayos.' : 'Finish adjusting.';
       case GamepadAction.none:
         return _fil
             ? 'Wala itong ginagawa sa app na ito.'
@@ -457,13 +523,19 @@ class GamepadPhrases {
     }
   }
 
+  /// A left stick pushed while "Left joystick moves too" is off — not "does
+  /// nothing in this app", which would be untrue the moment it is turned on.
+  String get leftStickOff => _fil
+      ? 'Naka-off ito sa settings ng Game Controller, kaya wala itong ginagawa.'
+      : 'Turned off in the Game Controller settings, so it does nothing.';
+
   /// Spoken as the practice screen opens.
   String get practiceIntro => _fil
       ? 'Pagsasanay sa controller. Pindutin ang kahit anong button at sasabihin '
-          'ko kung ano ito. Walang mangyayari sa app. Pindutin ang L1 nang '
+          'ko kung ano ito. Walang mangyayari sa app. Pindutin ang B nang '
           'dalawang beses para umalis.'
       : 'Controller practice. Press any button and I will tell you what it is. '
-          'Nothing else will happen. Press L1 twice to leave.';
+          'Nothing else will happen. Press B twice to leave.';
 
   /// Spoken when the learner has tried every control.
   String practiceProgress(int tried, int total) => _fil

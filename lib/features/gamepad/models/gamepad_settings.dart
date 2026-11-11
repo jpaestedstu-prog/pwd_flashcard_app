@@ -59,6 +59,14 @@ class GamepadSettings {
   /// Milliseconds between repeats once they start.
   final int repeatRateMs;
 
+  /// The left stick moves the highlight too, exactly as the D-pad does.
+  ///
+  /// The one control that deliberately shares a job with another: many
+  /// learners steer with a stick more easily than they press a small D-pad.
+  /// **On by default**; turned off, the stick does nothing, for a learner who
+  /// knocks it by accident while reaching for the buttons.
+  final bool leftStickMoves;
+
   const GamepadSettings({
     this.enabled = true,
     this.speak = true,
@@ -70,6 +78,7 @@ class GamepadSettings {
     this.holdToRepeat = false,
     this.repeatDelayMs = 600,
     this.repeatRateMs = 350,
+    this.leftStickMoves = true,
   });
 
   static const int minDedupeMs = 60;
@@ -95,6 +104,7 @@ class GamepadSettings {
     bool? holdToRepeat,
     int? repeatDelayMs,
     int? repeatRateMs,
+    bool? leftStickMoves,
   }) {
     return GamepadSettings(
       enabled: enabled ?? this.enabled,
@@ -109,6 +119,7 @@ class GamepadSettings {
           .clamp(minRepeatDelayMs, maxRepeatDelayMs),
       repeatRateMs: (repeatRateMs ?? this.repeatRateMs)
           .clamp(minRepeatRateMs, maxRepeatRateMs),
+      leftStickMoves: leftStickMoves ?? this.leftStickMoves,
     );
   }
 
@@ -123,6 +134,7 @@ class GamepadSettings {
         'holdToRepeat': holdToRepeat,
         'repeatDelayMs': repeatDelayMs,
         'repeatRateMs': repeatRateMs,
+        'leftStickMoves': leftStickMoves,
       };
 
   factory GamepadSettings.fromMap(Map? map) {
@@ -147,6 +159,7 @@ class GamepadSettings {
           .clamp(minRepeatDelayMs, maxRepeatDelayMs),
       repeatRateMs: asInt(map['repeatRateMs'], d.repeatRateMs)
           .clamp(minRepeatRateMs, maxRepeatRateMs),
+      leftStickMoves: asBool(map['leftStickMoves'], d.leftStickMoves),
     );
   }
 }

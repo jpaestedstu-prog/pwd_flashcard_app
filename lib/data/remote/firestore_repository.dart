@@ -300,6 +300,19 @@ class FirestoreRepository implements DataRepository {
       supportOptions:
           LearnerSupportCatalog.decode(r['support_options'] as List?),
       classroomId: r['classroom_id'] as String?,
+      // It was left out: a child read from the cloud had no home group.
+      homeGroupId: r['home_group_id'] as String?,
+      // Written by the joins and by the level service, and never read back.
+      learningLevel: switch (r['learning_level']) {
+        final int i when i >= 0 && i < LearningLevel.values.length =>
+          LearningLevel.values[i],
+        _ => null,
+      },
+      learningLevelOverriddenBy: r['learning_level_overridden_by'] as String?,
+      learningLevelOverriddenAt: switch (r['learning_level_overridden_at']) {
+        final String at => DateTime.tryParse(at),
+        _ => null,
+      },
       isGuestPlayer: (r['is_guest_player'] as bool?) ?? false,
       ownerUid: r['owner_uid'] as String?,
       username: r['username'] as String?,
@@ -1018,6 +1031,18 @@ class FirestoreRepository implements DataRepository {
   }
 
   /// Fetch every member row for a home group.
+  /// The home group [profileId] is a member of, from the groups' own rows and
+  /// from the server only: a device's cache cannot say a child is not a member.
+  /// Null when there is none. Throws when it cannot be told (offline).
+  Future<String?> homeGroupIdOfMember(String profileId) async {
+    final rows = await _db
+        .collection('home_group_members')
+        .where('profile_id', isEqualTo: profileId)
+        .get(const GetOptions(source: Source.server));
+    if (rows.docs.isEmpty) return null;
+    return rows.docs.first.data()['home_group_id'] as String?;
+  }
+
   Future<List<HomeGroupMember>> listHomeGroupMembers(String homeGroupId) async {
     final snap = await _db
         .collection('home_group_members')

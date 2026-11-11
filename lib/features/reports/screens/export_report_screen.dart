@@ -12,6 +12,7 @@ import '../../../widgets/app_snack_bar.dart';
 import '../services/csv_report_service.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Pre-defined date ranges for the report. Custom ranges are out of
 /// scope for the first cut — IEP / classroom reporting almost always
@@ -99,7 +100,7 @@ class _ExportReportScreenState extends ConsumerState<ExportReportScreen> {
       return Scaffold(
         appBar: AppBar(
           leading: const AppBackButton(),
-          title: Text(_t(context).erTitleShort),
+          title: AppBarTitle(_t(context).erTitleShort),
         ),
         body: Center(
           child: Text(_t(context).erSignIn),
@@ -113,7 +114,7 @@ class _ExportReportScreenState extends ConsumerState<ExportReportScreen> {
     return Scaffold(
       appBar: AppBar(
         leading: const AppBackButton(),
-        title: Text(_t(context).erTitle),
+        title: AppBarTitle(_t(context).erTitle),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -217,6 +218,8 @@ class _Form extends StatelessWidget {
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
           initialValue: selectedClassroomId,
+          // A long class name wraps inside the box: it ran 372 px off a phone.
+          isExpanded: true,
           decoration: const InputDecoration(
             prefixIcon: Icon(Icons.class_rounded),
           ),

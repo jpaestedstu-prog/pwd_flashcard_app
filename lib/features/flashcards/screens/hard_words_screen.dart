@@ -13,6 +13,8 @@ import '../../../widgets/app_back_button.dart';
 import '../../../widgets/fullscreen_host.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
+import '../../../core/widgets/stagger_in.dart';
 
 class HardWordsScreen extends ConsumerWidget {
   const HardWordsScreen({super.key});
@@ -29,7 +31,7 @@ class HardWordsScreen extends ConsumerWidget {
         ref,
         AppBar(
           leading: const AppBackButton(),
-          title: Text(
+          title: AppBarTitle(
             _t(context).homeHardWords,
             style: AppTypography.titleMedium.copyWith(
               fontWeight: FontWeight.w700,
@@ -126,7 +128,10 @@ class HardWordsScreen extends ConsumerWidget {
                     itemCount: hardWords.length,
                     itemBuilder: (context, index) {
                       final (card, accuracy) = hardWords[index];
-                      return Padding(
+                      return StaggerIn(
+                        index: index,
+                        step: const Duration(milliseconds: 50),
+                        child: Padding(
                             padding: const EdgeInsets.only(bottom: 10),
                             child: _HardWordCard(
                               card: card,
@@ -135,13 +140,14 @@ class HardWordsScreen extends ConsumerWidget {
                                 '/flashcards/viewer/${card.category.index}',
                               ),
                             ),
-                          )
-                          .animate()
+                          ),
+                        builder: (child, delay) => child.animate()
                           .fadeIn(
                             duration: 350.ms,
-                            delay: Duration(milliseconds: 50 * index),
+                            delay: delay,
                           )
-                          .slideX(begin: 0.05, end: 0);
+                          .slideX(begin: 0.05, end: 0),
+                      );
                     },
                   ),
           ),
@@ -168,6 +174,8 @@ class _StatChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       label: '$label: $value',
+        // The sentence says it; the number and word under it were read again.
+        excludeSemantics: true,
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
           decoration: BoxDecoration(
@@ -335,10 +343,10 @@ class _HardWordCard extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    'correct',
+                    _t(context).hwCorrect,
                     style: AppTypography.labelSmall.copyWith(
                       color: hc.textHint,
-                      fontSize: 9,
+                      fontSize: 11,
                     ),
                   ),
                 ],

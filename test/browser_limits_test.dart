@@ -11,6 +11,7 @@ import 'package:pwdpwdpwd/data/models/enums.dart';
 import 'package:pwdpwdpwd/features/flashcards/screens/enhanced_create_flashcard_screen.dart';
 import 'package:pwdpwdpwd/features/gamepad/screens/gamepad_practice_screen.dart';
 import 'package:pwdpwdpwd/features/gamepad/screens/gamepad_settings_screen.dart';
+import 'package:pwdpwdpwd/features/gamepad/services/gamepad_service.dart';
 import 'package:pwdpwdpwd/features/messaging/models/messaging_models.dart';
 import 'package:pwdpwdpwd/features/messaging/widgets/message_media_view.dart';
 import 'package:pwdpwdpwd/features/settings/screens/backup_restore_screen.dart';
@@ -165,6 +166,32 @@ void main() {
       PlatformCaps.debugWeb = false;
       await pump(tester, build(), role);
       expect(await scrollTo(tester, find.byType(AndroidAppNotice)), isFalse);
+      await unmount(tester);
+    });
+  }
+
+  // A current browser reads a controller through its Gamepad API: the web
+  // app's controller screens are the Android app's (the notice above is for a
+  // browser without the API).
+  for (final MapEntry(key: name, value: build) in {
+    'Game Controller': () => const GamepadSettingsScreen(),
+    'Controller practice': () => const GamepadPracticeScreen(),
+  }.entries) {
+    testWidgets('$name in a browser with the Gamepad API works as in the app',
+        (tester) async {
+      PlatformCaps.debugWeb = true;
+      GamepadService.debugBrowserGamepads = true;
+      addTearDown(() => GamepadService.debugBrowserGamepads = null);
+      await pump(tester, build(), UserRole.student);
+      // Read at the top, before the scroll below moves it out of the list.
+      if (name == 'Game Controller') {
+        expect(find.text(t.gpNone), findsOneWidget,
+            reason: 'it waits for a controller, as the app does');
+        expect(find.text(t.gpPairBrowser), findsOneWidget,
+            reason: 'a browser sees a controller only after a press');
+      }
+      expect(await scrollTo(tester, find.byType(AndroidAppNotice)), isFalse);
+      expect(find.text(t.webControllerNeedsApp), findsNothing);
       await unmount(tester);
     });
   }

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../../core/widgets/auto_fit.dart';
+import '../../../features/parent/services/learner_restrictions.dart';
+import '../../../data/models/enums.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -8,6 +11,8 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../providers/app_providers.dart';
 import '../../../providers/sticker_provider.dart';
+import '../../../core/widgets/beside_or_below.dart';
+import '../../../core/widgets/fit_text.dart';
 import '../../../core/widgets/hub_scaffold.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
@@ -24,6 +29,7 @@ import '../../object_scan/word_hunt_entry.dart';
 import '../../stickers/widgets/sticker_sweep.dart';
 import '../widgets/home_tile.dart';
 import '../widgets/today_card.dart';
+import '../../companion/widgets/companion_clearance.dart';
 
 /// Gamified home for the Child role (Family Group).
 ///
@@ -144,27 +150,43 @@ class ChildHomeScreen extends ConsumerWidget {
         )
         .first;
 
-    // ─── Gaze row 1: the two halves of the Today card ──
-    // The same card the Student home carries, with this home's friendlier
-    // wording. It replaces a "My Day" section that held one dead tile and a
+    // ─── Next gaze rows: the two Today cards ──
+    // The same cards the Student home carries, with this home's friendlier
+    // wording. They replace a "My Day" section that held one dead tile and a
     // "My Feelings" tile four sections further down — a child who needs a
     // visual schedule should not have to scroll past four hubs to reach it,
-    // and should be able to say how they feel without leaving Home.
+    // and should be able to say how they feel without leaving Home. Rows in
+    // the Student home's order: each card, then the controls on it (a
+    // child's day runs on the clock, so My Day has no Done to press).
     void openMood() => context.push('/mood-check-in');
     void openMyDay() => context.push('/routine');
-    final todayPanes = gazeGrid.section(
-      columns: 1,
-      expand: false,
-      entries: [
-        (
-          tile: TodayDayPane(onOpen: openMyDay, title: t.homeMyDay),
-          cell: GazeTileCell(label: t.homeMyDay, onActivate: openMyDay),
-        ),
-        (
-          tile: TodayMoodPane(onOpen: openMood, title: t.childMyFeelings),
-          cell: GazeTileCell(label: t.childMyFeelings, onActivate: openMood),
-        ),
-      ],
+    final dayRow = gazeGrid.rowOf([
+      GazeTileCell(label: t.homeMyDay, onActivate: openMyDay),
+    ]);
+    final dayDone = TodayDayPane.doneCell(context, ref);
+    final dayDoneRow = dayDone == null ? null : gazeGrid.rowOf([dayDone]);
+    final moodRow = gazeGrid.rowOf([
+      GazeTileCell(label: t.childMyFeelings, onActivate: openMood),
+    ]);
+    final moodFaceRow = gazeGrid.rowOf(TodayMoodPane.faceCells(context, ref));
+    final todayPanes = [
+      TodayDayPane(
+        onOpen: openMyDay,
+        title: t.homeMyDay,
+        gazeRow: dayRow,
+        gazeDoneRow: dayDoneRow,
+      ),
+      TodayMoodPane(
+        onOpen: openMood,
+        title: t.childMyFeelings,
+        gazeRow: moodRow,
+        gazeFaceRow: moodFaceRow,
+      ),
+    ];
+
+    final greeting = t.childGreeting(profile?.name ?? t.childFriend);
+    final greetingStyle = theme.textTheme.headlineSmall?.copyWith(
+      fontWeight: FontWeight.bold,
     );
 
     return GazeHomeRegistrar(
@@ -172,388 +194,391 @@ class ChildHomeScreen extends ConsumerWidget {
       rows: gazeGrid.rows,
       child: HubScaffold(
         intensity: 0.30,
-        slivers: [
-          // Awards stickers earned since the last visit, so the Stickers tile
-          // below can carry an accurate badge. Renders nothing.
-          const SliverToBoxAdapter(child: StickerSweep()),
+        child: CustomScrollView(
+          slivers: [
+            // Awards stickers earned since the last visit, so the Stickers tile
+            // below can carry an accurate badge. Renders nothing.
+            const SliverToBoxAdapter(child: StickerSweep()),
 
-          // ─── Greeting strip ──────────────────────
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                pad,
-                AppSpacing.md,
-                pad,
-                AppSpacing.md,
-              ),
-              child: Row(
-                children: [
-                  ProfileAvatar(profile: profile, radius: 32),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          t.childGreeting(profile?.name ?? t.childFriend),
-                          style: theme.textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+            // ─── Greeting strip ──────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  pad,
+                  AppSpacing.md,
+                  pad,
+                  AppSpacing.md,
+                ),
+                // The greeting under the picture and the button when a long
+                // name leaves it no room between them (a phone at the largest
+                // Font Size, 3 Nov).
+                child: BesideOrBelow(
+                  fits: FitText.measurer(context, greeting, style: greetingStyle),
+                  gap: AppSpacing.md,
+                  leading: ProfileAvatar(profile: profile, radius: 32),
+                  title: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Two lines and three, rather than cut: on a phone
+                      // at the largest Font Size both lost their ends
+                      // (30 Oct).
+                      FitText(greeting, style: greetingStyle),
+                      Text(
+                        t.childWhatToDo,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colors.onSurfaceVariant,
                         ),
-                        Text(
-                          t.childWhatToDo,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: colors.onSurfaceVariant,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ),
                   // Inline accessibility shortcut — the Child home has
                   // no Settings gear, so this gives the learner self-
                   // service over text size, contrast, read-aloud, etc.
                   // Its own gaze row (the topmost), so the D-pad can
                   // reach it too.
-                  accessibilityCell,
-                ],
+                  trailing: accessibilityCell,
+                ),
               ),
             ),
-          ),
 
-          // ─── My day: streak / words / stars ──────
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(pad, 0, pad, AppSpacing.sm),
-              child: _KidStatsStrip(
-                streak: progress.liveStreakDays,
-                words: progress.wordsLearned,
-                stars: progress.totalStars,
-              ),
-            ),
-          ),
-
-          // ─── Today: My Day, then My Feelings ─────
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(pad, 0, pad, AppSpacing.sm),
-              child: TodayCard(child: todayPanes.first),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(pad, 0, pad, AppSpacing.sm),
-              child: TodayCard(child: todayPanes.last),
-            ),
-          ),
-
-          // ─── XP & Level Bar ──────────────────────
-          // A Child levels up on the same XP curve as everyone else and gets
-          // the same full-screen celebration from the shell, but this home had
-          // nowhere to see the level afterwards — the fanfare landed and then
-          // vanished. Same widget the Student / Player home uses, so the two
-          // can never show different numbers. Non-interactive, so it publishes
-          // no gaze cell.
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(pad, 0, pad, AppSpacing.sm),
-              child: XpLevelBar(progress: progress),
-            ),
-          ),
-
-          // New work is kept current by [LearnerAssignmentSync] in the
-          // navigation shell.
-
-          // ─── Pending assignments ─────────────────
-          // Same shared widget the Student home shows, so the two homes can
-          // never disagree about what is outstanding. Only a gaze target while
-          // it is actually on screen.
-          if (PendingAssignmentsBanner.hasPendingWork(profile?.id))
+            // ─── My day: streak / words / stars ──────
             SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.fromLTRB(pad, 0, pad, AppSpacing.sm),
-                child: gazeGrid
-                    .section(
-                      columns: 1,
-                      expand: false,
-                      entries: [
-                        (
-                          tile: PendingAssignmentsBanner(
-                            profileId: profile?.id,
-                          ),
-                          cell: GazeTileCell(
-                            label: t.homeAssignments,
-                            onActivate: () => context.push('/assessment'),
-                          ),
-                        ),
-                      ],
-                    )
-                    .first,
+                child: _KidStatsStrip(
+                  streak: progress.liveStreakDays,
+                  words: progress.wordsLearned,
+                  stars: progress.totalStars,
+                ),
               ),
             ),
 
-          // ─── Section: Play & Learn (core hub) ────
-          // Mirrors the Student home's core tiles: Games, Cards, Stories,
-          // FSL (policy-gated), practice, and Progress.
-          _ChildSectionHeader(emoji: '🎮', title: t.homePlayAndLearn),
-          grid([
-            entry(
-              emoji: '🎮',
-              label: t.games,
-              gradient: const [
-                AppColors.playerAccent,
-                AppColors.playerAccentLight,
-              ],
-              onTap: () => context.go('/games'),
-            ),
-            entry(
-              emoji: '🔤',
-              label: t.eduCards,
-              gradient: const [
-                AppColors.bannerLearningStart,
-                AppColors.bannerLearningEnd,
-              ],
-              onTap: () => context.go('/flashcards'),
-            ),
-            entry(
-              emoji: '📖',
-              label: t.homeStories,
-              gradient: const [
-                AppColors.bannerStickerStart,
-                AppColors.bannerStickerEnd,
-              ],
-              onTap: () => context.go('/stories'),
-            ),
-            if (showFsl) ...[
-              entry(
-                emoji: '🤟',
-                label: t.signLanguage,
-                gradient: const [
-                  AppColors.bannerFslStart,
-                  AppColors.bannerFslEnd,
-                ],
-                onTap: () => context.push('/games/fsl-practice'),
+            // ─── Today: My Day, then My Feelings ─────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(pad, 0, pad, AppSpacing.sm),
+                child: TodayCard(child: todayPanes.first),
               ),
-              // The practice hub only quizzes signs the child has met. Browsing
-              // them is a different need and the Student / Player home has had
-              // its own tile for it all along — without this one a Child
-              // profile could not reach the dictionary at all.
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(pad, 0, pad, AppSpacing.sm),
+                child: TodayCard(child: todayPanes.last),
+              ),
+            ),
+
+            // ─── XP & Level Bar ──────────────────────
+            // A Child levels up on the same XP curve as everyone else and gets
+            // the same full-screen celebration from the shell, but this home had
+            // nowhere to see the level afterwards — the fanfare landed and then
+            // vanished. Same widget the Student / Player home uses, so the two
+            // can never show different numbers. Non-interactive, so it publishes
+            // no gaze cell.
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(pad, 0, pad, AppSpacing.sm),
+                child: XpLevelBar(progress: progress),
+              ),
+            ),
+
+            // New work is kept current by [LearnerAssignmentSync] in the
+            // navigation shell.
+
+            // ─── Pending assignments ─────────────────
+            // Same shared widget the Student home shows, so the two homes can
+            // never disagree about what is outstanding. Only a gaze target while
+            // it is actually on screen.
+            if (PendingAssignmentsBanner.hasPendingWork(profile?.id))
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(pad, 0, pad, AppSpacing.sm),
+                  child: gazeGrid
+                      .section(
+                        columns: 1,
+                        expand: false,
+                        entries: [
+                          (
+                            tile: PendingAssignmentsBanner(
+                              profileId: profile?.id,
+                            ),
+                            cell: GazeTileCell(
+                              label: t.homeAssignments,
+                              onActivate: () => context.push('/assessment'),
+                            ),
+                          ),
+                        ],
+                      )
+                      .first,
+                ),
+              ),
+
+            // ─── Section: Play & Learn (core hub) ────
+            // Mirrors the Student home's core tiles: Games, Cards, Stories,
+            // FSL (policy-gated), practice, and Progress.
+            _ChildSectionHeader(emoji: '🎮', title: t.homePlayAndLearn),
+            grid([
+              entry(
+                emoji: '🎮',
+                label: t.games,
+                gradient: const [
+                  AppColors.playerAccent,
+                  AppColors.playerAccentLight,
+                ],
+                onTap: () => context.go('/games'),
+              ),
+              entry(
+                emoji: '🔤',
+                label: t.eduCards,
+                gradient: const [
+                  AppColors.bannerLearningStart,
+                  AppColors.bannerLearningEnd,
+                ],
+                onTap: () => context.go('/flashcards'),
+              ),
               entry(
                 emoji: '📖',
-                label: t.childSignDictionary,
+                label: t.homeStories,
                 gradient: const [
-                  AppColors.bannerFslEnd,
-                  AppColors.bannerFslStart,
+                  AppColors.bannerStickerStart,
+                  AppColors.bannerStickerEnd,
                 ],
-                onTap: () => context.push('/fsl-dictionary'),
+                onTap: () => context.go('/stories'),
               ),
-            ],
-            entry(
-              emoji: '🧠',
-              label: t.childPracticeWords,
-              gradient: const [
-                AppColors.bannerSmartReviewStart,
-                AppColors.bannerSmartReviewEnd,
+              if (showFsl) ...[
+                if (!LearnerRestrictions.blockedGames(
+                  ref.read(profileProvider)?.role,
+                ).contains(GameType.fslPractice))
+                entry(
+                  emoji: '🤟',
+                  label: t.signLanguage,
+                  gradient: const [
+                    AppColors.bannerFslStart,
+                    AppColors.bannerFslEnd,
+                  ],
+                  onTap: () => context.push('/games/fsl-practice'),
+                ),
+                // The practice hub only quizzes signs the child has met. Browsing
+                // them is a different need and the Student / Player home has had
+                // its own tile for it all along — without this one a Child
+                // profile could not reach the dictionary at all.
+                entry(
+                  emoji: '📖',
+                  label: t.childSignDictionary,
+                  gradient: const [
+                    AppColors.bannerFslEnd,
+                    AppColors.bannerFslStart,
+                  ],
+                  onTap: () => context.push('/fsl-dictionary'),
+                ),
               ],
-              onTap: () => context.push('/smart-review'),
-            ),
-            entry(
-              emoji: '🏆',
-              label: t.childMyProgress,
-              gradient: const [
-                AppColors.bannerLearningGainStart,
-                AppColors.bannerLearningGainEnd,
-              ],
-              onTap: () => context.go('/progress'),
-            ),
-          ]),
-
-          // ─── Section: Explore & Create ───────────
-          _ChildSectionHeader(emoji: '🗺️', title: t.childExplore),
-          grid([
-            entry(
-              emoji: '🗺️',
-              label: t.childAdventureMap,
-              gradient: const [
-                AppColors.bannerRecommendStart,
-                AppColors.bannerRecommendEnd,
-              ],
-              onTap: () => context.push('/learning-paths'),
-            ),
-            entry(
-              emoji: '✍️',
-              label: t.childPracticeWithMe,
-              gradient: const [
-                AppColors.bannerGuidedStart,
-                AppColors.bannerGuidedEnd,
-              ],
-              onTap: () => context.push('/guided-practice'),
-            ),
-            entry(
-              emoji: '📷',
-              label: t.wordHuntTitle,
-              gradient: const [
-                AppColors.bannerWordHuntStart,
-                AppColors.bannerWordHuntEnd,
-              ],
-              onTap: () => openWordHunt(context, ref),
-            ),
-            entry(
-              emoji: '💬',
-              label: t.tbTitle,
-              gradient: const [
-                AppColors.bannerCommBoardStart,
-                AppColors.bannerCommBoardEnd,
-              ],
-              onTap: () => context.push('/communication-board'),
-            ),
-            // Named for the persona a Child actually meets on the other side
-            // (TutorPersona.child is "Buddy" 🧸). Without this tile the only
-            // way in was the small expand icon inside the floating panel.
-            entry(
-              emoji: '🧸',
-              label: t.childBuddy,
-              gradient: const [
-                AppColors.bannerAiTutorStart,
-                AppColors.bannerAiTutorEnd,
-              ],
-              onTap: () => context.push('/ai-tutor'),
-            ),
-          ]),
-
-          // ─── Section: Friends ────────────────────
-          _ChildSectionHeader(emoji: '🧑‍🤝‍🧑', title: t.childFriends),
-          grid([
-            entry(
-              emoji: '🧑‍🤝‍🧑',
-              label: t.playTogether,
-              gradient: const [
-                AppColors.bannerPeerStart,
-                AppColors.bannerPeerEnd,
-              ],
-              onTap: () => context.push('/multiplayer'),
-            ),
-            // The cooperative half of the Friends section. A Child profile
-            // could reach Play Together but not this — an omission, not a
-            // policy: nothing about Peer Collab is age- or role-gated, and
-            // CollabPresentation already curates the activity roster per
-            // accessibility category exactly as it does for a Student.
-            entry(
-              emoji: '🤝',
-              label: t.homePeerCollab,
-              gradient: const [
-                AppColors.bannerPeerStart,
-                AppColors.bannerPeerEnd,
-              ],
-              onTap: () => context.push('/peer-collab'),
-            ),
-            entry(
-              emoji: '💌',
-              label: t.eduMessages,
-              gradient: const [
-                AppColors.bannerMessagingStart,
-                AppColors.bannerMessagingEnd,
-              ],
-              onTap: () => context.push('/messages'),
-              badgeCount: unreadMessages,
-            ),
-            // Read-only for the child: the notes screen hides its "New Note"
-            // button for non-educators, so this is where they see what their
-            // parent and teacher have written about them.
-            entry(
-              emoji: '📝',
-              label: t.homeMyNotes,
-              gradient: const [
-                AppColors.bannerRecommendStart,
-                AppColors.bannerRecommendEnd,
-              ],
-              onTap: () => context.push('/parent-teacher-notes'),
-            ),
-          ]),
-
-          // ─── Section: Rewards & Feelings ─────────
-          _ChildSectionHeader(emoji: '⭐', title: t.childRewards),
-          grid([
-            // The Player Profile — the learner's level, stats and rewards in
-            // one place. The Student / Player home reaches it from a banner;
-            // a Child had no route to it at all, so the level bar above was
-            // as far as they could look at their own progress.
-            entry(
-              emoji: '🎮',
-              label: t.childPlayerCard,
-              gradient: const [
-                AppColors.playerAccent,
-                AppColors.playerAccentPurpleLight,
-              ],
-              onTap: () => context.push('/gamification-dashboard'),
-            ),
-            entry(
-              emoji: '⭐',
-              label: t.childStickers,
-              gradient: const [
-                AppColors.bannerStickerStart,
-                AppColors.bannerStickerEnd,
-              ],
-              badgeCount: unseenStickers,
-              onTap: () => context.push('/sticker-album'),
-            ),
-            entry(
-              emoji: '🙂',
-              label: t.homeHowWasIt,
-              gradient: const [
-                AppColors.bannerLearningStart,
-                AppColors.bannerLearningEnd,
-              ],
-              onTap: () => context.push('/smileyometer'),
-            ),
-            entry(
-              emoji: '📓',
-              label: t.homeMyNotebook,
-              gradient: const [
-                AppColors.bannerNotebookStart,
-                AppColors.bannerNotebookEnd,
-              ],
-              onTap: () => context.push('/notebook'),
-            ),
-          ]),
-
-          // ─── Footer: parent-only switch profile entry ──
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.only(
-                top: AppSpacing.lg,
-                bottom: AppSpacing.lg,
+              entry(
+                emoji: '🧠',
+                label: t.childPracticeWords,
+                gradient: const [
+                  AppColors.bannerSmartReviewStart,
+                  AppColors.bannerSmartReviewEnd,
+                ],
+                onTap: () => context.push('/smart-review'),
               ),
-              child: Center(
-                child: gazeGrid
-                    .section(
-                      columns: 1,
-                      expand: false,
-                      entries: [
-                        (
-                          tile: TextButton.icon(
-                            onPressed: () => context.push('/profile-switcher'),
-                            icon: const Icon(
-                              Icons.swap_horiz_rounded,
-                              size: 18,
+              entry(
+                emoji: '🏆',
+                label: t.childMyProgress,
+                gradient: const [
+                  AppColors.bannerLearningGainStart,
+                  AppColors.bannerLearningGainEnd,
+                ],
+                onTap: () => context.go('/progress'),
+              ),
+            ]),
+
+            // ─── Section: Explore & Create ───────────
+            _ChildSectionHeader(emoji: '🗺️', title: t.childExplore),
+            grid([
+              entry(
+                emoji: '🗺️',
+                label: t.childAdventureMap,
+                gradient: const [
+                  AppColors.bannerRecommendStart,
+                  AppColors.bannerRecommendEnd,
+                ],
+                onTap: () => context.push('/learning-paths'),
+              ),
+              entry(
+                emoji: '✍️',
+                label: t.childPracticeWithMe,
+                gradient: const [
+                  AppColors.bannerGuidedStart,
+                  AppColors.bannerGuidedEnd,
+                ],
+                onTap: () => context.push('/guided-practice'),
+              ),
+              entry(
+                emoji: '📷',
+                label: t.wordHuntTitle,
+                gradient: const [
+                  AppColors.bannerWordHuntStart,
+                  AppColors.bannerWordHuntEnd,
+                ],
+                onTap: () => openWordHunt(context, ref),
+              ),
+              entry(
+                emoji: '💬',
+                label: t.tbTitle,
+                gradient: const [
+                  AppColors.bannerCommBoardStart,
+                  AppColors.bannerCommBoardEnd,
+                ],
+                onTap: () => context.push('/communication-board'),
+              ),
+              // Named for the persona a Child actually meets on the other side
+              // (TutorPersona.child is "Buddy" 🧸). Without this tile the only
+              // way in was the small expand icon inside the floating panel.
+              entry(
+                emoji: '🧸',
+                label: t.childBuddy,
+                gradient: const [
+                  AppColors.bannerAiTutorStart,
+                  AppColors.bannerAiTutorEnd,
+                ],
+                onTap: () => context.push('/ai-tutor'),
+              ),
+            ]),
+
+            // ─── Section: Friends ────────────────────
+            _ChildSectionHeader(emoji: '🧑‍🤝‍🧑', title: t.childFriends),
+            grid([
+              entry(
+                emoji: '🧑‍🤝‍🧑',
+                label: t.playTogether,
+                gradient: const [
+                  AppColors.bannerPeerStart,
+                  AppColors.bannerPeerEnd,
+                ],
+                onTap: () => context.push('/multiplayer'),
+              ),
+              // The cooperative half of the Friends section. A Child profile
+              // could reach Play Together but not this — an omission, not a
+              // policy: nothing about Peer Collab is age- or role-gated, and
+              // CollabPresentation already curates the activity roster per
+              // accessibility category exactly as it does for a Student.
+              entry(
+                emoji: '🤝',
+                label: t.homePeerCollab,
+                gradient: const [
+                  AppColors.bannerPeerStart,
+                  AppColors.bannerPeerEnd,
+                ],
+                onTap: () => context.push('/peer-collab'),
+              ),
+              entry(
+                emoji: '💌',
+                label: t.eduMessages,
+                gradient: const [
+                  AppColors.bannerMessagingStart,
+                  AppColors.bannerMessagingEnd,
+                ],
+                onTap: () => context.push('/messages'),
+                badgeCount: unreadMessages,
+              ),
+              // Read-only for the child: the notes screen hides its "New Note"
+              // button for non-educators, so this is where they see what their
+              // parent and teacher have written about them.
+              entry(
+                emoji: '📝',
+                label: t.homeMyNotes,
+                gradient: const [
+                  AppColors.bannerRecommendStart,
+                  AppColors.bannerRecommendEnd,
+                ],
+                onTap: () => context.push('/parent-teacher-notes'),
+              ),
+            ]),
+
+            // ─── Section: Rewards & Feelings ─────────
+            _ChildSectionHeader(emoji: '⭐', title: t.childRewards),
+            grid([
+              // The Player Profile — the learner's level, stats and rewards in
+              // one place. The Student / Player home reaches it from a banner;
+              // a Child had no route to it at all, so the level bar above was
+              // as far as they could look at their own progress.
+              entry(
+                emoji: '🎮',
+                label: t.childPlayerCard,
+                gradient: const [
+                  AppColors.playerAccent,
+                  AppColors.playerAccentPurpleLight,
+                ],
+                onTap: () => context.push('/gamification-dashboard'),
+              ),
+              entry(
+                emoji: '⭐',
+                label: t.childStickers,
+                gradient: const [
+                  AppColors.bannerStickerStart,
+                  AppColors.bannerStickerEnd,
+                ],
+                badgeCount: unseenStickers,
+                onTap: () => context.push('/sticker-album'),
+              ),
+              entry(
+                emoji: '🙂',
+                label: t.homeHowWasIt,
+                gradient: const [
+                  AppColors.bannerLearningStart,
+                  AppColors.bannerLearningEnd,
+                ],
+                onTap: () => context.push('/smileyometer'),
+              ),
+              entry(
+                emoji: '📓',
+                label: t.homeMyNotebook,
+                gradient: const [
+                  AppColors.bannerNotebookStart,
+                  AppColors.bannerNotebookEnd,
+                ],
+                onTap: () => context.push('/notebook'),
+              ),
+            ]),
+
+            // ─── Footer: parent-only switch profile entry ──
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(
+                  top: AppSpacing.lg,
+                  bottom: AppSpacing.lg,
+                ),
+                child: Center(
+                  child: gazeGrid
+                      .section(
+                        columns: 1,
+                        expand: false,
+                        entries: [
+                          (
+                            tile: TextButton.icon(
+                              onPressed: () => context.push('/profile-switcher'),
+                              icon: const Icon(
+                                Icons.swap_horiz_rounded,
+                                size: 18,
+                              ),
+                              label: Text(t.childSwitchProfile),
                             ),
-                            label: Text(t.childSwitchProfile),
+                            cell: GazeTileCell(
+                              label: t.childSwitchProfile,
+                              onActivate: () => context.push('/profile-switcher'),
+                            ),
                           ),
-                          cell: GazeTileCell(
-                            label: t.childSwitchProfile,
-                            onActivate: () => context.push('/profile-switcher'),
-                          ),
-                        ),
-                      ],
-                    )
-                    .first,
+                        ],
+                      )
+                      .first,
+                ),
               ),
             ),
-          ),
-        ],
+            // The last button clear of the floating AI Buddy.
+            const CompanionClearanceSliver(),
+          ],
+        ),
       ),
     );
   }
@@ -579,6 +604,8 @@ class _KidStatsStrip extends StatelessWidget {
     final onGrad = hc.onGradient;
     return Semantics(
       label: _t(context).childStatsSemantics(streak, words, stars),
+      // The sentence says it; the emoji, numbers and words were read again.
+      excludeSemantics: true,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
         decoration: BoxDecoration(
@@ -637,7 +664,7 @@ class _KidStat extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 22)),
+          ExcludeSemantics(child: Text(emoji, style: const TextStyle(fontSize: 22))),
           const SizedBox(height: 2),
           FittedBox(
             fit: BoxFit.scaleDown,
@@ -650,11 +677,13 @@ class _KidStat extends StatelessWidget {
               ),
             ),
           ),
-          Text(
-            label,
-            style: theme.textTheme.labelSmall?.copyWith(color: color),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          // Smaller rather than cut, like the number above it: "Mga
+          // Salita" read "Mga Sal…" on a phone (30 Oct).
+          AutoFit(
+            child: Text(
+              label,
+              style: theme.textTheme.labelSmall?.copyWith(color: color),
+            ),
           ),
         ],
       ),
@@ -686,7 +715,7 @@ class _ChildSectionHeader extends StatelessWidget {
           header: true,
           child: Row(
             children: [
-              Text(emoji, style: const TextStyle(fontSize: 24)),
+              ExcludeSemantics(child: Text(emoji, style: const TextStyle(fontSize: 24))),
               const SizedBox(width: AppSpacing.sm),
               Flexible(
                 child: Text(

@@ -36,6 +36,10 @@ class StarPieChart extends StatelessWidget {
         children: [
           Text(
             l10n.chartStarsOverviewTitle,
+            // The star is for the eye here: "Stars Overview star". (In "198 ⭐"
+            // it is the word, and stays: see SpokenWords.)
+            semanticsLabel:
+                l10n.chartStarsOverviewTitle.replaceAll('⭐', '').trim(),
             style: AppTypography.titleMedium.copyWith(
               fontWeight: FontWeight.w700,
             ),
@@ -122,7 +126,7 @@ class StarPieChart extends StatelessWidget {
                       ),
                       const Divider(height: 16),
                       Text(
-                        'Total: $totalStars ⭐',
+                        _t(context).chartTotalStars(totalStars),
                         style: AppTypography.labelMedium.copyWith(
                           fontWeight: FontWeight.w700,
                         ),

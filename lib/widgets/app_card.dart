@@ -67,6 +67,11 @@ class AppCard extends StatelessWidget {
   /// a Material ripple respecting the rounded corners.
   final VoidCallback? onTap;
 
+  /// What a screen reader says for the whole card, in place of the words
+  /// drawn on it — which it would otherwise read line by line, often after
+  /// a caller's own label had already said them.
+  final String? semanticLabel;
+
   const AppCard({
     super.key,
     required this.child,
@@ -83,6 +88,7 @@ class AppCard extends StatelessWidget {
     this.depthTint,
     this.depthBubbles = false,
     this.onTap,
+    this.semanticLabel,
   });
 
   @override
@@ -144,7 +150,10 @@ class AppCard extends StatelessWidget {
           : null,
     );
 
-    Widget content = Padding(padding: padding, child: child);
+    Widget content = Padding(
+      padding: padding,
+      child: semanticLabel == null ? child : ExcludeSemantics(child: child),
+    );
     if (depth) {
       // Layer the glossy sheen + lit rim over the gradient, clipped to shape.
       // The padded content sizes the Stack; the overlays are IgnorePointer so
@@ -182,20 +191,32 @@ class AppCard extends StatelessWidget {
     );
 
     if (onTap == null) {
-      return margin == null ? box : Padding(padding: margin!, child: box);
+      final labelled = semanticLabel == null
+          ? box
+          : Semantics(container: true, label: semanticLabel, child: box);
+      return margin == null
+          ? labelled
+          : Padding(padding: margin!, child: labelled);
     }
 
     // Wrap in Material so the ripple respects the rounded shape. Cards are
     // large surfaces, so the 3D press tilt stays gentle.
-    final tappable = Pressable3D(
-      maxTilt: 0.035,
-      pressScale: 0.985,
-      child: Material(
-        type: MaterialType.transparency,
-        child: InkWell(
-          borderRadius: radius,
-          onTap: onTap,
-          child: Container(decoration: decoration, child: content),
+    // A button to a screen reader too: an InkWell alone has no role.
+    final tappable = Semantics(
+      // Its own node, so the press, focus and words below merge into it.
+      container: true,
+      button: true,
+      label: semanticLabel,
+      child: Pressable3D(
+        maxTilt: 0.035,
+        pressScale: 0.985,
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            borderRadius: radius,
+            onTap: onTap,
+            child: Container(decoration: decoration, child: content),
+          ),
         ),
       ),
     );

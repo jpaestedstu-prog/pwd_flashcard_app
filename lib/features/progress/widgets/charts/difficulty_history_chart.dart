@@ -89,7 +89,17 @@ class DifficultyHistoryChart extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          SizedBox(
+          // What the line comes to: a reader was told the scale.
+          Semantics(
+            label: l10n.chartScoresSummary(
+              dataPoints.length,
+              (dataPoints.fold<double>(0, (a, b) => a + b.y) /
+                      (dataPoints.isEmpty ? 1 : dataPoints.length))
+                  .round(),
+              dataPoints.isEmpty ? 0 : dataPoints.last.y.round(),
+            ),
+            excludeSemantics: true,
+            child: SizedBox(
             height: 200,
             child: LineChart(
               LineChartData(
@@ -133,7 +143,7 @@ class DifficultyHistoryChart extends StatelessWidget {
                           child: Text(
                             '#${idx + 1}',
                             style: TextStyle(
-                              fontSize: 9,
+                              fontSize: 10,
                               color: hc.textSecondary,
                             ),
                           ),
@@ -210,7 +220,7 @@ class DifficultyHistoryChart extends StatelessWidget {
                 ),
               ),
             ),
-          ),
+          )),
         ],
       ),
     );

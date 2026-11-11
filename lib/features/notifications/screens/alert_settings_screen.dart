@@ -11,6 +11,7 @@ import '../../../widgets/app_back_button.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../navigation/dpad_keys.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Screen for configuring alert preferences.
 ///
@@ -53,7 +54,7 @@ class _AlertSettingsScreenState extends State<AlertSettingsScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: const AppBackButton(),
-        title: Text(
+        title: AppBarTitle(
           _t(context).asTitle,
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
@@ -62,6 +63,9 @@ class _AlertSettingsScreenState extends State<AlertSettingsScreen> {
         ),
       ),
       body: ListView(
+        // Rows come and go here: no row may stay "alive" in a place another
+        // has taken (see found_by_pressing_test: Scan Mode).
+        addAutomaticKeepAlives: false,
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         children: [
           // ─── Global Toggle ─────────────
@@ -118,77 +122,91 @@ class _AlertSettingsScreenState extends State<AlertSettingsScreen> {
                   // Accuracy threshold
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                    child: Row(
-                      children: [
-                        Icon(Icons.percent_rounded,
-                            size: 18, color: HCColor.of(context).graphic(AppColors.warning)),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _t(context).asAccuracyBelow,
-                            style: AppTypography.bodySmall
-                                .copyWith(color: hc.textPrimary),
+                    child: ExcludeSemantics(
+                      // Said by the slider below, which carries the name.
+                      child: Row(
+                        children: [
+                          Icon(Icons.percent_rounded,
+                              size: 18, color: HCColor.of(context).graphic(AppColors.warning)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _t(context).asAccuracyBelow,
+                              style: AppTypography.bodySmall
+                                  .copyWith(color: hc.textPrimary),
+                            ),
                           ),
-                        ),
-                        Text(
-                          '${(_config.accuracyThreshold * 100).round()}%',
-                          style: AppTypography.titleSmall.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: HCColor.of(context).primary,
+                          Text(
+                            '${(_config.accuracyThreshold * 100).round()}%',
+                            style: AppTypography.titleSmall.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: HCColor.of(context).primary,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                  DpadSliderScope(child: Slider(
-                    value: _config.accuracyThreshold,
-                    min: 0.2,
-                    max: 0.8,
-                    divisions: 12,
-                    activeColor: AppColors.primary,
-                    label:
-                        '${(_config.accuracyThreshold * 100).round()}%',
-                    onChanged: (val) => _saveConfig(
-                        _config.copyWith(accuracyThreshold: val)),
-                  )),
+                  // One stop: the setting's name with its value ("50%" alone
+                  // said nothing).
+                  DpadSliderScope(
+                    name: _t(context).asAccuracyBelow,
+                    child: Slider(
+                      value: _config.accuracyThreshold,
+                      min: 0.2,
+                      max: 0.8,
+                      divisions: 12,
+                      activeColor: AppColors.primary,
+                      semanticFormatterCallback: (v) => '${(v * 100).round()}%',
+                      onChanged: (val) => _saveConfig(
+                          _config.copyWith(accuracyThreshold: val)),
+                    ),
+                  ),
 
                   const Divider(height: 1),
 
                   // Inactivity days
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                    child: Row(
-                      children: [
-                        Icon(Icons.timer_off_rounded,
-                            size: 18, color: HCColor.of(context).graphic(AppColors.info)),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _t(context).asInactivityAfter,
-                            style: AppTypography.bodySmall
-                                .copyWith(color: hc.textPrimary),
+                    child: ExcludeSemantics(
+                      // Said by the slider below, which carries the name.
+                      child: Row(
+                        children: [
+                          Icon(Icons.timer_off_rounded,
+                              size: 18, color: HCColor.of(context).graphic(AppColors.info)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _t(context).asInactivityAfter,
+                              style: AppTypography.bodySmall
+                                  .copyWith(color: hc.textPrimary),
+                            ),
                           ),
-                        ),
-                        Text(
-                          _t(context).asDays(_config.inactivityDays),
-                          style: AppTypography.titleSmall.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: HCColor.of(context).primary,
+                          Text(
+                            _t(context).asDays(_config.inactivityDays),
+                            style: AppTypography.titleSmall.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: HCColor.of(context).primary,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                  DpadSliderScope(child: Slider(
-                    value: _config.inactivityDays.toDouble(),
-                    min: 1,
-                    max: 14,
-                    divisions: 13,
-                    activeColor: AppColors.primary,
-                    label: _t(context).asDays(_config.inactivityDays),
-                    onChanged: (val) => _saveConfig(
-                        _config.copyWith(inactivityDays: val.round())),
-                  )),
+                  DpadSliderScope(
+                    name: _t(context).asInactivityAfter,
+                    child: Slider(
+                      value: _config.inactivityDays.toDouble(),
+                      min: 1,
+                      max: 14,
+                      divisions: 13,
+                      activeColor: AppColors.primary,
+                      semanticFormatterCallback: (v) =>
+                          _t(context).asDays(v.round()),
+                      onChanged: (val) => _saveConfig(
+                          _config.copyWith(inactivityDays: val.round())),
+                    ),
+                  ),
                   const SizedBox(height: 8),
                 ],
               ),
@@ -218,8 +236,10 @@ class _AlertSettingsScreenState extends State<AlertSettingsScreen> {
                     return CheckboxListTile(
                       title: Row(
                         children: [
-                          Text(type.emoji,
-                              style: const TextStyle(fontSize: 16)),
+                          ExcludeSemantics(
+                            child: Text(type.emoji,
+                                style: const TextStyle(fontSize: 16)),
+                          ),
                           const SizedBox(width: 8),
                           // Wraps at large text ("Assessment Completed" ran
                           // past the checkbox on a phone at 1.4x).
@@ -405,8 +425,10 @@ class _AlertTile extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Text(alert.type.emoji,
-              style: const TextStyle(fontSize: 20)),
+          ExcludeSemantics(
+            child: Text(alert.type.emoji,
+                style: const TextStyle(fontSize: 20)),
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -425,7 +447,7 @@ class _AlertTile extends StatelessWidget {
                   _formatTimestamp(context, alert.timestamp),
                   style: AppTypography.labelSmall.copyWith(
                     color: hc.textHint,
-                    fontSize: 10,
+                    fontSize: 11,
                   ),
                 ),
               ],

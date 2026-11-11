@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import '../../companion/widgets/companion_clearance.dart';
+import '../../../core/widgets/auto_fit.dart';
+import '../../../features/parent/services/learner_restrictions.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/accessibility/accessibility_content_policy.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/beside_or_below.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../../../core/utils/responsive_utils.dart';
 import '../../../data/models/enums.dart';
@@ -44,8 +48,10 @@ import '../../object_scan/word_hunt_entry.dart';
 import '../../stickers/widgets/sticker_sweep.dart';
 import '../widgets/home_tile.dart';
 import '../../routine/providers/today_routine_provider.dart';
+import '../../../providers/wall_clock_provider.dart' show currentDayProvider;
 import '../widgets/today_card.dart';
 import '../../progress/models/category_mastery.dart';
+import '../../../core/widgets/stagger_in.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -106,6 +112,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       gamificationFeatureProvider(GamificationFeature.stars),
     );
     if (!starsEnabled) return;
+    // A teacher or parent looking at a learner's screens is not the learner
+    // opening the app: never claim their reward or move their stars.
+    if (ref.read(profileProvider.notifier).isViewingAsStudent) return;
 
     if (DailyLoginReward.hasClaimedToday(profileId)) return;
     if (!mounted) return;
@@ -123,7 +132,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) =>
-          _DailyLoginRewardDialog(starsEarned: stars, streakDay: streak),
+          DailyLoginRewardDialog(starsEarned: stars, streakDay: streak),
     );
   }
 
@@ -137,6 +146,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Midnight with Home open (a classroom tablet left on, or picked up the
+    // next morning): the new day's reward, as opening Home would give it.
+    // Only while Home is what the learner sees: over a game it would pop up
+    // mid-round, and Home gives it the next time it opens.
+    ref.listen<DateTime>(currentDayProvider, (_, _) {
+      final profile = ref.read(profileProvider);
+      final current = ModalRoute.of(context)?.isCurrent ?? true;
+      if (profile != null && !_showTutorial && current && mounted) {
+        _showLoginRewardIfNeeded(profile.id);
+      }
+    });
     final profile = ref.watch(profileProvider);
     final progress = ref.watch(progressProvider);
     // Per-category coverage, shared with the Progress rows,
@@ -254,10 +274,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ],
     );
 
-    // ─── Gaze rows 1-2: the two Today cards ───────────────
-    // A row each, in the order the learner's eye travels down them: My Day,
-    // then Mood Check-In. Two cells, not one — they open different screens,
-    // and the D-pad has to be able to land on each.
+    // ─── Next gaze rows: the two Today cards ──────────────
+    // In the order the learner's eye travels down them: My Day, its Done
+    // button, then Mood Check-In and its faces. A row each for the cards —
+    // they open different screens, and the D-pad has to be able to land on
+    // each — and a stop for every control on them, so a D-pad can do on the
+    // card what a finger does: check in with a face, tick the next step off.
     void openMood() => context.push('/mood-check-in');
     void openMyDay() => context.push('/routine');
     // A Player who turned Routine off in Settings loses the card *and* its
@@ -265,33 +287,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // D-pad onto a tile that is not there and open a screen the router
     // bounces them straight back from.
     final showMyDay = ref.watch(routineFeatureProvider);
-    final todayPanes = gazeGrid.section(
-      columns: 1,
-      expand: false,
-      entries: [
-        if (showMyDay)
-          (
-            tile: TodayDayPane(
-              onOpen: openMyDay,
-              title: _t(context).homeMyDay,
-            ),
-            cell: GazeTileCell(
-              label: _t(context).homeMyDay,
-              onActivate: openMyDay,
-            ),
-          ),
-        (
-          tile: TodayMoodPane(
-            onOpen: openMood,
-            title: _t(context).homeMoodCheckIn,
-          ),
-          cell: GazeTileCell(
-            label: _t(context).homeMoodCheckIn,
-            onActivate: openMood,
-          ),
+    final dayRow = showMyDay
+        ? gazeGrid.rowOf([
+            GazeTileCell(label: _t(context).homeMyDay, onActivate: openMyDay),
+          ])
+        : null;
+    final dayDone = showMyDay ? TodayDayPane.doneCell(context, ref) : null;
+    final dayDoneRow = dayDone == null ? null : gazeGrid.rowOf([dayDone]);
+    final moodRow = gazeGrid.rowOf([
+      GazeTileCell(label: _t(context).homeMoodCheckIn, onActivate: openMood),
+    ]);
+    final moodFaceRow = gazeGrid.rowOf(TodayMoodPane.faceCells(context, ref));
+    final todayPanes = [
+      if (showMyDay)
+        TodayDayPane(
+          onOpen: openMyDay,
+          title: _t(context).homeMyDay,
+          gazeRow: dayRow,
+          gazeDoneRow: dayDoneRow,
         ),
-      ],
-    );
+      TodayMoodPane(
+        onOpen: openMood,
+        title: _t(context).homeMoodCheckIn,
+        gazeRow: moodRow,
+        gazeFaceRow: moodFaceRow,
+      ),
+    ];
+
+    final greeting =
+        AppLocalizations.of(context)?.greeting(profile?.name ?? 'Learner') ??
+        'Hi, ${profile?.name ?? 'Learner'}! 👋';
+    final greetingStyle =
+        AppTypography.headlineLarge.copyWith(color: hc.textPrimary);
 
     return GazeHomeRegistrar(
       active: gazeGrid.active,
@@ -325,55 +352,67 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: EdgeInsets.fromLTRB(padding, 16, padding, 0),
-                        child: Row(
-                          children: [
-                            appBarCells.first,
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Semantics(
-                                        header: true,
-                                        // FitText: "Kamusta," broke in two
-                                        // at 2x beside the buttons.
-                                        child: FitText(
-                                          AppLocalizations.of(
-                                                context,
-                                              )?.greeting(
-                                                profile?.name ?? 'Learner',
-                                              ) ??
-                                              'Hi, ${profile?.name ?? 'Learner'}! 👋',
-                                          maxLines: 3,
-                                          style: AppTypography.headlineLarge
-                                              .copyWith(color: hc.textPrimary),
+                        // The greeting beside the picture and the buttons
+                        // while it fits there; under them when it does not
+                        // (a thirty-letter name on a phone at the largest
+                        // Font Size lost its end, 3 Nov).
+                        child: BesideOrBelow(
+                          fits: FitText.measurer(
+                            context,
+                            greeting,
+                            style: greetingStyle,
+                            maxLines: 3,
+                          ),
+                          leading: appBarCells.first,
+                          title: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Semantics(
+                                    header: true,
+                                    // The greeting without its waving
+                                    // hand, read aloud as "waving hand".
+                                    label: AppLocalizations.of(context)
+                                        ?.childGreeting(
+                                          profile?.name ?? 'Learner',
                                         ),
-                                      )
-                                      .animate()
-                                      .fadeIn(duration: 400.ms)
-                                      .slideX(begin: -0.05, end: 0),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    AppLocalizations.of(
-                                          context,
-                                        )?.readyToLearn ??
-                                        'Ready to learn new words today?',
-                                    style: AppTypography.bodyMedium.copyWith(
-                                      color: hc.textSecondary,
+                                    excludeSemantics: true,
+                                    // FitText: "Kumusta," broke in two
+                                    // at 2x beside the buttons.
+                                    child: FitText(
+                                      greeting,
+                                      maxLines: 3,
+                                      style: greetingStyle,
                                     ),
-                                  ).animate().fadeIn(
-                                    duration: 400.ms,
-                                    delay: 100.ms,
-                                  ),
-                                ],
+                                  )
+                                  .animate()
+                                  .fadeIn(duration: 400.ms)
+                                  .slideX(begin: -0.05, end: 0),
+                              const SizedBox(height: 4),
+                              Text(
+                                AppLocalizations.of(
+                                      context,
+                                    )?.readyToLearn ??
+                                    'Ready to learn new words today?',
+                                style: AppTypography.bodyMedium.copyWith(
+                                  color: hc.textSecondary,
+                                ),
+                              ).animate().fadeIn(
+                                duration: 400.ms,
+                                delay: 100.ms,
                               ),
-                            ),
-                            // Connectivity indicator (visible only when offline)
-                            const ConnectivityIndicator(),
-                            // Shop + Settings, the right-hand end of the same
-                            // gaze row the profile button opens.
-                            ...appBarCells.skip(1),
-                          ],
+                            ],
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Connectivity indicator (visible only when
+                              // offline)
+                              const ConnectivityIndicator(),
+                              // Shop + Settings, the right-hand end of the
+                              // same gaze row the profile button opens.
+                              ...appBarCells.skip(1),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -574,11 +613,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           gazeGrid.section(
                             columns: _coreColumns(context),
                             entries: [
-                              for (final category in FlashcardCategory.values)
+                              for (final category
+                                  in LearnerRestrictions.categoriesFor(
+                                profile?.role,
+                              ))
                                 (
                                   tile: RepaintBoundary(
                                     child:
-                                        EnhancedCategoryCard(
+                                        StaggerIn(
+                                          // Built as it scrolls in: there at once, not faded in.
+                                          index: 0,
+                                          step: Duration.zero,
+                                          child: EnhancedCategoryCard(
                                               category: category,
                                               wordCount: SeedData.getByCategory(
                                                 category,
@@ -593,10 +639,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                               onTap: () => context.push(
                                                 '/flashcards/viewer/${category.index}',
                                               ),
-                                            )
-                                            .animate()
-                                            .fadeIn(duration: 350.ms)
+                                            ),
+                                          builder: (child, delay) => child.animate()
+                                            .fadeIn(duration: 350.ms, delay: delay)
                                             .slideY(begin: 0.1, end: 0),
+                                        ),
                                   ),
                                   cell: GazeTileCell(
                                     label: category.labelOf(_t(context)),
@@ -611,11 +658,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                     ),
 
-                    // Tall enough that the last tile can scroll clear of the
-                    // floating AI Tutor launcher, which otherwise sits on top
-                    // of the bottom-right tile once the list is scrolled to
-                    // the end.
-                    const SliverToBoxAdapter(child: SizedBox(height: 132)),
+                    // Room for the last tile to scroll clear of the AI Buddy's
+                    // floating button (or the owl, when the buddy is off).
+                    const CompanionClearanceSliver(),
                   ],
                 ),
               ),
@@ -711,6 +756,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // Hide the FSL Practice tile for accessibility categories that don't use
     // signing (e.g. visual / cognitive), per the content policy.
     final showFsl = ref.read(accessibilityContentPolicyProvider).showFsl;
+    final blockedFsl = LearnerRestrictions.blockedGames(
+      ref.read(profileProvider)?.role,
+    ).contains(GameType.fslPractice);
     final t = _t(context);
     return gaze.section(
       columns: _coreColumns(context),
@@ -742,7 +790,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ],
           onTap: () => context.go('/stories'),
         ),
-        if (showFsl)
+        if (showFsl && !blockedFsl)
           _entry(
             emoji: '🤟',
             label: t.fslPractice,
@@ -1213,6 +1261,9 @@ class _StatsBanner extends StatelessWidget {
         progress.starBalance,
         progress.totalStars,
       ),
+      // One stop: the card's numbers and words, drawn below, were a second
+      // stop that said the same in pieces ("1, Day Streak, 12, Words...").
+      excludeSemantics: true,
       child: AppCard(
         gradient: HCColor.of(context).primaryGradient,
         padding: const EdgeInsets.all(20),
@@ -1304,14 +1355,15 @@ class _StatItem extends StatelessWidget {
             ),
           ),
         ),
-        Text(
+        // Two lines, shrinking first: on one, the largest font cut
+        // Filipino's "Araw na Sunod-sunod" to "Araw na Sunod-sun…" (on the
+        // tablet, 30 Oct), and a phone needs it smaller as well.
+        FitText(
           label,
           style: AppTypography.labelSmall.copyWith(
             color: onGradient.withValues(alpha: 0.8),
           ),
           textAlign: TextAlign.center,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
         ),
       ],
     );
@@ -1319,11 +1371,15 @@ class _StatItem extends StatelessWidget {
 }
 
 // ─── Daily Login Reward Dialog ────────────────────────
-class _DailyLoginRewardDialog extends StatelessWidget {
+/// Shown once a day, so no screen sweep would meet it: public for the
+/// screen-reader sweep, which reads it on its own.
+@visibleForTesting
+class DailyLoginRewardDialog extends StatelessWidget {
   final int starsEarned;
   final int streakDay;
 
-  const _DailyLoginRewardDialog({
+  const DailyLoginRewardDialog({
+    super.key,
     required this.starsEarned,
     required this.streakDay,
   });
@@ -1362,13 +1418,19 @@ class _DailyLoginRewardDialog extends StatelessWidget {
       scrollable: true,
       title: Row(
         children: [
-          const Text('🎁', style: TextStyle(fontSize: 28)),
+          const ExcludeSemantics(child: Text('🎁', style: TextStyle(fontSize: 28))),
           const SizedBox(width: 8),
+          // One line, a little smaller if it must be, never split ("Gantimpal /
+          // a" on a phone at the largest text size). A dialog's title asks for
+          // its size before it lays out, which FitText cannot answer.
           Expanded(
-            child: Text(
-              t.homeDailyRewardTitle,
-              style: AppTypography.headlineSmall.copyWith(
-                fontWeight: FontWeight.w800,
+            child: AutoFit(
+              alignment: AlignmentDirectional.centerStart,
+              child: Text(
+                t.homeDailyRewardTitle,
+                style: AppTypography.headlineSmall.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
           ),
@@ -1397,6 +1459,7 @@ class _DailyLoginRewardDialog extends StatelessWidget {
               const SizedBox(width: 4),
               Text(
                 '+$starsEarned',
+                semanticsLabel: t.rewardStarsCount(starsEarned),
                 style: AppTypography.headlineMedium.copyWith(
                   color: HCColor.of(context).warningText,
                   fontWeight: FontWeight.w900,
@@ -1411,51 +1474,59 @@ class _DailyLoginRewardDialog extends StatelessWidget {
             children: List.generate(7, (i) {
               final isCurrent = i == currentDayIndex;
               final isPast = i < currentDayIndex;
-              return Column(
-                children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: isCurrent
-                          ? AppColors.warning
-                          : isPast
-                          ? AppColors.success.withValues(alpha: 0.3)
-                          : AppColors.border.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(8),
-                      border: isCurrent
-                          ? Border.all(color: AppColors.warning, width: 2)
-                          : null,
-                    ),
-                    alignment: Alignment.center,
-                    child: isPast
-                        ? Icon(
-                            Icons.check_rounded,
-                            size: 16,
-                            color: HCColor.of(context).graphic(AppColors.success),
-                          )
-                        : Text(
-                            '${rewards[i]}',
-                            style: AppTypography.labelSmall.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: isCurrent
-                                  ? AppColors.textOnPrimary
-                                  : HCColor.of(context).textSecondary,
+              return Semantics(
+                // "Day 2, collected" / "Day 4, 10 stars, today": the tick, the
+                // number and "D4" said nothing apart.
+                label: '${t.homeDayNumber(i + 1)}, '
+                    '${isPast ? t.rewardCollected : t.rewardStarsCount(rewards[i])}'
+                    '${isCurrent ? t.calToday : ''}',
+                excludeSemantics: true,
+                child: Column(
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: isCurrent
+                            ? AppColors.warning
+                            : isPast
+                            ? AppColors.success.withValues(alpha: 0.3)
+                            : AppColors.border.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(8),
+                        border: isCurrent
+                            ? Border.all(color: AppColors.warning, width: 2)
+                            : null,
+                      ),
+                      alignment: Alignment.center,
+                      child: isPast
+                          ? Icon(
+                              Icons.check_rounded,
+                              size: 16,
+                              color: HCColor.of(context).graphic(AppColors.success),
+                            )
+                          : Text(
+                              '${rewards[i]}',
+                              style: AppTypography.labelSmall.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: isCurrent
+                                    ? AppColors.textOnPrimary
+                                    : HCColor.of(context).textSecondary,
+                              ),
                             ),
-                          ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    t.homeDayShort(i + 1),
-                    style: AppTypography.labelSmall.copyWith(
-                      fontSize: 9,
-                      color: isCurrent
-                          ? HCColor.of(context).warningText
-                          : HCColor.of(context).textSecondary,
-                      fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w400,
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 2),
+                    Text(
+                      t.homeDayShort(i + 1),
+                      style: AppTypography.labelSmall.copyWith(
+                        fontSize: 11,
+                        color: isCurrent
+                            ? HCColor.of(context).warningText
+                            : HCColor.of(context).textSecondary,
+                        fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                ),
               );
             }),
           ),
@@ -1471,7 +1542,7 @@ class _DailyLoginRewardDialog extends StatelessWidget {
       actions: [
         FilledButton(
           onPressed: () => Navigator.pop(context),
-          child: Text(t.homeCollectStar),
+          child: Text(t.homeCollectStar, semanticsLabel: t.homeCollect),
         ),
       ],
       ),
@@ -1524,6 +1595,25 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
     }
   }
 
+  /// A new day under an open Home: the new day's word, unanswered. It kept
+  /// yesterday's word (and its answered state) until Home was opened again,
+  /// and an answer then counted for today with yesterday's question.
+  void _newDay() {
+    final profile = ref.read(profileProvider);
+    setState(() {
+      _card = DailyChallenge.todaysWord();
+      _choices = DailyChallenge.generateChoices(_card);
+      _selectedIndex = null;
+      _answered = false;
+      _isCorrect = false;
+      if (profile != null) {
+        _alreadyCompleted = DailyChallenge.hasCompletedToday(profile.id);
+        _streak = DailyChallenge.getStreak(profile.id);
+      }
+    });
+    widget.onAnswered?.call(); // Home re-reads which answers are on the D-pad
+  }
+
   /// Answers with choice [index] — from a tap, or from the D-pad via Home.
   void selectChoice(int index) async {
     if (_answered || _alreadyCompleted) return;
@@ -1571,6 +1661,9 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<DateTime>(currentDayProvider, (_, _) {
+      if (mounted) _newDay();
+    });
     // Ink over the hero gradient: white normally, black in high contrast
     // (where the gradient itself is bright yellow/cyan).
     final onGrad = HCColor.of(context).textOnPrimary;
@@ -1607,8 +1700,10 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
                   ),
                 ),
               ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
+              // Wraps: 162 px past a phone at the largest text size.
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                runSpacing: 4,
                 children: [
               if (_streak > 0) ...[
                 Icon(
@@ -1628,12 +1723,15 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
               ],
               // Navigate to full daily challenge screen. A 48 dp target
               // around the small pill (it was 23 dp tall).
-              _gazeStop(0, DpadFocusable(
-                onActivate: () => context.push('/daily-challenge'),
-                child: Semantics(
+              _gazeStop(0, Semantics(
                 container: true,
                 button: true,
                 label: t.homeOpenDailyChallenge,
+                // The D-pad's focus inside the labelled node, where a browser
+                // and a screen reader follow it (around it, the focus fell on
+                // the card's node instead).
+                child: DpadFocusable(
+                onActivate: () => context.push('/daily-challenge'),
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () => context.push('/daily-challenge'),
@@ -1692,7 +1790,10 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Column(
+                // Text nodes of their own. Merged into the card with its
+                // buttons, TalkBack stepped past the word, its sentence and
+                // the question, straight to the answers.
+                child: Semantics(container: true, child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // The word being taught, at display size in a column the
@@ -1718,7 +1819,7 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
                       ),
                     ),
                   ],
-                ),
+                )),
               ),
             ],
           ),
@@ -1730,14 +1831,14 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
             // Already done today (from a previous session)
             _buildCompletedBanner(),
           ] else ...[
-            // Prompt
-            Text(
+            // Prompt: its own text node, read before the answers.
+            Semantics(container: true, child: Text(
               t.homeWhatInFilipino,
               style: AppTypography.labelMedium.copyWith(
                 color: onGrad.withValues(alpha: 0.9),
                 fontWeight: FontWeight.w600,
               ),
-            ),
+            )),
             const SizedBox(height: 10),
             // Choices
             ...List.generate(_choices.length, (i) {
@@ -1765,7 +1866,20 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
               final answerable = !_answered && !_alreadyCompleted;
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: _gazeStop(1 + i, DpadFocusable(
+                // Wide windows keep the answers together in the middle:
+                // a bar 1,200 px wide is not something to read across.
+                child: Center(
+                  heightFactor: 1,
+                  child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 640),
+                // A button to a screen reader, with its state once answered:
+                // TalkBack read "Biyernes" alone, as if it were a caption.
+                child: _gazeStop(1 + i, Semantics(
+                  container: true,
+                  button: true,
+                  enabled: answerable,
+                  selected: _answered && i == _selectedIndex,
+                  child: DpadFocusable(
                   onActivate: answerable ? () => selectChoice(i) : null,
                   child: GestureDetector(
                   onTap: () => selectChoice(i),
@@ -1784,8 +1898,9 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
                     child: Row(
                       children: [
                         Expanded(
-                          child: Text(
+                          child: FitText(
                             _choices[i],
+                            maxLines: 3,
                             style: AppTypography.titleMedium.copyWith(
                               color: onGrad,
                               fontWeight: FontWeight.w600,
@@ -1808,7 +1923,9 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
                     ),
                   ),
                 ),
-                )),
+                ))),
+                  ),
+                ),
               );
             }),
             // Result message
@@ -1824,13 +1941,16 @@ class _DailyWordCardState extends ConsumerState<_DailyWordCard> {
                     size: 20,
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    _isCorrect
-                        ? t.homeCorrectBonus
-                        : t.homeAnswerIs(_card.wordFilipino),
-                    style: AppTypography.labelMedium.copyWith(
-                      color: onGrad,
-                      fontWeight: FontWeight.w700,
+                  // Wraps: 76 px past a phone at the largest text size.
+                  Expanded(
+                    child: Text(
+                      _isCorrect
+                          ? t.homeCorrectBonus
+                          : t.homeAnswerIs(_card.wordFilipino),
+                      style: AppTypography.labelMedium.copyWith(
+                        color: onGrad,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ],

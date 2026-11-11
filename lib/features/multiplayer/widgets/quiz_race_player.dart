@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../../../core/widgets/auto_fit.dart';
+import '../../../widgets/dpad_focusable.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 
 import '../../../core/theme/app_colors.dart';
@@ -261,6 +263,9 @@ class _QuizRacePlayerState extends State<QuizRacePlayer> {
               const SizedBox(width: 12),
               Text(
                 '${_index + 1}/$total',
+                semanticsLabel: widget.isFilipino
+                    ? 'Tanong ${_index + 1} sa $total'
+                    : 'Question ${_index + 1} of $total',
                 style: AppTypography.labelMedium.copyWith(
                   fontWeight: FontWeight.w800,
                   color: hc.textSecondary,
@@ -278,6 +283,8 @@ class _QuizRacePlayerState extends State<QuizRacePlayer> {
             liveRegion: _p.announce,
             label: _p.announce ? _spokenRound() : null,
             container: _p.announce,
+            // That label is the whole round: said once.
+            excludeSemantics: _p.announce,
             child: Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
@@ -393,7 +400,14 @@ class _QuizRacePlayerState extends State<QuizRacePlayer> {
               final focused = !_answered && (cursor?.isFocused(idx) ?? false);
               if (focused) border = widget.accentColor;
 
-              return GestureDetector(
+              // A real button: for a screen reader, a key and a controller too.
+              return Semantics(
+                container: true,
+                button: true,
+                enabled: !_answered,
+                child: DpadFocusable(
+                onActivate: _answered ? null : () => _select(idx),
+                child: GestureDetector(
                 onTap: _answered ? null : () => _select(idx),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
@@ -407,8 +421,7 @@ class _QuizRacePlayerState extends State<QuizRacePlayer> {
                     ),
                   ),
                   alignment: Alignment.center,
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
+                  child: AutoFit(
                     child: Text(
                       question.options[idx],
                       style: AppTypography.titleMedium.copyWith(
@@ -418,6 +431,8 @@ class _QuizRacePlayerState extends State<QuizRacePlayer> {
                       textAlign: TextAlign.center,
                     ),
                   ),
+                ),
+                ),
                 ),
               );
             }),

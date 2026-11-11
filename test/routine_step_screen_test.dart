@@ -143,6 +143,20 @@ void main() {
     });
   });
 
+  testWidgets('a screen reader hears the step\'s name once', (tester) async {
+    // The top bar's title, then the same name under the picture: "Bath Time,
+    // Bath Time" (crawl, 5 Nov).
+    final semantics = tester.ensureSemantics();
+    try {
+      await _pump(tester);
+      final names = find.semantics.byLabel(RegExp(r'^Brushing Teeth$'));
+      expect(names, findsOneWidget);
+      await _unmount(tester);
+    } finally {
+      semantics.dispose();
+    }
+  });
+
   group('media placeholders', () {
     testWidgets('a step with no media still has a picture and says what is '
         'missing', (tester) async {

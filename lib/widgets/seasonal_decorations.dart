@@ -283,7 +283,8 @@ class _SeasonalBanner extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              '${event.daysRemaining}d left',
+              (AppLocalizations.of(context) ?? AppLocalizationsEn())
+                  .seasonDaysLeft(event.daysRemaining),
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 11,
@@ -314,14 +315,19 @@ class _SeasonalBanner extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               children: [
-                Text(
-                  event.emoji,
-                  textScaler: TextScaler.noScaling,
-                  style: const TextStyle(fontSize: 28),
+                // Decoration: TalkBack read the banner as "jack-o-lantern"
+                // and nothing else.
+                ExcludeSemantics(
+                  child: Text(
+                    event.emoji,
+                    textScaler: TextScaler.noScaling,
+                    style: const TextStyle(fontSize: 28),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
+                  // The name, what it is and the days left, read as one item.
+                  child: MergeSemantics(child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -359,7 +365,7 @@ class _SeasonalBanner extends StatelessWidget {
                         daysLeft,
                       ],
                     ],
-                  ),
+                  )),
                 ),
                 if (roomy && daysLeft != null) daysLeft,
                 const SizedBox(width: 4),
@@ -367,8 +373,16 @@ class _SeasonalBanner extends StatelessWidget {
                 // a switch, gaze or keyboard, and a full 48 dp to hit.
                 IconButton(
                   onPressed: onDismiss,
+                  // What it closes: "Close" alone left a learner who cannot
+                  // see the banner guessing.
                   tooltip: (AppLocalizations.of(context) ?? AppLocalizationsEn())
-                      .close,
+                      .seasonalBannerHide(
+                        event.nameOf(
+                          filipino: Localizations.localeOf(context)
+                                  .languageCode ==
+                              'fil',
+                        ),
+                      ),
                   color: Colors.white.withValues(alpha: 0.7),
                   icon: const Icon(Icons.close, size: 20),
                 ),

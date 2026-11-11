@@ -365,6 +365,33 @@ void main() {
       input.detach(token);
     });
 
+    test('a left stick turned off in the controller settings never steers',
+        () async {
+      final pad = _FakePad();
+      final steps = <GazeZone>[];
+      var presses = 0;
+      var now = DateTime(2026, 10, 5, 9);
+      input.clock = () => now;
+      input.leftStickSteers = false;
+      final token = input.attach(
+        onPress: () => presses++,
+        onSteer: steps.add,
+        service: pad,
+      );
+      pad.tap(GamepadButton.leftStickDown);
+      await pumpEventQueue();
+      expect(steps, isEmpty, reason: 'a knocked stick must not move the scan');
+      expect(presses, 0, reason: 'and it must not pick either');
+      expect(input.debugHistory.last, endsWith('left stick turned off'));
+
+      now = now.add(const Duration(milliseconds: 400));
+      pad.tap(GamepadButton.dpadDown);
+      pad.tap(GamepadButton.rightStickDown);
+      await pumpEventQueue();
+      expect(steps, isNotEmpty, reason: 'the D-pad and right stick still steer');
+      input.detach(token);
+    });
+
     test('a diagonal push is one step, not two', () {
       var now = DateTime(2026, 10, 5, 9);
       input.clock = () => now;

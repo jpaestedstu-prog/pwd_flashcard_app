@@ -8,6 +8,7 @@ import '../../../core/utils/responsive_utils.dart';
 import '../../../providers/app_providers.dart';
 import '../models/survey_models.dart';
 import '../services/survey_service.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Displays past SUS survey results and scores.
 class SurveyResultsScreen extends ConsumerWidget {
@@ -24,7 +25,7 @@ class SurveyResultsScreen extends ConsumerWidget {
     if (profile == null) {
       return Scaffold(
         appBar: AppBar(
-          title: Text(isFilipino ? 'Mga Resulta ng Sarbey' : 'Survey Results'),
+          title: AppBarTitle(isFilipino ? 'Mga Resulta ng Sarbey' : 'Survey Results'),
         ),
         body: Center(
           child: Text(
@@ -39,7 +40,7 @@ class SurveyResultsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isFilipino ? 'Mga Resulta ng Sarbey' : 'Survey Results'),
+        title: AppBarTitle(isFilipino ? 'Mga Resulta ng Sarbey' : 'Survey Results'),
         centerTitle: true,
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -101,7 +102,7 @@ class SurveyResultsScreen extends ConsumerWidget {
                 color: AppColors.primary.withValues(alpha: 0.1),
               ),
               child: const Center(
-                child: Text('📋', style: TextStyle(fontSize: 44)),
+                child: ExcludeSemantics(child: Text('📋', style: TextStyle(fontSize: 44))),
               ),
             ),
             const SizedBox(height: 20),

@@ -67,19 +67,18 @@ class HubHeader extends StatelessWidget {
                       color: hc.textPrimary,
                       fontWeight: FontWeight.bold,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 if (subtitle != null) ...[
                   const SizedBox(height: AppSpacing.xs),
+                  // Three lines: two cut "Basahin ang mga kwento at
+                  // sagutin ang mga tanong!" on a phone at the largest Font
+                  // Size (30 Oct).
                   Text(
                     subtitle!,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: hc.textSecondary,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ],

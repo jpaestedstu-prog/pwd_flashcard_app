@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../core/services/firebase_service.dart';
 import '../../../core/utils/error_handler.dart';
+import '../../../core/utils/retrying_listener.dart';
 import '../../../data/local/hive_service.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
@@ -354,28 +355,26 @@ class FriendService {
     List<FriendRequest> decode(QuerySnapshot<Map<String, dynamic>> snap) =>
         snap.docs.map((d) => FriendRequest.fromJson(d.data())).toList();
 
-    final a = _requests
-        .where('from_home_group_id', whereIn: ids)
-        .snapshots()
-        .listen(
-          (snap) {
-            fromSide = decode(snap);
-            emit();
-          },
-          onError: (e, st) =>
-              ErrorHandler.report(e, st, 'FriendService.watchApprovals'),
-        );
-    final b = _requests
-        .where('to_home_group_id', whereIn: ids)
-        .snapshots()
-        .listen(
-          (snap) {
-            toSide = decode(snap);
-            emit();
-          },
-          onError: (e, st) =>
-              ErrorHandler.report(e, st, 'FriendService.watchApprovals'),
-        );
+    final a = RetryingListener<QuerySnapshot<Map<String, dynamic>>>(
+      open: () =>
+          _requests.where('from_home_group_id', whereIn: ids).snapshots(),
+      onData: (snap) {
+        fromSide = decode(snap);
+        emit();
+      },
+      onError: (e, st) =>
+          ErrorHandler.report(e, st, 'FriendService.watchApprovals:silent'),
+    );
+    final b = RetryingListener<QuerySnapshot<Map<String, dynamic>>>(
+      open: () =>
+          _requests.where('to_home_group_id', whereIn: ids).snapshots(),
+      onData: (snap) {
+        toSide = decode(snap);
+        emit();
+      },
+      onError: (e, st) =>
+          ErrorHandler.report(e, st, 'FriendService.watchApprovals:silent'),
+    );
     controller.onCancel = () async {
       await a.cancel();
       await b.cancel();
@@ -712,9 +711,6 @@ class FriendService {
       return Stream.value(_cachedFriends(profileId));
     }
 
-    final a = _friendships.where('profile_a', isEqualTo: profileId).snapshots();
-    final b = _friendships.where('profile_b', isEqualTo: profileId).snapshots();
-
     final controller = StreamController<List<Friendship>>.broadcast();
     List<Friendship> aBuf = const [];
     List<Friendship> bBuf = const [];
@@ -744,23 +740,27 @@ class FriendService {
       emitted = true;
     }
 
-    final subA = a.listen(
-      (snap) {
+    final subA = RetryingListener<QuerySnapshot<Map<String, dynamic>>>(
+      open: () =>
+          _friendships.where('profile_a', isEqualTo: profileId).snapshots(),
+      onData: (snap) {
         aBuf = snap.docs.map((d) => Friendship.fromJson(d.data())).toList();
         emit();
       },
       onError: (e, st) {
-        ErrorHandler.report(e, st, 'FriendService.watchFriends.a');
+        ErrorHandler.report(e, st, 'FriendService.watchFriends.a:silent');
         if (!emitted) emit();
       },
     );
-    final subB = b.listen(
-      (snap) {
+    final subB = RetryingListener<QuerySnapshot<Map<String, dynamic>>>(
+      open: () =>
+          _friendships.where('profile_b', isEqualTo: profileId).snapshots(),
+      onData: (snap) {
         bBuf = snap.docs.map((d) => Friendship.fromJson(d.data())).toList();
         emit();
       },
       onError: (e, st) {
-        ErrorHandler.report(e, st, 'FriendService.watchFriends.b');
+        ErrorHandler.report(e, st, 'FriendService.watchFriends.b:silent');
         if (!emitted) emit();
       },
     );
@@ -781,7 +781,7 @@ class FriendService {
     // Open requests are `pending` (theirs to answer) or `awaiting_parent`
     // (answered; a grown-up still has to say yes) — filtered here so the
     // query stays single-field.
-    final live = _requests
+    Stream<List<FriendRequest>> live() => _requests
         .where('to_profile_id', isEqualTo: profileId)
         .snapshots()
         .map((snap) {
@@ -801,10 +801,17 @@ class FriendService {
 
     final controller = StreamController<List<FriendRequest>>.broadcast();
     controller.add(cached);
-    final sub = live.listen(
-      controller.add,
+    final sub = RetryingListener<List<FriendRequest>>(
+      open: live,
+      onData: controller.add,
       onError: (e, st) {
-        ErrorHandler.report(e, st, 'FriendService.watchIncomingRequests');
+        // Logged, never shown: it keeps a Home's Messages tile up to date,
+        // which nobody asked for (see ErrorHandler._silentSources).
+        ErrorHandler.report(
+          e,
+          st,
+          'FriendService.watchIncomingRequests:silent',
+        );
       },
     );
     controller.onCancel = () => sub.cancel();

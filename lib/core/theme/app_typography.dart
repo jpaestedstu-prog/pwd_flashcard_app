@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../utils/responsive_utils.dart';
 
-/// Typography system using Nunito (headings) and Quicksand (body)
-/// Optimized for tablet displays (1920×1200) with adaptive sizing.
+/// Typography system using Nunito (headings) and Quicksand (body).
 ///
-/// Static styles are fixed-size (backward-compat).
-/// Context-aware `scaled*` getters auto-scale with [ResponsiveExtension].
+/// Sizes are the sizes everywhere: the learner's Font Size setting (the text
+/// scale) and [AutoFit] are what adapt the type to a screen, and the control
+/// sizes that differ by device live in `form_factor.dart`.
 class AppTypography {
   AppTypography._();
 
@@ -181,59 +180,6 @@ class AppTypography {
     labelMedium: labelMedium,
     labelSmall: labelSmall,
   );
-
-  // ─── Context-Aware Scaled Styles ─────────────────────
-  //
-  // Use these when you need font sizes to adapt to the actual
-  // screen width (phones ↔ tablets ↔ large tablets).
-
-  /// Scale a base font size by the context's [fontScaleFactor].
-  static double _scaled(BuildContext context, double base) =>
-      base * context.fontScaleFactor;
-
-  static TextStyle scaledDisplayLarge(BuildContext context) =>
-      displayLarge.copyWith(fontSize: _scaled(context, 40));
-
-  static TextStyle scaledDisplayMedium(BuildContext context) =>
-      displayMedium.copyWith(fontSize: _scaled(context, 34));
-
-  static TextStyle scaledDisplaySmall(BuildContext context) =>
-      displaySmall.copyWith(fontSize: _scaled(context, 28));
-
-  static TextStyle scaledHeadlineLarge(BuildContext context) =>
-      headlineLarge.copyWith(fontSize: _scaled(context, 26));
-
-  static TextStyle scaledHeadlineMedium(BuildContext context) =>
-      headlineMedium.copyWith(fontSize: _scaled(context, 22));
-
-  static TextStyle scaledHeadlineSmall(BuildContext context) =>
-      headlineSmall.copyWith(fontSize: _scaled(context, 20));
-
-  static TextStyle scaledTitleLarge(BuildContext context) =>
-      titleLarge.copyWith(fontSize: _scaled(context, 20));
-
-  static TextStyle scaledTitleMedium(BuildContext context) =>
-      titleMedium.copyWith(fontSize: _scaled(context, 18));
-
-  static TextStyle scaledBodyLarge(BuildContext context) =>
-      bodyLarge.copyWith(fontSize: _scaled(context, 18));
-
-  static TextStyle scaledBodyMedium(BuildContext context) =>
-      bodyMedium.copyWith(fontSize: _scaled(context, 16));
-
-  static TextStyle scaledLabelLarge(BuildContext context) =>
-      labelLarge.copyWith(fontSize: _scaled(context, 16));
-
-  // ─── Special Scaled Styles ───────────────────────────
-
-  static TextStyle scaledFlashcardWord(BuildContext context) =>
-      flashcardWord.copyWith(fontSize: _scaled(context, 36));
-
-  static TextStyle scaledGameScore(BuildContext context) =>
-      gameScore.copyWith(fontSize: _scaled(context, 48));
-
-  static TextStyle scaledButtonText(BuildContext context) =>
-      buttonText.copyWith(fontSize: _scaled(context, 16));
 
   // ─── Dyslexia-Friendly Text Theme ─────────────────────
   //

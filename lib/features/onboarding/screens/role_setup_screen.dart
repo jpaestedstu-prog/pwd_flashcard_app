@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/widgets/whole_month_title.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -20,6 +21,7 @@ import '../../../providers/app_providers.dart';
 import '../../../widgets/app_button.dart';
 import '../widgets/profile_setup_form.dart';
 import '../../../core/utils/keyboard.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Profile-setup screen for the three non-join roles: Player, Teacher,
 /// Parent. Mirrors the structure of [PostJoinSetupScreen] (used by Student
@@ -118,6 +120,7 @@ class _RoleSetupScreenState extends ConsumerState<RoleSetupScreen> {
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
+      builder: wholeMonthTitle,
       initialDate: _selectedBirthDate ?? DateTime(now.year - 7),
       firstDate: DateTime(now.year - 100),
       lastDate: now,
@@ -193,6 +196,7 @@ class _RoleSetupScreenState extends ConsumerState<RoleSetupScreen> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(l10n.recoveryCodeTitle),
         content: Column(
@@ -228,7 +232,7 @@ class _RoleSetupScreenState extends ConsumerState<RoleSetupScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.setUpProfileTitle),
+        title: AppBarTitle(l10n.setUpProfileTitle),
         leading: IconButton(
           tooltip: l10n.back,
           icon: const Icon(Icons.arrow_back),

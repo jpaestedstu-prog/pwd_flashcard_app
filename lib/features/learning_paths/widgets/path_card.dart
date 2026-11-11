@@ -37,166 +37,171 @@ class PathCard extends StatelessWidget {
       enabled: isUnlocked,
       label:
           '${_t(context).lpCardSemantics(path.titleOf(filipino: _t(context).localeName.startsWith('fil')), completedSteps, totalSteps)}'
-          '${isUnlocked ? '' : ' ${_t(context).lpCardLocked}'}',
+          '${isUnlocked ? '' : ' ${_t(context).lpCardLocked}'}'
+          ' ${path.descriptionOf(filipino: _t(context).localeName.startsWith('fil'))}',
       child: DpadFocusable(onActivate: onTap, child: GestureDetector(
         onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            gradient: isUnlocked
-                ? LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      hc.surface,
-                      categoryColor.withValues(alpha: 0.04),
-                    ],
-                  )
-                : null,
-            color: isUnlocked ? null : hc.surface.withValues(alpha: 0.7),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isCompleted
-                  ? AppColors.success
-                  : isUnlocked
-                      ? categoryColor.withValues(alpha: 0.4)
-                      : hc.border,
-              width: isCompleted ? 2.5 : 1.5,
-            ),
-            boxShadow: isUnlocked
-                ? [
-                    BoxShadow(
-                      color: categoryColor.withValues(alpha: 0.12),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Row(
-            children: [
-              // ─── Path number + emoji ────────
-              _PathBadge(
-                index: index,
-                emoji: path.emoji,
-                isCompleted: isCompleted,
-                isUnlocked: isUnlocked,
-                color: categoryColor,
+        child: ExcludeSemantics(
+          // The label says all of it, the description too; the card's words
+          // were read again under it.
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              gradient: isUnlocked
+                  ? LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        hc.surface,
+                        categoryColor.withValues(alpha: 0.04),
+                      ],
+                    )
+                  : null,
+              color: isUnlocked ? null : hc.surface.withValues(alpha: 0.7),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isCompleted
+                    ? AppColors.success
+                    : isUnlocked
+                        ? categoryColor.withValues(alpha: 0.4)
+                        : hc.border,
+                width: isCompleted ? 2.5 : 1.5,
               ),
-              const SizedBox(width: 14),
-
-              // ─── Title & progress ───────────
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // FitText: "Nararamdaman" broke in two at 2x.
-                    FitText(
-                      path.titleOf(filipino: _t(context).localeName.startsWith('fil')),
-                      maxLines: 3,
-                      style: AppTypography.titleSmall.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: isUnlocked
-                            ? hc.textPrimary
-                            : hc.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      path.descriptionOf(filipino: _t(context).localeName.startsWith('fil')),
-                      style: AppTypography.bodySmall.copyWith(
-                        color: hc.textSecondary,
-                        fontSize: 12,
-                      ),
-                    ),
-                    if (isUnlocked) ...[
-                      const SizedBox(height: 8),
-                      // Step dots
-                      Row(
-                        children: List.generate(totalSteps, (i) {
-                          final isDone =
-                              progress?.completedStepIndices.contains(i) ??
-                                  false;
-                          final isCurrent =
-                              i == (progress?.currentStepIndex ?? 0) &&
-                                  !isCompleted;
-                          return Container(
-                            margin: const EdgeInsets.only(right: 6),
-                            width: isCurrent ? 22 : 14,
-                            height: 14,
-                            decoration: BoxDecoration(
-                              color: isDone
-                                  ? AppColors.success
-                                  : isCurrent
-                                      ? categoryColor
-                                      : categoryColor.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(8),
-                              border: isCurrent
-                                  ? Border.all(
-                                      color: categoryColor, width: 2)
-                                  : null,
-                              boxShadow: isCurrent
-                                  ? [
-                                      BoxShadow(
-                                        color: categoryColor.withValues(alpha: 0.35),
-                                        blurRadius: 6,
-                                      ),
-                                    ]
-                                  : isDone
-                                      ? [
-                                          BoxShadow(
-                                            color: AppColors.success.withValues(alpha: 0.25),
-                                            blurRadius: 4,
-                                          ),
-                                        ]
-                                      : null,
-                            ),
-                            child: isDone
-                                ? const Icon(Icons.check_rounded,
-                                    size: 10, color: Colors.white)
-                                : null,
-                          );
-                        }),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-
-              // ─── Status icon ────────────────
-              if (isCompleted)
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: AppColors.success.withValues(alpha: 0.15),
-                    shape: BoxShape.circle,
-                    boxShadow: [
+              boxShadow: isUnlocked
+                  ? [
                       BoxShadow(
-                        color: AppColors.success.withValues(alpha: 0.25),
-                        blurRadius: 8,
+                        color: categoryColor.withValues(alpha: 0.12),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
                       ),
+                    ]
+                  : null,
+            ),
+            child: Row(
+              children: [
+                // ─── Path number + emoji ────────
+                _PathBadge(
+                  index: index,
+                  emoji: path.emoji,
+                  isCompleted: isCompleted,
+                  isUnlocked: isUnlocked,
+                  color: categoryColor,
+                ),
+                const SizedBox(width: 14),
+  
+                // ─── Title & progress ───────────
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // FitText: "Nararamdaman" broke in two at 2x.
+                      FitText(
+                        path.titleOf(filipino: _t(context).localeName.startsWith('fil')),
+                        maxLines: 3,
+                        style: AppTypography.titleSmall.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: isUnlocked
+                              ? hc.textPrimary
+                              : hc.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        path.descriptionOf(filipino: _t(context).localeName.startsWith('fil')),
+                        style: AppTypography.bodySmall.copyWith(
+                          color: hc.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
+                      if (isUnlocked) ...[
+                        const SizedBox(height: 8),
+                        // Step dots
+                        Row(
+                          children: List.generate(totalSteps, (i) {
+                            final isDone =
+                                progress?.completedStepIndices.contains(i) ??
+                                    false;
+                            final isCurrent =
+                                i == (progress?.currentStepIndex ?? 0) &&
+                                    !isCompleted;
+                            return Container(
+                              margin: const EdgeInsets.only(right: 6),
+                              width: isCurrent ? 22 : 14,
+                              height: 14,
+                              decoration: BoxDecoration(
+                                color: isDone
+                                    ? AppColors.success
+                                    : isCurrent
+                                        ? categoryColor
+                                        : categoryColor.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(8),
+                                border: isCurrent
+                                    ? Border.all(
+                                        color: categoryColor, width: 2)
+                                    : null,
+                                boxShadow: isCurrent
+                                    ? [
+                                        BoxShadow(
+                                          color: categoryColor.withValues(alpha: 0.35),
+                                          blurRadius: 6,
+                                        ),
+                                      ]
+                                    : isDone
+                                        ? [
+                                            BoxShadow(
+                                              color: AppColors.success.withValues(alpha: 0.25),
+                                              blurRadius: 4,
+                                            ),
+                                          ]
+                                        : null,
+                              ),
+                              child: isDone
+                                  ? const Icon(Icons.check_rounded,
+                                      size: 10, color: Colors.white)
+                                  : null,
+                            );
+                          }),
+                        ),
+                      ],
                     ],
                   ),
-                  child: Icon(Icons.check_circle_rounded,
-                      color: HCColor.of(context).graphic(AppColors.success), size: 22),
-                )
-              else if (!isUnlocked)
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: hc.border.withValues(alpha: 0.3),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(Icons.lock_rounded,
-                      color: hc.textHint, size: 20),
-                )
-              else
-                Icon(Icons.arrow_forward_ios_rounded,
-                    size: 18, color: hc.textSecondary),
-            ],
+                ),
+  
+                // ─── Status icon ────────────────
+                if (isCompleted)
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: AppColors.success.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.success.withValues(alpha: 0.25),
+                          blurRadius: 8,
+                        ),
+                      ],
+                    ),
+                    child: Icon(Icons.check_circle_rounded,
+                        color: HCColor.of(context).graphic(AppColors.success), size: 22),
+                  )
+                else if (!isUnlocked)
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: hc.border.withValues(alpha: 0.3),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.lock_rounded,
+                        color: hc.textHint, size: 20),
+                  )
+                else
+                  Icon(Icons.arrow_forward_ios_rounded,
+                      size: 18, color: hc.textSecondary),
+              ],
+            ),
           ),
         ),
       )),
@@ -272,7 +277,7 @@ class _PathBadge extends StatelessWidget {
                 style: AppTypography.labelSmall.copyWith(
                   color: AppColors.textOnPrimary,
                   fontWeight: FontWeight.w800,
-                  fontSize: 9,
+                  fontSize: 11,
                 ),
               ),
             ),

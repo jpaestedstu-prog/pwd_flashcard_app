@@ -1,6 +1,11 @@
-import 'package:flutter/foundation.dart' show kDebugMode, debugPrint;
+import 'package:flutter/semantics.dart';
+import 'package:flutter/widgets.dart';
 
+import '../../../core/utils/input_trace.dart';
+
+import '../../../core/accessibility/spoken_words.dart';
 import '../../../core/accessibility/tts_service.dart';
+import '../../../core/accessibility/voice_navigation_service.dart';
 
 /// Speaks the gamepad's feedback, and remembers the last thing it said.
 ///
@@ -51,7 +56,11 @@ class GamepadAnnouncer {
   /// The last thing spoken, for the repeat button.
   String? get lastMessage => _last;
 
-  Future<void> say(String text) async {
+  /// Speaks [text] — or, with a screen reader running, hands it to the
+  /// reader: TalkBack and this voice at once were two voices, neither
+  /// understood. A move of the input focus ([readByScreenReader]) is not
+  /// repeated at all, because the reader reads a newly focused control itself.
+  Future<void> say(String text, {bool readByScreenReader = false}) async {
     // Refuse to "announce" nothing. An empty utterance is indistinguishable
     // from a button that did not work, and it would also overwrite the last
     // message the learner might still want repeated.
@@ -61,8 +70,12 @@ class GamepadAnnouncer {
     // greppable on-device: `adb logcat | grep GamepadSay` shows exactly what
     // they heard. Mirrors the `SttService` debug logging that made voice
     // commands diagnosable without a human in the room.
-    if (kDebugMode) debugPrint('GamepadSay: $text');
+    InputTrace.log('GamepadSay: $text');
     if (!enabled) return;
+    if (VoiceNavigationService.isScreenReaderOn) {
+      if (!readByScreenReader) await _announce(text);
+      return;
+    }
     await _applyRate();
     try {
       if (locale == 'fil') {
@@ -82,6 +95,10 @@ class GamepadAnnouncer {
     final text = _last;
     if (text == null) return;
     if (!enabled) return;
+    if (VoiceNavigationService.isScreenReaderOn) {
+      await _announce(text);
+      return;
+    }
     await _applyRate();
     try {
       if (locale == 'fil') {
@@ -97,6 +114,22 @@ class GamepadAnnouncer {
   /// Pushes the current [rate] to the engine, but only when it has changed —
   /// a platform call before every single utterance would add latency to every
   /// cursor move.
+  /// Hands [text] to the running screen reader, which speaks it in its own
+  /// queue, voice and speed.
+  Future<void> _announce(String text) async {
+    final view = WidgetsBinding.instance.platformDispatcher.implicitView;
+    if (view == null) return;
+    try {
+      await SemanticsService.sendAnnouncement(
+        view,
+        SpokenWords.withoutPictures(text),
+        TextDirection.ltr,
+      );
+    } catch (_) {
+      // No platform channel in a bare test; never let speech break a press.
+    }
+  }
+
   Future<void> _applyRate() async {
     if (_appliedRate == rate) return;
     try {

@@ -7,6 +7,7 @@ import '../../../core/constants/flashcard_emojis.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
+import '../../../core/widgets/fit_text.dart';
 import '../../../data/models/enums.dart';
 import '../../../data/models/models.dart';
 import '../../../providers/app_providers.dart';
@@ -24,6 +25,7 @@ import 'online_race_screen.dart';
 import '../../../core/utils/seeded_random.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// The "Play Together" lobby. Pick a game, then either invite a friend to play
 /// online or hand the tablet to a second player on the same device. Friends are
@@ -389,7 +391,7 @@ class _MultiplayerLobbyScreenState
   ) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(isFilipino ? '🎮 Maglaro Tayo' : '🎮 Play Together'),
+        title: AppBarTitle(isFilipino ? '🎮 Maglaro Tayo' : '🎮 Play Together'),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -486,7 +488,9 @@ class _MultiplayerLobbyScreenState
   Widget _sectionTitle(String text, String emoji) {
     return Row(
       children: [
-        Text(emoji, style: const TextStyle(fontSize: 20)),
+        ExcludeSemantics(
+          child: Text(emoji, style: const TextStyle(fontSize: 20)),
+        ),
         const SizedBox(width: 8),
         Text(
           text,
@@ -512,86 +516,96 @@ class _MultiplayerLobbyScreenState
     final hc = HCColor.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => setState(() => _mode = mode),
-          borderRadius: BorderRadius.circular(16),
-          child: Ink(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: selected ? color.withValues(alpha: 0.12) : hc.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                // The hands-free ring outranks the "chosen" border — it says
-                // where a blink lands, which is the more urgent fact.
-                color: focused
-                    ? AppColors.warning
-                    : selected
-                        ? color
-                        : AppColors.border,
-                width: focused
-                    ? 4
-                    : selected
-                        ? 2
-                        : 1,
+      // A choice: a screen reader says so, and which one is chosen.
+      child: Semantics(
+        container: true,
+        button: true,
+        selected: selected,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => setState(() => _mode = mode),
+            borderRadius: BorderRadius.circular(16),
+            child: Ink(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: selected ? color.withValues(alpha: 0.12) : hc.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  // The hands-free ring outranks the "chosen" border — it says
+                  // where a blink lands, which is the more urgent fact.
+                  color: focused
+                      ? AppColors.warning
+                      : selected
+                          ? color
+                          : AppColors.border,
+                  width: focused
+                      ? 4
+                      : selected
+                          ? 2
+                          : 1,
+                ),
+                boxShadow: AppColors.softShadow,
               ),
-              boxShadow: AppColors.softShadow,
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.18),
-                    shape: BoxShape.circle,
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.18),
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: ExcludeSemantics(
+                      child: Text(mode.emoji, style: const TextStyle(fontSize: 22)),
+                    ),
                   ),
-                  alignment: Alignment.center,
-                  child: Text(mode.emoji, style: const TextStyle(fontSize: 22)),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        isFilipino ? mode.labelFilipino : mode.label,
-                        style: AppTypography.titleSmall.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: selected
-                              ? hc.readableOver(
-                                  color,
-                                  color.withValues(alpha: 0.12),
-                                )
-                              : hc.textPrimary,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // The row grows: on a phone at the largest Font
+                        // Size the name and the rules were both cut short
+                        // (30 Oct).
+                        FitText(
+                          isFilipino ? mode.labelFilipino : mode.label,
+                          style: AppTypography.titleSmall.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: selected
+                                ? hc.readableOver(
+                                    color,
+                                    color.withValues(alpha: 0.12),
+                                  )
+                                : hc.textPrimary,
+                          ),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        isFilipino
-                            ? mode.descriptionFilipino
-                            : mode.description,
-                        style: AppTypography.bodySmall
-                            .copyWith(color: hc.textSecondary),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                        const SizedBox(height: 2),
+                        // FitText: shown whole, "pinakamaraming" split in
+                        // two at 2x.
+                        FitText(
+                          isFilipino
+                              ? mode.descriptionFilipino
+                              : mode.description,
+                          style: AppTypography.bodySmall
+                              .copyWith(color: hc.textSecondary),
+                          maxLines: 4,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Icon(
-                  selected
-                      ? Icons.check_circle_rounded
-                      : Icons.radio_button_unchecked_rounded,
-                  color: selected ? color : AppColors.border,
-                  size: 24,
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  Icon(
+                    selected
+                        ? Icons.check_circle_rounded
+                        : Icons.radio_button_unchecked_rounded,
+                    color: selected ? color : AppColors.border,
+                    size: 24,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -680,7 +694,9 @@ class _InviteCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Text(room.mode.emoji, style: const TextStyle(fontSize: 28)),
+          ExcludeSemantics(
+            child: Text(room.mode.emoji, style: const TextStyle(fontSize: 28)),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -692,8 +708,6 @@ class _InviteCard extends StatelessWidget {
                       : '${room.hostName} invited you!',
                   style: AppTypography.titleSmall
                       .copyWith(fontWeight: FontWeight.w700),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   isFilipino ? room.mode.labelFilipino : room.mode.label,
@@ -735,63 +749,70 @@ class _PlayOptionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: Ink(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.10),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: focused ? AppColors.warning : color.withValues(alpha: 0.3),
-              width: focused ? 4 : 1,
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.18),
-                  shape: BoxShape.circle,
-                ),
-                alignment: Alignment.center,
-                child: Text(emoji, style: const TextStyle(fontSize: 24)),
+    return Semantics(
+      container: true,
+      button: true,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(18),
+          child: Ink(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: focused ? AppColors.warning : color.withValues(alpha: 0.3),
+                width: focused ? 4 : 1,
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: AppTypography.titleMedium
-                          .copyWith(fontWeight: FontWeight.w800),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.18),
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: ExcludeSemantics(
+                    child: ExcludeSemantics(
+                      child: Text(emoji, style: const TextStyle(fontSize: 24)),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: AppTypography.bodySmall.copyWith(
-                        color: hc.readableOver(
-                          hc.textSecondary,
-                          color.withValues(alpha: 0.10),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Every line they need: "Laro sa iisang tablet" and
+                      // "Pass and play with someone next to you" were cut on
+                      // a phone at the largest Font Size (3 Nov).
+                      FitText(
+                        title,
+                        style: AppTypography.titleMedium
+                            .copyWith(fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: AppTypography.bodySmall.copyWith(
+                          color: hc.readableOver(
+                            hc.textSecondary,
+                            color.withValues(alpha: 0.10),
+                          ),
                         ),
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              Icon(Icons.arrow_forward_ios_rounded,
-                  size: 16, color: hc.textSecondary),
-            ],
+                Icon(Icons.arrow_forward_ios_rounded,
+                    size: 16, color: hc.textSecondary),
+              ],
+            ),
           ),
         ),
       ),
@@ -929,8 +950,6 @@ class _FriendPickerSheet extends StatelessWidget {
                             style: AppTypography.bodySmall.copyWith(
                               color: HCColor.of(context).textSecondary,
                             ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
                           ),
                     trailing: Icon(Icons.play_circle_fill_rounded,
                         color: HCColor.of(context).primary),

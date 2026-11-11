@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../widgets/dpad_focusable.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../../core/accessibility/learner_support.dart';
@@ -10,6 +11,7 @@ import '../../../core/theme/role_theme.dart';
 import '../../../data/models/enums.dart';
 import '../../../l10n/app_localizations.dart';
 import 'learner_support_picker.dart';
+import '../../../core/widgets/text_limits.dart';
 
 /// Shared profile-setup form used by both [RoleSetupScreen] (player / teacher /
 /// parent) and [PostJoinSetupScreen] (student / child after a join code).
@@ -85,6 +87,8 @@ class ProfileSetupForm extends StatelessWidget {
         AppSpacing.gapMd,
         TextFormField(
           controller: nameController,
+          maxLength: TextLimits.personName,
+          buildCounter: TextLimits.counter,
           style: AppTypography.bodyLarge,
           decoration: InputDecoration(
             hintText: l10n.enterYourName,
@@ -112,10 +116,25 @@ class ProfileSetupForm extends StatelessWidget {
           AppSpacing.gapXl,
           _SectionLabel(l10n.ageOrBirthDate),
           AppSpacing.gapMd,
-          GestureDetector(
+          // A button that shows a date: a text box here took a key's letters and
+          // a keyboard's focus, and a screen reader read an edit box that could
+          // not be typed in, gone again as the picker opened.
+          Semantics(
+            container: true,
+            button: true,
             onTap: onPickBirthDate,
-            child: AbsorbPointer(
+            label: birthDate != null
+                ? '${l10n.ageOrBirthDate}: '
+                    '${birthDate!.month}/${birthDate!.day}/${birthDate!.year}, '
+                    '${l10n.yearsOld(computedAge ?? 0)}'
+                : l10n.tapToSelectBirthDate,
+            child: DpadGestureDetector(
+            onTap: onPickBirthDate,
+            child: ExcludeSemantics(
+              child: ExcludeFocus(
+                child: AbsorbPointer(
               child: TextFormField(
+                readOnly: true,
                 key: ValueKey(birthDate),
                 style: AppTypography.bodyLarge,
                 decoration: InputDecoration(
@@ -145,6 +164,8 @@ class ProfileSetupForm extends StatelessWidget {
                 validator: (_) =>
                     birthDate == null ? l10n.pleaseSelectBirthDate : null,
               ),
+            ),
+          )),
             ),
           ),
           if (birthDate != null && suggestedLevel != null)

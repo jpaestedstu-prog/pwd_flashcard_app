@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/widgets/capped_width.dart';
 import '../core/accessibility/haptic_service.dart';
 import '../core/accessibility/sound_service.dart';
+import '../core/theme/accessible_theme.dart' show tonalButtonStyle;
 import 'depth_3d.dart';
 import 'tilt_3d.dart';
 
@@ -191,10 +193,12 @@ class AppButton extends ConsumerWidget {
       AppButtonVariant.tertiary => iconWidget == null
           ? FilledButton.tonal(
               onPressed: onPressed == null ? null : handlePress,
+              style: tonalButtonStyle(context),
               child: labelWidget,
             )
           : FilledButton.tonalIcon(
               onPressed: onPressed == null ? null : handlePress,
+              style: tonalButtonStyle(context),
               icon: iconWidget,
               label: labelWidget,
             ),
@@ -241,11 +245,15 @@ class AppButton extends ConsumerWidget {
       content = sized;
     }
 
-    return Pressable3D(
+    final pressable = Pressable3D(
       enabled: onPressed != null,
       maxTilt: 0.05,
       pressScale: 0.96,
       child: content,
     );
+    // Full width on a phone; a comfortable width, centred, on a tablet
+    // held sideways or a computer, outside the 3D skin so it hugs the
+    // button.
+    return fullWidth ? CappedWidth(child: pressable) : pressable;
   }
 }

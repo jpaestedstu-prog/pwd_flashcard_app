@@ -1,9 +1,14 @@
+import 'dart:async';
+import 'dart:ui' show Tristate;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:pwdpwdpwd/data/models/enums.dart';
 import 'package:pwdpwdpwd/data/models/models.dart';
+import 'package:pwdpwdpwd/features/gaze_control/providers/gaze_home_grid.dart';
+import 'package:pwdpwdpwd/features/gaze_control/widgets/gaze_home_tiles.dart';
 import 'package:pwdpwdpwd/features/home/widgets/today_card.dart';
 import 'package:pwdpwdpwd/features/mood_tracker/models/mood_context.dart';
 import 'package:pwdpwdpwd/features/mood_tracker/models/mood_models.dart';
@@ -149,8 +154,36 @@ RoutineDayLog _log(Set<String> done) => RoutineDayLog(
   updatedAt: DateTime.now(),
 );
 
+/// A mood store whose writes wait for [gate], so a test can press again while
+/// the first answer is still being saved.
+class _SlowMood extends _FakeMood {
+  _SlowMood() : super(const []);
+
+  final Completer<void> gate = Completer<void>();
+
+  @override
+  Future<MoodEntry> addMood({
+    required MoodType mood,
+    String? note,
+    MoodContext context = MoodContext.general,
+    String? routineStepId,
+    int? routineActivity,
+    String? routineStepTitle,
+  }) async {
+    await gate.future;
+    return super.addMood(mood: mood, note: note, context: context);
+  }
+}
+
+/// The D-pad rows the last `_pump(dpad: true)` registered, in Home's order.
+List<List<GazeTileCell>> _rows = const [];
+
 /// Pumps the card. Returns the mood store so a test can assert what was
 /// written and with which context.
+///
+/// [dpad] hosts the cards as Home does with a D-pad in use: each card's row,
+/// then the rows of the controls on it, handed back to the panes (see
+/// [_rows]).
 Future<_FakeMood> _pump(
   WidgetTester tester, {
   List<MoodEntry> moods = const [],
@@ -161,12 +194,14 @@ Future<_FakeMood> _pump(
   String? classroomId = 'class-1',
   List<Override> extra = const [],
   UserRole role = UserRole.student,
+  bool dpad = false,
+  _FakeMood? store,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
 
-  final mood = _FakeMood(moods);
+  final mood = store ?? _FakeMood(moods);
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
@@ -187,12 +222,51 @@ Future<_FakeMood> _pump(
             body: SingleChildScrollView(
               // The two cards as Home stacks them: My Day, then Mood
               // Check-In.
-              child: Column(
-                children: [
-                  TodayCard(child: TodayDayPane(onOpen: () {})),
-                  TodayCard(child: TodayMoodPane(onOpen: () {})),
-                ],
-              ),
+              child: dpad
+                  ? Consumer(
+                      builder: (context, ref, _) {
+                        final grid = GazeTileGridBuilder(active: true);
+                        final dayRow = grid.rowOf([
+                          GazeTileCell(label: 'My Day', onActivate: () {}),
+                        ]);
+                        final dayDone = TodayDayPane.doneCell(context, ref);
+                        final doneRow =
+                            dayDone == null ? null : grid.rowOf([dayDone]);
+                        final moodRow = grid.rowOf([
+                          GazeTileCell(
+                            label: 'Mood Check-In',
+                            onActivate: () {},
+                          ),
+                        ]);
+                        final faceRow =
+                            grid.rowOf(TodayMoodPane.faceCells(context, ref));
+                        _rows = grid.rows;
+                        return Column(
+                          children: [
+                            TodayCard(
+                              child: TodayDayPane(
+                                onOpen: () {},
+                                gazeRow: dayRow,
+                                gazeDoneRow: doneRow,
+                              ),
+                            ),
+                            TodayCard(
+                              child: TodayMoodPane(
+                                onOpen: () {},
+                                gazeRow: moodRow,
+                                gazeFaceRow: faceRow,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    )
+                  : Column(
+                      children: [
+                        TodayCard(child: TodayDayPane(onOpen: () {})),
+                        TodayCard(child: TodayMoodPane(onOpen: () {})),
+                      ],
+                    ),
             ),
           ),
         ),
@@ -546,6 +620,166 @@ void main() {
       );
 
       expect(find.text('All done! 🎉'), findsOneWidget);
+    });
+  });
+
+  // Gaze, a game controller and a switch box reach Home through the rows Home
+  // registers. With one row per card, the faces and Done were the card's
+  // stop: a D-pad could open the card, never do what a finger does on it.
+  group('a D-pad stops on every control on the cards', () {
+    setUp(() => gazeHomeGrid.setFocus(null, null));
+
+    testWidgets('each face is a stop of its own, in a row under its card', (
+      tester,
+    ) async {
+      await _pump(tester, dpad: true);
+
+      // A Student's day runs on the clock, so My Day has no Done: the rows
+      // are My Day, Mood Check-In, then the faces, left to right.
+      expect(_rows.map((r) => r.length), [1, 1, MoodType.values.length]);
+      expect(_rows[2].map((c) => c.label), [
+        for (final m in MoodPresentation.fullChoices) m.label,
+      ]);
+      // Each acts in place; none of them opens a screen.
+      expect(_rows[2].any((c) => c.opens), isFalse);
+      // One ring per face, drawn by the face itself.
+      for (var i = 0; i < _rows[2].length; i++) {
+        expect(
+          find.byWidgetPredicate(
+            (w) => w is GazeFocusable && w.row == 2 && w.col == i,
+          ),
+          findsOneWidget,
+        );
+      }
+    });
+
+    testWidgets('pressing a face’s stop checks in, as tapping it does', (
+      tester,
+    ) async {
+      final mood = await _pump(tester, dpad: true);
+
+      _rows[2].firstWhere((c) => c.label == 'Happy').onActivate();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(mood.added, hasLength(1));
+      expect(mood.added.single.mood, MoodType.happy);
+      expect(mood.added.single.activityContext, MoodContext.general.storageKey);
+      expect(find.text('Feeling Happy'), findsOneWidget);
+    });
+
+    testWidgets('a press while a tap is still saving files nothing more', (
+      tester,
+    ) async {
+      // A tap and a D-pad press share one in-flight flag; two flags would
+      // let the second answer race the first and file a second entry.
+      final slow = _SlowMood();
+      await _pump(tester, dpad: true, store: slow);
+
+      await tester.tap(_face(MoodType.happy));
+      await tester.pump();
+      _rows[2].firstWhere((c) => c.label == 'Sad').onActivate();
+      await tester.pump();
+      // While saving, the faces say they cannot be pressed.
+      expect(
+        tester.getSemantics(_face(MoodType.sad)).flagsCollection.isEnabled,
+        Tristate.isFalse,
+      );
+
+      slow.gate.complete();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(slow.added.map((e) => e.mood), [MoodType.happy]);
+      expect(
+        tester
+            .getSemantics(_face(MoodType.sad))
+            .flagsCollection
+            .isEnabled,
+        Tristate.isTrue,
+      );
+    });
+
+    testWidgets('a card’s ring frames its header, not its faces', (
+      tester,
+    ) async {
+      await _pump(tester, dpad: true);
+
+      gazeHomeGrid.setFocus(1, 0);
+      await tester.pump();
+      final ring = find.byWidgetPredicate(
+        (w) => w is GazeFocusable && w.row == 1 && w.col == 0,
+      );
+      final face = find.bySemanticsLabel('Check in as Happy');
+      expect(ring, findsOneWidget);
+      // The faces sit below the ringed header, outside it.
+      expect(
+        tester.getRect(face).top,
+        greaterThanOrEqualTo(tester.getRect(ring).bottom),
+      );
+
+      // Scanning's row phase lights the whole row of faces at once.
+      gazeHomeGrid.setFocus(2, null);
+      await tester.pump();
+      for (var i = 0; i < _rows[2].length; i++) {
+        expect(gazeHomeGrid.isFocused(2, i), isTrue);
+      }
+      gazeHomeGrid.setFocus(null, null);
+    });
+
+    testWidgets('a Player’s Done is a stop under My Day', (tester) async {
+      await _pump(
+        tester,
+        dpad: true,
+        role: UserRole.player,
+        classroomId: null,
+        routines: [
+          _routine([
+            _step('s1', RoutineActivity.morningRoutine),
+            _step('s2', RoutineActivity.brushingTeeth),
+          ]),
+        ],
+      );
+
+      // My Day, its Done, Mood Check-In, the faces.
+      expect(_rows.map((r) => r.length), [1, 1, 1, MoodType.values.length]);
+      final done = _rows[1].single;
+      // Named as a screen reader names the button, which is also what the
+      // controller says on a press and what voice matches ("done").
+      expect(done.label, 'Mark Morning Routine as done');
+      expect(done.opens, isFalse);
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is GazeFocusable && w.row == 1 && w.col == 0,
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.ancestor(
+          of: find.bySemanticsLabel('Mark Morning Routine as done'),
+          matching: find.byWidgetPredicate(
+            (w) => w is GazeFocusable && w.row == 1,
+          ),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a finished day has no Done, and so no stop for one', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        dpad: true,
+        role: UserRole.player,
+        classroomId: null,
+        routines: [
+          _routine([_step('s1', RoutineActivity.morningRoutine)]),
+        ],
+        done: {'s1'},
+      );
+
+      expect(_rows.map((r) => r.length), [1, 1, MoodType.values.length]);
     });
   });
 

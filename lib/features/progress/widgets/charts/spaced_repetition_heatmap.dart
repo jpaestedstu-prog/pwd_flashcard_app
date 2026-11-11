@@ -3,6 +3,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../data/models/models.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../../../core/utils/localized_date.dart';
+import '../../../../core/widgets/beside_or_below.dart';
 import '../../../../core/widgets/fit_text.dart';
 
 /// A GitHub-style heatmap showing spaced repetition review activity.
@@ -29,6 +31,10 @@ class SpacedRepetitionHeatmap extends StatelessWidget {
     final weeks = (daysToShow / 7).ceil();
     final hc = HCColor.of(context);
 
+    final titleStyle = AppTypography.labelMedium.copyWith(
+      fontWeight: FontWeight.w700,
+    );
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -39,46 +45,55 @@ class SpacedRepetitionHeatmap extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(Icons.calendar_month_rounded,
-                  color: HCColor.of(context).graphic(AppColors.accent), size: 22),
-              const SizedBox(width: 8),
-              Expanded(
-                child: FitText(
-                  l10n.chartReviewHeatmap,
-                  style: AppTypography.labelMedium.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+          // The count of active days under the title when the two do not
+          // fit on one line: in Filipino on a phone at the largest Font
+          // Size the title had a third of the card and lost its end.
+          BesideOrBelow(
+            fits: FitText.measurer(context, l10n.chartReviewHeatmap,
+                style: titleStyle),
+            drop: BesideOrBelowSlot.trailing,
+            gap: 8,
+            trailingGap: 8,
+            spacing: 6,
+            leading: Icon(Icons.calendar_month_rounded,
+                color: HCColor.of(context).graphic(AppColors.accent), size: 22),
+            title: FitText(l10n.chartReviewHeatmap, style: titleStyle),
+            // Total active days badge
+            trailing: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.success.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                l10n.chartActiveDays(
+                  activityMap.values.where((v) => v > 0).length,
+                ),
+                style: AppTypography.labelSmall.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: HCColor.of(context).successText,
+                  fontSize: 11,
                 ),
               ),
-              // Total active days badge
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.success.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '${activityMap.values.where((v) => v > 0).length} active days',
-                  style: AppTypography.labelSmall.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: HCColor.of(context).successText,
-                    fontSize: 10,
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
           const SizedBox(height: 4),
           Text(
-            'Last ${daysToShow ~/ 7} weeks of learning activity',
+            l10n.chartReviewHeatmapSubtitle(daysToShow ~/ 7),
             style: AppTypography.bodySmall.copyWith(
               color: hc.textSecondary,
             ),
           ),
           const SizedBox(height: 14),
 
+          // The grid is for the eye. Its 84 days were 84 stops for a screen
+          // reader, with the months, weekdays and legend read as a list of
+          // words besides; the title, the count of active days and the line
+          // under it say what it shows (3 Nov).
+          ExcludeSemantics(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
           // Month labels
           _buildMonthLabels(context, now, weeks),
           const SizedBox(height: 4),
@@ -91,13 +106,13 @@ class SpacedRepetitionHeatmap extends StatelessWidget {
               Column(
                 children: [
                   const SizedBox(height: 2),
-                  _dayLabel(context, 'Mon'),
+                  _dayLabel(context, LocalizedDate.weekdayShort(1, l10n)),
                   _dayLabel(context, ''),
-                  _dayLabel(context, 'Wed'),
+                  _dayLabel(context, LocalizedDate.weekdayShort(3, l10n)),
                   _dayLabel(context, ''),
-                  _dayLabel(context, 'Fri'),
+                  _dayLabel(context, LocalizedDate.weekdayShort(5, l10n)),
                   _dayLabel(context, ''),
-                  _dayLabel(context, 'Sun'),
+                  _dayLabel(context, LocalizedDate.weekdayShort(7, l10n)),
                 ],
               ),
               const SizedBox(width: 6),
@@ -137,7 +152,7 @@ class SpacedRepetitionHeatmap extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(l10n.chartLess, style: AppTypography.labelSmall.copyWith(
-                fontSize: 9, color: hc.textSecondary)),
+                fontSize: 11, color: hc.textSecondary)),
               const SizedBox(width: 4),
               _legendCell(context, 0),
               _legendCell(context, 1),
@@ -146,8 +161,11 @@ class SpacedRepetitionHeatmap extends StatelessWidget {
               _legendCell(context, 4),
               const SizedBox(width: 4),
               Text(l10n.chartMore, style: AppTypography.labelSmall.copyWith(
-                fontSize: 9, color: hc.textSecondary)),
+                fontSize: 11, color: hc.textSecondary)),
             ],
+          ),
+              ],
+            ),
           ),
         ],
       ),
@@ -181,14 +199,17 @@ class SpacedRepetitionHeatmap extends StatelessWidget {
       final weekStart = now.subtract(
         Duration(days: (weeks - 1 - w) * 7 + (now.weekday - 1)),
       );
-      final monthName = _monthName(weekStart.month);
+      final monthName = LocalizedDate.monthShort(
+        weekStart.month,
+        AppLocalizations.of(context),
+      );
       if (monthName != lastMonth) {
         labels.add(Padding(
           padding: EdgeInsets.only(left: w == 0 ? 26 : 0),
           child: Text(
             monthName,
             style: AppTypography.labelSmall.copyWith(
-              fontSize: 9,
+              fontSize: 11,
               color: HCColor.of(context).textSecondary,
             ),
           ),
@@ -213,13 +234,19 @@ class SpacedRepetitionHeatmap extends StatelessWidget {
   Widget _dayLabel(BuildContext context, String text) {
     return SizedBox(
       height: 16,
+      // In rows that line up with the squares: drawn to fit the row at a
+      // large text size rather than cut off at its bottom.
       child: text.isEmpty
           ? const SizedBox.shrink()
-          : Text(
-              text,
-              style: AppTypography.labelSmall.copyWith(
-                fontSize: 8,
-                color: HCColor.of(context).textSecondary,
+          : FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: AlignmentDirectional.centerStart,
+              child: Text(
+                text,
+                style: AppTypography.labelSmall.copyWith(
+                  fontSize: 11,
+                  color: HCColor.of(context).textSecondary,
+                ),
               ),
             ),
     );
@@ -228,7 +255,10 @@ class SpacedRepetitionHeatmap extends StatelessWidget {
   Widget _cell(BuildContext context, int activity, DateTime? date, {bool isFuture = false}) {
     return Tooltip(
       message: date != null
-          ? '${_formatCellDate(date)}: $activity ${activity == 1 ? "session" : "sessions"}'
+          ? AppLocalizations.of(context)!.chartCellSessions(
+              LocalizedDate.monthDay(date, AppLocalizations.of(context)),
+              activity,
+            )
           : '',
       child: Container(
         width: 14,
@@ -281,13 +311,4 @@ class SpacedRepetitionHeatmap extends StatelessWidget {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
-  static String _monthName(int month) {
-    const names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return names[month - 1];
-  }
-
-  static String _formatCellDate(DateTime date) {
-    return '${_monthName(date.month)} ${date.day}';
-  }
 }

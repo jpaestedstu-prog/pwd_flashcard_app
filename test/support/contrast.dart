@@ -187,6 +187,9 @@ List<_Painter> _collectPainters(Iterable<Element> elements) {
     } else if (w is Scaffold) {
       final c = w.backgroundColor ?? Theme.of(e).scaffoldBackgroundColor;
       paint = (_) => c;
+    } else if (w is CustomPaint && _dropdownMenuColor(w.painter) != null) {
+      final c = _dropdownMenuColor(w.painter)!;
+      paint = (_) => c;
     } else if (w is Image || w is RawImage) {
       image = true;
     }
@@ -194,6 +197,17 @@ List<_Painter> _collectPainters(Iterable<Element> elements) {
     painters.add(_Painter(order, rect(), paint, opaqueUnknown: image));
   }
   return painters;
+}
+
+/// The colour of an open dropdown's menu. Flutter paints it with a private
+/// painter rather than a `Material`, in the button's `dropdownColor` or the
+/// theme's `canvasColor`.
+Color? _dropdownMenuColor(CustomPainter? painter) {
+  if (painter == null ||
+      painter.runtimeType.toString() != '_DropdownMenuPainter') {
+    return null;
+  }
+  return (painter as dynamic).color as Color?;
 }
 
 bool _hidden(Element e) {

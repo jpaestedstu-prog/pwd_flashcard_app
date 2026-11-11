@@ -39,6 +39,7 @@ import '../../../navigation/nav_extensions.dart';
 import '../../../widgets/fullscreen_host.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../core/utils/seeded_random.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// FSL Word → Sign game.
 ///
@@ -560,7 +561,7 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen>
               tooltip: l10n.close,
               onPressed: () => context.popOrGo('/games/fsl-practice'),
             ),
-            title: Text(l10n.fslWordToSign),
+            title: AppBarTitle(l10n.fslWordToSign),
           ),
         ),
         body: const ShimmerPageSkeleton(),
@@ -652,8 +653,13 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen>
                     tooltip: l10n.close,
                     onPressed: pauseGame,
                   ),
-                  title: Text(
+                  title: AppBarTitle(
                     l10n.gameRoundHeader(
+                      l10n.fslWordToSign,
+                      _currentRound + 1,
+                      _rounds.length,
+                    ),
+                    semanticsLabel: l10n.gameRoundHeaderSpoken(
                       l10n.fslWordToSign,
                       _currentRound + 1,
                       _rounds.length,
@@ -688,6 +694,7 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen>
                               const SizedBox(width: 4),
                               Text(
                                 '$_score',
+                                semanticsLabel: l10n.gameScoreChip(_score),
                                 style: AppTypography.labelLarge.copyWith(
                                   color: HCColor.of(context).warningText,
                                 ),
@@ -706,6 +713,9 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen>
                   children: [
                     // Progress bar
                     Semantics(
+                      // The round in words; the bar's own percentage read as
+                      // "17.0. 17, Round 1 of 6".
+                      excludeSemantics: true,
                       label: l10n.resumeRoundProgress(
                         _currentRound + 1,
                         _rounds.length,
@@ -930,7 +940,7 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen>
                                             ),
                                             const SizedBox(height: 4),
                                             Text(
-                                              'Sign ${index + 1}',
+                                              AppLocalizations.of(context)!.fwsSignN(index + 1),
                                               style: AppTypography.labelLarge
                                                   .copyWith(
                                                     color: showCorrect
@@ -1005,18 +1015,15 @@ class _FslWordToSignScreenState extends ConsumerState<FslWordToSignScreen>
                                 );
                           }
 
-                          return GamepadFocusable(
-                            index: index,
-                            child: videoTile
-                                .animate(
-                                  key: ValueKey('$_currentRound-$index'),
-                                )
-                                .fadeIn(
-                                  duration: 250.ms,
-                                  delay: (index * 80).ms,
-                                )
-                                .slideY(begin: 0.1, end: 0),
-                          );
+                          return videoTile
+                              .animate(
+                                key: ValueKey('$_currentRound-$index'),
+                              )
+                              .fadeIn(
+                                duration: 250.ms,
+                                delay: (index * 80).ms,
+                              )
+                              .slideY(begin: 0.1, end: 0);
                         },
                       ),
                     ),

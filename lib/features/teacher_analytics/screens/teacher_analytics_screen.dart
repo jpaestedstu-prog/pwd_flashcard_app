@@ -17,6 +17,7 @@ import '../models/teacher_analytics_models.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
 import '../../../widgets/dpad_focusable.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 class TeacherAnalyticsScreen extends ConsumerWidget {
   const TeacherAnalyticsScreen({super.key});
@@ -65,7 +66,7 @@ class TeacherAnalyticsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(audience.analyticsTitle(filipino: isFilipino)),
+        title: AppBarTitle(audience.analyticsTitle(filipino: isFilipino)),
         centerTitle: true,
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -112,7 +113,7 @@ class TeacherAnalyticsScreen extends ConsumerWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text('📊', style: TextStyle(fontSize: 64)),
+                    const ExcludeSemantics(child: Text('📊', style: TextStyle(fontSize: 64))),
                     const SizedBox(height: 16),
                     Text(
                       audience.analyticsEmptyTitle(filipino: isFilipino),
@@ -316,8 +317,6 @@ class _NeedHelpAlert extends StatelessWidget {
                   students.map((s) => s.name).join(', '),
                   style: AppTypography.bodySmall
                       .copyWith(color: hc.textSecondary),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   isFilipino
@@ -487,154 +486,167 @@ class _StudentRow extends StatelessWidget {
     // three identical zeroes.
     final isTopThree = rank <= 3 && student.hasGradedActivity;
 
-    return DpadGestureDetector(
-      onTap: () => context.push(
-        '/progress-timeline/${student.profileId}?name=${Uri.encodeComponent(student.name)}',
-      ),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: hc.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isTopThree
-                ? AppColors.primary.withValues(alpha: 0.25)
-                : hc.border,
-          ),
-          boxShadow: isTopThree
-              ? [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.06),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
+    return Semantics(
+      container: true,
+      // Opens the learner's timeline: a screen reader says "button".
+      button: true,
+      child: DpadGestureDetector(
+        onTap: () => context.push(
+          '/progress-timeline/${student.profileId}?name=${Uri.encodeComponent(student.name)}',
         ),
-        child: Row(
-          children: [
-            // Rank — medal for top 3, number for rest
-            SizedBox(
-              width: 30,
-              child: isTopThree
-                  ? Text(
-                      _medalEmojis[rank - 1],
-                      style: const TextStyle(fontSize: 18),
-                      textAlign: TextAlign.center,
-                    )
-                  : Text(
-                      '#$rank',
-                      style: AppTypography.titleSmall.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: hc.textSecondary,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: hc.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isTopThree
+                  ? AppColors.primary.withValues(alpha: 0.25)
+                  : hc.border,
             ),
-            const SizedBox(width: 10),
-            // Avatar with mini accuracy ring
-            SizedBox(
-              width: 40,
-              height: 40,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  SizedBox(
-                    width: 40,
-                    height: 40,
-                    child: CircularProgressIndicator(
-                      value: student.averageAccuracy,
-                      strokeWidth: 2.5,
-                      backgroundColor: hc.border.withValues(alpha: 0.15),
-                      valueColor: AlwaysStoppedAnimation(accuracyColor),
+            boxShadow: isTopThree
+                ? [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.06),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
                     ),
-                  ),
-                  CircleAvatar(
-                    radius: 15,
-                    backgroundColor: AppColors.primaryLight,
-                    child: Text(
-                      student.name.isNotEmpty
-                          ? student.name[0].toUpperCase()
-                          : '?',
-                      style: AppTypography.labelMedium.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: HCColor.of(context).readableOver(
-                          AppColors.primaryDark,
-                          AppColors.primaryLight,
+                  ]
+                : null,
+          ),
+          child: Row(
+            children: [
+              // Rank — medal for top 3, number for rest
+              SizedBox(
+                width: 30,
+                child: isTopThree
+                    ? Text(
+                        _medalEmojis[rank - 1],
+                        style: const TextStyle(fontSize: 18),
+                        textAlign: TextAlign.center,
+                      )
+                    : Text(
+                        '#$rank',
+                        style: AppTypography.titleSmall.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: hc.textSecondary,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+              ),
+              const SizedBox(width: 10),
+              // Avatar with mini accuracy ring
+              SizedBox(
+                width: 40,
+                height: 40,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    SizedBox(
+                      width: 40,
+                      height: 40,
+                      child: CircularProgressIndicator(
+                        value: student.averageAccuracy,
+                        strokeWidth: 2.5,
+                        backgroundColor: hc.border.withValues(alpha: 0.15),
+                        valueColor: AlwaysStoppedAnimation(accuracyColor),
+                      ),
+                    ),
+                    CircleAvatar(
+                      radius: 15,
+                      backgroundColor: AppColors.primaryLight,
+                      child: ExcludeSemantics(
+                        child: Text(
+                          student.name.isNotEmpty
+                              ? student.name[0].toUpperCase()
+                              : '?',
+                          style: AppTypography.labelMedium.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: HCColor.of(context).readableOver(
+                              AppColors.primaryDark,
+                              AppColors.primaryLight,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 10),
-            // Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    student.name,
-                    style: AppTypography.titleSmall.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: hc.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      _StatChip(
-                        icon: Icons.auto_stories_rounded,
-                        text: '${student.wordsLearned}',
-                        color: AppColors.primary,
-                      ),
-                      const SizedBox(width: 6),
-                      _StatChip(
-                        icon: Icons.star_rounded,
-                        text: '${student.totalStars}',
-                        color: AppColors.warning,
-                      ),
-                      const SizedBox(width: 6),
-                      _StatChip(
-                        icon: Icons.local_fire_department_rounded,
-                        text: '${student.streakDays}',
-                        color: AppColors.error,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            // Accuracy badge — enhanced
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    accuracyColor.withValues(alpha: 0.15),
-                    accuracyColor.withValues(alpha: 0.06),
                   ],
                 ),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: accuracyColor.withValues(alpha: 0.25),
+              ),
+              const SizedBox(width: 10),
+              // Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      student.name,
+                      style: AppTypography.titleSmall.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: hc.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        _StatChip(
+                          icon: Icons.auto_stories_rounded,
+                          text: '${student.wordsLearned}',
+                          spoken: '${student.wordsLearned} ${_t(context).words}',
+                          color: AppColors.primary,
+                        ),
+                        const SizedBox(width: 6),
+                        _StatChip(
+                          icon: Icons.star_rounded,
+                          text: '${student.totalStars}',
+                          spoken: '${student.totalStars} ${_t(context).stars}',
+                          color: AppColors.warning,
+                        ),
+                        const SizedBox(width: 6),
+                        _StatChip(
+                          icon: Icons.local_fire_department_rounded,
+                          text: '${student.streakDays}',
+                          spoken: '${student.streakDays} ${_t(context).dayStreak}',
+                          color: AppColors.error,
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              child: Text(
-                accuracyLabel,
-                style: AppTypography.labelSmall.copyWith(
-                  color: HCColor.of(context).readableOver(accuracyColor, accuracyColor.withValues(alpha: 0.25)),
-                  fontWeight: FontWeight.w800,
+              // Accuracy badge — enhanced
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      accuracyColor.withValues(alpha: 0.15),
+                      accuracyColor.withValues(alpha: 0.06),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: accuracyColor.withValues(alpha: 0.25),
+                  ),
+                ),
+                child: Text(
+                  accuracyLabel,
+                  semanticsLabel: hasAccuracy
+                      ? '${_t(context).accuracy} $accuracyLabel'
+                      : _t(context).taNoAccuracyYet,
+                  style: AppTypography.labelSmall.copyWith(
+                    color: HCColor.of(context).readableOver(accuracyColor, accuracyColor.withValues(alpha: 0.25)),
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 4),
-            Icon(Icons.chevron_right_rounded,
-                size: 18, color: hc.textHint),
-          ],
+              const SizedBox(width: 4),
+              Icon(Icons.chevron_right_rounded,
+                  size: 18, color: hc.textHint),
+            ],
+          ),
         ),
       ),
     );
@@ -649,10 +661,15 @@ class _StatChip extends StatelessWidget {
   final String text;
   final Color color;
 
+  /// The number with its meaning, for a screen reader: the icon that says
+  /// "words" or "stars" is silent, so a bare "12" meant nothing.
+  final String spoken;
+
   const _StatChip({
     required this.icon,
     required this.text,
     required this.color,
+    required this.spoken,
   });
 
   @override
@@ -670,11 +687,12 @@ class _StatChip extends StatelessWidget {
           const SizedBox(width: 2),
           Text(
             text,
+            semanticsLabel: spoken,
             style: AppTypography.labelSmall.copyWith(
               color: HCColor.of(
                 context,
               ).readableOver(color, color.withValues(alpha: 0.08)),
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: FontWeight.w600,
             ),
           ),

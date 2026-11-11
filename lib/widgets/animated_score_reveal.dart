@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../core/widgets/auto_fit.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_typography.dart';
 import '../core/utils/responsive_utils.dart';
@@ -221,8 +222,7 @@ class _AnimatedScoreRevealState extends State<AnimatedScoreReveal>
                         const SizedBox(height: 16),
 
                         // ─── Message ──────────────────────
-                        FittedBox(
-                              fit: BoxFit.scaleDown,
+                        AutoFit(
                               child: Text(
                                 tier.headline(l10n),
                                 style: AppTypography.displaySmall.copyWith(
@@ -239,8 +239,7 @@ class _AnimatedScoreRevealState extends State<AnimatedScoreReveal>
                         const SizedBox(height: 6),
 
                         // ─── Encouragement ────────────────
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
+                        AutoFit(
                           child: Text(
                             tier.hint(l10n, hasLevels: widget.hasLevels),
                             style: AppTypography.bodySmall.copyWith(
@@ -327,8 +326,7 @@ class _AnimatedScoreRevealState extends State<AnimatedScoreReveal>
                         // ─── Footnote (e.g. camera-word collection) ──
                         if (widget.footnote != null) ...[
                           const SizedBox(height: 10),
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
+                          AutoFit(
                             child: Text(
                               widget.footnote!,
                               style: AppTypography.bodySmall.copyWith(

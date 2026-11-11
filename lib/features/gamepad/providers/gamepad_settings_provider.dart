@@ -32,6 +32,8 @@ mixin GamepadSettingsEditing {
   void setHoldToRepeat(bool v) => update(current.copyWith(holdToRepeat: v));
   void setRepeatDelayMs(int v) => update(current.copyWith(repeatDelayMs: v));
   void setRepeatRateMs(int v) => update(current.copyWith(repeatRateMs: v));
+  void setLeftStickMoves(bool v) =>
+      update(current.copyWith(leftStickMoves: v));
 }
 
 /// Owns the persisted [GamepadSettings].

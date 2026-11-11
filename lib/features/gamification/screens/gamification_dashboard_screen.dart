@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/widgets/auto_fit.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/responsive_utils.dart';
@@ -18,6 +19,7 @@ import '../../../features/experiment/models/experiment_models.dart';
 import '../../gaze_control/widgets/gaze_dpad_scope.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Learner-facing gamification summary — the "Player Profile" — showing the
 /// level, every gamification metric, and the shortcuts to the reward screens.
@@ -55,7 +57,7 @@ class GamificationDashboardScreen extends ConsumerWidget {
 
     if (profile == null) {
       return Scaffold(
-        appBar: AppBar(title: Text(_t(context).dashboard)),
+        appBar: AppBar(title: AppBarTitle(_t(context).dashboard)),
         body: Center(child: Text(_t(context).setNoProfile)),
       );
     }
@@ -151,7 +153,7 @@ class GamificationDashboardScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: hc.background,
       appBar: AppBar(
-        title: Text(isFilipino ? 'Profile ng Manlalaro' : 'Player Profile'),
+        title: AppBarTitle(isFilipino ? 'Profile ng Manlalaro' : 'Player Profile'),
         centerTitle: true,
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -542,9 +544,11 @@ class _PlayerCard extends StatelessWidget {
               ),
             ),
             child: Center(
-              child: Text(
-                equippedAvatar?.emoji ?? _defaultEmoji(avatarIndex),
-                style: const TextStyle(fontSize: 40),
+              child: ExcludeSemantics(
+                child: Text(
+                  equippedAvatar?.emoji ?? _defaultEmoji(avatarIndex),
+                  style: const TextStyle(fontSize: 40),
+                ),
               ),
             ),
           ),
@@ -557,8 +561,6 @@ class _PlayerCard extends StatelessWidget {
               color: hc.textPrimary,
             ),
             textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
           ),
           // Title
           if (equippedTitle != null) ...[
@@ -611,7 +613,7 @@ class _StatCard extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(stat.emoji, style: const TextStyle(fontSize: 28)),
+            ExcludeSemantics(child: Text(stat.emoji, style: const TextStyle(fontSize: 28))),
             const SizedBox(height: 6),
             FittedBox(
               // The value is the biggest text in the tile; at XL font scales it
@@ -631,14 +633,12 @@ class _StatCard extends StatelessWidget {
             // than `FitText` because this tile sits in a grid that measures
             // intrinsics, where a LayoutBuilder asserts — and a one-line label
             // is exactly what FittedBox handles well.
-            FittedBox(
-              fit: BoxFit.scaleDown,
+            AutoFit(
               child: Text(
                 stat.label,
                 style:
                     AppTypography.labelSmall.copyWith(color: hc.textSecondary),
                 textAlign: TextAlign.center,
-                maxLines: 1,
               ),
             ),
             if (stat.sublabel != null)
@@ -686,9 +686,9 @@ class _ActionChip extends StatelessWidget {
     final minHeight = context.scaledHeightCapped(56, max: 1.6);
 
     return Semantics(
+      container: true,
       button: true,
       label: action.label,
-      excludeSemantics: true,
       child: Stack(
         // Without this the non-positioned Material gets *loose* constraints and
         // shrink-wraps its label, so "Shop" drew a chip half the width of
@@ -701,37 +701,39 @@ class _ActionChip extends StatelessWidget {
             child: InkWell(
               borderRadius: BorderRadius.circular(16),
               onTap: onTap,
-              child: Ink(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: action.color.withValues(alpha: hc.hc ? 1.0 : 0.55),
-                    width: hc.hc ? 2 : 1.5,
-                  ),
-                ),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: minHeight),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
+              child: ExcludeSemantics(
+                child: Ink(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: action.color.withValues(alpha: hc.hc ? 1.0 : 0.55),
+                      width: hc.hc ? 2 : 1.5,
                     ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(action.icon, color: action.color, size: 22),
-                        const SizedBox(height: 4),
-                        Text(
-                          action.label,
-                          style: AppTypography.labelMedium.copyWith(
-                            color: hc.textPrimary,
-                            fontWeight: FontWeight.bold,
+                  ),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: minHeight),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(action.icon, color: action.color, size: 22),
+                          const SizedBox(height: 4),
+                          Text(
+                            action.label,
+                            style: AppTypography.labelMedium.copyWith(
+                              color: hc.textPrimary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),

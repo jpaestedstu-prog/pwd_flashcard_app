@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/widgets/whole_month_title.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -27,6 +28,8 @@ import '../../../core/utils/localized_date.dart';
 import '../models/question_prompt.dart';
 import '../../../core/utils/keyboard.dart';
 import '../../../navigation/nav_extensions.dart';
+import '../../../core/widgets/app_bar_title.dart';
+import '../../../core/widgets/text_limits.dart';
 
 /// Something an educator can hand out.
 ///
@@ -332,6 +335,7 @@ class _AssessmentAssignScreenState
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
+      builder: wholeMonthTitle,
       initialDate: _deadline ?? now.add(const Duration(days: 7)),
       firstDate: now,
       lastDate: now.add(const Duration(days: 365)),
@@ -339,6 +343,7 @@ class _AssessmentAssignScreenState
     if (picked != null && mounted) {
       final time = await showTimePicker(
         context: context,
+        builder: wholeTimePicker,
         initialTime: const TimeOfDay(hour: 23, minute: 59),
       );
       setState(() {
@@ -441,8 +446,8 @@ class _AssessmentAssignScreenState
     return Scaffold(
       backgroundColor: hc.background,
       appBar: AppBar(
-        leading: const AppBackButton(fallbackRoute: '/assessment-hub'),
-        title: Text(
+        leading: const AppBackButton(fallbackRoute: '/assessment'),
+        title: AppBarTitle(
           _tr(context).asgTitle,
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
@@ -614,6 +619,8 @@ class _AssessmentAssignScreenState
                     const SizedBox(height: 8),
                     TextField(
                       controller: _instructionsController,
+                      maxLength: TextLimits.paragraph,
+                      buildCounter: TextLimits.counter,
                       maxLines: 3,
                       decoration: InputDecoration(
                         hintText: _tr(context).asgInstructionsHint,
@@ -697,7 +704,13 @@ class _AssessmentTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
+    // A button, and whether it is the one chosen: the tile was read as plain
+    // words that a double tap happened to act on.
+    return Semantics(
+      container: true,
+      button: true,
+      selected: selected,
+      child: Material(
       color: selected
           ? AppColors.primary.withValues(alpha: 0.12)
           : hc.surface,
@@ -718,13 +731,15 @@ class _AssessmentTile extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Text(
-                item.isQuiz
-                    ? '🧩'
-                    : (item.instrument ?? item.assessment?.type ??
-                              AssessmentType.custom)
-                          .emoji,
-                style: const TextStyle(fontSize: 28),
+              ExcludeSemantics(
+                child: Text(
+                  item.isQuiz
+                      ? '🧩'
+                      : (item.instrument ?? item.assessment?.type ??
+                                AssessmentType.custom)
+                            .emoji,
+                  style: const TextStyle(fontSize: 28),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -753,7 +768,9 @@ class _AssessmentTile extends StatelessWidget {
                       style: AppTypography.bodySmall.copyWith(
                         color: hc.textSecondary,
                       ),
-                      maxLines: 1,
+                      // Three lines: one cut "15 questions • made fresh
+                      // when you assign" on a phone (3 Nov).
+                      maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
@@ -765,6 +782,7 @@ class _AssessmentTile extends StatelessWidget {
             ],
           ),
         ),
+      ),
       ),
     );
   }
@@ -790,9 +808,11 @@ class _EmptyStudents extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              isParent ? '👨‍👩‍👧' : '👩‍🎓',
-              style: const TextStyle(fontSize: 64),
+            ExcludeSemantics(
+              child: Text(
+                isParent ? '👨‍👩‍👧' : '👩‍🎓',
+                style: const TextStyle(fontSize: 64),
+              ),
             ),
             const SizedBox(height: 16),
             Text(

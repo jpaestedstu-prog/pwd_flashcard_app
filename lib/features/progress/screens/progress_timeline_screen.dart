@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/widgets/auto_fit.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/services/session_tracker.dart';
@@ -15,6 +16,7 @@ import '../../../widgets/app_back_button.dart';
 import '../../../core/widgets/fit_text.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../l10n/app_localizations_en.dart';
+import '../../../core/widgets/app_bar_title.dart';
 
 /// Full-screen timeline view for a single student.
 ///
@@ -55,7 +57,7 @@ class ProgressTimelineScreen extends ConsumerWidget {
             return true;
           },
         ),
-        title: Text(
+        title: AppBarTitle(
           _t(context).ptTitle(profileName),
           style: AppTypography.titleMedium.copyWith(
             fontWeight: FontWeight.w700,
@@ -216,11 +218,16 @@ class _MiniStat extends StatelessWidget {
               fontWeight: FontWeight.w800,
             ),
           ),
-          Text(
-            label,
-            style: AppTypography.labelSmall.copyWith(
-              color: HCColor.of(context).textSecondary,
-              fontSize: 10,
+          // Whole, a little smaller where a third of a phone is too
+          // narrow for it ("Strea / k" at the largest text size).
+          AutoFit(
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: AppTypography.labelSmall.copyWith(
+                color: HCColor.of(context).textSecondary,
+                fontSize: 11,
+              ),
             ),
           ),
         ],
@@ -292,7 +299,15 @@ class _AccuracyTrendChart extends StatelessWidget {
             style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
           ),
           const SizedBox(height: 20),
-          SizedBox(
+          // What the line comes to: a reader was told the dates and the scale.
+          Semantics(
+            label: _t(context).chartScoresSummary(
+              spots.length,
+              (spots.fold<double>(0, (a, b) => a + b.y) / spots.length).round(),
+              spots.last.y.round(),
+            ),
+            excludeSemantics: true,
+            child: SizedBox(
             height: 200,
             child: LineChart(
               LineChartData(
@@ -332,7 +347,7 @@ class _AccuracyTrendChart extends StatelessWidget {
                           child: Text(
                             '${day.month}/${day.day}',
                             style: AppTypography.labelSmall.copyWith(
-                              fontSize: 9,
+                              fontSize: 11,
                               color: hc.textSecondary,
                             ),
                           ),
@@ -348,7 +363,7 @@ class _AccuracyTrendChart extends StatelessWidget {
                       getTitlesWidget: (value, meta) => Text(
                         '${value.toInt()}%',
                         style: AppTypography.labelSmall.copyWith(
-                          fontSize: 9,
+                          fontSize: 11,
                           color: hc.textSecondary,
                         ),
                       ),
@@ -383,7 +398,7 @@ class _AccuracyTrendChart extends StatelessWidget {
                 ),
               ),
             ),
-          ),
+          )),
         ],
       ),
     );
@@ -467,7 +482,10 @@ class _StudyTimeChart30 extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
-          SizedBox(
+          Semantics(
+            label: _t(context).chartStudySummary(totalMinutes.round()),
+            excludeSemantics: true,
+            child: SizedBox(
             height: 160,
             child: BarChart(
               BarChartData(
@@ -502,7 +520,7 @@ class _StudyTimeChart30 extends StatelessWidget {
                           child: Text(
                             '${date.month}/${date.day}',
                             style: AppTypography.labelSmall.copyWith(
-                              fontSize: 8,
+                              fontSize: 11,
                               color: hc.textSecondary,
                             ),
                           ),
@@ -517,7 +535,7 @@ class _StudyTimeChart30 extends StatelessWidget {
                       getTitlesWidget: (value, meta) => Text(
                         '${value.toInt()}',
                         style: AppTypography.labelSmall.copyWith(
-                          fontSize: 9,
+                          fontSize: 11,
                           color: hc.textSecondary,
                         ),
                       ),
@@ -551,7 +569,7 @@ class _StudyTimeChart30 extends StatelessWidget {
                 }),
               ),
             ),
-          ),
+          )),
         ],
       ),
     );

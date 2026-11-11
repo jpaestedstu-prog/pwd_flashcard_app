@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../core/widgets/fit_text.dart';
 import '../core/theme/app_typography.dart';
+import '../core/widgets/auto_fit.dart';
 import '../core/utils/responsive_utils.dart';
 import '../data/models/enums.dart';
 import '../l10n/app_localizations.dart';
@@ -58,7 +60,9 @@ class _EnhancedCategoryCardState extends State<EnhancedCategoryCard>
         onTapDown: (_) => setState(() => _pressed = true),
         onTapUp: (_) => setState(() => _pressed = false),
         onTapCancel: () => setState(() => _pressed = false),
-        child: Pressable3D(
+        // Said once, by the label above: its name, word count and percentage
+        // were read again after it.
+        child: ExcludeSemantics(child: Pressable3D(
           pressScale: 0.95,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 160),
@@ -142,8 +146,7 @@ class _EnhancedCategoryCardState extends State<EnhancedCategoryCard>
                                 const SizedBox(height: 10),
                                 Flexible(
                                   flex: 2,
-                                  child: FittedBox(
-                                    fit: BoxFit.scaleDown,
+                                  child: AutoFit(
                                     child: Text(
                                       widget.category.labelOf(t),
                                       style: AppTypography.titleMedium.copyWith(
@@ -161,7 +164,10 @@ class _EnhancedCategoryCardState extends State<EnhancedCategoryCard>
                                         ],
                                       ),
                                       textAlign: TextAlign.center,
-                                      maxLines: 1,
+                                      // Two lines, or "Mga Bahagi ng
+                                      // Katawan" shrank to 9 px to stay
+                                      // on one.
+                                      maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
@@ -173,30 +179,38 @@ class _EnhancedCategoryCardState extends State<EnhancedCategoryCard>
                           // Bottom: word count (left) + progress chip (right),
                           // mirroring the Flashcards deck card so the two
                           // surfaces read as one family.
-                          Row(
+                          LayoutBuilder(builder: (context, box) => Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Flexible(
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(
-                                      Icons.auto_stories_rounded,
-                                      size: context.scaleIcon(14),
-                                      color: Colors.white.withValues(alpha: 0.8),
-                                    ),
-                                    const SizedBox(width: 4),
+                                    // Only decoration: on a narrow card at
+                                    // a large Font Size it took the room
+                                    // "20 words" needed (6 px, 8 Nov).
+                                    if (box.maxWidth >=
+                                        110 * MediaQuery.textScalerOf(context).scale(1)) ...[
+                                      Icon(
+                                        Icons.auto_stories_rounded,
+                                        size: context.scaleIcon(14),
+                                        color: Colors.white.withValues(alpha: 0.8),
+                                      ),
+                                      const SizedBox(width: 4),
+                                    ],
+                                    // Whole, a little smaller where the
+                                    // card is narrow: "12 salita" was cut
+                                    // beside the progress chip (3 Nov).
                                     Flexible(
-                                      child: Text(
+                                      child: FitText(
                                         t.catCardWords(widget.wordCount),
+                                        maxLines: 1,
                                         style: AppTypography.labelSmall.copyWith(
                                           color: Colors.white.withValues(
                                             alpha: 0.9,
                                           ),
                                           fontWeight: FontWeight.w600,
                                         ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                   ],
@@ -221,7 +235,7 @@ class _EnhancedCategoryCardState extends State<EnhancedCategoryCard>
                                 ),
                               ),
                             ],
-                          ),
+                          )),
                           const SizedBox(height: 10),
                           _MiniProgressBar(progress: widget.progress),
                         ],
@@ -232,7 +246,7 @@ class _EnhancedCategoryCardState extends State<EnhancedCategoryCard>
               ),
             ),
           ),
-        ),
+        )),
       ),
       ),
     );
