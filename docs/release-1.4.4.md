@@ -120,3 +120,40 @@ no release file.
   but some brief one-time effects (a card fading in once) still play.
 - The TV Cast screen's back button is named "Back"; most screens say
   "Go back". Both are read correctly.
+
+## Published
+
+Published 12 November 2026 (00:00 Philippine time), with the owner's
+go-ahead, from the tested files only:
+
+- Release **v1.4.4** (Latest) on e5f8fec, which adds the website's download
+  section, changelog and version.json to the release commit 7bb87b0. Its
+  three APKs went up over a phone hotspot in about 17 minutes, and GitHub's
+  SHA-256 of each equals the table above.
+- The website and web app went to gh-pages **1c22d18** (from 0730853): the
+  `website/` folder of e5f8fec, and the web app built for 1.4.4 under `app/`.
+- Live checks: ten site files byte-identical to 1c22d18, each download link
+  answering with the right size, and the arm64 APK downloaded whole with the
+  tested SHA-256 (14/14); the live home and download pages name 1.4.4 and
+  carry the three checksums, and the live web app reaches its first screen
+  with no errors as a desktop and as a phone (10/10).
+
+GitHub's workflows on 7a46301, the commit after the release: Web passed;
+Android built the release APKs and passed both upright walkthroughs, but two
+checks failed, neither of them in the published app:
+
+- The sideways walkthroughs (phone and tablet) found Settings empty behind
+  "Something went wrong". Held sideways, the walk skips the camera checks
+  and goes straight from the card viewer to Settings; the text-box focus
+  release new in 1.4.4 then looked up the widget tree from a widget leaving
+  it in that same frame. Only a debug build checks that, and its error
+  locked the screen stack; a release build does not. On the Honor, the
+  published APK held sideways shows all of Settings with no error.
+- One layout test failed on GitHub's Linux machines only. It rounded the
+  five viewer buttons' label positions, which sit exactly on a half pixel at
+  320×568 and 1.5× text, and Linux's font measurements split them into two
+  "rows". The buttons are on one row.
+
+The next commit fixes both, in debug builds and tests only; no release file
+changes. On an Android 13 emulator the sideways walkthrough found 6 problems
+before the fix (as on GitHub) and none after.
