@@ -122,11 +122,10 @@ html, body {
   flex-direction: column;
   align-items: center;
   overflow: hidden;
+  -webkit-transform-origin: 50% 50%;
   transform-origin: 50% 50%;
-  /* 3D flip-in entrance — the TV analog of the in-app flip card's
-     easeOutBack scale/rotate reveal. Self-perspective() keeps it to a single
-     element. Old browsers that can't parse the transform still fade in. */
-  animation: cardFlipIn 0.6s cubic-bezier(0.2, 0.7, 0.2, 1.02) both;
+  /* The entrance (grow + fade, and the slide of the whole deck) lives in the
+     "Card motion" block below — it is the app's, not the card's own. */
 }
 
 /* The real card content sits above the blobs and below the shine sweep. */
@@ -151,14 +150,14 @@ html, body {
 
 /* ── Decorative tinted corner blobs (behind the content) ──
    The TV analog of the in-app card's soft corner circles. The pastel tint is
-   applied inline; they drift very slowly and are clipped to the card's rounded
-   corners by `.fcard { overflow: hidden }`. */
+   applied inline; they are clipped to the card's rounded corners by
+   `.fcard { overflow: hidden }`. Still, like the app's: a card that never
+   stops moving is no card a learner can settle on. */
 .fcard-blob {
   position: absolute;
   z-index: 0;
   border-radius: 50%;
   opacity: 0.3;
-  animation: blobFloat 6s ease-in-out infinite;
 }
 
 .fcard-blob-tr { top: -8vh; right: -7vh; width: 26vh; height: 26vh; }
@@ -168,30 +167,6 @@ html, body {
   left: -6vh;
   width: 18vh;
   height: 18vh;
-  animation-delay: -3s;
-}
-
-/* ── One-shot glossy light sweep ──
-   Mirrors the glossy highlight that slides across the in-app card during its
-   3D flip. Runs once, just after the card lands. The base transform parks it
-   off the left edge so reduced-motion / Calm (which null out `animation`)
-   never leave a bright band sitting on the card. */
-.fcard-shine {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 45%;
-  z-index: 2;
-  pointer-events: none;
-  background: linear-gradient(
-    100deg,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.55) 50%,
-    rgba(255, 255, 255, 0) 100%
-  );
-  transform: translateX(-160%) skewX(-12deg);
-  animation: cardShine 1.1s ease-out 0.45s both;
 }
 
 /* Category badge: emoji + label, tinted with the category colours inline. */
@@ -222,18 +197,20 @@ html, body {
   align-items: center;
   justify-content: center;
   margin-bottom: 3.5vh;
-  -webkit-perspective: 1200px;
-  perspective: 1200px;
+  -webkit-perspective: 1000px;
+  perspective: 1000px;
 }
 
 .fcard-pic-emoji { font-size: 20vh; line-height: 1; }
 
 /* ── Emoji⇄photo 3D flip (the TV analog of the in-app "Cards" flip) ──
    Two stacked faces inside the tile: the emoji (front) and the real photo /
-   GIF (back, pre-rotated 180°). app.js adds `.is-flipped` once the photo has
-   loaded, rotating the card to reveal it. The 0.66s easeOut curve mirrors the
-   in-app card's 650ms easeOutBack reveal. reduced-motion / Calm null the
-   transition below, so the photo then appears instantly. */
+   GIF (back, pre-rotated 180°). app.js adds `.is-flipped` when the phone's
+   Flip (or the remote's OK) asks, rotating the card to reveal it. Exactly the
+   app's flip: 650 ms on Flutter's easeOutBack — cubic-bezier(0.175, 0.885,
+   0.32, 1.275), overshoot and all — with the 1000px perspective of its
+   Matrix4 setEntry(3, 2, 0.001). Reduced motion gets the app's 80 ms linear
+   turn (see "Reduced motion" below); the Calm template, none. */
 .fcard-flip {
   position: relative;
   width: 100%;
@@ -241,8 +218,8 @@ html, body {
   border-radius: inherit;
   -webkit-transform-style: preserve-3d;
   transform-style: preserve-3d;
-  -webkit-transition: -webkit-transform 0.66s cubic-bezier(0.2, 0.7, 0.2, 1.02);
-  transition: transform 0.66s cubic-bezier(0.2, 0.7, 0.2, 1.02);
+  -webkit-transition: -webkit-transform 0.65s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: transform 0.65s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .fcard-flip.is-flipped {
@@ -337,53 +314,133 @@ html, body {
 
 .fcard-example .quote { font-weight: 900; font-style: normal; }
 
-/* ── Staggered entrance for the card's inner content ──
-   Each element rises + fades in turn, echoing the in-app card's reveal, while
-   the word's emoji pops with a springy overshoot. Base styles stay fully
-   visible, so reduced-motion / Calm (which null out `animation`) show
-   everything immediately with no leftover hidden state. */
-.fcard-badge     { animation: cardRise 0.5s ease 0.10s both; }
-.fcard-pic       { animation: cardRise 0.5s ease 0.18s both; }
-.fcard-pic-emoji {
-  display: inline-block; /* transforms are ignored on plain inline spans */
-  animation: popIn 0.6s cubic-bezier(0.18, 0.89, 0.32, 1.28) 0.30s both;
+/* ── Card motion — the app's, frame for frame ──
+   In the app the cards sit in a page view: the next card slides in from the
+   right while the old one slides out to the left (400 ms, easeOutCubic =
+   cubic-bezier(0.215, 0.61, 0.355, 1)), and the card that arrives grows from
+   92% to full size (400 ms, easeOutBack, with its little overshoot) while it
+   fades in (300 ms, linear). app.js keeps the outgoing card on stage for the
+   length of the slide (`.fc-leaving`, laid over the stage) and gives the new
+   one `.fc-in-next` / `.fc-in-prev`; a first card, a new category or a card
+   coming back from a clip only grows and fades (`.fc-in`), as the app's first
+   page does. Everything is prefixed for the older WebKit inside smart TVs;
+   a browser that runs no animation at all simply shows the card. */
+#stage {
+  position: relative;
+  overflow: hidden;
 }
-.fcard-word-en   { animation: cardRise 0.5s ease 0.30s both; }
-.fcard-word-fil  { animation: cardRise 0.5s ease 0.40s both; }
-.fcard-example   { animation: cardRise 0.5s ease 0.50s both; }
+#stage:focus { outline: none; }
 
-@keyframes cardFlipIn {
-  0% {
-    opacity: 0;
-    transform: perspective(1600px) rotateY(-24deg) translateY(3vh) scale(0.92);
-  }
-  60% { opacity: 1; }
-  100% {
-    opacity: 1;
-    transform: perspective(1600px) rotateY(0deg) translateY(0) scale(1);
-  }
+.slide.fc-card {
+  /* The generic `.slide` fade-up is replaced by the motion below. */
+  -webkit-animation: none;
+  animation: none;
 }
 
+.fc-in .fcard,
+.fc-in-next .fcard,
+.fc-in-prev .fcard {
+  -webkit-animation: fcGrow 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both,
+    fcFade 0.3s linear both;
+  animation: fcGrow 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both,
+    fcFade 0.3s linear both;
+}
+
+/* `.slide.` on each: the same weight as `.slide.fc-card` above, and later in
+   the file, so these win over its "no animation". */
+.slide.fc-in-next {
+  -webkit-animation: fcFromRight 0.4s cubic-bezier(0.215, 0.61, 0.355, 1) both;
+  animation: fcFromRight 0.4s cubic-bezier(0.215, 0.61, 0.355, 1) both;
+}
+.slide.fc-in-prev {
+  -webkit-animation: fcFromLeft 0.4s cubic-bezier(0.215, 0.61, 0.355, 1) both;
+  animation: fcFromLeft 0.4s cubic-bezier(0.215, 0.61, 0.355, 1) both;
+}
+
+/* The card on its way out: laid over the stage exactly where it was, so the
+   new card's layout never moves, and removed by app.js once it is gone. */
+.fc-leaving {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+.slide.fc-out-next {
+  -webkit-animation: fcToLeft 0.4s cubic-bezier(0.215, 0.61, 0.355, 1) both;
+  animation: fcToLeft 0.4s cubic-bezier(0.215, 0.61, 0.355, 1) both;
+}
+.slide.fc-out-prev {
+  -webkit-animation: fcToRight 0.4s cubic-bezier(0.215, 0.61, 0.355, 1) both;
+  animation: fcToRight 0.4s cubic-bezier(0.215, 0.61, 0.355, 1) both;
+}
+/* Rebuilt from a copy, so nothing inside may replay its own entrance. */
+.fc-leaving * {
+  -webkit-animation: none !important;
+  animation: none !important;
+  -webkit-transition: none !important;
+  transition: none !important;
+}
+
+@-webkit-keyframes fcGrow {
+  from { -webkit-transform: scale(0.92); }
+  to   { -webkit-transform: scale(1); }
+}
+@keyframes fcGrow {
+  from { -webkit-transform: scale(0.92); transform: scale(0.92); }
+  to   { -webkit-transform: scale(1); transform: scale(1); }
+}
+@-webkit-keyframes fcFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes fcFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@-webkit-keyframes fcFromRight {
+  from { -webkit-transform: translateX(100%); }
+  to   { -webkit-transform: translateX(0); }
+}
+@keyframes fcFromRight {
+  from { -webkit-transform: translateX(100%); transform: translateX(100%); }
+  to   { -webkit-transform: translateX(0); transform: translateX(0); }
+}
+@-webkit-keyframes fcFromLeft {
+  from { -webkit-transform: translateX(-100%); }
+  to   { -webkit-transform: translateX(0); }
+}
+@keyframes fcFromLeft {
+  from { -webkit-transform: translateX(-100%); transform: translateX(-100%); }
+  to   { -webkit-transform: translateX(0); transform: translateX(0); }
+}
+@-webkit-keyframes fcToLeft {
+  from { -webkit-transform: translateX(0); }
+  to   { -webkit-transform: translateX(-100%); }
+}
+@keyframes fcToLeft {
+  from { -webkit-transform: translateX(0); transform: translateX(0); }
+  to   { -webkit-transform: translateX(-100%); transform: translateX(-100%); }
+}
+@-webkit-keyframes fcToRight {
+  from { -webkit-transform: translateX(0); }
+  to   { -webkit-transform: translateX(100%); }
+}
+@keyframes fcToRight {
+  from { -webkit-transform: translateX(0); transform: translateX(0); }
+  to   { -webkit-transform: translateX(100%); transform: translateX(100%); }
+}
+
+/* The story picture's entrance (kept from before; not a flashcard). */
+@-webkit-keyframes cardRise {
+  from { opacity: 0; -webkit-transform: translateY(2.4vh); }
+  to   { opacity: 1; -webkit-transform: translateY(0); }
+}
 @keyframes cardRise {
   from { opacity: 0; transform: translateY(2.4vh); }
   to   { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes popIn {
-  0%   { opacity: 0; transform: scale(0.4); }
-  70%  { opacity: 1; transform: scale(1.12); }
-  100% { opacity: 1; transform: scale(1); }
-}
-
-@keyframes blobFloat {
-  0%, 100% { transform: translate(0, 0); }
-  50%      { transform: translate(0, -1.4vh); }
-}
-
-@keyframes cardShine {
-  0%   { transform: translateX(-160%) skewX(-12deg); opacity: 0; }
-  12%  { opacity: 1; }
-  100% { transform: translateX(330%) skewX(-12deg); opacity: 0; }
 }
 
 /* ─── FSL video ────────────────────────────────── */
@@ -511,10 +568,10 @@ html, body {
    that ship a picture pair the emoji is dropped and BOTH pictures sit above the
    title, stacked as two faces of a 3D flip (cartoon front, real photo back,
    pre-rotated 180°). The flip is driven by the phone's "Tap to Flip Animation"
-   button (the TV is a passive display), animating the same ~0.66s easeOut reveal
-   as the flashcard emoji⇄photo flip. Prefixed for old Android WebKit / smart-TV
-   browsers; the global reduce-motion / Calm rule nulls the transition so the
-   picture then appears instantly. */
+   button (or the remote's OK), animating the in-app story picture's own flip
+   (StoryImageFlip): 650 ms easeOutBack, 1000px perspective — the same as the
+   flashcard emoji⇄photo flip. Prefixed for old Android WebKit / smart-TV
+   browsers; reduced motion turns it in 80 ms, the Calm template instantly. */
 .story-pic {
   position: relative;
   width: 46vh;
@@ -522,8 +579,9 @@ html, body {
   max-width: 80vw;
   margin: 0 auto 3.5vh auto;
   border-radius: 3vh;
-  -webkit-perspective: 1400px;
-  perspective: 1400px;
+  -webkit-perspective: 1000px;
+  perspective: 1000px;
+  -webkit-animation: cardRise 0.5s ease 0.06s both;
   animation: cardRise 0.5s ease 0.06s both;
 }
 
@@ -534,8 +592,8 @@ html, body {
   border-radius: inherit;
   -webkit-transform-style: preserve-3d;
   transform-style: preserve-3d;
-  -webkit-transition: -webkit-transform 0.66s cubic-bezier(0.2, 0.7, 0.2, 1.02);
-  transition: transform 0.66s cubic-bezier(0.2, 0.7, 0.2, 1.02);
+  -webkit-transition: -webkit-transform 0.65s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: transform 0.65s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .story-flip.is-flipped {
@@ -989,9 +1047,14 @@ body.text-xl.lang-fil .story-text-fil { font-size: 8.5vh; }
 
 /* ─── Entrance animation (gracefully ignored by old browsers) ─── */
 .slide, .story, .fsl-wrap, .board {
+  -webkit-animation: fadeIn 0.45s ease both;
   animation: fadeIn 0.45s ease both;
 }
 
+@-webkit-keyframes fadeIn {
+  from { opacity: 0; -webkit-transform: translateY(2.5vh); }
+  to   { opacity: 1; -webkit-transform: none; }
+}
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(2.5vh); }
   to   { opacity: 1; transform: none; }
@@ -1167,6 +1230,133 @@ body.text-xl.lang-fil .story-text-fil { font-size: 8.5vh; }
 
 .hand-chip::before { content: "✋ "; }
 
+/* ─── Who the cast is for ("For: Hearing Class · Cognitive Class") ───
+   Under the progress board's heading and over the live question: the class /
+   group picker on the phone, so the room can see whose screen this is. */
+.board-for,
+.live-for {
+  font-size: 2.8vh;
+  font-weight: 700;
+  color: #94a3b8;
+  margin: -1vh 0 2.4vh;
+  text-align: center;
+}
+.live-wait .live-for { margin: 2vh 0 0; }
+body.theme-light .board-for, body.theme-light .live-for,
+body.theme-classroom .board-for, body.theme-classroom .live-for,
+body.theme-playful .board-for, body.theme-playful .live-for,
+body.theme-calm .board-for, body.theme-calm .live-for,
+body.theme-seasonal .board-for, body.theme-seasonal .live-for { color: #475569; }
+body.theme-dyslexia .board-for, body.theme-dyslexia .live-for { color: #5c5c5c; }
+body.theme-highContrast .board-for,
+body.theme-highContrast .live-for { color: #ffff00; }
+
+/* ─── Sound is playing ─────────────────────────────────
+   A small speaker in the bottom-left corner while the TV says a word, so the
+   room — and a teacher who can't hear it — can see that it is talking. */
+.say-indicator {
+  position: fixed;
+  left: 3vh;
+  bottom: 3vh;
+  z-index: 45;
+  padding: 1.2vh 2vh;
+  border-radius: 5vh;
+  background: rgba(0, 0, 0, 0.55);
+  font-size: 3.2vh;
+  line-height: 1;
+}
+body.theme-highContrast .say-indicator {
+  background: #000000;
+  border: 0.3vh solid #ffffff;
+}
+
+/* ─── TV remote: the note a key press leaves, and the key list ───
+   Both sit low and centred, clear of the clock (top right), the branding
+   (top left), the counter (bottom right) and the speaker (bottom left). Dark
+   chips with white type, so they read on every template. */
+.remote-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 4vh;
+  -webkit-transform: translateX(-50%);
+  transform: translateX(-50%);
+  z-index: 60;
+  max-width: 80vw;
+  padding: 1.4vh 3.2vh;
+  border-radius: 5vh;
+  background: rgba(15, 23, 42, 0.88);
+  color: #ffffff;
+  font-size: 3vh;
+  font-weight: 800;
+  text-align: center;
+}
+.remote-help {
+  position: fixed;
+  left: 50%;
+  bottom: 11vh;
+  -webkit-transform: translateX(-50%);
+  transform: translateX(-50%);
+  z-index: 60;
+  max-width: 88vw;
+  padding: 2vh 3vh 2.4vh;
+  border-radius: 2.4vh;
+  background: rgba(15, 23, 42, 0.92);
+  border: 0.3vh solid rgba(148, 163, 184, 0.45);
+  color: #ffffff;
+  text-align: left;
+  box-shadow: 0 1vh 4vh rgba(0, 0, 0, 0.45);
+}
+.remote-help .rh-title {
+  font-size: 2.6vh;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #cbd5e1;
+  margin-bottom: 1.2vh;
+}
+.remote-help .rh-off {
+  font-size: 2.6vh;
+  font-weight: 700;
+  color: #fbbf24;
+  margin-bottom: 1.2vh;
+}
+.remote-help .rh-rows {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-flex-wrap: wrap;
+  flex-wrap: wrap;
+  margin: -0.6vh -1.4vh;
+}
+.remote-help .rh-row {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-align-items: center;
+  align-items: center;
+  margin: 0.6vh 1.4vh;
+  font-size: 2.8vh;
+  font-weight: 700;
+}
+.remote-help .rh-key {
+  display: inline-block;
+  min-width: 6vh;
+  margin-right: 1.2vh;
+  padding: 0.5vh 1.2vh;
+  border-radius: 1vh;
+  border: 0.25vh solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.12);
+  text-align: center;
+  font-weight: 900;
+}
+body.theme-highContrast .remote-toast,
+body.theme-highContrast .remote-help {
+  background: #000000;
+  border: 0.3vh solid #ffffff;
+}
+body.theme-highContrast .remote-help .rh-title { color: #ffff00; }
+body.theme-highContrast .remote-help .rh-key { border-color: #ffff00; color: #ffff00; }
+
 /* ───────────────────────────────────────────────────────────────
    THEMES
    Colours are scoped per `body.theme-*` class with explicit values
@@ -1274,9 +1464,8 @@ body.theme-highContrast .fcard-word-en { color: #ffffff; }
 body.theme-highContrast .fcard-word-fil { color: #ffff00 !important; }
 body.theme-highContrast .fcard-example { color: #ffffff; }
 body.theme-highContrast .fcard-example .quote { color: #ffff00 !important; }
-/* Drop the tinted blobs + glossy sheen — keep the strict black/white/yellow. */
-body.theme-highContrast .fcard-blob,
-body.theme-highContrast .fcard-shine { display: none; }
+/* Drop the tinted blobs — keep the strict black/white/yellow. */
+body.theme-highContrast .fcard-blob { display: none; }
 /* Action GIF gets a white frame in the strict high-contrast palette. */
 body.theme-highContrast .clip-gif { border: 0.6vh solid #ffffff; }
 
@@ -1366,9 +1555,21 @@ body.theme-highContrast .hands-banner .hand-chip {
 /* Honour the app's reduced-motion setting (and the Calm template). */
 body.reduce-motion *,
 body.theme-calm * {
+  -webkit-animation: none !important;
   animation: none !important;
+  -webkit-transition: none !important;
   transition: none !important;
 }
+/* …except the flip, which in the app's reduced motion still turns — in 80 ms,
+   linear — so the change of face is seen rather than a jump cut. */
+body.reduce-motion .fcard-flip,
+body.reduce-motion .story-flip {
+  -webkit-transition: -webkit-transform 0.08s linear !important;
+  transition: transform 0.08s linear !important;
+}
+/* app.js never keeps an outgoing card here; this is the belt to that brace. */
+body.reduce-motion .fc-leaving,
+body.theme-calm .fc-leaving { display: none; }
 
 /* ───────────────────────────────────────────────────────────────
    LIGHT-BACKGROUND TEMPLATES (classroom / playful / calm / seasonal)
@@ -1473,11 +1674,8 @@ body.theme-playful .story,
 body.theme-playful .live, body.theme-playful .board {
   animation: bounceIn 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28) both;
 }
-/* Playful: the flashcard flips in with extra bounce + livelier blobs (the
-   .slide stays a plain fade so its scale doesn't compound with the flip). */
-body.theme-playful .fcard {
-  animation: cardFlipIn 0.62s cubic-bezier(0.18, 0.89, 0.32, 1.28) both;
-}
+/* Playful: livelier blobs. The card moves as on every template — the app's
+   own page-view slide — so the class sees one way of turning a card. */
 body.theme-playful .fcard-blob { opacity: 0.42; }
 @keyframes bounceIn {
   0%   { opacity: 0; transform: scale(0.85); }
@@ -1627,7 +1825,6 @@ body.big-picture .fcard {
 /* Everything that decorates the card rather than teaching the word. */
 body.big-picture .fcard-accent,
 body.big-picture .fcard-blob,
-body.big-picture .fcard-shine,
 body.big-picture .fcard-badge,
 body.big-picture .fcard-example { display: none; }
 
