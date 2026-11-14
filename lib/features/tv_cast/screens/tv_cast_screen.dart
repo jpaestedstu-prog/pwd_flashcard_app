@@ -29,6 +29,7 @@ import '../providers/tv_cast_provider.dart';
 import '../services/tv_cast_asset_bridge.dart';
 import '../services/tv_cast_ip_discovery.dart';
 import '../services/tv_cast_prewarm.dart';
+import '../widgets/tv_cast_group_picker.dart';
 import '../widgets/tv_cast_live_panel.dart';
 import '../widgets/tv_cast_qr_card.dart';
 import '../widgets/tv_cast_remote_controls.dart';
@@ -301,6 +302,15 @@ class _TvCastScreenState extends ConsumerState<TvCastScreen> {
                   onStart: _start,
                   error: state.startError,
                 ),
+                // Who the cast is for can be set up before it starts — it is
+                // saved, so a teacher with one class picks it once.
+                const SizedBox(height: _sectionGap),
+                _SectionLabel(
+                  _t(context).tcgSection,
+                  subtitle: _t(context).tcgSectionSub,
+                ),
+                const SizedBox(height: _headerGap),
+                const TvCastGroupPicker(),
                 // Only while idle: mid-cast the educator needs the controls,
                 // not a look back at last week.
                 const _CastHistory(),
@@ -316,6 +326,15 @@ class _TvCastScreenState extends ConsumerState<TvCastScreen> {
                   const SizedBox(height: AppSpacing.md),
                   const _AwayNotice(),
                 ],
+                // Which classes / groups the cast is for — changeable mid-cast;
+                // the progress board, a live activity and the TV follow it.
+                const SizedBox(height: _sectionGap),
+                _SectionLabel(
+                  _t(context).tcgSection,
+                  subtitle: _t(context).tcgSectionSub,
+                ),
+                const SizedBox(height: _headerGap),
+                const TvCastGroupPicker(),
                 // Every block below follows the educator Home's rhythm: an
                 // uppercase section header, one fixed gap, then a grid or a
                 // panel of equal-sized blocks — never a loose Wrap. The two
@@ -1826,15 +1845,104 @@ class _TvRemoteControl extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notifier = ref.read(tvCastSessionProvider.notifier);
+    final hc = HCColor.of(context);
+    final t = _t(context);
 
-    return ProSwitchTile(
-      icon: Icons.settings_remote_rounded,
-      label: _t(context).tcRemoteLabel,
-      value: state.tvRemoteEnabled,
-      onChanged: notifier.setTvRemoteEnabled,
-      caption: state.tvRemoteEnabled
-          ? _t(context).tcRemoteOn
-          : _t(context).tcRemoteOff,
+    // The keys, so a teacher knows what the remote in their hand does before
+    // standing at the board with it. The TV shows the same list on Info/Menu.
+    final keys = <(String, String, String)>[
+      ('◀ ▶', t.tcKeyArrowsName, t.tcKeyArrows),
+      ('OK', 'OK', t.tcKeyOk),
+      ('▲', t.tcKeyUpName, t.tcKeyUp),
+      ('▼', t.tcKeyDownName, t.tcKeyDown),
+      ('▶❚❚', t.tcKeyPlayName, t.tcKeyPlay),
+      ('Back', 'Back', t.tcKeyBack),
+      ('Info', t.tcKeyInfoName, t.tcKeyInfo),
+    ];
+
+    return ProPanel(
+      padding: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ProSwitchTile(
+            standalone: false,
+            icon: Icons.settings_remote_rounded,
+            label: t.tcRemoteLabel,
+            value: state.tvRemoteEnabled,
+            onChanged: notifier.setTvRemoteEnabled,
+            caption: state.tvRemoteEnabled ? t.tcRemoteOn : t.tcRemoteOff,
+          ),
+          if (state.tvRemoteEnabled) ...[
+            Divider(height: 1, color: hc.border),
+            Padding(
+              padding: AppSpacing.paddingMd,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _MiniLabel(
+                    icon: Icons.keyboard_rounded,
+                    text: t.tcKeysTitle,
+                    hc: hc,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  for (final (cap, name, action) in keys)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 3),
+                      // The key's name is said, not its symbol: a screen
+                      // reader skips "◀" and "▲" (and strips pictographs).
+                      child: Semantics(
+                        container: true,
+                        label: '$name: $action',
+                        child: ExcludeSemantics(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                constraints: const BoxConstraints(minWidth: 56),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: hc.primary.withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: hc.primary.withValues(alpha: 0.35),
+                                  ),
+                                ),
+                                child: Text(
+                                  cap,
+                                  style: AppTypography.labelMedium.copyWith(
+                                    color: hc.primary,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: AppSpacing.sm),
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.only(top: 3),
+                                  child: Text(
+                                    action,
+                                    style: AppTypography.bodySmall.copyWith(
+                                      color: hc.textSecondary,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -2680,6 +2788,41 @@ class _AudioControls extends ConsumerWidget {
                 _t(context).tcVideoSoundNote,
             value: state.tvVideoSoundEnabled,
             onChanged: notifier.setTvVideoSound,
+          ),
+          Divider(height: 1, color: hc.border),
+          // Outside the "speak words" switch on purpose: the speed applies to
+          // the sign and "Show Me" clips too, which play with speech off.
+          Padding(
+            padding: AppSpacing.paddingMd,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _MiniLabel(
+                  icon: Icons.speed_rounded,
+                  text: _t(context).tcSpeed,
+                  hc: hc,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                ProButtonRow(
+                  minCellWidth: 104,
+                  children: [
+                    for (final s in CastPlaybackSpeed.values)
+                      _PrefChip(
+                        label: s.labelOf(_t(context)),
+                        selected: state.castPlaybackSpeed == s,
+                        onTap: () => notifier.setCastPlaybackSpeed(s),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  _t(context).tcSpeedNote,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: hc.textSecondary,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

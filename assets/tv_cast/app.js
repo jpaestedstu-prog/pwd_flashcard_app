@@ -62,7 +62,32 @@
       raisedHands: '✋ Raised hands',
       timesUp: 'Time’s up!',
       paused: 'paused',
-      page: 'Page'
+      page: 'Page',
+      forGroups: 'For:',
+      remoteTitle: 'TV remote',
+      remoteOff: 'The TV remote is turned off on the teacher’s device.',
+      pressBackAgain: 'Press Back again to leave the cast.',
+      keyCards: 'Previous / next card',
+      keySigns: 'Previous / next sign',
+      keyPages: 'Previous / next page',
+      keyFlip: 'Flip the card',
+      keyFlipPic: 'Flip the picture',
+      keySignAgain: 'Play the sign again',
+      keySayAgain: 'Say it again',
+      keyShowMe: 'Show Me',
+      keyFsl: 'Watch in FSL',
+      keyPause: 'Pause / play',
+      keyBack: 'Close / leave',
+      keyInfo: 'Show these keys',
+      keySound: 'Turn on sound',
+      toastNext: 'Next ▶',
+      toastPrev: '◀ Previous',
+      toastPause: 'Pause / play',
+      toastFlip: 'Flip',
+      toastAgain: 'Again',
+      toastShowMe: 'Show Me',
+      toastFsl: 'FSL',
+      toastClose: 'Close'
     },
     fil: {
       soundHint: '🔊 Pindutin ang OK sa remote (o i-tap) para bumukas ang tunog',
@@ -102,7 +127,32 @@
       raisedHands: '✋ Mga nagtaas ng kamay',
       timesUp: 'Tapos na ang oras!',
       paused: 'naka-pause',
-      page: 'Pahina'
+      page: 'Pahina',
+      forGroups: 'Para sa:',
+      remoteTitle: 'Remote ng TV',
+      remoteOff: 'Naka-off ang remote ng TV sa device ng guro.',
+      pressBackAgain: 'Pindutin ulit ang Back para umalis sa cast.',
+      keyCards: 'Nakaraan / susunod na card',
+      keySigns: 'Nakaraan / susunod na senyas',
+      keyPages: 'Nakaraan / susunod na pahina',
+      keyFlip: 'Baligtarin ang card',
+      keyFlipPic: 'Baligtarin ang larawan',
+      keySignAgain: 'Ulitin ang senyas',
+      keySayAgain: 'Sabihin ulit',
+      keyShowMe: 'Ipakita',
+      keyFsl: 'Panoorin sa FSL',
+      keyPause: 'I-pause / ituloy',
+      keyBack: 'Isara / umalis',
+      keyInfo: 'Ipakita ang mga pindutan',
+      keySound: 'Buksan ang tunog',
+      toastNext: 'Susunod ▶',
+      toastPrev: '◀ Nakaraan',
+      toastPause: 'I-pause / ituloy',
+      toastFlip: 'Baligtarin',
+      toastAgain: 'Ulit',
+      toastShowMe: 'Ipakita',
+      toastFsl: 'FSL',
+      toastClose: 'Isara'
     }
   };
   function T(key) {
@@ -127,18 +177,75 @@
   var reconnecting = false;   // currently showing the "connecting" overlay
   var FAIL_THRESHOLD = 2;     // ~3s of failures before the overlay appears
 
-  // ─── TV-side speech (Web Speech API) ───────────────────
-  // The phone routes Flashcards/Stories audio here (ttsOnTv). We speak the
-  // English then Filipino text the TV already has. Some browsers need one
-  // user gesture before audio is allowed — handled by primeTts() + a hint.
-  var lastSpokenKey = null;
-  var ttsUnlocked = false;
+  // ─── Sound: the spoken words, through the TV's own speakers ───────────
+  // The phone makes each spoken line into a WAV and lists it in `say`
+  // ({u: link, t: text, l: 'en' | 'fil'}). We play those with ONE <audio>
+  // element — the thing every TV browser can do. TV browsers rarely have a
+  // working Web Speech engine (Android TV's WebView has none, many Tizen /
+  // webOS builds have no voices), so speaking with the TV's own voice is now
+  // only the fallback: for a line whose file fails, or a phone that couldn't
+  // make one.
+  //
+  // Browsers won't play sound until someone has pressed something on the page
+  // (the autoplay rules). When a line is refused for that reason we keep it,
+  // show "press OK", and play it from inside the very next key press — that
+  // press is what the browser is waiting for, and it unlocks the element for
+  // every line after it. The element is reused for every line so that unlock
+  // sticks on browsers that grant it per element.
+  //
+  // `speed` (1 or 2, from the phone) is the playbackRate of the words and of
+  // every clip, applied to whatever is already playing without restarting it.
+  var lastSpokenKey = null;   // sayKey of the item last spoken
+  var ttsUnlocked = false;    // the TV's own voice has spoken (or a key was pressed)
+  var audioUnlocked = false;  // the <audio> element has played sound
+  var activated = false;      // someone pressed a key / tapped since load
   var lastState = null;
-  var lastReplayNonce = null;   // last seen state.ttsReplay.n (explicit replay)
+  var lastReplayNonce = null; // last seen state.ttsReplay.n (explicit replay)
+  var speed = 1;
+  var audioEl = null;
+  var sayQueue = [];          // lines still to say, in order
+  var sayLine = null;         // the line playing right now
+  var sayTimer = null;        // a sequence waiting for its card to land
+  var sayWatch = null;        // old browsers: notices a play() that never starts
+  var blockedSay = false;     // a line is waiting for the unlocking key press
+  var speakingNow = false;    // reported to the phone (spk=1) to hold the slideshow
+  var cantSpeak = false;      // a line found neither a file nor a voice
+
+  // A tenth of a second of silence (8 kHz, 8-bit mono WAV), built here rather
+  // than pasted in: played from inside the first key press so a browser that
+  // unlocks per element unlocks this one. Empty where btoa is missing.
+  var SILENT_WAV = (function () {
+    function u16(v) { return String.fromCharCode(v & 255, (v >> 8) & 255); }
+    function u32(v) {
+      return String.fromCharCode(v & 255, (v >> 8) & 255, (v >> 16) & 255, (v >> 24) & 255);
+    }
+    try {
+      var n = 800;
+      var body = '';
+      for (var i = 0; i < n; i++) body += String.fromCharCode(128);
+      var wav = 'RIFF' + u32(36 + n) + 'WAVEfmt ' + u32(16) + u16(1) + u16(1) +
+        u32(8000) + u32(8000) + u16(1) + u16(8) + 'data' + u32(n) + body;
+      return 'data:audio/wav;base64,' + window.btoa(wav);
+    } catch (e) {
+      return '';
+    }
+  })();
 
   function ttsSupported() {
     return typeof window !== 'undefined' && 'speechSynthesis' in window;
   }
+
+  // Whether this browser plays a WAV at all (the phone's audio format).
+  var wavOk = (function () {
+    try {
+      var a = document.createElement('audio');
+      if (!a || !a.canPlayType) return false;
+      return !!(a.canPlayType('audio/wav; codecs="1"') ||
+        a.canPlayType('audio/wav') || a.canPlayType('audio/x-wav'));
+    } catch (e) {
+      return false;
+    }
+  })();
 
   function showSoundHint() {
     if (hint) {
@@ -151,39 +258,195 @@
     if (hint) hint.className = 'sound-hint hidden';
   }
 
-  function onUtteranceStart() {
-    // Audio actually started — no gesture was needed, drop the hint.
-    ttsUnlocked = true;
+  // A small speaker in the corner while a line plays — so the room (and a
+  // teacher who can't hear it) can see that the TV is talking.
+  function setSpeaking(on) {
+    speakingNow = on;
+    var el = document.getElementById('say-indicator');
+    if (!el) {
+      if (!on) return;
+      el = document.createElement('div');
+      el.id = 'say-indicator';
+      el.innerHTML = '🔊';
+      document.body.appendChild(el);
+    }
+    el.className = on ? 'say-indicator' : 'say-indicator hidden';
+  }
+
+  function onSoundStarted() {
+    // Sound actually came out: whatever the browser wanted, it got.
+    blockedSay = false;
     hideSoundHint();
   }
 
-  function speakSequence(en, fil) {
-    if (!ttsSupported()) return;
+  function getAudio() {
+    if (audioEl) return audioEl;
+    audioEl = document.createElement('audio');
+    audioEl.id = 'cast-audio';
+    audioEl.preload = 'auto';
+    audioEl.onplaying = function () {
+      if (sayWatch) { clearTimeout(sayWatch); sayWatch = null; }
+      if (!sayLine) return; // the silent unlock clip
+      audioUnlocked = true;
+      cantSpeak = false;
+      onSoundStarted();
+    };
+    audioEl.onended = function () {
+      if (!sayLine) return;
+      sayLine = null;
+      playNextLine();
+    };
+    audioEl.onerror = function () {
+      // The file isn't there (the phone couldn't make it) or can't be
+      // decoded: say this line with the TV's own voice instead.
+      if (!sayLine) return;
+      var line = sayLine;
+      sayLine = null;
+      if (sayWatch) { clearTimeout(sayWatch); sayWatch = null; }
+      speakLineWithVoice(line);
+    };
+    document.body.appendChild(audioEl);
+    return audioEl;
+  }
+
+  function applyRate(el) {
     try {
-      window.speechSynthesis.cancel();
-      if (en) {
-        var u1 = new SpeechSynthesisUtterance(en);
-        u1.lang = 'en-US';
-        u1.volume = 1.0; // max — the Web Speech API caps volume at 1.0
-        u1.onstart = onUtteranceStart;
-        window.speechSynthesis.speak(u1);
-      }
-      if (fil) {
-        var u2 = new SpeechSynthesisUtterance(fil);
-        u2.lang = 'fil-PH';
-        u2.volume = 1.0; // max — the Web Speech API caps volume at 1.0
-        u2.onstart = onUtteranceStart;
-        window.speechSynthesis.speak(u2);
-      }
-    } catch (e) {
-      // Web Speech unavailable / blocked — phone fallback covers it.
+      el.defaultPlaybackRate = speed;
+      el.playbackRate = speed;
+    } catch (e) {}
+  }
+
+  // Stops every line, now and queued.
+  function stopSpeech() {
+    if (sayTimer) { clearTimeout(sayTimer); sayTimer = null; }
+    if (sayWatch) { clearTimeout(sayWatch); sayWatch = null; }
+    sayQueue = [];
+    sayLine = null;
+    blockedSay = false;
+    if (audioEl) {
+      try { audioEl.pause(); } catch (e) {}
+    }
+    if (ttsSupported()) {
+      try { window.speechSynthesis.cancel(); } catch (e) {}
+    }
+    setSpeaking(false);
+  }
+
+  // Says [lines] in order, after [delay] ms (so a word is heard as its card
+  // lands, not while the old one is still sliding away).
+  function playSequence(lines, delay) {
+    stopSpeech();
+    var list = [];
+    for (var i = 0; i < lines.length; i++) {
+      if (lines[i] && lines[i].t) list.push(lines[i]);
+    }
+    if (!list.length) return;
+    sayQueue = list;
+    setSpeaking(true);
+    if (delay > 0) {
+      sayTimer = setTimeout(function () {
+        sayTimer = null;
+        playNextLine();
+      }, delay);
+    } else {
+      playNextLine();
     }
   }
 
-  // Spoken form of a live question: the prompt (or the type's instruction for
-  // a picture / sign question, where the prompt lives in the media), then the
-  // lettered choices so a learner can answer by ear. The correct answer is
-  // never in the payload, so there is nothing to give away.
+  function playNextLine() {
+    if (!sayQueue.length) {
+      sayLine = null;
+      setSpeaking(false);
+      return;
+    }
+    var line = sayQueue.shift();
+    setSpeaking(true);
+    if (line.u && wavOk) {
+      playLineFile(line);
+    } else {
+      speakLineWithVoice(line);
+    }
+  }
+
+  function playLineFile(line) {
+    var a = getAudio();
+    sayLine = line;
+    try {
+      // A line held back by the autoplay rules is already loaded: play it from
+      // there when OK comes, rather than fetching it again.
+      if (a.getAttribute('src') !== line.u) {
+        a.src = line.u;
+      } else {
+        try { a.currentTime = 0; } catch (e) {}
+      }
+      applyRate(a);
+      var p = a.play();
+      if (p && typeof p.then === 'function') {
+        p.then(function () {
+          applyRate(a);
+        }, function (err) {
+          if (sayLine !== line) return;
+          if (err && err.name === 'NotAllowedError') {
+            soundBlocked(line);
+          }
+          // Any other failure arrives as the element's own error event.
+        });
+      } else {
+        // A browser too old to say whether play() worked: if the line hasn't
+        // started in a few seconds, treat it as waiting for a key press.
+        if (sayWatch) clearTimeout(sayWatch);
+        sayWatch = setTimeout(function () {
+          sayWatch = null;
+          if (sayLine === line && a.paused) soundBlocked(line);
+        }, 3000);
+      }
+    } catch (e) {
+      sayLine = null;
+      speakLineWithVoice(line);
+    }
+  }
+
+  // The browser wants a key press before it plays sound: keep the line, ask
+  // for OK, and play it from inside that press (see unlockSound).
+  function soundBlocked(line) {
+    sayLine = null;
+    sayQueue.unshift(line);
+    blockedSay = true;
+    setSpeaking(false);
+    showSoundHint();
+  }
+
+  // The fallback: the TV browser's own speech engine, at the cast's speed.
+  function speakLineWithVoice(line) {
+    if (!ttsSupported()) {
+      cantSpeak = true;
+      playNextLine();
+      return;
+    }
+    try {
+      var u = new SpeechSynthesisUtterance(line.t);
+      u.lang = line.l === 'fil' ? 'fil-PH' : 'en-US';
+      u.volume = 1.0; // max — the Web Speech API caps volume at 1.0
+      u.rate = speed;
+      u.onstart = function () {
+        ttsUnlocked = true;
+        cantSpeak = false;
+        onSoundStarted();
+      };
+      u.onend = function () { playNextLine(); };
+      u.onerror = function () { playNextLine(); };
+      window.speechSynthesis.speak(u);
+      if (!ttsUnlocked && !activated) showSoundHint();
+    } catch (e) {
+      cantSpeak = true;
+      playNextLine();
+    }
+  }
+
+  // Spoken form of a live question, for a payload without `say`: the prompt
+  // (or the type's instruction for a picture / sign question), then the
+  // lettered choices. Kept word for word in step with castLiveSpeechText on
+  // the phone. The correct answer is never in the payload.
   function liveSpeechText(a) {
     var parts = [];
     if (a.type === 'fslSign') {
@@ -203,62 +466,74 @@
     return parts.join(' ');
   }
 
-  // Speaks the current Flashcard word / Story page / live question when audio
-  // is routed to the TV. Cancels speech (and clears the hint) when it isn't.
-  function maybeSpeak(state) {
-    if (!ttsSupported()) return;
-    if (!state.ttsOnTv) {
-      window.speechSynthesis.cancel();
-      lastSpokenKey = null;
-      hideSoundHint();
-      return;
+  // What to say for the item on screen, and its key: the phone's `say` list
+  // when it sent one, else built here the way the TV always did (an older
+  // phone). FSL signs, the board, a story's sign clip and its closing screen
+  // say nothing.
+  function currentLines(state) {
+    if (state.say && state.say.length !== undefined) {
+      return { key: state.sayKey || '', lines: state.say };
     }
     var en = '', fil = '', key = '';
     if (state.mode === 'flashcards' && state.slide) {
       en = state.slide.wordEn || '';
       fil = state.slide.wordFil || '';
-      key = 'f:' + state.slide.index;
+      key = 'f:' + (state.slide.catLabel || '') + ':' + state.slide.index;
     } else if (
       state.mode === 'story' && state.story &&
       !state.storyFsl && !state.storyDone
     ) {
-      // `storyDone` matters as much as `storyFsl` here: once the closing screen
-      // is up the last page is no longer on screen, and reading it aloud over
-      // "The End" is worse than silence.
       en = state.story.textEn || '';
       fil = state.story.textFil || '';
-      key = 's:' + state.story.pageIndex;
+      key = 's:' + (state.story.titleEn || '') + ':' + state.story.pageIndex;
     } else if (state.mode === 'live' && state.live && state.live.activity) {
-      // Read the question and its choices aloud once per question. A live quiz
-      // on a shared screen is otherwise pure text — nothing for a blind or
-      // low-vision learner to work from. Keyed on the activity id so the
-      // answered-count ticking up doesn't re-read it.
       var la = state.live.activity;
-      var liveText = liveSpeechText(la);
-      if (uiLang === 'fil') fil = liveText; else en = liveText;
+      var text = liveSpeechText(la);
       key = 'l:' + (la.id || la.prompt || '');
-      if (!liveText) {
-        window.speechSynthesis.cancel();
-        lastSpokenKey = null;
-        return;
-      }
-    } else {
-      // FSL / progress / idle — and a story page showing its sign-language clip
-      // (storyFsl) — never speak on the TV.
-      window.speechSynthesis.cancel();
+      return { key: key, lines: text ? [{ t: text, l: uiLang }] : [] };
+    }
+    // The language filter governs speech as well as display.
+    if (state.lang === 'en') fil = '';
+    else if (state.lang === 'fil') en = '';
+    var lines = [];
+    if (en) lines.push({ t: en, l: 'en' });
+    if (fil) lines.push({ t: fil, l: 'fil' });
+    return { key: key, lines: lines };
+  }
+
+  // Says the item on screen once, when the TV is where the sound plays.
+  function maybeSpeak(state, delay) {
+    if (!state.ttsOnTv) {
+      stopSpeech();
+      lastSpokenKey = null;
+      hideSoundHint();
+      return;
+    }
+    var cur = currentLines(state);
+    if (!cur.lines.length || !cur.key) {
+      // Nothing to say here (signs, the board, The End): stop the last item.
+      if (lastSpokenKey !== null) stopSpeech();
       lastSpokenKey = null;
       return;
     }
-    if (key === lastSpokenKey) return;
-    lastSpokenKey = key;
-    // The language filter governs speech as well as display — hearing a
-    // language the TV isn't showing is worse than silence.
-    if (state.mode !== 'live') {
-      if (state.lang === 'en') fil = '';
-      else if (state.lang === 'fil') en = '';
+    if (cur.key === lastSpokenKey) return;
+    lastSpokenKey = cur.key;
+    playSequence(cur.lines, delay || 0);
+  }
+
+  // Says the item on screen again, in [lang] ('en', 'fil' or 'both').
+  function replayLines(state, lang) {
+    var cur = currentLines(state);
+    var lines = [];
+    for (var i = 0; i < cur.lines.length; i++) {
+      var l = cur.lines[i];
+      if (lang === 'en' && l.l === 'fil') continue;
+      if (lang === 'fil' && l.l === 'en') continue;
+      lines.push(l);
     }
-    speakSequence(en, fil);
-    if (!ttsUnlocked) showSoundHint();
+    if (!lines.length) return false;
+    playSequence(lines, 0);
+    return true;
   }
 
   // Explicit "Replay" from the phone: re-speak the CURRENT item whenever the
@@ -271,45 +546,104 @@
     if (lastReplayNonce === null) { lastReplayNonce = rp.n; return; }
     if (rp.n === lastReplayNonce) return;
     lastReplayNonce = rp.n;
-    if (!ttsSupported()) return;
-    var en = '', fil = '';
-    if (state.mode === 'flashcards' && state.slide) {
-      en = state.slide.wordEn || '';
-      fil = state.slide.wordFil || '';
-    } else if (
-      state.mode === 'story' && state.story &&
-      !state.storyFsl && !state.storyDone
-    ) {
-      en = state.story.textEn || '';
-      fil = state.story.textFil || '';
-    } else {
-      // Nothing speakable here: the FSL clip is showing, the story has closed,
-      // or this mode has no words.
-      return;
-    }
-    if (rp.lang === 'en') fil = '';
-    else if (rp.lang === 'fil') en = '';
-    speakSequence(en, fil);
-    if (!ttsUnlocked) showSoundHint();
+    if (!state.ttsOnTv) return;
+    replayLines(state, rp.lang || 'both');
   }
 
-  // First user interaction on the TV unlocks audio for browsers that gate
-  // speech behind a gesture, then re-speaks the current content.
-  function primeTts() {
-    if (ttsUnlocked) return;
+  // The first key press / tap: the moment the browser allows sound. Plays a
+  // line the browser held back, or else a breath of silence to unlock the
+  // element for the lines to come — synchronously, inside the press.
+  function unlockSound() {
+    if (!activated) activated = true;
     ttsUnlocked = true;
-    hideSoundHint();
-    if (ttsSupported()) {
+    if (blockedSay && sayQueue.length) {
+      blockedSay = false;
+      hideSoundHint();
+      playNextLine();
+    } else if (!audioUnlocked && wavOk && SILENT_WAV) {
+      try {
+        var a = getAudio();
+        if (!sayLine) {
+          a.src = SILENT_WAV;
+          var p = a.play();
+          if (p && typeof p.then === 'function') {
+            p.then(function () { audioUnlocked = true; }, function () {});
+          }
+        }
+      } catch (e) {}
+    } else {
+      hideSoundHint();
+    }
+    if (ttsSupported() && !audioUnlocked) {
       try {
         var u = new SpeechSynthesisUtterance(' ');
         u.volume = 0;
         window.speechSynthesis.speak(u);
       } catch (e) {}
     }
-    if (lastState) {
-      lastSpokenKey = null;
-      maybeSpeak(lastState);
+    unmuteVideos();
+  }
+
+  // ─── Clips: speed, and their own sound when the teacher wants it ─────
+  // Every clip starts muted, because a muted video may autoplay everywhere.
+  // When the phone's "Video sound" is on we unmute it once it is playing and
+  // the page has been unlocked; a browser that pauses an unmuted clip gets it
+  // muted again (playing beats silent-and-stopped) and the OK hint.
+  var wantVideoSound = false;
+
+  function stageVideos() {
+    var vids = stage.getElementsByTagName('video');
+    return vids || [];
+  }
+
+  function syncVideos(state) {
+    wantVideoSound = !!state.videoSound;
+    var vids = stageVideos();
+    for (var i = 0; i < vids.length; i++) {
+      var v = vids[i];
+      applyRate(v);
+      // The live question's sign is always silent: the answers are spoken.
+      var sound = wantVideoSound && !(v.className && v.className.indexOf('live-sign') >= 0);
+      if (!sound) {
+        if (!v.muted) v.muted = true;
+      } else if (v.muted && (activated || audioUnlocked)) {
+        unmuteVideo(v);
+      }
     }
+  }
+
+  function unmuteVideo(v) {
+    try {
+      v.muted = false;
+      var p = v.play();
+      if (p && typeof p.then === 'function') {
+        p.then(function () {}, function () {
+          v.muted = true;
+          try { v.play(); } catch (e) {}
+          showSoundHint();
+        });
+      }
+    } catch (e) {}
+  }
+
+  function unmuteVideos() {
+    if (!wantVideoSound) return;
+    var vids = stageVideos();
+    for (var i = 0; i < vids.length; i++) {
+      if (vids[i].muted && !(vids[i].className && vids[i].className.indexOf('live-sign') >= 0)) {
+        unmuteVideo(vids[i]);
+      }
+    }
+  }
+
+  function applySpeed(state) {
+    var s = Number(state.speed);
+    if (!(s > 0)) s = 1;
+    if (s === speed) return;
+    speed = s;
+    if (audioEl) applyRate(audioEl);
+    var vids = stageVideos();
+    for (var i = 0; i < vids.length; i++) applyRate(vids[i]);
   }
 
   function escapeHtml(s) {
@@ -343,9 +677,7 @@
   // told us to show this). Different from the reconnecting overlay below, which
   // we show on our own when the phone stops answering.
   function renderAway() {
-    if (ttsSupported()) {
-      try { window.speechSynthesis.cancel(); } catch (e) {}
-    }
+    stopSpeech();
     lastSpokenKey = null; // re-speak the current item when the teacher returns
     setStage(
       '<div class="splash away">' +
@@ -362,9 +694,8 @@
   // moment the phone is reachable again we repaint the real content.
   function showReconnecting() {
     if (reconnecting) return;
-    if (ttsSupported()) {
-      try { window.speechSynthesis.cancel(); } catch (e) {}
-    }
+    stopSpeech();
+    lastSpokenKey = null; // say the item again once the phone is back
     setStage(
       '<div class="splash reconnect">' +
       '<div class="splash-emoji pulse">📡</div>' +
@@ -382,6 +713,7 @@
     if (cd) cd.style.display = 'none';
     lastVideoUrl = null;
     lastLiveKey = null;
+    lastCardPos = null;
     reconnecting = true;
   }
 
@@ -401,6 +733,53 @@
     renderFlashcardCard(state);
   }
 
+  // ─── Card motion, matched to the app's flashcards ───────────────────
+  // In the app the cards sit in a page view: the next card slides in from the
+  // right as the old one slides out to the left (400 ms, easeOutCubic), and
+  // the card that arrives grows from 92% to full size with a little overshoot
+  // (400 ms, easeOutBack) while it fades in (300 ms). The TV does the same:
+  // the outgoing card is kept on stage for the length of the slide (a copy
+  // with its ids stripped, so lookups still find the new card), the incoming
+  // one carries the enter animation, and the CSS does the rest. A new
+  // category, the first card and a card coming back from a clip only grow and
+  // fade in — as the app's first page does. Reduced motion and the Calm
+  // template get a plain swap: no copy is made, so nothing can linger.
+  var CARD_MS = 400;
+  var lastCardPos = null;     // {cat, index} of the card on stage
+  var cardEnterDelay = 0;     // ms until the card that just arrived has landed
+  var leavingTimer = null;
+
+  function motionReduced(state) {
+    return !!state.reducedMotion || state.theme === 'calm';
+  }
+
+  // 'next' (slides in from the right), 'prev' (from the left) or '' (no slide)
+  // for a move from the card on stage to [slide]. The phone wraps around the
+  // deck, so the shorter way round is the direction it went.
+  function cardDirection(slide, state) {
+    if (motionReduced(state) || !lastCardPos) return '';
+    if (!document.getElementById('fc-current')) return '';
+    if (lastCardPos.cat !== (slide.catLabel || '')) return '';
+    var n = slide.total || 0;
+    var d = slide.index - lastCardPos.index;
+    if (!d) return '';
+    if (n > 2) {
+      var fwd = ((d % n) + n) % n;
+      return fwd <= n / 2 ? 'next' : 'prev';
+    }
+    return d > 0 ? 'next' : 'prev';
+  }
+
+  // Removes the outgoing card once its slide is over.
+  function clearLeavingCards() {
+    if (leavingTimer) { clearTimeout(leavingTimer); leavingTimer = null; }
+    if (!stage.getElementsByClassName) return;
+    var olds = stage.getElementsByClassName('fc-leaving');
+    for (var i = olds.length - 1; i >= 0; i--) {
+      if (olds[i].parentNode) olds[i].parentNode.removeChild(olds[i]);
+    }
+  }
+
   // A flashcard styled like the in-app "Cards" section: a light card surface
   // with a category accent strip, a category badge (emoji + label), the word's
   // picture in a tinted tile, the English + Filipino words, and the example.
@@ -414,13 +793,13 @@
   // Which face shows is driven by the phone's "Flip" button (state.flipped), so
   // the flip works on ANY receiver, including TVs you can't touch. There is no
   // auto-flip and no TV-side tap. When only the flip flag changes for the SAME
-  // card we toggle the class on the existing tile (so the 3D flip animates);
-  // a new card does a full rebuild (and always starts on the emoji).
+  // card we toggle the class on the existing tile (so the 3D flip animates —
+  // 650 ms easeOutBack, the app's own flip); a new card does a full rebuild
+  // (and always starts on the emoji).
   //
-  // The rest of the motion (3D flip-in, staggered reveal, emoji pop, glossy
-  // shine sweep, floating corner blobs) mirrors the animated in-app flip card
-  // and lives entirely in style.css — so old TV browsers, reduced-motion, and
-  // the Calm template all degrade to a clean static card.
+  // Any other repaint of the SAME card (a raised hand, the timer, a theme or
+  // text-size change all bump the revision) leaves the card alone: those are
+  // body classes and overlays, and rebuilding would replay its entrance.
   function renderFlashcardCard(state) {
     var slide = state.slide;
     var photo = slide.photo;
@@ -433,20 +812,21 @@
     // (same key) animates via a class toggle instead of rebuilding the DOM.
     var key = (slide.catLabel || '') + '#' + slide.index + (hasPhoto ? '+p' : '') + (cartoonUrl ? '+c' : '');
 
-    // Same card re-rendering (typically the teacher pressed Flip): just sync the
-    // is-flipped class on the existing tile so the CSS transition animates. A
-    // full rebuild would drop the animation. Guarded on the flip element still
-    // being present (it isn't after a mode/clip switch → falls through).
-    if (key === lastFlashcardKey && hasPhoto) {
-      var flipEl = document.getElementById('fcard-flip');
-      var backEl = document.getElementById('fcard-photo-back');
-      if (flipEl && backEl) {
-        if (flipped && !backEl.style.backgroundImage) {
-          backEl.style.backgroundImage = 'url("' + photo.url + '")';
+    // Same card re-rendering: sync the is-flipped class on the existing tile
+    // so the CSS transition animates, and touch nothing else. Guarded on the
+    // card still being on stage (it isn't after a mode/clip switch → rebuild).
+    if (key === lastFlashcardKey && document.getElementById('fc-current')) {
+      if (hasPhoto) {
+        var flipEl = document.getElementById('fcard-flip');
+        var backEl = document.getElementById('fcard-photo-back');
+        if (flipEl && backEl) {
+          if (flipped && !backEl.style.backgroundImage) {
+            backEl.style.backgroundImage = 'url("' + photo.url + '")';
+          }
+          flipEl.className = flipped ? 'fcard-flip is-flipped' : 'fcard-flip';
         }
-        flipEl.className = flipped ? 'fcard-flip is-flipped' : 'fcard-flip';
-        return;
       }
+      return;
     }
 
     var accent = slide.catColorDark || '#1565c0'; // deep — strips, fil, badge text
@@ -494,12 +874,27 @@
       picInner = frontInner;
     }
 
-    // Decorative tinted corner blobs (behind the content) + the glossy shine
-    // overlay (above it). The content sits in its own .fcard-body layer so the
-    // three z-index layers always sort correctly. Colours are inline; the
-    // motion is CSS.
+    // Which way the deck moved decides the slide; the card that leaves goes
+    // out the other side.
+    var dir = cardDirection(slide, state);
+    var leaving = '';
+    if (dir) {
+      var cur = document.getElementById('fc-current');
+      var outer = cur && cur.outerHTML;
+      if (outer) {
+        leaving = outer
+          .replace(/ id="[^"]*"/g, '')
+          .replace(/class="slide fc-card[^"]*"/, 'class="slide fc-card fc-leaving fc-out-' + dir + '"');
+      }
+    }
+    clearLeavingCards();
+
+    // Decorative tinted corner blobs sit behind the content, which has its own
+    // .fcard-body layer so the layers always sort correctly. Colours inline;
+    // the motion is CSS.
     setStage(
-      '<div class="slide">' +
+      leaving +
+      '<div class="slide fc-card ' + (dir ? 'fc-in-' + dir : 'fc-in') + '" id="fc-current">' +
       '<div class="fcard">' +
       '<div class="fcard-accent" style="background:' + accent + '"></div>' +
       '<span class="fcard-blob fcard-blob-tr" style="background:' + tint + '"></span>' +
@@ -514,10 +909,12 @@
       escapeHtml(slide.wordFil) + '</div>' +
       example +
       '</div>' +
-      '<div class="fcard-shine"></div>' +
       '</div>' +
       '</div>'
     );
+    if (leaving) leavingTimer = setTimeout(clearLeavingCards, CARD_MS + 120);
+    cardEnterDelay = motionReduced(state) ? 0 : CARD_MS;
+    lastCardPos = { cat: slide.catLabel || '', index: slide.index };
     lastVideoUrl = null;
     lastFlashcardKey = key;
     if (cartoonUrl) applyFlashcardCartoon(cartoonUrl);
@@ -599,9 +996,9 @@
       return;
     }
 
-    // Muted by default so it autoplays on every browser; the phone can opt in
-    // to the clip's own audio track via `videoSound`.
-    var mutedAttr = state.videoSound ? '' : 'muted ';
+    // Always starts muted, so it autoplays on every browser; the phone's
+    // "Video sound" unmutes it once it plays (syncVideos).
+    var mutedAttr = 'muted ';
     setStage(
       '<div class="fsl-wrap">' +
       '<div class="fsl-video-box">' +
@@ -647,10 +1044,11 @@
         escapeHtml(slide.wordEn) +
         '<span class="fil">' + escapeHtml(slide.wordFil) + '</span>' +
         '</div>';
-      // Muted by default so the sign autoplays on every TV browser. The phone
-      // can opt-in to the clip's own audio track (`videoSound`) for FSL clips
-      // that include a voiceover — at the cost of autoplay on some browsers.
-      var mutedAttr = state.videoSound ? '' : 'muted ';
+      // Always starts muted, so the sign autoplays on every TV browser. The
+      // phone's "Video sound" (`videoSound`) unmutes it once it is playing
+      // (syncVideos) for clips that include a voiceover — rather than leaving
+      // an unmuted clip that some browsers refuse to start at all.
+      var mutedAttr = 'muted ';
       setStage(
         '<div class="fsl-wrap">' +
         '<div class="fsl-video-box">' +
@@ -883,10 +1281,9 @@
         : '') +
       '</div>';
 
-    // Muted by default so the sign autoplays on every TV browser. The phone can
-    // opt-in to the clip's own audio track (`videoSound`) for clips that include
-    // a voiceover — at the cost of autoplay on some browsers.
-    var mutedAttr = state.videoSound ? '' : 'muted ';
+    // Always starts muted, so the sign autoplays on every TV browser; the
+    // phone's "Video sound" unmutes it once it plays (syncVideos).
+    var mutedAttr = 'muted ';
     setStage(
       '<div class="fsl-wrap">' +
       '<div class="fsl-video-box">' +
@@ -932,6 +1329,16 @@
     };
   }
 
+  // "For: Hearing Class · Cognitive Class" — whose board / question this is,
+  // from the phone's class / group picker. Left out when it would only repeat
+  // the title the teacher already put on the screen.
+  function audienceHtml(state, cls) {
+    var who = state.audience || '';
+    if (!who || who === state.title) return '';
+    return '<div class="' + cls + '">' + escapeHtml(T('forGroups')) + ' ' +
+      escapeHtml(who) + '</div>';
+  }
+
   function renderProgress(state) {
     // Default to the non-competitive view for older payloads that predate the
     // toggle — a shared screen shouldn't start out ranking children.
@@ -948,7 +1355,8 @@
   function renderClassWins(state) {
     var s = state.classSummary || {};
     var rows = s.rows || [];
-    var html = '<div class="board wins"><h2>' + escapeHtml(T('classWins')) + '</h2>';
+    var html = '<div class="board wins"><h2>' + escapeHtml(T('classWins')) + '</h2>' +
+      audienceHtml(state, 'board-for');
 
     if (!rows.length) {
       html += '<div class="empty">' + escapeHtml(T('noStudentData')) + '</div></div>';
@@ -990,7 +1398,8 @@
 
   function renderLeaderboard(state) {
     var rows = state.progress || [];
-    var html = '<div class="board"><h2>' + escapeHtml(T('leaderboard')) + '</h2>';
+    var html = '<div class="board"><h2>' + escapeHtml(T('leaderboard')) + '</h2>' +
+      audienceHtml(state, 'board-for');
     if (rows.length === 0) {
       html += '<div class="empty">' + escapeHtml(T('noStudentData')) + '</div>';
     } else {
@@ -1049,6 +1458,7 @@
         '<div class="splash-emoji">🎮</div>' +
         '<h1>' + escapeHtml(T('liveActivity')) + '</h1>' +
         '<p>' + escapeHtml(T('getReady')) + '</p>' +
+        audienceHtml(state, 'live-for') +
         '</div>' +
         liveBoardHtml(live) +
         '</div>'
@@ -1075,7 +1485,7 @@
       return;
     }
 
-    var html = '<div class="live">';
+    var html = '<div class="live">' + audienceHtml(state, 'live-for');
     if (a.questionNumber && a.totalQuestions) {
       html +=
         '<div class="live-qnum">' + escapeHtml(T('question')) + ' ' + a.questionNumber + ' / ' +
@@ -1100,7 +1510,7 @@
     if (signUrl) {
       html +=
         '<div class="live-media">' +
-        '<video autoplay muted loop playsinline webkit-playsinline ' +
+        '<video class="live-sign" autoplay muted loop playsinline webkit-playsinline ' +
         'preload="auto" src="' + escapeHtml(signUrl) + '"></video>' +
         '</div>' +
         '<div class="live-sub">' + escapeHtml(T('watchSignPick')) + '</div>';
@@ -1213,6 +1623,7 @@
   var timerTotal = 0;
   var timerLabel = '';
   var timerFinishedShown = false;
+  var timerSay = null;         // the phone's audio for "Time's up!"
 
   function timerEl() {
     var el = document.getElementById('lesson-timer');
@@ -1244,6 +1655,7 @@
     timerPaused = !!t.paused;
     timerTotal = t.total || 0;
     timerLabel = t.label || '';
+    timerSay = t.say || null;
     if (timerLocalLeft > 0) timerFinishedShown = false;
     paintTimer();
   }
@@ -1279,10 +1691,9 @@
 
     if (done && !timerFinishedShown) {
       timerFinishedShown = true;
-      // Speak it once, if the TV is the audio target and speech is allowed.
-      if (lastState && lastState.ttsOnTv && ttsSupported()) {
-        if (uiLang === 'fil') speakSequence('', T('timesUp'));
-        else speakSequence(T('timesUp'), '');
+      // Say it once, if the TV is where the sound plays.
+      if (lastState && lastState.ttsOnTv) {
+        playSequence([timerSay || { t: T('timesUp'), l: uiLang }], 0);
       }
     }
   }
@@ -1389,6 +1800,9 @@
     // asking for help is always visible.
     // Default on for payloads that predate the switch.
     remoteOn = state.remote !== false;
+    // 1× / 2× for the words and the clips — applied to what is already
+    // playing, never by restarting it.
+    applySpeed(state);
     renderHandsBanner(state);
     renderBranding(state);
     renderSeasonal(state);
@@ -1399,10 +1813,18 @@
     // Away overrides whatever mode is selected; the content stays selected on
     // the phone so it resumes the instant the teacher returns.
     if (state.away) {
+      lastCardPos = null;
       renderAway();
       updateFooter({}); // empty → hides the footer pill
       return;
     }
+    // Any stage that isn't a flashcard drops a card still sliding out, and
+    // the next card that comes back grows in rather than sliding.
+    if (state.mode !== 'flashcards' || state.showMe) {
+      clearLeavingCards();
+      lastCardPos = null;
+    }
+    cardEnterDelay = 0;
     switch (state.mode) {
       case 'flashcards': renderFlashcards(state); break;
       case 'fslVideo':   renderFslVideo(state);   break;
@@ -1412,8 +1834,11 @@
       default:           renderIdle();
     }
     updateFooter(state);
-    maybeSpeak(state);
+    syncVideos(state);
+    // A new card's word is said as the card lands, not while it slides in.
+    maybeSpeak(state, cardEnterDelay);
     maybeReplay(state);
+    refreshHelp(state);
   }
 
   // Moves every media URL in a freshly-parsed payload into the session-code
@@ -1445,6 +1870,11 @@
       scope(state.live.activity.video, 'url');
       scope(state.live.activity.photo, 'url');
     }
+    // The spoken words' audio, and "Time's up!".
+    if (state.say && state.say.length) {
+      for (var i = 0; i < state.say.length; i++) scope(state.say[i], 'u');
+    }
+    if (state.timer && state.timer.say) scope(state.timer.say, 'u');
   }
 
   function poll() {
@@ -1484,13 +1914,18 @@
       render(state);
     }
 
-    // Tell the phone whether this TV can synthesize speech and whether audio
-    // has been unlocked yet, so it can explain why the TV is/isn't talking.
-    var ttsFlag = ttsSupported() ? '1' : '0';
-    var unlockedFlag = ttsUnlocked ? '1' : '0';
+    // Tell the phone whether this TV can make speech at all (play the phone's
+    // audio files, or speak with its own voice), whether the browser has let
+    // it play sound yet, and whether it is talking right now — so the phone
+    // can explain why the TV is/isn't speaking, and hold the slideshow until a
+    // line has been heard to the end.
+    var ttsFlag = ((wavOk || ttsSupported()) && !cantSpeak) ? '1' : '0';
+    var unlockedFlag = (audioUnlocked || ttsUnlocked) && !blockedSay ? '1' : '0';
+    var spkFlag = speakingNow ? '1' : '0';
     xhr.open(
       'GET',
-      BASE + '/api/state?tts=' + ttsFlag + '&unlocked=' + unlockedFlag,
+      BASE + '/api/state?tts=' + ttsFlag + '&unlocked=' + unlockedFlag +
+        '&spk=' + spkFlag,
       true
     );
     xhr.timeout = 4000;
@@ -1619,60 +2054,423 @@
     }
   }
 
-  // A real activation gesture (remote OK / tap / touch) unlocks audio and, on
+  // A real activation gesture (remote key / tap / touch) unlocks sound and, on
   // stricter browsers that blocked the programmatic request, finishes filling
   // the screen when the phone wants it. Never forces fullscreen when the teacher
-  // turned the toggle off.
+  // turned the toggle off. It is also the only moment the Back-key guards may
+  // be added (see "The Back key"): Chrome skips entries added without one.
   function onActivation() {
-    primeTts();
+    unlockSound();
     if (wantFs && !fsElement()) enterFullscreen();
+    topUpGuard();
   }
 
-  // ─── TV remote as a control surface ───────────────────
-  // A teacher standing at the board can step the lesson with the TV's own
-  // remote instead of walking back to the tablet. Deliberately narrow:
-  //   ◀ / ▶        → previous / next
-  //   play-pause   → hold
-  // OK/Enter is left alone — it's the activation gesture that unlocks audio
-  // and finishes fullscreen on stricter browsers, and hijacking it would cost
-  // more than it gives. Up/Down are left alone too: on many TVs they're volume.
+  // ─── TV remote ───────────────────────────────────────
+  // Every key on an ordinary TV remote does something, so a teacher at the
+  // board needs neither the tablet nor a mouse, keyboard or touchscreen:
+  //   ◀ ▶  (⏪ ⏩, CH− CH+)  previous / next card, sign or page
+  //   OK / Enter            flip the card or the story picture; replay a sign.
+  //                         The very first OK on a silent page only turns the
+  //                         sound (and full screen) on.
+  //   ▲                     say the word / page / question again
+  //   ▼                     the card's "Show Me" clip / the page's FSL clip
+  //   ▶❚❚  ▶  ❚❚  ■         pause / play the slideshow
+  //   Back                  close a clip or flip the card back; twice, leave
+  //   Info / Menu           show these keys on the TV
+  // Key codes first: 2014-era TV browsers predate KeyboardEvent.key. Tizen
+  // (10009 Back, 10252 play/pause) and webOS (461 Back) have their own.
   //
-  // The phone enforces the on/off switch server-side, so `remoteOn` here is
-  // only about not making pointless requests.
+  // Lesson moves go to the phone (/api/nudge), which enforces the educator's
+  // on/off switch; the TV polls straight after so the change shows at once
+  // instead of on the next 1.5 s tick. Saying a word again and the key list
+  // are the TV's own business and work even with the remote switched off.
   var remoteOn = true;
   var lastNudgeAt = 0;
+  var lastNudgeAction = '';
 
-  function nudge(action) {
-    if (!remoteOn) return;
-    // A held-down remote key repeats fast; one step per press is what a
-    // teacher means, and it keeps us off the phone's back.
+  var KEYS = {
+    prev: [[37, 412, 428, 34], ['ArrowLeft', 'Left', 'MediaRewind', 'MediaTrackPrevious', 'ChannelDown']],
+    next: [[39, 417, 427, 33], ['ArrowRight', 'Right', 'MediaFastForward', 'MediaTrackNext', 'ChannelUp']],
+    ok: [[13], ['Enter', 'Select', 'Accept']],
+    up: [[38], ['ArrowUp', 'Up']],
+    down: [[40], ['ArrowDown', 'Down']],
+    playpause: [[179, 10252, 32], ['MediaPlayPause', ' ', 'Spacebar']],
+    play: [[415, 250], ['MediaPlay', 'Play']],
+    pause: [[19, 413, 178], ['MediaPause', 'Pause', 'MediaStop']],
+    back: [[10009, 461, 166], ['GoBack', 'BrowserBack']],
+    close: [[27, 8], ['Escape', 'Esc', 'Backspace']],
+    info: [[457, 93, 112], ['Info', 'ContextMenu', 'Help', 'F1']]
+  };
+
+  function has(list, v) {
+    for (var i = 0; i < list.length; i++) if (list[i] === v) return true;
+    return false;
+  }
+
+  function keyAction(e) {
+    var code = e.keyCode || e.which || 0;
+    var name = e.key || '';
+    for (var action in KEYS) {
+      if (!KEYS.hasOwnProperty(action)) continue;
+      if (code && has(KEYS[action][0], code)) return action;
+      if (name && has(KEYS[action][1], name)) return action;
+    }
+    return '';
+  }
+
+  // A short note at the bottom of the screen, so a key press always shows
+  // that it landed — even when its effect takes a moment to arrive.
+  var toastTimer = null;
+  function toast(text) {
+    var el = document.getElementById('remote-toast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'remote-toast';
+      document.body.appendChild(el);
+    }
+    el.innerHTML = escapeHtml(text);
+    el.className = 'remote-toast';
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () {
+      el.className = 'remote-toast hidden';
+    }, 1800);
+  }
+
+  function nudge(action, label) {
+    if (!remoteOn) {
+      toast(T('remoteOff'));
+      return;
+    }
+    // A held-down key repeats fast; one step per press is what a teacher
+    // means, and it keeps us off the phone's back.
     var now = new Date().getTime();
-    if (now - lastNudgeAt < 350) return;
+    if (action === lastNudgeAction && now - lastNudgeAt < 300) return;
     lastNudgeAt = now;
+    lastNudgeAction = action;
+    if (label) toast(label);
     try {
       var xhr = new XMLHttpRequest();
       xhr.open('GET', BASE + '/api/nudge?a=' + action, true);
       xhr.timeout = 3000;
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState !== 4) return;
+        if (xhr.status === 200) {
+          poll(); // show the result now, not at the next tick
+        } else if (xhr.status === 403) {
+          remoteOn = false;
+          toast(T('remoteOff'));
+        }
+      };
       xhr.send();
     } catch (e) {}
   }
 
-  function onRemoteKey(e) {
-    var k = e.keyCode || e.which;
-    // Codes rather than e.key: 2014-era TV browsers predate KeyboardEvent.key.
-    if (k === 39) nudge('next');            // ArrowRight
-    else if (k === 37) nudge('prev');       // ArrowLeft
-    else if (k === 179 || k === 19) nudge('playpause'); // MediaPlayPause / Pause
-    else return;
+  // Starts the clip on stage from the beginning (a sign to watch again).
+  function replayClip() {
+    var vids = stageVideos();
+    if (!vids.length) return false;
+    try {
+      vids[0].currentTime = 0;
+      vids[0].play();
+    } catch (e) {}
+    return true;
+  }
+
+  function onOk(st) {
+    hideHelp();
+    if (st.mode === 'flashcards' && st.slide && !st.showMe &&
+        st.slide.photo && st.slide.photo.available && st.tapOnly !== false) {
+      nudge('flip', T('toastFlip'));
+    } else if (st.mode === 'story' && st.story && st.story.image &&
+        st.story.image.available && !st.storyFsl && !st.storyDone) {
+      nudge('flip', T('toastFlip'));
+    } else {
+      replayClip();
+    }
+  }
+
+  function onSayAgain(st) {
+    hideHelp();
+    if (st.ttsOnTv) {
+      if (replayLines(st, 'both')) toast('🔊 ' + T('toastAgain'));
+      else replayClip();
+      return;
+    }
+    if (st.mode === 'fslVideo') {
+      replayClip();
+      return;
+    }
+    // The sound comes from the phone: it says it.
+    nudge('replay', '🔊 ' + T('toastAgain'));
+  }
+
+  function onShowMe(st) {
+    hideHelp();
+    if (st.mode === 'flashcards' && st.slide && st.slide.clip &&
+        st.slide.clip.available) {
+      nudge('showme', st.showMe ? T('toastClose') : T('toastShowMe'));
+    } else if (st.mode === 'story' && st.storyVideo &&
+        st.storyVideo.available && !st.storyDone) {
+      nudge('showme', st.storyFsl ? T('toastClose') : T('toastFsl'));
+    }
+  }
+
+  // Whatever is open on top of the card: a clip, or a flipped face.
+  function closeOverlay(st) {
+    if (st.away) return false;
+    if (st.showMe || st.storyFsl || st.flipped || st.storyImageFlipped) {
+      nudge('back', T('toastClose'));
+      return true;
+    }
+    return false;
+  }
+
+  // ─── The Back key ────────────────────────────────────
+  // A TV browser's Back goes back in history, which leaves the cast. So extra
+  // history entries stand guard: each Back lands on one and is used here — to
+  // close a clip / flip the card back, or else to say "press Back again to
+  // leave", and a second press within 3 s then leaves.
+  //
+  // The guards are only ever added inside a key press or tap. Chrome steps
+  // over entries a page adds without one, so a guard put back from the Back
+  // handler itself was skipped by the next Back, which then left the cast with
+  // no warning (found with Chrome on the tablet, Back from the system). Two
+  // are kept topped up, so closing a clip and then the warning both fit
+  // between key presses. (A browser in fullscreen spends the first Back on
+  // leaving fullscreen; that one never reaches the page.)
+  var BACK_ARM_MS = 3000;
+  var GUARD_DEPTH = 2;
+  var guardDepth = 0;         // our entries above the cast's own
+  var exitArmed = false;
+  var exitTimer = null;
+  var backKeyAt = 0;
+
+  function topUpGuard() {
+    try {
+      if (!window.history || !window.history.pushState) return;
+      while (guardDepth < GUARD_DEPTH) {
+        window.history.pushState({ flCast: guardDepth + 1 }, '');
+        guardDepth++;
+      }
+    } catch (e) {}
+  }
+
+  // Leaves the cast the way Back would have: past every guard still there.
+  function leaveCast() {
+    try { window.history.go(-(guardDepth + 1)); } catch (e) {}
+  }
+
+  // One Back press. True when it was used up here; false when it should
+  // leave the cast.
+  function handleBack(st) {
+    if (hideHelp()) return true;
+    if (closeOverlay(st)) return true;
+    if (exitArmed) return false;
+    exitArmed = true;
+    toast(T('pressBackAgain'));
+    if (exitTimer) clearTimeout(exitTimer);
+    exitTimer = setTimeout(function () {
+      exitTimer = null;
+      exitArmed = false;
+    }, BACK_ARM_MS);
+    return true;
+  }
+
+  function onPopState() {
+    if (guardDepth > 0) guardDepth--; // the browser stepped off one guard
+    // Some TVs send a Back key AND step back in history: the key did it.
+    if (new Date().getTime() - backKeyAt < 700) return;
+    if (!handleBack(lastState || {})) leaveCast();
+  }
+
+  function onBackKey(st) {
+    backKeyAt = new Date().getTime();
+    if (!handleBack(st)) leaveCast();
+  }
+
+  // ─── The key list on the TV ──────────────────────────
+  // Shown on its own once, on the waiting screen the TV opens on (where it
+  // covers nothing), so whoever holds the remote learns what it does; it
+  // closes itself when the first lesson appears. After that it comes back on
+  // Info / Menu, or when a key the cast doesn't use (a number, a colour) is
+  // pressed — never on top of a card unasked.
+  var helpTimer = null;
+  var helpOpen = false;
+  var helpShownOnce = false;
+  var helpAuto = false;       // the open list is the waiting screen's intro
+
+  function helpEl() {
+    var el = document.getElementById('remote-help');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'remote-help';
+      el.className = 'remote-help hidden';
+      document.body.appendChild(el);
+    }
+    return el;
+  }
+
+  function helpRows(st) {
+    // While the teacher is away the lesson waits: only leaving is on offer.
+    if (st.away) return [['Back', T('keyBack')], ['Info', T('keyInfo')]];
+    var m = st.mode;
+    var stepper = m === 'flashcards' || m === 'fslVideo' || m === 'story';
+    var rows = [];
+    if (!audioUnlocked && !ttsUnlocked) rows.push(['OK', T('keySound')]);
+    if (st.remote !== false) {
+      if (stepper) {
+        rows.push(['◀ ▶', T(m === 'story' ? 'keyPages' : (m === 'fslVideo' ? 'keySigns' : 'keyCards'))]);
+      }
+      if (m === 'flashcards') rows.push(['OK', T('keyFlip')]);
+      else if (m === 'story') rows.push(['OK', T('keyFlipPic')]);
+      else if (m === 'fslVideo') rows.push(['OK', T('keySignAgain')]);
+    }
+    if (m === 'flashcards' || m === 'story' || m === 'live') {
+      rows.push(['▲', T('keySayAgain')]);
+    }
+    if (st.remote !== false) {
+      if (m === 'flashcards') rows.push(['▼', T('keyShowMe')]);
+      else if (m === 'story') rows.push(['▼', T('keyFsl')]);
+      if (stepper) rows.push(['▶❚❚', T('keyPause')]);
+    }
+    rows.push(['Back', T('keyBack')]);
+    rows.push(['Info', T('keyInfo')]);
+    return rows;
+  }
+
+  function helpHtml(st) {
+    var rows = helpRows(st);
+    var html = '<div class="rh-title">' + escapeHtml(T('remoteTitle')) + '</div>';
+    if (st.remote === false) {
+      html += '<div class="rh-off">' + escapeHtml(T('remoteOff')) + '</div>';
+    }
+    html += '<div class="rh-rows">';
+    for (var i = 0; i < rows.length; i++) {
+      html += '<div class="rh-row"><span class="rh-key">' + escapeHtml(rows[i][0]) +
+        '</span><span class="rh-do">' + escapeHtml(rows[i][1]) + '</span></div>';
+    }
+    return html + '</div>';
+  }
+
+  function showHelp(auto) {
+    var el = helpEl();
+    el.innerHTML = helpHtml(lastState || {});
+    el.className = 'remote-help';
+    helpOpen = true;
+    helpAuto = !!auto;
+    if (helpTimer) clearTimeout(helpTimer);
+    helpTimer = setTimeout(hideHelp, auto ? 15000 : 10000);
+  }
+
+  function hideHelp() {
+    if (helpTimer) { clearTimeout(helpTimer); helpTimer = null; }
+    if (!helpOpen) return false;
+    helpOpen = false;
+    helpAuto = false;
+    helpEl().className = 'remote-help hidden';
+    return true;
+  }
+
+  function refreshHelp(st) {
+    var waiting = !st.mode || st.mode === 'idle';
+    if (!helpShownOnce && waiting && !st.away) {
+      helpShownOnce = true;
+      showHelp(true);
+      return;
+    }
+    // The intro steps aside for the lesson; a list someone asked for stays.
+    if (helpOpen && helpAuto && !waiting) {
+      hideHelp();
+      return;
+    }
+    if (helpOpen) helpEl().innerHTML = helpHtml(st);
+  }
+
+  function onKeyDown(e) {
+    if (e.ctrlKey || e.altKey || e.metaKey) return; // the browser's shortcuts
+    var action = keyAction(e);
+    var code = e.keyCode || e.which || 0;
+    // The very first OK on a page that can't make sound yet is the one press
+    // the browser is waiting for: it turns the sound (and full screen) on and
+    // does nothing else, as the phone's key list says.
+    var silent = !activated && !audioUnlocked && action === 'ok';
+    if (action !== 'back' && action !== 'close') onActivation();
+    if (!action) {
+      // Numbers and the colour keys: show what the remote does here.
+      if ((code >= 48 && code <= 57) || (code >= 96 && code <= 105) ||
+          (code >= 403 && code <= 406)) {
+        showHelp(false);
+      }
+      return;
+    }
     if (e.preventDefault) e.preventDefault();
+    var st = lastState || {};
+    // Stepping and pausing only mean something in the slide modes — and not
+    // while the teacher is away, when the lesson must wait for them rather
+    // than move on behind the "teacher is out" screen. Elsewhere the key shows
+    // what the remote does here instead of a note that promises a move.
+    if (st.away && action !== 'info' && action !== 'close' && action !== 'back') {
+      showHelp(false);
+      return;
+    }
+    var stepper = !st.away &&
+      (st.mode === 'flashcards' || st.mode === 'fslVideo' || st.mode === 'story');
+    if (!stepper && (action === 'prev' || action === 'next' ||
+        action === 'playpause' || action === 'play' || action === 'pause')) {
+      showHelp(false);
+      return;
+    }
+    switch (action) {
+      case 'info':
+        if (!hideHelp()) showHelp(false);
+        return;
+      case 'close':
+        if (!hideHelp()) closeOverlay(st);
+        return;
+      case 'back':
+        onBackKey(st);
+        return;
+      case 'ok':
+        if (silent) {
+          toast('🔊 ' + T('keySound'));
+          return;
+        }
+        onOk(st);
+        return;
+      case 'up':
+        onSayAgain(st);
+        return;
+      case 'down':
+        onShowMe(st);
+        return;
+      case 'prev':
+        hideHelp();
+        nudge('prev', T('toastPrev'));
+        return;
+      case 'next':
+        hideHelp();
+        nudge('next', T('toastNext'));
+        return;
+      default:
+        hideHelp();
+        nudge(action, T('toastPause'));
+    }
   }
 
   if (document.addEventListener) {
-    document.addEventListener('keydown', onActivation, false);
+    document.addEventListener('keydown', onKeyDown, false);
     document.addEventListener('click', onActivation, false);
     document.addEventListener('touchstart', onActivation, false);
-    document.addEventListener('keydown', onRemoteKey, false);
   }
+  if (window.addEventListener) {
+    window.addEventListener('popstate', onPopState, false);
+  }
+  // Somewhere for a TV browser to deliver its keys: some only send the D-pad
+  // to the focused element and move a pointer around otherwise.
+  try {
+    stage.setAttribute('tabindex', '-1');
+    stage.focus();
+  } catch (e) {}
 
   // Fit the current screen and keep re-fitting on every size change (resolution
   // switch, rotation, fullscreen enter/exit).

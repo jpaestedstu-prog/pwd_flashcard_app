@@ -22,6 +22,21 @@ class _RecordingTts extends TtsService {
   void setCompletionHandler(void Function() handler) {}
 }
 
+/// Records the rate changes too, and finishes speech on demand — the engine's
+/// completion is what puts the app's rate back after a 2× narration.
+class _SpeedTts extends _RecordingTts {
+  void Function()? _onDone;
+
+  @override
+  void setCompletionHandler(void Function() handler) => _onDone = handler;
+
+  @override
+  Future<void> setSpeed(double speed) async => calls.add('rate:$speed');
+
+  /// The engine says it has finished the current utterance.
+  void finish() => _onDone?.call();
+}
+
 /// `implements` so the real `AudioPlayer()` field initializer never runs.
 class _SilentSfx implements SoundService {
   @override
@@ -59,6 +74,66 @@ void main() {
       await TvCastAudioNarrator(tts: tts, sfx: _SilentSfx())
           .speakOne('   ', filipino: false);
       expect(tts.calls, isEmpty);
+    });
+  });
+
+  group('TvCastAudioNarrator playback speed', () {
+    test('2× speaks at twice the app rate, then puts the rate back', () async {
+      final tts = _SpeedTts();
+      final narrator = TvCastAudioNarrator(
+        tts: tts,
+        sfx: _SilentSfx(),
+        baseRate: () => 0.5,
+      );
+      await narrator.speakOne('Dog', filipino: false, speed: 2);
+      expect(tts.calls, ['stop', 'rate:1.0', 'en:Dog']);
+      tts.finish();
+      await Future<void>.delayed(Duration.zero);
+      expect(tts.calls.last, 'rate:0.5',
+          reason: 'every other screen speaks at the learner\'s own pace');
+    });
+
+    test('both languages are said at 2×, the rate back only at the end',
+        () async {
+      final tts = _SpeedTts();
+      final narrator = TvCastAudioNarrator(
+        tts: tts,
+        sfx: _SilentSfx(),
+        baseRate: () => 0.5,
+      );
+      await narrator.speakBoth('Dog', 'Aso', speed: 2);
+      tts.finish(); // English done: Filipino starts, still at 2×
+      await Future<void>.delayed(Duration.zero);
+      expect(tts.calls, ['stop', 'rate:1.0', 'en:Dog', 'fil:Aso']);
+      tts.finish(); // Filipino done
+      await Future<void>.delayed(Duration.zero);
+      expect(tts.calls.last, 'rate:0.5');
+    });
+
+    test('at 1× the rate is never touched', () async {
+      final tts = _SpeedTts();
+      final narrator = TvCastAudioNarrator(
+        tts: tts,
+        sfx: _SilentSfx(),
+        baseRate: () => 0.5,
+      );
+      await narrator.speakBoth('Dog', 'Aso');
+      tts.finish();
+      tts.finish();
+      await narrator.stop();
+      expect(tts.calls.where((c) => c.startsWith('rate:')), isEmpty);
+    });
+
+    test('stopping mid-word puts the rate back too', () async {
+      final tts = _SpeedTts();
+      final narrator = TvCastAudioNarrator(
+        tts: tts,
+        sfx: _SilentSfx(),
+        baseRate: () => 0.6,
+      );
+      await narrator.speakOne('Aso', filipino: true, speed: 2);
+      await narrator.stop();
+      expect(tts.calls.last, 'rate:0.6');
     });
   });
 }

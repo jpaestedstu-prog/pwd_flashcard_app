@@ -7,16 +7,15 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/pro_surface.dart';
-import '../../../data/models/classroom.dart';
 import '../../../data/models/enums.dart';
-import '../../../data/models/home_group.dart';
 import '../../../data/models/models.dart';
 import '../../../providers/app_providers.dart';
-import '../../../providers/firestore_stream_helpers.dart';
 import '../../../widgets/app_snack_bar.dart';
 import '../../live_session/models/live_session_models.dart';
 import '../../live_session/providers/live_activity_set_provider.dart';
+import '../models/cast_group_selection.dart';
 import '../models/tv_cast_session.dart';
+import '../providers/cast_group_provider.dart';
 import '../providers/tv_cast_provider.dart';
 import '../../../core/utils/seeded_random.dart';
 import '../../../l10n/app_localizations.dart';
@@ -111,9 +110,6 @@ class _SessionStarter extends ConsumerStatefulWidget {
 }
 
 class _SessionStarterState extends ConsumerState<_SessionStarter> {
-  String? _selectedKey;
-  String? _selectedLabel;
-  LiveSessionOwnerKind _selectedKind = LiveSessionOwnerKind.classroom;
   bool _starting = false;
 
   @override
@@ -122,19 +118,11 @@ class _SessionStarterState extends ConsumerState<_SessionStarter> {
     final profile = ref.watch(profileProvider);
     if (profile == null) return const SizedBox.shrink();
 
-    final classrooms =
-        ref.watch(classroomsByTeacherStreamProvider(profile.id)).valueOrNull ??
-            const <Classroom>[];
-    final homeGroups =
-        ref.watch(homeGroupsByOwnerStreamProvider(profile.id)).valueOrNull ??
-            const <HomeGroup>[];
-
-    final options = <_OwnerOption>[
-      for (final c in classrooms)
-        _OwnerOption(c.id, c.name, LiveSessionOwnerKind.classroom),
-      for (final g in homeGroups)
-        _OwnerOption(g.id, g.name, LiveSessionOwnerKind.homeGroup),
-    ];
+    // The same classes / groups the rest of the cast is for — picked under
+    // "Class / group" at the top of the screen, not separately here, so the
+    // progress board, the live question and the TV can never disagree about
+    // whose lesson this is.
+    final options = ref.watch(castGroupOptionsProvider(profile.id));
 
     if (options.isEmpty) {
       return Container(
@@ -153,11 +141,11 @@ class _SessionStarterState extends ConsumerState<_SessionStarter> {
       );
     }
 
-    _selectedKey ??= options.first.key;
-    final selected = options
-        .firstWhere((o) => o.key == _selectedKey, orElse: () => options.first);
-    _selectedKind = selected.kind;
-    _selectedLabel = selected.label;
+    final selection = ref.watch(castGroupSelectionProvider(profile.id));
+    final groups = selection.resolve(options);
+    final label = selection.coversAll(options) && options.length > 1
+        ? castAllGroupsLabel(_t(context), options)
+        : groups.map((g) => g.name).join(' · ');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -175,30 +163,10 @@ class _SessionStarterState extends ConsumerState<_SessionStarter> {
           style: AppTypography.bodySmall.copyWith(color: hc.textSecondary),
         ),
         const SizedBox(height: 12),
-        DropdownButtonFormField<String>(
-          initialValue: _selectedKey,
-          isExpanded: true,
-          decoration: InputDecoration(
-            label: FitLabel(_t(context).tlpHost),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            prefixIcon: const Icon(Icons.groups_rounded),
-          ),
-          items: options
-              .map(
-                (o) => DropdownMenuItem(
-                  value: o.key,
-                  child: Text(
-                    '${o.kind == LiveSessionOwnerKind.homeGroup ? '🏠' : '🏫'}  '
-                    '${o.label}',
-                  ),
-                ),
-              )
-              .toList(),
-          onChanged: (v) => setState(() => _selectedKey = v),
-        ),
+        _HostedGroupsNote(label: label),
         const SizedBox(height: 14),
         FilledButton.icon(
-          onPressed: _starting ? null : _start,
+          onPressed: _starting ? null : () => _start(groups, label),
           icon: _starting
               ? const SizedBox(
                   width: 18,
@@ -223,14 +191,12 @@ class _SessionStarterState extends ConsumerState<_SessionStarter> {
     );
   }
 
-  Future<void> _start() async {
-    final key = _selectedKey;
-    if (key == null) return;
+  Future<void> _start(List<CastGroupOption> groups, String label) async {
+    if (groups.isEmpty) return;
     setState(() => _starting = true);
     final ok = await ref.read(tvCastSessionProvider.notifier).startLiveSession(
-          sessionKey: key,
-          ownerKind: _selectedKind,
-          displayName: _selectedLabel,
+          groups: groups,
+          displayName: label,
         );
     if (!mounted) return;
     setState(() => _starting = false);
@@ -243,11 +209,52 @@ class _SessionStarterState extends ConsumerState<_SessionStarter> {
   }
 }
 
-class _OwnerOption {
-  final String key;
+/// Which classes / groups a live question goes to, and the promise that only
+/// their learners can join — shown before starting and while running.
+class _HostedGroupsNote extends StatelessWidget {
   final String label;
-  final LiveSessionOwnerKind kind;
-  const _OwnerOption(this.key, this.label, this.kind);
+  const _HostedGroupsNote({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final hc = HCColor.of(context);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: hc.primary.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: hc.primary.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.groups_rounded, size: 20, color: hc.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _t(context).tcgLiveHosting(label),
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: hc.textPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _t(context).tcgLiveNote,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: hc.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // ─── Running panel ─────────────────────────────────────
@@ -277,6 +284,10 @@ class _RunningPanelState extends ConsumerState<_RunningPanel> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _StatusHeader(state: state, onEnd: _end),
+        if ((state.castAudienceLabel ?? '').isNotEmpty) ...[
+          const SizedBox(height: 10),
+          _HostedGroupsNote(label: state.castAudienceLabel!),
+        ],
         const SizedBox(height: 14),
         _ScoringEditor(
           rules: scoring,

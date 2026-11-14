@@ -415,7 +415,7 @@ void main() {
     test('copyWith clears the live activity + session via flags', () {
       final base = TvCastSession(
         mode: CastMode.live,
-        liveSessionKey: 'class1',
+        liveSessionKeys: const ['class1'],
         liveActivity: LiveActivity.trueFalse(statement: 's', correctValue: true),
       );
       final cleared =
@@ -540,6 +540,38 @@ void main() {
         base.copyWith(slideIndex: 1).castAudioTarget,
         CastAudioTarget.phone,
       );
+    });
+  });
+
+  group('TvCastSession playback speed, audience, hosted groups', () {
+    test('speed defaults to 1× and reaches the TV as a number', () {
+      const s = TvCastSession();
+      expect(s.castPlaybackSpeed, CastPlaybackSpeed.normal);
+      expect(s.toApiJson()['speed'], 1.0);
+      expect(
+        s.copyWith(castPlaybackSpeed: CastPlaybackSpeed.fast).toApiJson()['speed'],
+        2.0,
+      );
+    });
+
+    test('who the cast is for reaches the TV; cleared, it is empty', () {
+      final s = const TvCastSession().copyWith(
+        castAudienceLabel: 'Hearing Class · Cognitive Class',
+      );
+      expect(s.toApiJson()['audience'], 'Hearing Class · Cognitive Class');
+      expect(s.copyWith(clearCastAudience: true).toApiJson()['audience'], '');
+      expect(const TvCastSession().toApiJson()['audience'], '');
+    });
+
+    test('a live session hosts several groups, and clears as one', () {
+      final s = const TvCastSession().copyWith(
+        liveSessionKeys: const ['class-a', 'class-b'],
+      );
+      expect(s.liveSessionKey, 'class-a');
+      expect(s.copyWith(clearLiveSession: true).liveSessionKeys, isEmpty);
+      expect(s.copyWith(clearLiveSession: true).liveSessionKey, isNull);
+      // Which groups are hosted is the phone's business, never the TV's.
+      expect(s.toApiJson().toString(), isNot(contains('class-b')));
     });
   });
 }

@@ -2,6 +2,22 @@
   "_comment": "Newest first. tools/release_page_build.py renders the website's download section, changelog, website/version.json and the GitHub release notes from this file plus pubspec.yaml and the built APKs. The first entry must match the pubspec version.",
   "releases": [
     {
+      "version": "1.4.5",
+      "build": 29,
+      "date": "2026-11-14",
+      "summary_en": "1.4.5: TV Cast for your classes. Teachers and parents choose which classes or home groups a TV Cast is for (one, several or all at once), the TV opens with a short address, cards slide and flip on the TV the way they do in the app, the spoken words play through the TV’s own speakers (also at 2× speed), and everything on the TV works from its remote.",
+      "summary_fil": "1.4.5: TV Cast para sa inyong mga klase. Pinipili ng guro at magulang kung para sa aling klase o home group ang TV Cast (isa, ilan, o lahat nang sabay), maikling address na lang ang itatype sa TV, dumudulas at umiikot ang mga card sa TV gaya ng sa app, sa sariling speaker ng TV naririnig ang mga salita (pati sa 2× na bilis), at gumagana ang lahat sa TV gamit ang sarili nitong remote.",
+      "notes_en": "TV Cast: choose which classes or groups to cast for, a short address for the TV, cards that move like the app, the words through the TV’s speakers at 1× or 2×, and every control on the TV remote.",
+      "notes_fil": "TV Cast: piliin kung para sa aling klase o grupo, maikling address para sa TV, mga card na gumagalaw gaya ng sa app, ang mga salita sa speaker ng TV sa 1× o 2×, at lahat ng kontrol sa remote ng TV.",
+      "bullets_en": [
+        "TV Cast for chosen classes: a teacher picks which classes a cast is for (a parent, which home groups) — one, several, or all of them as one choice. The choice is saved and can be changed at any time, even while casting. The TV’s Progress board shows only those learners, and Live Activity questions go only to those classes; each learner still sees only their own class or home group.",
+        "A short address for the TV: the TV Cast screen shows the tablet’s address and the five-letter code (for example 10.0.0.5:8088/ABCDE), with no http:// to type. Older links keep working.",
+        "Cards on the TV move the way they do in the app: the next card slides in as the old one slides out and grows in slightly, and the flip to the photo turns at the app’s speed. With Reduced Motion the cards simply change.",
+        "Sound through the TV’s own speakers: the tablet makes the spoken words in its English and Filipino voices and the TV plays them, so it also works on TVs whose browser cannot speak. A 🔊 sign shows on the TV while a word plays, the slideshow waits for each word to finish, and a new Playback speed (1× Normal or 2× Fast) speeds up the words and the sign videos.",
+        "The TV remote does everything: ◀ ▶ step through cards, signs and story pages, OK flips the card, ▲ says the word again, ▼ plays the Show Me clip, ▶❚❚ pauses and resumes, Back closes a clip and asks before leaving the cast, and Info shows the list of keys (the same list is on the tablet). When the TV’s browser holds the sound back, one press of OK turns it on."
+      ]
+    },
+    {
       "version": "1.4.4",
       "build": 28,
       "date": "2026-11-11",

@@ -25,9 +25,17 @@ class TvCastQrCard extends StatelessWidget {
 
   const TvCastQrCard({super.key, required this.url, this.code});
 
+  /// The address as it is typed on a TV: no `http://`, which every TV browser
+  /// adds by itself — `192.168.1.5:8088/K7M2Q` rather than eight more
+  /// characters to thumb in with a remote. The QR and the copied link keep
+  /// the scheme, which phones and computers need to treat it as a link.
+  static String typeable(String url) =>
+      url.replaceFirst(RegExp(r'^https?://', caseSensitive: false), '');
+
   @override
   Widget build(BuildContext context) {
     final hc = HCColor.of(context);
+    final shown = typeable(url);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -103,7 +111,7 @@ class TvCastQrCard extends StatelessWidget {
                     // unreachable. Narrow phones lost more.
                     Flexible(
                       child: SelectableText(
-                        url,
+                        shown,
                         textAlign: TextAlign.center,
                         style: AppTypography.titleMedium.copyWith(
                           fontFeatures: const [FontFeature.tabularFigures()],

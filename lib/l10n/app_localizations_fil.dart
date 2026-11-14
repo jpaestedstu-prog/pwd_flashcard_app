@@ -11186,7 +11186,7 @@ class AppLocalizationsFil extends AppLocalizations {
 
   @override
   String get tcRemoteOn =>
-      'Pindutin ang ◀ o ▶ sa remote ng TV para lumipat sa mga card, senyas o pahina ng kuwento, at play/pause para huminto. Magagamit kapag nasa pisara ka at nasa mesa ang tablet. (Ang OK ay pambukas pa rin ng tunog ng TV.)';
+      'Patakbuhin ang aralin mula sa pisara gamit ang sariling remote ng TV — nasa ibaba ang mga pindutan. Binubuksan din ng unang pindot ng OK ang tunog ng TV.';
 
   @override
   String get tcRemoteOff =>
@@ -13741,4 +13741,120 @@ class AppLocalizationsFil extends AppLocalizations {
   String chartPrePost(String name, int before, int after) {
     return '$name: bago $before porsiyento, pagkatapos $after porsiyento';
   }
+
+  @override
+  String get tcgSection => 'Klase / grupo';
+
+  @override
+  String get tcgSectionSub =>
+      'Kung para kanino ang cast na ito — naka-save para sa susunod.';
+
+  @override
+  String get tcgCastingFor => 'Ika-cast para sa';
+
+  @override
+  String get tcgChange => 'Palitan';
+
+  @override
+  String get tcgDone => 'Tapos na';
+
+  @override
+  String get tcgAllClasses => 'Lahat ng klase';
+
+  @override
+  String get tcgAllGroups => 'Lahat ng grupo';
+
+  @override
+  String get tcgAllMixed => 'Lahat ng klase at grupo';
+
+  @override
+  String get tcgAllNote =>
+      'Lahat, bilang iisang grupo — kasama rin ang mga bagong klase.';
+
+  @override
+  String tcgMembers(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count mag-aaral',
+      zero: 'Wala pang mag-aaral',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String tcgHint(String all) {
+    return 'I-tap ang isang klase para doon lang mag-cast, mag-tap pa para magdagdag, o i-tap ang “$all” para sa lahat.';
+  }
+
+  @override
+  String tcgLiveHosting(String groups) {
+    return 'Mapupunta ang mga tanong sa: $groups';
+  }
+
+  @override
+  String get tcgLiveNote =>
+      'Ang mga mag-aaral lang sa mga klase at grupong ito ang makakasali at makakasagot. Palitan ito sa “Klase / grupo” sa itaas, kahit habang tumatakbo.';
+
+  @override
+  String get tcSpeed => 'Bilis ng pag-play';
+
+  @override
+  String get tcSpeedNormal => '1× Karaniwan';
+
+  @override
+  String get tcSpeedFast => '2× Mabilis';
+
+  @override
+  String get tcSpeedNote =>
+      'Pinabibilis ang mga binibigkas na salita at ang mga video sa TV (at ang boses ng phone na ito kapag dito tumutunog).';
+
+  @override
+  String get tcKeysTitle => 'Mga pindutan ng remote';
+
+  @override
+  String get tcKeyArrows => 'Nakaraan o susunod na card, senyas o pahina';
+
+  @override
+  String get tcKeyArrowsName => 'Mga arrow na kaliwa at kanan';
+
+  @override
+  String get tcKeyOk =>
+      'Baligtarin ang card o ang larawan ng kuwento (inuulit ang senyas)';
+
+  @override
+  String get tcKeyUp => 'Sabihin ulit';
+
+  @override
+  String get tcKeyUpName => 'Arrow pataas';
+
+  @override
+  String get tcKeyDown => 'Clip na “Ipakita”, o Panoorin sa FSL';
+
+  @override
+  String get tcKeyDownName => 'Arrow pababa';
+
+  @override
+  String get tcKeyPlay => 'I-pause o ituloy ang slideshow';
+
+  @override
+  String get tcKeyPlayName => 'Play o pause';
+
+  @override
+  String get tcKeyBack =>
+      'Isara ang clip o ibalik ang card; pindutin nang dalawang beses para umalis';
+
+  @override
+  String get tcKeyInfo => 'Ipakita sa TV ang mga pindutang ito';
+
+  @override
+  String get tcKeyInfoName => 'Info o Menu';
+
+  @override
+  String get tcgNoClass =>
+      'Wala pang klase. Gumawa sa Pamahalaan ang mga Klase — saka mapipili rito ang mga mag-aaral nito.';
+
+  @override
+  String get tcgNoGroup =>
+      'Wala pang home group. Gumawa sa Pamahalaan ang Pamilya — saka mapipili rito ang mga anak mo.';
 }

@@ -33,6 +33,9 @@ class MainActivity : FlutterActivity() {
         /** Mirrors `TvCastKeepAlive._channel` on the Dart side. */
         private const val CAST_CHANNEL = "flashlearn/tv_cast_keepalive"
 
+        /** Mirrors `TvCastSpeech._channel` on the Dart side. */
+        private const val CAST_SPEECH_CHANNEL = "flashlearn/cast_speech"
+
         /** Mirrors `DeviceTimezone._channel` on the Dart side. */
         private const val TIMEZONE_CHANNEL = "flashlearn/device_timezone"
 
@@ -82,6 +85,9 @@ class MainActivity : FlutterActivity() {
 
     /** A switch learner is active (see IME_CHANNEL). */
     private var switchKeysToApp = false
+
+    /** The TV Cast's own speech engine, started on its first request. */
+    private var castSpeech: CastSpeech? = null
 
     /**
      * Gives the Flutter view Android-level focus if it lost it.
@@ -262,6 +268,13 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+
+        // The TV Cast's spoken words as audio files the TV plays through its
+        // own speakers — see `TvCastSpeech` on the Dart side and CastSpeech.
+        val speech = CastSpeech(applicationContext)
+        castSpeech = speech
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CAST_SPEECH_CHANNEL)
+            .setMethodCallHandler { call, result -> speech.onMethodCall(call, result) }
 
         // The media sound the app's speech plays on, for the "your device
         // sound is off" note — see `DeviceSound` on the Dart side.
@@ -578,6 +591,8 @@ class MainActivity : FlutterActivity() {
         gamepadBridge = null
         routineChannel?.setMethodCallHandler(null)
         routineChannel = null
+        castSpeech?.release()
+        castSpeech = null
         super.cleanUpFlutterEngine(flutterEngine)
     }
 

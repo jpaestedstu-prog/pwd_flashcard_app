@@ -12,6 +12,7 @@ import 'package:pwdpwdpwd/data/models/models.dart';
 import 'package:pwdpwdpwd/features/live_session/models/live_session_models.dart';
 import 'package:pwdpwdpwd/features/tv_cast/models/tv_cast_session.dart';
 import 'package:pwdpwdpwd/features/tv_cast/services/tv_cast_server.dart';
+import 'package:pwdpwdpwd/features/tv_cast/services/tv_cast_speech.dart';
 
 /// Restores the real `dart:io` HttpClient inside a zone. `TestWidgetsFlutter
 /// Binding` installs an override that fails every request with a 400 (to stop
@@ -905,6 +906,276 @@ void main() {
           client.close(force: true);
         }
       }, _RealHttpOverrides());
+    });
+  });
+
+  // ─── The short link ───────────────────────────────────
+  // `192.168.1.5:8088/K7M2Q` is what a teacher reads out and someone types
+  // with a TV remote; `/c/K7M2Q` keeps working for links already shared.
+  group('short link', () {
+    const cast = TvCastSession(mode: CastMode.flashcards, isServerRunning: true);
+
+    test('just the code after the address opens the cast page', () async {
+      final (s, port) = await boot(cast);
+      final token = s.sessionToken!;
+      expect(s.shortPath, '/$token');
+      for (final path in ['/$token', '/$token/', '/${token.toLowerCase()}']) {
+        final res = await get(port, path);
+        expect(res.status, 200, reason: path);
+        // The page still loads its assets and polls inside the code's own
+        // namespace, so nothing else had to learn a second way in.
+        expect(res.body, contains('window.CAST_BASE="${s.basePath}"'));
+        expect(res.body, contains('src="${s.basePath}/app.js"'));
+        expect(res.body, contains('href="${s.basePath}/style.css"'));
+      }
+      expect(s.rejectedCodeCount, 0);
+    });
+
+    test('the long link still works', () async {
+      final (s, port) = await boot(cast);
+      expect((await get(port, s.basePath)).status, 200);
+      expect((await get(port, '${s.basePath}/')).status, 200);
+      expect((await get(port, '${s.basePath}/api/state')).status, 200);
+    });
+
+    test('a wrong short code is the same dead end as any wrong code', () async {
+      final (s, port) = await boot(cast);
+      final wrong = s.sessionToken == 'AAAAA' ? 'CCCCC' : 'AAAAA';
+      final bare = await get(port, '/');
+      final bad = await get(port, '/$wrong');
+      expect(bad.status, 404);
+      expect(bad.body, bare.body);
+      expect(s.rejectedCodeCount, 2);
+    });
+
+    test('the short form opens the page only, never the API', () async {
+      final (s, port) = await boot(cast);
+      expect((await get(port, '${s.shortPath}/api/state')).status, 404);
+    });
+
+    test('a browser asking for a tab icon is not a wrong code', () async {
+      final (s, port) = await boot(cast);
+      final res = await get(port, '/favicon.ico');
+      expect(res.status, 204);
+      expect(s.rejectedCodeCount, 0);
+    });
+  });
+
+  group('TV remote keys', () {
+    test('every key the TV page sends is one the phone acts on', () async {
+      final actions = <String>[];
+      final s = TvCastServer(
+        getSession: () => const TvCastSession(isServerRunning: true),
+        onRemoteAction: actions.add,
+      );
+      server = s;
+      final port = await s.start();
+      const keys = [
+        'next', 'prev', 'playpause', 'play', 'pause',
+        'flip', 'showme', 'replay', 'back',
+      ];
+      for (final a in keys) {
+        final res = await get(port, '${s.basePath}/api/nudge?a=$a');
+        expect(res.status, 200, reason: a);
+      }
+      expect(actions, keys);
+      expect(TvCastServer.remoteActions, keys.toSet());
+    });
+  });
+
+  // ─── Spoken words as audio the TV plays ─────────────────
+  group('spoken words as audio the TV plays', () {
+    late Directory dir;
+
+    setUp(() async {
+      dir = await Directory.systemTemp.createTemp('cast_speech_test');
+    });
+
+    tearDown(() async {
+      try {
+        await dir.delete(recursive: true);
+      } catch (_) {}
+    });
+
+    /// A WAV as far as anyone checks: the RIFF header and something after it.
+    List<int> wav() => [...ascii.encode('RIFF'), ...List.filled(60, 0)];
+
+    TvCastSpeech speechWith({bool works = true, List<String>? made}) =>
+        TvCastSpeech(
+          cacheDir: () async => dir,
+          synthesizer: (text, lang, rate, path) async {
+            made?.add('$lang:$text');
+            if (!works) return false;
+            await File(path).writeAsBytes(wav());
+            return true;
+          },
+        );
+
+    TvCastSession card({
+      bool onTv = true,
+      CastLanguage lang = CastLanguage.both,
+    }) => TvCastSession(
+      mode: CastMode.flashcards,
+      category: FlashcardCategory.animals,
+      slideIndex: dogIndex(),
+      isServerRunning: true,
+      castAudioTarget: onTv ? CastAudioTarget.tv : CastAudioTarget.phone,
+      castLanguage: lang,
+    );
+
+    Future<(TvCastServer, int)> bootWith(
+      TvCastSession session,
+      TvCastSpeech speech, {
+      String ui = 'en',
+    }) async {
+      await server?.stop();
+      final s = TvCastServer(
+        getSession: () => session,
+        speech: speech,
+        getUiLanguage: () => ui,
+      );
+      server = s;
+      return (s, await s.start());
+    }
+
+    Future<Map<String, dynamic>> stateOf(TvCastServer s, int port) async {
+      final res = await get(port, '${s.basePath}/api/state');
+      expect(res.status, 200);
+      return json.decode(res.body) as Map<String, dynamic>;
+    }
+
+    test('a card lists its words, English then Filipino, as audio links',
+        () async {
+      final (s, port) = await bootWith(card(), speechWith());
+      final state = await stateOf(s, port);
+      final say = (state['say'] as List).cast<Map<String, dynamic>>();
+      expect(say.map((e) => e['l']), ['en', 'fil']);
+      expect((say.first['t'] as String).toLowerCase(), 'dog');
+      expect(
+        say.first['u'],
+        matches(RegExp(r'^/api/speech/[0-9a-f]{24}\.wav$')),
+        reason: 'root-relative, like every other media link',
+      );
+      expect(
+        state['sayKey'],
+        'f:${FlashcardCategory.animals.index}:${dogIndex()}',
+      );
+    });
+
+    test('the language filter governs what is said', () async {
+      final (s, port) =
+          await bootWith(card(lang: CastLanguage.filipino), speechWith());
+      final say = (await stateOf(s, port))['say'] as List;
+      expect(say.map((e) => (e as Map)['l']), ['fil']);
+    });
+
+    test('nothing is listed while the sound comes from the phone', () async {
+      final (s, port) = await bootWith(card(onTv: false), speechWith());
+      final state = await stateOf(s, port);
+      expect(state.containsKey('say'), isFalse);
+    });
+
+    test('the TV fetches the audio as a WAV, made once on the phone', () async {
+      final made = <String>[];
+      final (s, port) = await bootWith(card(), speechWith(made: made));
+      final say = (await stateOf(s, port))['say'] as List;
+      final url = (say.first as Map)['u'] as String;
+      final res = await getBytes(port, '${s.basePath}$url');
+      expect(res.status, 200);
+      expect(res.contentType, 'audio/wav');
+      expect(res.length, 64);
+      expect(made.single.toLowerCase(), 'en:dog');
+      await getBytes(port, '${s.basePath}$url');
+      expect(made, hasLength(1), reason: 'the file is made once, then served');
+    });
+
+    test('only lines the server handed out can be fetched', () async {
+      final made = <String>[];
+      final (s, port) = await bootWith(card(), speechWith(made: made));
+      for (final id in [
+        '0123456789abcdef01234567.wav',
+        'not-hex.wav',
+        '..%2F..%2Fsecret',
+      ]) {
+        final res = await getBytes(port, '${s.basePath}/api/speech/$id');
+        expect(res.status, 404, reason: id);
+      }
+      expect(made, isEmpty, reason: 'a TV must never make the phone talk');
+      // And without the code the audio is as unreachable as everything else.
+      final say = (await stateOf(s, port))['say'] as List;
+      final url = (say.first as Map)['u'] as String;
+      expect((await getBytes(port, url)).status, 404);
+    });
+
+    test('a line the phone cannot make is a 404 — the TV then uses its voice',
+        () async {
+      final (s, port) = await bootWith(card(), speechWith(works: false));
+      final say = (await stateOf(s, port))['say'] as List;
+      final url = (say.first as Map)['u'] as String;
+      expect((await getBytes(port, '${s.basePath}$url')).status, 404);
+    });
+
+    test("a live question is read out in the app's language", () async {
+      final session = TvCastSession(
+        mode: CastMode.live,
+        isServerRunning: true,
+        liveActivity: LiveActivity.trueFalse(
+          statement: 'Ang aso ay hayop.',
+          correctValue: true,
+        ),
+      );
+      final (s, port) = await bootWith(session, speechWith(), ui: 'fil');
+      final say = (await stateOf(s, port))['say'] as List;
+      expect(say, hasLength(1));
+      expect((say.single as Map)['l'], 'fil');
+      expect((say.single as Map)['t'], contains('Tama, o mali?'));
+      expect((say.single as Map)['t'], isNot(contains('true')));
+    });
+
+    test('the FSL signs and the progress board say nothing', () async {
+      for (final mode in [CastMode.fslVideo, CastMode.progress]) {
+        final (s, port) = await bootWith(
+          TvCastSession(
+            mode: mode,
+            category: FlashcardCategory.animals,
+            isServerRunning: true,
+          ),
+          speechWith(),
+        );
+        expect((await stateOf(s, port))['say'], isEmpty, reason: '$mode');
+      }
+    });
+
+    test('the lesson timer brings its own "Time’s up!"', () async {
+      final session = card().copyWith(
+        timerEndsAt: DateTime.now().add(const Duration(minutes: 1)),
+        timerTotalSeconds: 60,
+      );
+      final (s, port) = await bootWith(session, speechWith());
+      final timer = (await stateOf(s, port))['timer'] as Map;
+      expect((timer['say'] as Map)['t'], "Time's up!");
+      expect((timer['say'] as Map)['u'], startsWith('/api/speech/'));
+    });
+
+    test('the TV reports whether it is speaking, for the slideshow to wait',
+        () async {
+      final reports = <bool>[];
+      await server?.stop();
+      final s = TvCastServer(
+        getSession: card,
+        onTvAudioReport: ({
+          required supported,
+          required unlocked,
+          required speaking,
+        }) =>
+            reports.add(speaking),
+      );
+      server = s;
+      final port = await s.start();
+      await get(port, '${s.basePath}/api/state?tts=1&unlocked=1&spk=1');
+      await get(port, '${s.basePath}/api/state?tts=1&unlocked=1&spk=0');
+      await get(port, '${s.basePath}/api/state?tts=1&unlocked=1');
+      expect(reports, [true, false, false]);
     });
   });
 }

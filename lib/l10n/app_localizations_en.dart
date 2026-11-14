@@ -11284,7 +11284,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tcRemoteOn =>
-      'Press ◀ or ▶ on the TV remote to move between cards, signs or story pages, and play/pause to hold. Handy when you’re at the board and the tablet is on your desk. (OK still just turns on the TV’s sound.)';
+      'Run the lesson from the board with the TV’s own remote — the keys are below. The first press of OK also turns on the TV’s sound.';
 
   @override
   String get tcRemoteOff =>
@@ -13893,4 +13893,117 @@ class AppLocalizationsEn extends AppLocalizations {
   String chartPrePost(String name, int before, int after) {
     return '$name: before $before percent, after $after percent';
   }
+
+  @override
+  String get tcgSection => 'Class / group';
+
+  @override
+  String get tcgSectionSub => 'Who this cast is for — saved for next time.';
+
+  @override
+  String get tcgCastingFor => 'Casting for';
+
+  @override
+  String get tcgChange => 'Change';
+
+  @override
+  String get tcgDone => 'Done';
+
+  @override
+  String get tcgAllClasses => 'All classes';
+
+  @override
+  String get tcgAllGroups => 'All groups';
+
+  @override
+  String get tcgAllMixed => 'All classes and groups';
+
+  @override
+  String get tcgAllNote => 'Everyone, as one group — new classes join it too.';
+
+  @override
+  String tcgMembers(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count learners',
+      one: '1 learner',
+      zero: 'No learners yet',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String tcgHint(String all) {
+    return 'Tap a class to cast for it alone, tap more to add them, or tap “$all” for everyone.';
+  }
+
+  @override
+  String tcgLiveHosting(String groups) {
+    return 'Questions go to: $groups';
+  }
+
+  @override
+  String get tcgLiveNote =>
+      'Only learners in these classes and groups can join and answer. Change it under “Class / group” above, even mid-session.';
+
+  @override
+  String get tcSpeed => 'Playback speed';
+
+  @override
+  String get tcSpeedNormal => '1× Normal';
+
+  @override
+  String get tcSpeedFast => '2× Fast';
+
+  @override
+  String get tcSpeedNote =>
+      'Speeds up the spoken words and the videos on the TV (and this phone’s voice when the sound plays here).';
+
+  @override
+  String get tcKeysTitle => 'Remote keys';
+
+  @override
+  String get tcKeyArrows => 'Previous or next card, sign or page';
+
+  @override
+  String get tcKeyArrowsName => 'Left and right arrows';
+
+  @override
+  String get tcKeyOk => 'Flip the card or the story picture (replays a sign)';
+
+  @override
+  String get tcKeyUp => 'Say it again';
+
+  @override
+  String get tcKeyUpName => 'Up arrow';
+
+  @override
+  String get tcKeyDown => '“Show Me” clip, or Watch in FSL';
+
+  @override
+  String get tcKeyDownName => 'Down arrow';
+
+  @override
+  String get tcKeyPlay => 'Pause or play the slideshow';
+
+  @override
+  String get tcKeyPlayName => 'Play or pause';
+
+  @override
+  String get tcKeyBack => 'Close a clip or flip back; press twice to leave';
+
+  @override
+  String get tcKeyInfo => 'Show these keys on the TV';
+
+  @override
+  String get tcKeyInfoName => 'Info or Menu';
+
+  @override
+  String get tcgNoClass =>
+      'No class yet. Create one in Manage Classes — its learners can then be picked here.';
+
+  @override
+  String get tcgNoGroup =>
+      'No home group yet. Create one in Manage Family — your children can then be picked here.';
 }

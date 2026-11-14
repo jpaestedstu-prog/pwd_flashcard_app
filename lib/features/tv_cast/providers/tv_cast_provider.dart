@@ -22,6 +22,7 @@ import '../../../providers/app_providers.dart';
 import '../../../providers/seasonal_event_provider.dart';
 import '../../live_session/models/live_session_models.dart';
 import '../../live_session/services/live_session_service.dart';
+import '../models/cast_group_selection.dart';
 import '../models/tv_cast_session.dart';
 import '../services/tv_cast_asset_bridge.dart';
 import '../services/tv_cast_audio_narrator.dart';
@@ -29,6 +30,8 @@ import '../services/tv_cast_autoplay_controller.dart';
 import '../services/tv_cast_ip_discovery.dart';
 import '../services/tv_cast_keep_alive.dart';
 import '../services/tv_cast_server.dart';
+import '../services/tv_cast_speech.dart';
+import 'cast_group_provider.dart';
 
 /// Owns the cast session state machine and the underlying HTTP server.
 /// Every mutation bumps `revision` so the TV's poll loop can short-circuit
@@ -73,24 +76,58 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
   static const _progressBackstopInterval = Duration(seconds: 15);
 
   // ─── Live interactive session (CastMode.live) ─────────
+  // One Firestore session per hosted class / home group (see
+  // [TvCastSession.liveSessionKeys]); their hands and responses are merged
+  // here into the single picture the TV and the host panel show.
   final LiveSessionService _liveService = const LiveSessionService();
-  StreamSubscription<List<RaisedHand>>? _handsSub;
-  StreamSubscription<List<LiveResponse>>? _responsesSub;
+  final Map<String, StreamSubscription<List<RaisedHand>>> _handsSubs = {};
+  final Map<String, StreamSubscription<List<LiveResponse>>> _responsesSubs =
+      {};
+  final Map<String, List<RaisedHand>> _handsByKey = {};
 
-  /// Most recent full response set for the session, cached so the responder
+  /// Most recent full response set per hosted group, cached so the responder
   /// count + scoreboard can be recomputed when either it or the current
   /// activity changes.
-  List<LiveResponse> _latestResponses = const [];
+  final Map<String, List<LiveResponse>> _responsesByKey = {};
+
+  /// Serialises re-targeting the live session when the class / group picker
+  /// changes mid-session, so two quick taps can't start a group twice.
+  Future<void> _liveRetarget = Future.value();
+
+  // ─── Class / group selection ──────────────────────────
+  // Which of the educator's classes / home groups this cast is for. Read from
+  // [castGroupSelectionProvider] (saved per profile) while a cast runs, and
+  // listened to so a change in the picker reaches the TV at once.
+  String? _castProfileId;
+  ProviderSubscription<CastGroupSelection>? _groupSub;
+
+  // ─── Spoken words as audio the TV plays ───────────────
+  TvCastSpeech? _speech;
+
+  /// When a TV last reported that it is speaking. The slideshow holds while a
+  /// word or page is still being heard, rather than cutting it off.
+  DateTime? _tvSpeakingSeenAt;
+  Timer? _speechHoldTimer;
+  DateTime? _speechHoldSince;
+
+  /// Whether the autoplay timer is stopped by a speech hold (as opposed to
+  /// by the educator's pause), so cancelling the hold knows to restart it.
+  bool _heldForSpeech = false;
+
+  /// Longest the slideshow waits for speech to finish before moving on
+  /// anyway — a stuck report must never freeze the lesson.
+  static const _maxSpeechHold = Duration(seconds: 12);
 
   @override
   TvCastSession build() {
     ref.onDispose(() {
       _autoplay?.dispose();
       _viewerTickTimer?.cancel();
+      _speechHoldTimer?.cancel();
       _stopProgressWatch();
+      _groupSub?.close();
       unawaited(TvCastKeepAlive.stop());
-      unawaited(_handsSub?.cancel());
-      unawaited(_responsesSub?.cancel());
+      unawaited(_cancelLiveStreams());
       unawaited(_narrator?.stop());
       unawaited(_server?.stop());
     });
@@ -103,30 +140,89 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
     return _narrator ??= TvCastAudioNarrator(
       tts: ref.read(ttsServiceProvider),
       sfx: ref.read(soundServiceProvider),
+      baseRate: () => ref.read(settingsProvider).ttsSpeed,
     );
   }
 
+  /// Whether the app is in Filipino — the language of a live question read
+  /// aloud and of the TV's own captions.
+  bool get _uiFilipino => ref.read(settingsProvider).locale == 'fil';
+
   /// Speaks the current word / story page from the phone and plays a soft cue,
   /// honouring the per-cast toggle and the app's accessibility settings.
+  /// When the TV is the one speaking, has its audio made ahead instead.
   /// No-op unless the server is running.
   void _narrateCurrent({bool withCue = true}) {
+    _cancelSpeechHold();
     if (!state.isServerRunning || !state.castAudioEnabled) return;
-    // When audio is routed to the TV, the TV browser speaks it (Web Speech);
-    // the phone stays silent so the two don't overlap.
-    if (state.castAudioTarget != CastAudioTarget.phone) return;
+    // When audio is routed to the TV, the TV plays it (audio the phone makes
+    // for it, or its own Web Speech); the phone stays silent so the two don't
+    // overlap.
+    if (state.castAudioTarget != CastAudioTarget.phone) {
+      _prefetchSpeech();
+      return;
+    }
 
     final settings = ref.read(settingsProvider);
     if (withCue && settings.soundEffects) _audio().cue();
     if (!settings.ttsEnabled) return;
 
-    var (en, fil) = _currentSpeechText();
-    // The language filter governs what's spoken as well as what's shown —
-    // hearing a language the TV isn't displaying would be more confusing than
-    // silence, especially for the cognitive-disability profiles.
-    if (state.castLanguage == CastLanguage.english) fil = '';
-    if (state.castLanguage == CastLanguage.filipino) en = '';
+    final (en, fil) = _filteredSpeechText();
     if (en.isEmpty && fil.isEmpty) return;
-    unawaited(_audio().speakBoth(en, fil));
+    unawaited(
+      _audio().speakBoth(en, fil, speed: state.castPlaybackSpeed.rate),
+    );
+  }
+
+  /// [_currentSpeechText] with the "Language on TV" filter applied: it
+  /// governs what's spoken as well as what's shown — hearing a language the
+  /// TV isn't displaying would be more confusing than silence, especially for
+  /// the cognitive-disability profiles. A live question is exempt: it is said
+  /// in the app's language, as on the TV.
+  (String, String) _filteredSpeechText() {
+    var (en, fil) = _currentSpeechText();
+    if (state.mode != CastMode.live) {
+      if (state.castLanguage == CastLanguage.english) fil = '';
+      if (state.castLanguage == CastLanguage.filipino) en = '';
+    }
+    return (en, fil);
+  }
+
+  /// Has the TV's audio for the item on screen — and the one after it — made
+  /// now, so a word is heard the moment its card lands instead of after the
+  /// TV has asked for it and waited. Fire-and-forget.
+  void _prefetchSpeech() {
+    final speech = _speech;
+    if (speech == null || !state.isServerRunning || !state.castAudioEnabled) {
+      return;
+    }
+    if (state.castAudioTarget != CastAudioTarget.tv) return;
+    final ui = _uiFilipino;
+    speech.prefetch(castSpeechLinesFor(state, uiFilipino: ui));
+    final upNext = _peekNext();
+    if (upNext != null) {
+      speech.prefetch(castSpeechLinesFor(upNext, uiFilipino: ui));
+    }
+  }
+
+  /// The session as it will be after [next], for warming the next item's
+  /// audio. Null when there is no next item to warm.
+  TvCastSession? _peekNext() {
+    switch (state.mode) {
+      case CastMode.flashcards:
+        final cards = _currentCards();
+        if (cards.length < 2) return null;
+        return state.copyWith(
+          slideIndex: (state.slideIndex + 1) % cards.length,
+        );
+      case CastMode.story:
+        final story = _currentStory();
+        if (story == null) return null;
+        if (state.storyPageIndex >= story.sentencesEn.length - 1) return null;
+        return state.copyWith(storyPageIndex: state.storyPageIndex + 1);
+      default:
+        return null;
+    }
   }
 
   /// The (English, Filipino) text for whatever Flashcard word / Story page is
@@ -151,41 +247,19 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
         final fil = idx < pagesFil.length ? pagesFil[idx] : '';
         return (en, fil);
       case CastMode.live:
-        // Mirrors the TV's `liveSpeechText`: the question plus its lettered
-        // choices, so a class listening on the phone's speaker hears the same
-        // thing a TV would say. Filipino is empty — activities are authored in
-        // one language by the educator, so there's no second string to read.
+        // The question plus its lettered choices — the same words the TV
+        // says (castLiveSpeechText), so a class listening on the phone's
+        // speaker hears what a TV would. In the app's language: activities
+        // are authored once, so only the instructions have a second one.
         final activity = state.liveActivity;
         if (activity == null) return ('', '');
-        return (_liveSpeechText(activity), '');
+        final filipino = _uiFilipino;
+        final text = castLiveSpeechText(activity, filipino: filipino);
+        return filipino ? ('', text) : (text, '');
       case CastMode.progress:
       case CastMode.idle:
         return ('', '');
     }
-  }
-
-  /// Spoken form of a live question. Kept in step with `liveSpeechText` in the
-  /// TV-side `app.js`; the correct answer is deliberately not part of it.
-  String _liveSpeechText(LiveActivity activity) {
-    final parts = <String>[];
-    switch (activity.type) {
-      case LiveActivityType.fslSign:
-        parts.add('Watch the sign, then pick the word.');
-      case LiveActivityType.pictureChoice:
-        parts.add('Which word matches the picture?');
-      default:
-        final prompt = activity.prompt;
-        if (prompt.trim().isNotEmpty) parts.add(prompt);
-    }
-    if (activity.type == LiveActivityType.trueFalse) {
-      parts.add('True, or false?');
-    } else {
-      final options = activity.options;
-      for (var i = 0; i < options.length; i++) {
-        parts.add('${String.fromCharCode(65 + i)}. ${options[i]}');
-      }
-    }
-    return parts.join(' ');
   }
 
   /// Re-speaks the current Flashcard word / Story page on the educator's phone
@@ -212,7 +286,38 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
 
     // Otherwise model it on this phone (unchanged behaviour).
     if (!ref.read(settingsProvider).ttsEnabled) return;
-    unawaited(_audio().speakOne(text, filipino: filipino));
+    unawaited(
+      _audio().speakOne(
+        text,
+        filipino: filipino,
+        speed: state.castPlaybackSpeed.rate,
+      ),
+    );
+  }
+
+  /// "Say it again" in every language on screen — the TV remote's ▲ key.
+  ///
+  /// When the TV is the one speaking it replays the item itself (it only sends
+  /// this when the sound comes from the phone), but answering here too keeps
+  /// the two paths the same: the TV is asked to re-speak through the replay
+  /// nonce, otherwise this phone says it.
+  void replayCurrent() {
+    final (en, fil) = _filteredSpeechText();
+    if (en.trim().isEmpty && fil.trim().isEmpty) return;
+    if (state.isServerRunning && state.castAudioTarget == CastAudioTarget.tv) {
+      state = state.copyWith(
+        ttsReplayNonce: state.ttsReplayNonce + 1,
+        ttsReplayLang: 'both',
+        revision: state.revision + 1,
+      );
+      return;
+    }
+    if (!state.castAudioEnabled || !ref.read(settingsProvider).ttsEnabled) {
+      return;
+    }
+    unawaited(
+      _audio().speakBoth(en, fil, speed: state.castPlaybackSpeed.rate),
+    );
   }
 
   // ─── Server lifecycle ─────────────────────────────────
@@ -250,16 +355,28 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
       return;
     }
 
+    // The TV's spoken words, made on this phone as audio files the TV plays
+    // through its own speakers. The engine rate follows the app's own speech
+    // speed (flutter_tts maps 0.5 to Android's normal 1.0), so the TV's voice
+    // runs at the pace the learner is used to.
+    _speech ??= TvCastSpeech(
+      engineRate: () => ref.read(settingsProvider).ttsSpeed * 2,
+    );
+    unawaited(_speech!.prune());
+
     _server ??= TvCastServer(
       getSession: () => state,
       onTvAudioReport: _onTvAudioReport,
       onRemoteAction: _onRemoteAction,
       getUiLanguage: () => ref.read(settingsProvider).locale,
+      speech: _speech,
     );
     final port = await _server!.start();
     // The URL carries the session code the server just minted — the TV proves
-    // it was invited simply by opening the link the teacher showed it.
-    final url = 'http://$ip:$port${_server!.basePath}';
+    // it was invited simply by opening the link the teacher showed it. The
+    // short form (`/K7M2Q`, not `/c/K7M2Q`) is what gets shown and shared:
+    // it is typed with a TV remote. The long form keeps working.
+    final url = 'http://$ip:$port${_server!.shortPath}';
 
     // Respect the educator's accessibility setting out of the box: if the app
     // is in high-contrast mode, default the TV output to the high-contrast
@@ -296,6 +413,10 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
     _liveQuestionsPushed = 0;
     _liveAnswersBanked = 0;
     _peakViewers = 0;
+
+    // Which classes / groups the cast is for, as picked (and saved) on the
+    // cast screen — followed live, so a change reaches the TV at once.
+    _watchGroups();
 
     // Ask Android to keep this process alive for the duration. Best-effort:
     // if it's refused the cast is unchanged, it just loses the guarantee.
@@ -404,10 +525,16 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
 
   Future<void> stopServer() async {
     _autoplay?.stop();
+    _cancelSpeechHold(restart: false);
     unawaited(_narrator?.stop());
     _viewerTickTimer?.cancel();
     _viewerTickTimer = null;
     _stopProgressWatch();
+    _groupSub?.close();
+    _groupSub = null;
+    _castProfileId = null;
+    _tvSpeakingSeenAt = null;
+    unawaited(TvCastSpeech.release());
     unawaited(TvCastKeepAlive.stop());
     // Persist the finished cast before dropping the tally. Best-effort: a
     // failed write must not stop the cast from shutting down cleanly.
@@ -522,6 +649,79 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
     _progressTickTimer = null;
   }
 
+  // ─── Class / group selection ──────────────────────────
+
+  /// Follows the educator's class / group picker for the length of the cast.
+  /// Listening (not reading) keeps the saved selection alive and pushes every
+  /// change here, so the TV's progress board, the live session and the
+  /// audience line follow the picker without the screen telling anyone.
+  void _watchGroups() {
+    final profile = ref.read(profileProvider);
+    _groupSub?.close();
+    _groupSub = null;
+    _castProfileId = profile?.id;
+    if (profile == null) return;
+    _groupSub = ref.listen<CastGroupSelection>(
+      castGroupSelectionProvider(profile.id),
+      (_, _) => _onGroupsChanged(),
+    );
+    _refreshAudience();
+  }
+
+  /// The educator's classes / home groups, as this device last saw them.
+  List<CastGroupOption> get _groupOptions {
+    final id = _castProfileId;
+    return id == null ? const [] : cachedCastGroupOptions(id);
+  }
+
+  CastGroupSelection get _groupSelection {
+    final id = _castProfileId;
+    if (id == null) return const CastGroupSelection.all();
+    return ref.read(castGroupSelectionProvider(id));
+  }
+
+  /// The groups this cast is for — every group when "All" is picked.
+  List<CastGroupOption> get castGroups =>
+      _groupSelection.resolve(_groupOptions);
+
+  /// Whether the cast is for every class / group (so nothing is filtered).
+  bool get _castsForAll => _groupSelection.coversAll(_groupOptions);
+
+  void _onGroupsChanged() {
+    _refreshAudience();
+    if (state.mode == CastMode.progress) _refreshProgress();
+    if (state.liveSessionKeys.isNotEmpty) {
+      // Chained, so two quick taps re-target in order; a failure must not
+      // stop the chain for every change after it.
+      _liveRetarget = _liveRetarget
+          .then((_) => _retargetLive())
+          .catchError((Object _) {});
+    }
+  }
+
+  /// Puts "who is this cast for" into the state the TV reads (`audience`).
+  void _refreshAudience() {
+    final label = _audienceLabel();
+    if (label == state.castAudienceLabel) return;
+    state = state.copyWith(
+      castAudienceLabel: label,
+      clearCastAudience: label == null,
+      revision: state.revision + 1,
+    );
+  }
+
+  /// "Hearing Class · Cognitive Class", one group's own name, or "All
+  /// classes" (in the app's language). Null with no group to name.
+  String? _audienceLabel() {
+    final options = _groupOptions;
+    if (options.isEmpty) return null;
+    if (_castsForAll) {
+      if (options.length == 1) return options.first.name;
+      return castAllGroupsLabel(_l10n, options);
+    }
+    return castGroups.map((g) => g.name).join(' · ');
+  }
+
   void setCategory(FlashcardCategory category) {
     state = state.copyWith(
       category: category,
@@ -530,6 +730,17 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
       cardFlipped: false,
       revision: state.revision + 1,
     );
+    // The first card of the new deck gets a full beat. The slideshow timer
+    // kept the phase it started with when the mode was picked, so the first
+    // card could be replaced a second after it appeared — before its word
+    // had even been said (seen on the tablet: "Dog" lasted ~1 s).
+    if (state.autoAdvanceEnabled &&
+        !state.isPaused &&
+        !state.isAway &&
+        (state.mode == CastMode.flashcards ||
+            state.mode == CastMode.fslVideo)) {
+      _autoplay?.start(interval: _autoplayIntervalFor(state.mode));
+    }
     if (state.mode == CastMode.fslVideo) _prefetchFslAround();
     _narrateCurrent();
   }
@@ -649,6 +860,17 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
     if (state.tvVideoSoundEnabled == enabled) return;
     state = state.copyWith(
       tvVideoSoundEnabled: enabled,
+      revision: state.revision + 1,
+    );
+  }
+
+  /// Sets how fast the TV plays its words and clips (1× / 2×). The TV applies
+  /// it to whatever is playing on its next poll, without restarting anything;
+  /// the phone's own narration uses it from the next word.
+  void setCastPlaybackSpeed(CastPlaybackSpeed speed) {
+    if (state.castPlaybackSpeed == speed) return;
+    state = state.copyWith(
+      castPlaybackSpeed: speed,
       revision: state.revision + 1,
     );
   }
@@ -827,6 +1049,7 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
   // ─── Remote controls ──────────────────────────────────
 
   void next() {
+    _cancelSpeechHold();
     switch (state.mode) {
       case CastMode.flashcards:
       case CastMode.fslVideo:
@@ -873,6 +1096,7 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
   }
 
   void prev() {
+    _cancelSpeechHold();
     switch (state.mode) {
       case CastMode.flashcards:
       case CastMode.fslVideo:
@@ -921,6 +1145,7 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
   void togglePause() {
     final paused = !state.isPaused;
     state = state.copyWith(isPaused: paused, revision: state.revision + 1);
+    _cancelSpeechHold();
     if (paused) {
       _autoplay?.pause();
       unawaited(_narrator?.stop());
@@ -940,6 +1165,7 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
   void setAway(bool away) {
     if (state.isAway == away) return;
     state = state.copyWith(isAway: away, revision: state.revision + 1);
+    _cancelSpeechHold();
     if (away) {
       _autoplay?.pause();
       unawaited(_narrator?.stop());
@@ -965,6 +1191,7 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
       storyImageFlipped: false,
       revision: state.revision + 1,
     );
+    _cancelSpeechHold(restart: false);
     _autoplay?.pause();
     unawaited(_narrator?.stop());
     // A soft cue marks the ending for learners who aren't reading the screen.
@@ -979,15 +1206,109 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
     if (state.isPaused || !state.autoAdvanceEnabled) return;
     // A closed story has nowhere to advance to; leave the ending on screen.
     if (state.mode == CastMode.story && state.storyFinished) return;
+    if (_holdForSpeech()) return;
     next();
   }
 
-  /// Folds a TV's reported Web Speech ability (from its `/api/state` poll) into
+  // ─── Keeping the slideshow in step with the sound ─────
+  // Autoplay turns the card on a fixed beat (4 s, 7 s for a story page), but a
+  // long story line read in English then Filipino — or anything at a slow
+  // speech rate — can still be playing when the beat comes, and the next page
+  // used to cut it off mid-sentence. So the beat now waits while the current
+  // item is being heard: the TV reports `spk=1` on every poll while it plays
+  // a line, the phone knows when its own engine is talking. It re-checks every
+  // half second and never waits longer than [_maxSpeechHold].
+
+  bool get _inAutoplayMode =>
+      state.mode == CastMode.flashcards ||
+      state.mode == CastMode.fslVideo ||
+      state.mode == CastMode.story;
+
+  /// Whether the current item is still being said, wherever the sound is.
+  bool _speechStillPlaying() {
+    if (!state.castAudioEnabled) return false;
+    if (state.castAudioTarget == CastAudioTarget.phone) {
+      return TtsService.speaking.value;
+    }
+    final seen = _tvSpeakingSeenAt;
+    return seen != null &&
+        DateTime.now().difference(seen) < const Duration(milliseconds: 2500);
+  }
+
+  /// Holds the slideshow while speech is still playing. True when it holds.
+  bool _holdForSpeech() {
+    if (!_speechStillPlaying()) {
+      _speechHoldSince = null;
+      return false;
+    }
+    final since = _speechHoldSince ??= DateTime.now();
+    if (DateTime.now().difference(since) >= _maxSpeechHold) {
+      _speechHoldSince = null;
+      return false;
+    }
+    if (!_heldForSpeech) {
+      _heldForSpeech = true;
+      _autoplay?.pause();
+    }
+    _speechHoldTimer?.cancel();
+    _speechHoldTimer = Timer(
+      const Duration(milliseconds: 500),
+      _speechHoldTick,
+    );
+    return true;
+  }
+
+  void _speechHoldTick() {
+    _speechHoldTimer = null;
+    if (!_heldForSpeech) return;
+    if (state.isPaused ||
+        state.isAway ||
+        !state.autoAdvanceEnabled ||
+        !_inAutoplayMode) {
+      // Someone else took charge of the slideshow meanwhile; leave it be.
+      _heldForSpeech = false;
+      _speechHoldSince = null;
+      return;
+    }
+    if (_holdForSpeech()) return;
+    next(); // cancels the hold and restarts the beat for the new item
+  }
+
+  /// Drops a speech hold — the item changed, or the educator paused. With
+  /// [restart] the slideshow beat starts over (a full interval for whatever
+  /// is now on screen) when it should be running.
+  void _cancelSpeechHold({bool restart = true}) {
+    _speechHoldTimer?.cancel();
+    _speechHoldTimer = null;
+    _speechHoldSince = null;
+    if (!_heldForSpeech) return;
+    _heldForSpeech = false;
+    if (restart &&
+        !state.isPaused &&
+        !state.isAway &&
+        state.autoAdvanceEnabled &&
+        _inAutoplayMode) {
+      _autoplay?.resume();
+    }
+  }
+
+  /// Folds a TV's reported sound (from its `/api/state` poll) into
   /// [TvCastSession.tvAudioStatus] so the phone can explain why the TV is or
-  /// isn't speaking. Updates only on change and **without** bumping `revision`
-  /// (this is phone-UI-only info — the TV must not repaint for it), mirroring
-  /// the `connectedViewers` tick.
-  void _onTvAudioReport({required bool supported, required bool unlocked}) {
+  /// isn't speaking, and notes whether it is speaking right now for the
+  /// slideshow hold. Updates the status only on change and **without**
+  /// bumping `revision` (this is phone-UI-only info — the TV must not repaint
+  /// for it), mirroring the `connectedViewers` tick.
+  void _onTvAudioReport({
+    required bool supported,
+    required bool unlocked,
+    required bool speaking,
+  }) {
+    if (speaking) {
+      _tvSpeakingSeenAt = DateTime.now();
+    } else if (state.connectedViewers <= 1) {
+      // The one TV says it has finished: no need to wait out the window.
+      _tvSpeakingSeenAt = null;
+    }
     final next = !supported
         ? TvAudioStatus.unsupported
         : (unlocked ? TvAudioStatus.ready : TvAudioStatus.needsTap);
@@ -995,11 +1316,12 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
     state = state.copyWith(tvAudioStatus: next);
   }
 
-  /// Handles a TV pressing ◀ ▶ / play-pause on its own remote.
+  /// Handles a key pressed on the TV's own remote.
   ///
   /// Routed through the same methods the phone's buttons call, so remote and
   /// phone can't drift apart — and so stepping from the TV pauses autoplay and
-  /// re-narrates exactly like stepping from the tablet.
+  /// re-narrates exactly like stepping from the tablet. Every action means
+  /// something sensible in every mode, or nothing at all.
   void _onRemoteAction(String action) {
     switch (action) {
       case 'next':
@@ -1008,6 +1330,82 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
         prev();
       case 'playpause':
         togglePause();
+      case 'play':
+        if (state.isPaused) togglePause();
+      case 'pause':
+        if (!state.isPaused) togglePause();
+      case 'flip':
+        _remoteFlip();
+      case 'showme':
+        _remoteShowMe();
+      case 'replay':
+        replayCurrent();
+      case 'back':
+        _remoteBack();
+    }
+  }
+
+  /// What a TV remote key does to the cast — [_onRemoteAction], for tests.
+  @visibleForTesting
+  void handleRemoteAction(String action) => _onRemoteAction(action);
+
+  /// The flashcard on screen, or null outside flashcards mode.
+  Flashcard? get _currentCard {
+    if (state.mode != CastMode.flashcards) return null;
+    final cards = _currentCards();
+    if (cards.isEmpty) return null;
+    return cards[state.slideIndex % cards.length] as Flashcard;
+  }
+
+  /// OK on the remote: flip the card to its photo (and back), or flip the
+  /// story picture — the TV's equivalent of tapping the card in the app.
+  void _remoteFlip() {
+    switch (state.mode) {
+      case CastMode.flashcards:
+        final card = _currentCard;
+        if (card != null && TvCastAssetBridge.hasPhoto(card)) flipCard();
+      case CastMode.story:
+        if (!state.storyFinished && !state.storyFslActive) flipStoryImage();
+      default:
+        break;
+    }
+  }
+
+  /// ▼ on the remote: the card's "Show Me" clip, or the page's sign-language
+  /// clip — on, or back off. Only where there is one to show.
+  void _remoteShowMe() {
+    switch (state.mode) {
+      case CastMode.flashcards:
+        final card = _currentCard;
+        if (card != null && TvCastAssetBridge.hasActionClip(card)) {
+          setShowMe(!state.showMeActive);
+        }
+      case CastMode.story:
+        final story = _currentStory();
+        if (story == null || state.storyFinished) return;
+        final total = story.sentencesEn.length;
+        if (total == 0) return;
+        final idx = state.storyPageIndex.clamp(0, total - 1);
+        if (TvCastAssetBridge.storyFslUrl(story, idx) != null) {
+          setStoryFsl(!state.storyFslActive);
+        }
+      default:
+        break;
+    }
+  }
+
+  /// Back on the remote: closes whatever was opened on top of the card — a
+  /// clip, then a flipped face. With nothing open the TV offers to leave the
+  /// cast itself and never sends this.
+  void _remoteBack() {
+    if (state.showMeActive) {
+      setShowMe(false);
+    } else if (state.storyFslActive) {
+      setStoryFsl(false);
+    } else if (state.cardFlipped) {
+      flipCard();
+    } else if (state.storyImageFlipped) {
+      flipStoryImage();
     }
   }
 
@@ -1035,6 +1433,11 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
     );
     _timerChimed = false;
     _refreshKeepAlive();
+    // Have "Time's up!" ready as audio for the TV before the clock runs out.
+    if (state.castAudioEnabled &&
+        state.castAudioTarget == CastAudioTarget.tv) {
+      _speech?.prefetch([castTimesUpLine(uiFilipino: _uiFilipino)]);
+    }
   }
 
   /// Freezes the clock, keeping the remaining time.
@@ -1220,10 +1623,23 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
     // Offline, scope to what local enrolment can prove instead of every
     // learner on the device — a cast leaderboard must not put another
     // family's children on the TV. See [localEducatorRoster].
-    final List<(UserProfile, LearningProgress)> roster =
+    var roster =
         rosterAsync.valueOrNull ??
         localEducatorRoster(profile.id, allLocal) ??
         allLocal;
+
+    // Only the learners of the classes / groups this cast is for: a TV cast
+    // for the Hearing class must not put the Cognitive class on the screen.
+    if (!_castsForAll) {
+      final groupIds = {for (final g in castGroups) g.id};
+      final members = cachedCastMemberIds(groupIds, [
+        for (final r in roster) r.$1,
+      ]);
+      roster = [
+        for (final r in roster)
+          if (members.contains(r.$1.id)) r,
+      ];
+    }
 
     final views = buildProgressViews(roster);
     final rows = views.ranked;
@@ -1341,21 +1757,32 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
   /// Whether a live session can run right now (needs cloud sync).
   bool get canHostLive => FirebaseService.isConfigured;
 
-  /// Starts (or resumes) the Firestore live session for [sessionKey] and
-  /// subscribes to its raised hands + responses so they flow to the TV. Safe
-  /// to call repeatedly — re-subscribes cleanly. Stamps the current scoring
-  /// rules. No-ops (returns false) when cloud sync isn't available.
+  /// Starts (or resumes) a Firestore live session for each of [groups] — by
+  /// default the classes / groups this cast is for ([castGroups]) — and
+  /// subscribes to their raised hands + responses so they reach the TV as one
+  /// session.
+  ///
+  /// Every group keeps its own session document, keyed by its id. A learner's
+  /// app only ever opens the document of its own class or home group, so a
+  /// question pushed here reaches exactly the learners of the picked groups,
+  /// and nobody joins a group they don't belong to. A group whose session
+  /// cannot start is left out rather than sinking the others.
+  ///
+  /// Safe to call repeatedly — re-subscribes cleanly. Stamps the current
+  /// scoring rules. Returns false when cloud sync isn't available or no group
+  /// could start.
   Future<bool> startLiveSession({
-    required String sessionKey,
-    required LiveSessionOwnerKind ownerKind,
+    List<CastGroupOption>? groups,
     LiveScoringRules scoring = const LiveScoringRules(),
     String? displayName,
   }) async {
+    final targets = groups ?? castGroups;
+    if (targets.isEmpty) return false;
     if (!FirebaseService.isConfigured) {
-      // Still surface the chosen key/rules so the host UI can render its
+      // Still surface the chosen groups/rules so the host UI can render its
       // "needs internet" notice with the right context.
       state = state.copyWith(
-        liveSessionKey: sessionKey,
+        liveSessionKeys: [for (final g in targets) g.id],
         liveScoring: scoring,
         revision: state.revision + 1,
       );
@@ -1365,35 +1792,37 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
     final profile = ref.read(profileProvider);
     if (profile == null) return false;
 
-    try {
-      await _liveService.startSession(
-        sessionKey: sessionKey,
-        ownerProfileId: profile.id,
-        ownerKind: ownerKind,
-        scoring: scoring,
-      );
-    } catch (_) {
-      return false;
+    final started = <String>[];
+    for (final g in targets) {
+      try {
+        await _liveService.startSession(
+          sessionKey: g.id,
+          ownerProfileId: profile.id,
+          ownerKind: g.kind,
+          scoring: scoring,
+        );
+        started.add(g.id);
+      } catch (_) {
+        // This group's learners can't be reached; the others still can.
+      }
+    }
+    // Counts only — the device check reads which groups went live.
+    debugPrint(
+      'TvCastLive: hosting ${started.length} of ${targets.length} groups',
+    );
+    if (started.isEmpty) return false;
+
+    await _cancelLiveStreams();
+    for (final key in started) {
+      _subscribeLive(key);
     }
 
-    _latestResponses = const [];
-    await _handsSub?.cancel();
-    await _responsesSub?.cancel();
-
-    _handsSub = _liveService.watchHands(sessionKey).listen((hands) {
-      state = state.copyWith(raisedHands: hands, revision: state.revision + 1);
-    });
-    _responsesSub =
-        _liveService.watchAllResponses(sessionKey).listen((responses) {
-      _latestResponses = responses;
-      _recomputeLiveAggregates();
-    });
-
     state = state.copyWith(
-      liveSessionKey: sessionKey,
+      liveSessionKeys: started,
       liveScoring: scoring,
       liveResponders: 0,
       liveScoreboard: const [],
+      raisedHands: const [],
       // Default the TV branding to the hosted class name (unless the educator
       // already set their own title).
       castTitle: state.castTitle ?? displayName,
@@ -1402,9 +1831,161 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
     return true;
   }
 
+  /// Follows one hosted group's raised hands and responses.
+  void _subscribeLive(String key) {
+    _handsSubs[key] = _liveService.watchHands(key).listen((hands) {
+      _handsByKey[key] = hands;
+      _recomputeHands();
+    });
+    _responsesSubs[key] = _liveService.watchAllResponses(key).listen((
+      responses,
+    ) {
+      _responsesByKey[key] = responses;
+      _recomputeLiveAggregates();
+    });
+  }
+
+  Future<void> _unsubscribeLive(String key) async {
+    await _handsSubs.remove(key)?.cancel();
+    await _responsesSubs.remove(key)?.cancel();
+    _handsByKey.remove(key);
+    _responsesByKey.remove(key);
+  }
+
+  Future<void> _cancelLiveStreams() async {
+    for (final key in {..._handsSubs.keys, ..._responsesSubs.keys}) {
+      await _unsubscribeLive(key);
+    }
+    _handsByKey.clear();
+    _responsesByKey.clear();
+  }
+
+  /// Runs a cloud write for one group, ignoring its failure: the TV preview is
+  /// already updated, and one unreachable group must not stop the others.
+  Future<void> _quietly(Future<Object?> Function() write) async {
+    try {
+      await write();
+    } catch (_) {}
+  }
+
+  /// The learners who belong to hosted group [key], or null when this device
+  /// cannot tell (no membership known) — then nobody is filtered out rather
+  /// than everybody.
+  Set<String>? _liveMembersOf(String key) {
+    final profile = ref.read(profileProvider);
+    final roster = profile == null
+        ? null
+        : ref.read(educatorRosterProvider(profile.id)).valueOrNull;
+    final learners = [
+      for (final r in roster ?? const <(UserProfile, LearningProgress)>[])
+        r.$1,
+    ];
+    final ids = cachedCastMemberIds({key}, learners);
+    return ids.isEmpty ? null : ids;
+  }
+
+  /// Hands from every hosted group as one list: only learners who belong to
+  /// the group they raised it in (a stray hand from outside the class never
+  /// reaches the shared screen), each learner once, oldest first.
+  void _recomputeHands() {
+    final merged = <String, RaisedHand>{};
+    for (final entry in _handsByKey.entries) {
+      final members = _liveMembersOf(entry.key);
+      for (final h in entry.value) {
+        if (members != null && !members.contains(h.profileId)) continue;
+        final seen = merged[h.profileId];
+        if (seen == null || h.raisedAt.isBefore(seen.raisedAt)) {
+          merged[h.profileId] = h;
+        }
+      }
+    }
+    final hands = merged.values.toList()
+      ..sort((a, b) => a.raisedAt.compareTo(b.raisedAt));
+    final current = state.raisedHands;
+    final same =
+        hands.length == current.length &&
+        List.generate(
+          hands.length,
+          (i) =>
+              hands[i].profileId == current[i].profileId &&
+              hands[i].profileName == current[i].profileName &&
+              hands[i].raisedAt == current[i].raisedAt,
+        ).every((b) => b);
+    if (same) return;
+    state = state.copyWith(raisedHands: hands, revision: state.revision + 1);
+  }
+
+  /// Every response from every hosted group, members only (see
+  /// [_recomputeHands]).
+  List<LiveResponse> get _allResponses {
+    final all = <LiveResponse>[];
+    for (final entry in _responsesByKey.entries) {
+      final members = _liveMembersOf(entry.key);
+      for (final r in entry.value) {
+        if (members == null || members.contains(r.profileId)) all.add(r);
+      }
+    }
+    return all;
+  }
+
+  /// Follows a change of the class / group picker during a live session:
+  /// groups taken off end their session (their learners see it close), groups
+  /// added start one — showing them the question already on screen.
+  Future<void> _retargetLive() async {
+    if (state.liveSessionKeys.isEmpty || !FirebaseService.isConfigured) {
+      return;
+    }
+    final profile = ref.read(profileProvider);
+    if (profile == null) return;
+    final wanted = castGroups;
+    final wantedIds = {for (final g in wanted) g.id};
+    final current = state.liveSessionKeys.toSet();
+    if (wantedIds.length == current.length && wantedIds.containsAll(current)) {
+      return;
+    }
+    final scoring = state.liveScoring ?? const LiveScoringRules();
+
+    for (final key in current.difference(wantedIds)) {
+      await _unsubscribeLive(key);
+      await _quietly(() => _liveService.endSession(key));
+    }
+    final added = <String>[];
+    for (final g in wanted) {
+      if (current.contains(g.id)) continue;
+      try {
+        await _liveService.startSession(
+          sessionKey: g.id,
+          ownerProfileId: profile.id,
+          ownerKind: g.kind,
+          scoring: scoring,
+        );
+        final activity = state.liveActivity;
+        if (activity != null) {
+          await _liveService.pushActivity(sessionKey: g.id, activity: activity);
+        }
+        _subscribeLive(g.id);
+        added.add(g.id);
+      } catch (_) {
+        // Unreachable group: left out, the others carry on.
+      }
+    }
+    final keys = [
+      for (final k in state.liveSessionKeys)
+        if (wantedIds.contains(k)) k,
+      ...added,
+    ];
+    state = state.copyWith(
+      liveSessionKeys: keys,
+      clearLiveSession: keys.isEmpty,
+      revision: state.revision + 1,
+    );
+    _recomputeHands();
+    _recomputeLiveAggregates();
+  }
+
   /// Pushes a new activity to every connected learner and shows it on the TV.
   Future<void> pushLiveActivity(LiveActivity activity) async {
-    final key = state.liveSessionKey;
+    final keys = state.liveSessionKeys;
     // Bank the outgoing question's answers before liveResponders resets, so
     // the session total survives being replaced.
     _liveAnswersBanked += state.liveResponders;
@@ -1421,46 +2002,61 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
     // And read the question aloud when audio is routed to this phone (the TV
     // does its own speaking via `ttsOnTv`).
     _narrateCurrent(withCue: false);
-    if (key == null || !FirebaseService.isConfigured) return;
-    try {
-      await _liveService.pushActivity(sessionKey: key, activity: activity);
-    } catch (_) {
-      // Local TV preview still updated; the learner sync just won't fire.
-    }
+    if (keys.isEmpty || !FirebaseService.isConfigured) return;
+    await Future.wait([
+      for (final key in keys)
+        _quietly(
+          () => _liveService.pushActivity(sessionKey: key, activity: activity),
+        ),
+    ]);
     _recomputeLiveAggregates();
   }
 
   /// Clears the current question (learners see "waiting for the next one").
   Future<void> clearLiveActivity() async {
-    final key = state.liveSessionKey;
+    final keys = state.liveSessionKeys;
     state = state.copyWith(
       clearLiveActivity: true,
       liveResponders: 0,
       revision: state.revision + 1,
     );
-    if (key == null || !FirebaseService.isConfigured) return;
-    try {
-      await _liveService.clearActivity(key);
-    } catch (_) {}
+    if (keys.isEmpty || !FirebaseService.isConfigured) return;
+    await Future.wait([
+      for (final key in keys) _quietly(() => _liveService.clearActivity(key)),
+    ]);
   }
 
   /// Updates the star-scoring rules mid-session.
   Future<void> setLiveScoring(LiveScoringRules rules) async {
-    final key = state.liveSessionKey;
+    final keys = state.liveSessionKeys;
     state = state.copyWith(liveScoring: rules, revision: state.revision + 1);
-    if (key == null || !FirebaseService.isConfigured) return;
-    try {
-      await _liveService.updateScoring(sessionKey: key, scoring: rules);
-    } catch (_) {}
+    if (keys.isEmpty || !FirebaseService.isConfigured) return;
+    await Future.wait([
+      for (final key in keys)
+        _quietly(
+          () => _liveService.updateScoring(sessionKey: key, scoring: rules),
+        ),
+    ]);
   }
 
-  /// Educator clears a learner's raised hand (e.g. after helping them).
+  /// Educator clears a learner's raised hand (e.g. after helping them), in
+  /// whichever hosted group it was raised.
   Future<void> clearRaisedHand(String profileId) async {
-    final key = state.liveSessionKey;
-    if (key == null || !FirebaseService.isConfigured) return;
-    try {
-      await _liveService.lowerHand(sessionKey: key, profileId: profileId);
-    } catch (_) {}
+    final keys = state.liveSessionKeys;
+    if (keys.isEmpty || !FirebaseService.isConfigured) return;
+    final raisedIn = [
+      for (final key in keys)
+        if ((_handsByKey[key] ?? const <RaisedHand>[]).any(
+          (h) => h.profileId == profileId,
+        ))
+          key,
+    ];
+    await Future.wait([
+      for (final key in raisedIn.isEmpty ? keys : raisedIn)
+        _quietly(
+          () => _liveService.lowerHand(sessionKey: key, profileId: profileId),
+        ),
+    ]);
   }
 
   /// Ends the live session and tears down its subscriptions, but keeps the
@@ -1479,28 +2075,24 @@ class TvCastSessionNotifier extends Notifier<TvCastSession> {
   }
 
   Future<void> _endLiveSession() async {
-    final key = state.liveSessionKey;
-    await _handsSub?.cancel();
-    await _responsesSub?.cancel();
-    _handsSub = null;
-    _responsesSub = null;
-    _latestResponses = const [];
-    if (key != null && FirebaseService.isConfigured) {
-      try {
-        await _liveService.endSession(key);
-      } catch (_) {}
-    }
+    final keys = state.liveSessionKeys;
+    await _cancelLiveStreams();
+    if (keys.isEmpty || !FirebaseService.isConfigured) return;
+    await Future.wait([
+      for (final key in keys) _quietly(() => _liveService.endSession(key)),
+    ]);
   }
 
   /// Recomputes the responder count (for the current activity) and the
-  /// session-wide scoreboard from the cached response set, pushing a new
-  /// revision only when something actually changed.
+  /// session-wide scoreboard from the cached response sets of every hosted
+  /// group, pushing a new revision only when something actually changed.
   void _recomputeLiveAggregates() {
+    final responses = _allResponses;
     final currentId = state.liveActivity?.id;
     final responders = currentId == null
         ? 0
-        : _latestResponses.where((r) => r.activityId == currentId).length;
-    final board = LiveSessionService.aggregateScoreboard(_latestResponses);
+        : responses.where((r) => r.activityId == currentId).length;
+    final board = LiveSessionService.aggregateScoreboard(responses);
 
     final boardUnchanged =
         board.length == state.liveScoreboard.length &&

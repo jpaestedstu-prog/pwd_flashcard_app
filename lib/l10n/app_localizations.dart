@@ -18822,7 +18822,7 @@ abstract class AppLocalizations {
   /// No description provided for @tcRemoteOn.
   ///
   /// In en, this message translates to:
-  /// **'Press ◀ or ▶ on the TV remote to move between cards, signs or story pages, and play/pause to hold. Handy when you’re at the board and the tablet is on your desk. (OK still just turns on the TV’s sound.)'**
+  /// **'Run the lesson from the board with the TV’s own remote — the keys are below. The first press of OK also turns on the TV’s sound.'**
   String get tcRemoteOn;
 
   /// No description provided for @tcRemoteOff.
@@ -22898,6 +22898,198 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{name}: before {before} percent, after {after} percent'**
   String chartPrePost(String name, int before, int after);
+
+  /// No description provided for @tcgSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Class / group'**
+  String get tcgSection;
+
+  /// No description provided for @tcgSectionSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Who this cast is for — saved for next time.'**
+  String get tcgSectionSub;
+
+  /// No description provided for @tcgCastingFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Casting for'**
+  String get tcgCastingFor;
+
+  /// No description provided for @tcgChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get tcgChange;
+
+  /// No description provided for @tcgDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get tcgDone;
+
+  /// No description provided for @tcgAllClasses.
+  ///
+  /// In en, this message translates to:
+  /// **'All classes'**
+  String get tcgAllClasses;
+
+  /// No description provided for @tcgAllGroups.
+  ///
+  /// In en, this message translates to:
+  /// **'All groups'**
+  String get tcgAllGroups;
+
+  /// No description provided for @tcgAllMixed.
+  ///
+  /// In en, this message translates to:
+  /// **'All classes and groups'**
+  String get tcgAllMixed;
+
+  /// No description provided for @tcgAllNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone, as one group — new classes join it too.'**
+  String get tcgAllNote;
+
+  /// No description provided for @tcgMembers.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No learners yet} =1{1 learner} other{{count} learners}}'**
+  String tcgMembers(int count);
+
+  /// No description provided for @tcgHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap a class to cast for it alone, tap more to add them, or tap “{all}” for everyone.'**
+  String tcgHint(String all);
+
+  /// No description provided for @tcgLiveHosting.
+  ///
+  /// In en, this message translates to:
+  /// **'Questions go to: {groups}'**
+  String tcgLiveHosting(String groups);
+
+  /// No description provided for @tcgLiveNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Only learners in these classes and groups can join and answer. Change it under “Class / group” above, even mid-session.'**
+  String get tcgLiveNote;
+
+  /// No description provided for @tcSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Playback speed'**
+  String get tcSpeed;
+
+  /// No description provided for @tcSpeedNormal.
+  ///
+  /// In en, this message translates to:
+  /// **'1× Normal'**
+  String get tcSpeedNormal;
+
+  /// No description provided for @tcSpeedFast.
+  ///
+  /// In en, this message translates to:
+  /// **'2× Fast'**
+  String get tcSpeedFast;
+
+  /// No description provided for @tcSpeedNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Speeds up the spoken words and the videos on the TV (and this phone’s voice when the sound plays here).'**
+  String get tcSpeedNote;
+
+  /// No description provided for @tcKeysTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remote keys'**
+  String get tcKeysTitle;
+
+  /// No description provided for @tcKeyArrows.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous or next card, sign or page'**
+  String get tcKeyArrows;
+
+  /// No description provided for @tcKeyArrowsName.
+  ///
+  /// In en, this message translates to:
+  /// **'Left and right arrows'**
+  String get tcKeyArrowsName;
+
+  /// No description provided for @tcKeyOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Flip the card or the story picture (replays a sign)'**
+  String get tcKeyOk;
+
+  /// No description provided for @tcKeyUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Say it again'**
+  String get tcKeyUp;
+
+  /// No description provided for @tcKeyUpName.
+  ///
+  /// In en, this message translates to:
+  /// **'Up arrow'**
+  String get tcKeyUpName;
+
+  /// No description provided for @tcKeyDown.
+  ///
+  /// In en, this message translates to:
+  /// **'“Show Me” clip, or Watch in FSL'**
+  String get tcKeyDown;
+
+  /// No description provided for @tcKeyDownName.
+  ///
+  /// In en, this message translates to:
+  /// **'Down arrow'**
+  String get tcKeyDownName;
+
+  /// No description provided for @tcKeyPlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause or play the slideshow'**
+  String get tcKeyPlay;
+
+  /// No description provided for @tcKeyPlayName.
+  ///
+  /// In en, this message translates to:
+  /// **'Play or pause'**
+  String get tcKeyPlayName;
+
+  /// No description provided for @tcKeyBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Close a clip or flip back; press twice to leave'**
+  String get tcKeyBack;
+
+  /// No description provided for @tcKeyInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Show these keys on the TV'**
+  String get tcKeyInfo;
+
+  /// No description provided for @tcKeyInfoName.
+  ///
+  /// In en, this message translates to:
+  /// **'Info or Menu'**
+  String get tcKeyInfoName;
+
+  /// No description provided for @tcgNoClass.
+  ///
+  /// In en, this message translates to:
+  /// **'No class yet. Create one in Manage Classes — its learners can then be picked here.'**
+  String get tcgNoClass;
+
+  /// No description provided for @tcgNoGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'No home group yet. Create one in Manage Family — your children can then be picked here.'**
+  String get tcgNoGroup;
 }
 
 class _AppLocalizationsDelegate

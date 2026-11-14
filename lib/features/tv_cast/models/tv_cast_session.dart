@@ -158,6 +158,29 @@ extension CastLanguageX on CastLanguage {
   };
 }
 
+/// How fast the TV plays its sound and video.
+///
+/// One switch for the whole cast: the spoken words and story lines, a live
+/// question read aloud, and the sign / "Show Me" clips. Applied on the TV with
+/// the media element's own `playbackRate` (and the speech `rate` where the TV
+/// speaks with Web Speech), so changing it never re-downloads or restarts
+/// anything — the clip that is playing simply speeds up or slows down.
+enum CastPlaybackSpeed { normal, fast }
+
+extension CastPlaybackSpeedX on CastPlaybackSpeed {
+  /// The multiplier sent to the TV as `speed`.
+  double get rate => switch (this) {
+    CastPlaybackSpeed.normal => 1.0,
+    CastPlaybackSpeed.fast => 2.0,
+  };
+
+  /// [rate] in the app's language ("1× Normal" / "2× Fast").
+  String labelOf(AppLocalizations t) => switch (this) {
+    CastPlaybackSpeed.normal => t.tcSpeedNormal,
+    CastPlaybackSpeed.fast => t.tcSpeedFast,
+  };
+}
+
 /// What a finished cast actually did, shown to the educator when they stop.
 ///
 /// Casting is otherwise entirely ephemeral: a teacher runs a 20-minute lesson
@@ -487,6 +510,11 @@ class TvCastSession {
   /// Default off so signs stay muted (Deaf-appropriate) and can autoplay.
   final bool tvVideoSoundEnabled;
 
+  /// How fast the TV plays its spoken words and its clips (1× or 2×). Sent to
+  /// the TV as `speed`; also paces the phone's own narration when the sound is
+  /// set to come from the phone. See [CastPlaybackSpeed].
+  final CastPlaybackSpeed castPlaybackSpeed;
+
   /// Whether the cast automatically advances to the next item (flashcard /
   /// sign / story page) on a timer. Phone-side only — it gates the notifier's
   /// [TvCastAutoplayController] and is never serialized to the TV (the TV just
@@ -533,9 +561,24 @@ class TvCastSession {
   /// not serialized to the TV.
   final LiveScoringRules? liveScoring;
 
-  /// The session key (classroom or home-group id) the educator is hosting.
-  /// Host-side only.
-  final String? liveSessionKey;
+  /// The groups (classroom or home-group ids) the educator is hosting a live
+  /// session for — one per class / group picked under "Class / group", each
+  /// with its own `live_sessions/{id}` document. A learner's app only ever
+  /// opens the document of its own class or home group, so a question pushed
+  /// here reaches exactly the learners of the picked groups. Host-side only;
+  /// empty when no live session is running.
+  final List<String> liveSessionKeys;
+
+  /// The first hosted group, or null when no live session is running.
+  String? get liveSessionKey =>
+      liveSessionKeys.isEmpty ? null : liveSessionKeys.first;
+
+  /// Who this cast is for, in words ("Hearing Class · Cognitive Class", or
+  /// "All classes"). Built by the notifier from the educator's class / group
+  /// picker and sent to the TV as `audience`, which shows it under the
+  /// progress board and the live question so the room can see whose screen
+  /// it is. Null when the educator has no class or group at all.
+  final String? castAudienceLabel;
 
   // ─── Display design (templates, branding, motion) ─────
 
@@ -668,6 +711,7 @@ class TvCastSession {
     this.castAudioEnabled = true,
     this.castAudioTarget = CastAudioTarget.tv,
     this.tvVideoSoundEnabled = false,
+    this.castPlaybackSpeed = CastPlaybackSpeed.normal,
     this.autoAdvanceEnabled = true,
     this.tvAudioStatus = TvAudioStatus.unknown,
     this.ttsReplayNonce = 0,
@@ -677,7 +721,8 @@ class TvCastSession {
     this.liveScoreboard = const [],
     this.raisedHands = const [],
     this.liveScoring,
-    this.liveSessionKey,
+    this.liveSessionKeys = const [],
+    this.castAudienceLabel,
     this.castTitle,
     this.seasonalEmoji,
     this.seasonalAccent,
@@ -727,6 +772,7 @@ class TvCastSession {
     bool? castAudioEnabled,
     CastAudioTarget? castAudioTarget,
     bool? tvVideoSoundEnabled,
+    CastPlaybackSpeed? castPlaybackSpeed,
     bool? autoAdvanceEnabled,
     TvAudioStatus? tvAudioStatus,
     int? ttsReplayNonce,
@@ -737,8 +783,10 @@ class TvCastSession {
     List<LiveScoreRow>? liveScoreboard,
     List<RaisedHand>? raisedHands,
     LiveScoringRules? liveScoring,
-    String? liveSessionKey,
+    List<String>? liveSessionKeys,
     bool clearLiveSession = false,
+    String? castAudienceLabel,
+    bool clearCastAudience = false,
     String? castTitle,
     bool clearCastTitle = false,
     String? seasonalEmoji,
@@ -793,6 +841,7 @@ class TvCastSession {
       castAudioEnabled: castAudioEnabled ?? this.castAudioEnabled,
       castAudioTarget: castAudioTarget ?? this.castAudioTarget,
       tvVideoSoundEnabled: tvVideoSoundEnabled ?? this.tvVideoSoundEnabled,
+      castPlaybackSpeed: castPlaybackSpeed ?? this.castPlaybackSpeed,
       autoAdvanceEnabled: autoAdvanceEnabled ?? this.autoAdvanceEnabled,
       tvAudioStatus: tvAudioStatus ?? this.tvAudioStatus,
       ttsReplayNonce: ttsReplayNonce ?? this.ttsReplayNonce,
@@ -806,9 +855,12 @@ class TvCastSession {
       liveScoring: clearLiveSession
           ? null
           : (liveScoring ?? this.liveScoring),
-      liveSessionKey: clearLiveSession
+      liveSessionKeys: clearLiveSession
+          ? const []
+          : (liveSessionKeys ?? this.liveSessionKeys),
+      castAudienceLabel: clearCastAudience
           ? null
-          : (liveSessionKey ?? this.liveSessionKey),
+          : (castAudienceLabel ?? this.castAudienceLabel),
       castTitle: clearCastTitle ? null : (castTitle ?? this.castTitle),
       seasonalEmoji:
           clearSeasonal ? null : (seasonalEmoji ?? this.seasonalEmoji),
@@ -920,8 +972,15 @@ class TvCastSession {
       'storyId': storyId,
       'storyPageIndex': storyPageIndex,
       'videoSound': tvVideoSoundEnabled,
-      // The TV browser speaks the words/story itself (Web Speech) only when
-      // audio is on AND routed to the TV; otherwise the phone handles it.
+      // Playback speed for everything the TV plays — spoken words, live
+      // questions read aloud and the sign / "Show Me" clips. A number so the
+      // TV can hand it straight to `playbackRate` / the speech `rate`.
+      'speed': castPlaybackSpeed.rate,
+      // Who the cast is for ("Hearing Class · Cognitive Class"); the TV shows
+      // it under the progress board and the live question. Empty when unset.
+      'audience': castAudienceLabel ?? '',
+      // The TV plays the words/story itself only when audio is on AND routed
+      // to the TV; otherwise the phone handles it.
       'ttsOnTv': castAudioEnabled && castAudioTarget == CastAudioTarget.tv,
       // Explicit "replay" request: the TV re-speaks the current item whenever
       // `n` changes (independent of slide changes), in the chosen `lang`.

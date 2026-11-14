@@ -37,6 +37,10 @@ function mkEl(id) {
     getElementsByClassName(cls) {
       return this._html.indexOf('class="' + cls) >= 0 ? [mkEl(cls)] : [];
     },
+    // Attributes as written (a relative src stays relative, as in a browser).
+    getAttribute(name) { return this['_attr_' + name] !== undefined ? this['_attr_' + name] : (name === 'src' && this.src !== undefined ? this.src : null); },
+    setAttribute(name, value) { this['_attr_' + name] = String(value); },
+    focus() {},
   };
   // Setting innerHTML in a real browser *parses* the markup into live nodes
   // that getElementById can then find and patch. Model just enough of that:
@@ -71,6 +75,54 @@ const els = {
   'sound-hint': mkEl('sound-hint'),
 };
 
+// <audio> / <video> the way a TV browser has them: it can play a WAV, and
+// play() answers with a promise — refused (NotAllowedError) while
+// `mediaBlocked` is set, which is a browser waiting for a key press.
+const mediaLog = [];
+let mediaBlocked = false;
+function mkMedia(tag) {
+  const el = mkEl(tag);
+  el.paused = true;
+  el.muted = false;
+  el.playbackRate = 1;
+  el.defaultPlaybackRate = 1;
+  el.canPlayType = (t) => (t.indexOf('wav') >= 0 ? 'maybe' : '');
+  el.play = function () {
+    const self = this;
+    if (mediaBlocked) {
+      return { then(ok, bad) { if (bad) bad({ name: 'NotAllowedError' }); } };
+    }
+    self.paused = false;
+    mediaLog.push({ tag, src: self.src, rate: self.playbackRate, muted: self.muted });
+    if (self.onplaying) self.onplaying();
+    return { then(ok) { if (ok) ok(); } };
+  };
+  el.pause = function () { this.paused = true; };
+  return el;
+}
+
+// Timers are recorded, not run: a check advances them with flushTimers(),
+// so "say the word once the card has landed" is testable without waiting.
+let timers = [];
+let timerSeq = 0;
+function flushTimers(rounds) {
+  for (let r = 0; r < (rounds || 3); r++) {
+    const due = timers;
+    timers = [];
+    if (!due.length) return;
+    due.forEach((t) => { if (t.fn) t.fn(); });
+  }
+}
+
+// Key presses arrive the way a TV remote sends them: keydown on the document.
+const listeners = {};
+function key(code, name) {
+  const ev = { keyCode: code, which: code, key: name || '', preventDefault() {} };
+  (listeners.keydown || []).forEach((fn) => fn(ev));
+}
+
+const historyLog = [];
+
 // Elements app.js creates lazily (hands banner, branding, decoration) and then
 // looks up by id — register them so the second lookup finds the same node.
 function lookup(id) {
@@ -91,12 +143,19 @@ global.document = {
     appendChild(c) { els[c.id] = c; return c; },
   },
   documentElement: mkEl('html'),
-  addEventListener() {},
+  addEventListener(type, fn) { (listeners[type] = listeners[type] || []).push(fn); },
   fullscreenElement: null,
 };
+global.document.createElement = (tag) =>
+  (tag === 'audio' || tag === 'video' ? mkMedia(tag) : mkEl(tag));
 
 global.window = {
-  addEventListener() {},
+  addEventListener(type, fn) { (listeners[type] = listeners[type] || []).push(fn); },
+  history: {
+    pushState() { historyLog.push('push'); },
+    back() { historyLog.push('back'); },
+    go(n) { historyLog.push('go ' + n); },
+  },
   innerWidth: 1920,
   innerHeight: 1080,
   speechSynthesis: {
@@ -124,8 +183,9 @@ global.Image = function () {
 };
 
 let lastUrl = null;
+const urls = [];
 global.XMLHttpRequest = function () {
-  this.open = (m, url) => { lastUrl = url; };
+  this.open = (m, url) => { lastUrl = url; urls.push(url); };
   this.send = () => {
     this.readyState = 4;
     this.status = 200;
@@ -138,7 +198,8 @@ global.XMLHttpRequest = function () {
 // silently repoint the driver at the wrong callback.
 const intervals = [];
 global.setInterval = (fn, ms) => { intervals.push({ fn, ms }); return 0; };
-global.setTimeout = () => 0;
+global.setTimeout = (fn, ms) => { timers.push({ fn, ms }); return ++timerSeq; };
+global.clearTimeout = () => {};
 
 eval(fs.readFileSync(path.join(REPO, 'assets/tv_cast/app.js'), 'utf8'));
 
@@ -346,10 +407,12 @@ check('zero shows "Time\'s up!" and never counts past it', () => {
     { timer: { secondsLeft: 0, total: 300, paused: false, label: '' } }
   ));
   const t = els['lesson-timer'];
-  assert.ok(t.innerHTML.indexOf("Time's up!") >= 0, t.innerHTML);
+  // The TV writes it with a typographic apostrophe (Time’s up!), like every
+  // caption in the app.
+  assert.ok(/Time[’']s up!/.test(t.innerHTML), t.innerHTML);
   assert.ok(t.className.indexOf('finished') >= 0, 'missing finished class');
   tickTimerFn();
-  assert.ok(t.innerHTML.indexOf("Time's up!") >= 0, 'counted past zero');
+  assert.ok(/Time[’']s up!/.test(t.innerHTML), 'counted past zero');
 });
 
 check('the last 30 seconds are marked by more than colour', () => {
@@ -446,6 +509,7 @@ check('language filter also silences the other language', () => {
   spoken.length = 0;
   push({ mode: 'flashcards', ttsOnTv: true, lang: 'en',
          slide: { index: 5, total: 9, wordEn: 'Dog', wordFil: 'Aso', emoji: '🐕', catLabel: 'Animals' } });
+  flushTimers(); // the word is said once the card has landed
   assert.ok(spoken.length >= 1, 'nothing spoken');
   assert.ok(spoken.join(' ').indexOf('Aso') < 0,
     'spoke the hidden language: ' + spoken.join(' | '));
@@ -497,6 +561,267 @@ check('stepping Back from "The End" repaints the page', () => {
   const html = push({ mode: 'story', ttsOnTv: false, storyDone: false, story: STORY });
   assert.ok(html.indexOf('The cow says moo.') >= 0, 'did not return to the page');
   assert.ok(html.indexOf('The End') < 0, 'closing screen stuck');
+});
+
+// ─── Card motion (matches the app's page view) ───────
+const CARD = (i, extra) => Object.assign({
+  index: i, total: 9, wordEn: 'W' + i, wordFil: 'F' + i, emoji: '🐕', catLabel: 'Animals',
+}, extra || {});
+
+check('the first card of a deck grows in without sliding', () => {
+  push({ mode: 'idle' });
+  const html = push({ mode: 'flashcards', ttsOnTv: false, slide: CARD(0) });
+  assert.ok(/class="slide fc-card fc-in"/.test(html), html.slice(0, 160));
+});
+
+check('the next card slides in from the right, the previous from the left', () => {
+  let html = push({ mode: 'flashcards', ttsOnTv: false, slide: CARD(1) });
+  assert.ok(html.indexOf('fc-in-next') >= 0, 'next did not slide: ' + html.slice(0, 120));
+  html = push({ mode: 'flashcards', ttsOnTv: false, slide: CARD(0) });
+  assert.ok(html.indexOf('fc-in-prev') >= 0, 'previous did not slide back');
+  html = push({ mode: 'flashcards', ttsOnTv: false, slide: CARD(8) });
+  assert.ok(html.indexOf('fc-in-prev') >= 0, 'back past the first card is not "previous"');
+  html = push({ mode: 'flashcards', ttsOnTv: false, slide: CARD(0) });
+  assert.ok(html.indexOf('fc-in-next') >= 0, 'on past the last card is not "next"');
+});
+
+check('a new category starts with the grow-in, not a slide', () => {
+  const html = push({ mode: 'flashcards', ttsOnTv: false, slide: CARD(1, { catLabel: 'Colors' }) });
+  assert.ok(/class="slide fc-card fc-in"/.test(html), html.slice(0, 160));
+});
+
+check('reduced motion swaps cards without a slide', () => {
+  const html = push({ mode: 'flashcards', ttsOnTv: false, reducedMotion: true,
+                      slide: CARD(2, { catLabel: 'Colors' }) });
+  assert.ok(html.indexOf('fc-in-next') < 0 && html.indexOf('fc-out-') < 0, html.slice(0, 160));
+});
+
+check('a repaint of the same card leaves it alone (no replayed entrance)', () => {
+  const before = push({ mode: 'flashcards', ttsOnTv: false, slide: CARD(3) });
+  const after = push({ mode: 'flashcards', ttsOnTv: false, theme: 'light', textSize: 'lg',
+                       live: { hands: ['Ana'] }, slide: CARD(3) });
+  assert.strictEqual(after, before, 'the card was rebuilt for a theme / hands change');
+});
+
+// ─── Sound through the TV's own speakers ─────────────
+const SAY = [
+  { u: '/api/speech/aaa111.wav', t: 'Dog', l: 'en' },
+  { u: '/api/speech/bbb222.wav', t: 'Aso', l: 'fil' },
+];
+
+check("a word is played from the phone's audio, English then Filipino", () => {
+  mediaLog.length = 0;
+  spoken.length = 0;
+  push({ mode: 'flashcards', ttsOnTv: true, say: SAY, sayKey: 'f:0:4', slide: CARD(4) });
+  assert.strictEqual(mediaLog.length, 0, 'spoke before the card had landed');
+  flushTimers();
+  const audio = els['cast-audio'];
+  assert.ok(audio, 'no <audio> element');
+  assert.strictEqual(mediaLog.length, 1, 'expected one line playing, got ' + mediaLog.length);
+  assert.strictEqual(mediaLog[0].src, '/c/CMRYP/api/speech/aaa111.wav',
+    'not scoped to the session code: ' + mediaLog[0].src);
+  audio.onended();
+  assert.strictEqual(mediaLog[1].src, '/c/CMRYP/api/speech/bbb222.wav');
+  assert.strictEqual(spoken.length, 0, 'fell back to the TV voice while the files played');
+});
+
+check('the same card polled again is not said twice', () => {
+  mediaLog.length = 0;
+  push({ mode: 'flashcards', ttsOnTv: true, say: SAY, sayKey: 'f:0:4', slide: CARD(4) });
+  flushTimers();
+  assert.strictEqual(mediaLog.length, 0, 'repeated the word on a repaint');
+});
+
+check('the TV tells the phone it is speaking (the slideshow waits for it)', () => {
+  push({ mode: 'flashcards', ttsOnTv: true, say: SAY, sayKey: 'f:0:5', slide: CARD(5) });
+  flushTimers();
+  pollFn();
+  assert.ok(lastUrl.indexOf('spk=1') >= 0, lastUrl);
+  els['cast-audio'].onended();
+  els['cast-audio'].onended();
+  pollFn();
+  assert.ok(lastUrl.indexOf('spk=0') >= 0, 'still "speaking" after the last line: ' + lastUrl);
+  assert.ok(lastUrl.indexOf('tts=1') >= 0, 'claimed it cannot speak: ' + lastUrl);
+});
+
+check('2× reaches the line that is playing', () => {
+  mediaLog.length = 0;
+  push({ mode: 'flashcards', ttsOnTv: true, speed: 2, say: SAY, sayKey: 'f:0:6', slide: CARD(6) });
+  flushTimers();
+  assert.strictEqual(els['cast-audio'].playbackRate, 2);
+  assert.strictEqual(mediaLog[0].rate, 2, 'played at ' + mediaLog[0].rate);
+  push({ mode: 'flashcards', ttsOnTv: true, speed: 1, say: SAY, sayKey: 'f:0:6', slide: CARD(6) });
+  assert.strictEqual(els['cast-audio'].playbackRate, 1, 'speed did not come back to 1×');
+});
+
+check("a line whose file fails is said with the TV's own voice", () => {
+  spoken.length = 0;
+  push({ mode: 'flashcards', ttsOnTv: true, say: SAY, sayKey: 'f:0:7', slide: CARD(7) });
+  flushTimers();
+  els['cast-audio'].onerror();
+  assert.deepStrictEqual(spoken, ['Dog'], 'no fallback: ' + spoken.join('|'));
+});
+
+check('a browser that blocks sound gets "press OK", and OK plays the held line', () => {
+  mediaBlocked = true;
+  mediaLog.length = 0;
+  push({ mode: 'flashcards', ttsOnTv: true, say: SAY, sayKey: 'f:0:8', slide: CARD(8) });
+  flushTimers();
+  assert.ok(els['sound-hint'].className.indexOf('hidden') < 0, 'no hint while blocked');
+  pollFn();
+  assert.ok(lastUrl.indexOf('unlocked=0') >= 0, 'reported unlocked while blocked: ' + lastUrl);
+  mediaBlocked = false;
+  key(13, 'Enter');
+  assert.ok(mediaLog.length >= 1, 'OK did not play the held line');
+  assert.strictEqual(mediaLog[0].src, '/c/CMRYP/api/speech/aaa111.wav');
+  assert.ok(els['sound-hint'].className.indexOf('hidden') >= 0, 'hint stayed after sound started');
+});
+
+check('sound routed to the phone: the TV stays silent', () => {
+  mediaLog.length = 0;
+  spoken.length = 0;
+  push({ mode: 'flashcards', ttsOnTv: false, slide: CARD(1) });
+  flushTimers();
+  assert.strictEqual(mediaLog.length + spoken.length, 0);
+});
+
+// ─── The TV remote ───────────────────────────────────
+check('◀ ▶ step the lesson through the phone, and the TV shows it at once', () => {
+  flushTimers();
+  urls.length = 0;
+  push({ mode: 'flashcards', ttsOnTv: false, remote: true, slide: CARD(2) });
+  key(39, 'ArrowRight');
+  assert.ok(urls.some((u) => u.indexOf('/c/CMRYP/api/nudge?a=next') === 0), urls.join(' '));
+  assert.ok(urls[urls.length - 1].indexOf('/api/state') >= 0, 'did not poll straight after');
+  urls.length = 0;
+  key(37, 'ArrowLeft');
+  assert.ok(urls.some((u) => u.indexOf('nudge?a=prev') >= 0), urls.join(' '));
+});
+
+check('TV-brand media keys (Tizen play/pause, Play, Pause)', () => {
+  urls.length = 0;
+  key(10252, '');
+  key(415, '');
+  key(19, '');
+  const n = urls.filter((u) => u.indexOf('nudge?a=') >= 0).map((u) => u.split('a=')[1]);
+  assert.deepStrictEqual(n, ['playpause', 'play', 'pause'], n.join(','));
+});
+
+check('OK flips a card that has a photo; ▼ asks for "Show Me"', () => {
+  urls.length = 0;
+  push({ mode: 'flashcards', ttsOnTv: false, slide: CARD(3, {
+    photo: { available: true, url: '/api/image/0/dog' },
+    clip: { available: true, url: '/api/clip/0/dog', isGif: true },
+  }) });
+  key(13, 'Enter');
+  key(40, 'ArrowDown');
+  const n = urls.filter((u) => u.indexOf('nudge?a=') >= 0).map((u) => u.split('a=')[1]);
+  assert.deepStrictEqual(n, ['flip', 'showme'], n.join(','));
+});
+
+check('▲ says the word again on the TV itself', () => {
+  mediaLog.length = 0;
+  push({ mode: 'flashcards', ttsOnTv: true, say: SAY, sayKey: 'f:0:3', slide: CARD(3) });
+  flushTimers();
+  const n = mediaLog.length;
+  urls.length = 0;
+  key(38, 'ArrowUp');
+  assert.ok(mediaLog.length > n, 'nothing replayed');
+  assert.ok(!urls.some((u) => u.indexOf('nudge') >= 0), 'asked the phone for a local replay');
+});
+
+check('Back closes an open clip first', () => {
+  urls.length = 0;
+  push({ mode: 'flashcards', ttsOnTv: false, showMe: true,
+         slide: CARD(3, { clip: { available: true, url: '/api/clip/0/dog', isGif: true } }) });
+  key(10009, '');
+  assert.ok(urls.some((u) => u.indexOf('nudge?a=back') >= 0), urls.join(' '));
+});
+
+check('Back with nothing open asks for a second press, which leaves', () => {
+  flushTimers();
+  historyLog.length = 0;
+  push({ mode: 'flashcards', ttsOnTv: false, slide: CARD(5) });
+  key(461, '');
+  assert.ok(els['remote-toast'].innerHTML.indexOf('Back again') >= 0, els['remote-toast'].innerHTML);
+  assert.ok(!historyLog.some((h) => h === 'back' || h.indexOf('go') === 0), 'left on the first press');
+  key(461, '');
+  assert.ok(historyLog.some((h) => /^go -\d+$/.test(h)), historyLog.join(','));
+});
+
+check('the Back guards are only ever added inside a key press', () => {
+  // Chrome steps over history entries a page adds without one, so the
+  // popstate handler must never put a guard back itself.
+  historyLog.length = 0;
+  (listeners.popstate || []).forEach((fn) => fn({}));
+  assert.ok(!historyLog.some((h) => h === 'push'), 'pushed a guard from Back: ' + historyLog.join(','));
+  key(37, 'ArrowLeft');
+  assert.ok(historyLog.some((h) => h === 'push'), 'a key press did not top the guards up');
+});
+
+check('Info shows the keys for the mode on screen, and closes again', () => {
+  flushTimers();
+  push({ mode: 'story', ttsOnTv: false, story: STORY });
+  flushTimers();
+  key(457, '');
+  const help = els['remote-help'];
+  assert.ok(help.className.indexOf('hidden') < 0, 'Info did not open the key list');
+  assert.ok(help.innerHTML.indexOf('Previous / next page') >= 0, help.innerHTML);
+  key(457, '');
+  assert.ok(help.className.indexOf('hidden') >= 0, 'Info did not close it');
+});
+
+check('with the remote switched off a key says so instead of moving', () => {
+  flushTimers();
+  urls.length = 0;
+  push({ mode: 'flashcards', ttsOnTv: false, remote: false, slide: CARD(4) });
+  key(39, 'ArrowRight');
+  assert.ok(!urls.some((u) => u.indexOf('nudge') >= 0), 'nudged with the remote off');
+  assert.ok(els['remote-toast'].innerHTML.indexOf('turned off') >= 0, els['remote-toast'].innerHTML);
+});
+
+check('◀ ▶ on a live question show the keys instead of a step that cannot happen', () => {
+  flushTimers();
+  urls.length = 0;
+  push({ mode: 'live', ttsOnTv: false, live: { activity: FSL_Q, responded: 0 } });
+  key(39, 'ArrowRight');
+  key(179, 'MediaPlayPause');
+  assert.ok(!urls.some((u) => u.indexOf('nudge') >= 0), urls.join(' '));
+  assert.ok(els['remote-help'].className.indexOf('hidden') < 0, 'no key list shown');
+});
+
+check('while the teacher is away, the remote cannot move the lesson', () => {
+  flushTimers();
+  urls.length = 0;
+  push({ mode: 'flashcards', ttsOnTv: false, away: true,
+         slide: CARD(3, { photo: { available: true, url: '/api/image/0/dog' } }) });
+  ['right', 'left', 'ok', 'down', 'up'].forEach((k) => key({ right: 39, left: 37, ok: 13, down: 40, up: 38 }[k], ''));
+  assert.ok(!urls.some((u) => u.indexOf('nudge') >= 0), 'moved the lesson while away: ' + urls.join(' '));
+  assert.ok(els['remote-help'].innerHTML.indexOf('Flip') < 0, 'offered lesson keys while away');
+});
+
+// ─── Who the cast is for ─────────────────────────────
+const SUMMARY = {
+  learners: 1, words: 3, stars: 16, activeToday: 1, bestStreak: 1,
+  rows: [{ rank: 0, name: 'Ana', words: 3, streak: 1, stars: 16 }],
+};
+
+check('the progress board says which classes it is for', () => {
+  const html = push({ mode: 'progress', progressView: 'classWins',
+                      audience: 'Hearing Class · Cognitive Class', classSummary: SUMMARY });
+  assert.ok(html.indexOf('For: Hearing Class · Cognitive Class') >= 0, html.slice(0, 300));
+});
+
+check('…but not when it would only repeat the title', () => {
+  const html = push({ mode: 'progress', progressView: 'classWins', title: 'Hearing Class',
+                      audience: 'Hearing Class', classSummary: SUMMARY });
+  assert.ok(html.indexOf('board-for') < 0, html.slice(0, 300));
+});
+
+check('a class name is escaped, never markup', () => {
+  const html = push({ mode: 'progress', progressView: 'leaderboard',
+                      audience: '<b>x</b>', progress: [], classSummary: SUMMARY });
+  assert.ok(html.indexOf('<b>x</b>') < 0 && html.indexOf('&lt;b&gt;') >= 0, html.slice(0, 300));
 });
 
 let failed = 0;

@@ -11,6 +11,7 @@ import '../../../data/local/seed_data.dart';
 import '../../../data/models/models.dart';
 import '../models/tv_cast_session.dart';
 import 'tv_cast_asset_bridge.dart';
+import 'tv_cast_speech.dart';
 
 /// In-app HTTP server that the TV browser polls. Pure-Dart shelf —
 /// listens via `dart:io HttpServer.bind('0.0.0.0', port)` so no native
@@ -40,7 +41,35 @@ class TvCastServer {
     this.onTvAudioReport,
     this.onRemoteAction,
     this.getUiLanguage,
+    this.speech,
   });
+
+  /// The actions a TV remote may send to `/api/nudge`. A fixed vocabulary —
+  /// no payload, nothing the TV can name beyond these.
+  ///
+  ///   next / prev       ◀ ▶ — the next / previous card, sign or page
+  ///   playpause         the remote's play/pause key
+  ///   play / pause      remotes with separate play and pause keys
+  ///   flip              OK — flip the card (or the story picture)
+  ///   showme            ▼ — the card's "Show Me" clip / the page's FSL clip
+  ///   replay            ▲ — say the word (or page) again
+  ///   back              Back — close the clip or turn the card back
+  static const remoteActions = {
+    'next',
+    'prev',
+    'playpause',
+    'play',
+    'pause',
+    'flip',
+    'showme',
+    'replay',
+    'back',
+  };
+
+  /// Makes the spoken words into audio the TV plays through its own speakers
+  /// (see [TvCastSpeech]). Null leaves the TV to speak with its own Web Speech,
+  /// as it always did.
+  final TvCastSpeech? speech;
 
   /// Alphabet for the session code: uppercase + digits with the characters
   /// that are hard to tell apart on a TV at the back of a room removed
@@ -62,16 +91,23 @@ class TvCastServer {
   /// the actual session state).
   final TvCastSession Function() getSession;
 
-  /// Optional callback fired when a TV reports its Web Speech ability via the
-  /// `/api/state` poll (`?tts=…&unlocked=…`). Lets the phone surface *why* the
-  /// TV is or isn't speaking. Decoupled like [getSession] so the server doesn't
-  /// reach into the notifier.
-  final void Function({required bool supported, required bool unlocked})?
-      onTvAudioReport;
+  /// Optional callback fired when a TV reports its sound via the `/api/state`
+  /// poll (`?tts=…&unlocked=…&spk=…`): whether it can make speech at all (an
+  /// audio file it can play, or its own Web Speech), whether the browser has
+  /// let it play sound yet, and whether it is speaking right now. Lets the
+  /// phone say *why* the TV is or isn't speaking, and hold the slideshow until
+  /// a word has been heard to the end. Decoupled like [getSession] so the
+  /// server doesn't reach into the notifier.
+  final void Function({
+    required bool supported,
+    required bool unlocked,
+    required bool speaking,
+  })?
+  onTvAudioReport;
 
   /// Fired when a TV drives the cast from its own remote (`/api/nudge`).
   /// Decoupled like [getSession] so the server doesn't reach into the notifier.
-  /// Actions are the literal strings `next`, `prev`, `playpause`.
+  /// Actions are the literal strings in [remoteActions].
   final void Function(String action)? onRemoteAction;
 
   /// The app's language code (`en` / `fil`), read per request like
@@ -99,8 +135,15 @@ class TvCastServer {
   String? get sessionToken => _sessionToken;
 
   /// Path prefix every TV-facing route lives under (`/c/<token>`), or `''`
-  /// while stopped. The phone appends this to the origin to build the cast URL.
+  /// while stopped. The page, its assets and the API all live here.
   String get basePath => _sessionToken == null ? '' : '/c/$_sessionToken';
+
+  /// The short way in: just the code after the address (`/<token>`), or `''`
+  /// while stopped. This is the link the phone shows and puts in the QR —
+  /// `192.168.1.5:8088/K7M2Q` is what a teacher reads out and someone types
+  /// with a TV remote. It opens the same page as [basePath], which keeps
+  /// working for links shared before the short form existed.
+  String get shortPath => _sessionToken == null ? '' : '/$_sessionToken';
 
   /// How many wrong codes have been presented since [start]. Surfaced so the
   /// educator UI can warn that someone on the network is probing the cast.
@@ -232,6 +275,7 @@ class TvCastServer {
 
     r.get('/api/state', _serveState);
     r.get('/api/nudge', _serveNudge);
+    r.get('/api/speech/<id>', _serveSpeech);
     r.get('/api/video/<catIdx>/<wordSlug>', _serveVideo);
     r.get('/api/story-video/<storyId>/<pageIdx>', _serveStoryVideo);
     r.get('/api/story-image/<storyId>/<pageIdx>/<face>', _serveStoryImage);
@@ -322,8 +366,8 @@ class TvCastServer {
 
   /// The TV driving the cast from its own remote.
   ///
-  /// The only write endpoint on the server, so it's deliberately narrow: a
-  /// fixed vocabulary of three actions, no payload, and the educator's
+  /// The only write endpoint on the server, so it's deliberately narrow: the
+  /// fixed vocabulary in [remoteActions], no payload, and the educator's
   /// `tvRemoteEnabled` switch enforced *here* rather than trusted to the TV —
   /// turning it off on the phone stops an already-loaded TV page from driving
   /// the lesson, which is the whole point of having the switch.
@@ -336,9 +380,8 @@ class TvCastServer {
     if (!session.tvRemoteEnabled) {
       return Response.forbidden('remote disabled');
     }
-    const allowed = {'next', 'prev', 'playpause'};
     final action = request.url.queryParameters['a'] ?? '';
-    if (!allowed.contains(action)) {
+    if (!remoteActions.contains(action)) {
       return Response(400, body: 'unknown action');
     }
     onRemoteAction?.call(action);
@@ -352,13 +395,18 @@ class TvCastServer {
   }
 
   Response _serveState(Request request) {
-    // The TV piggybacks its Web Speech ability on the state poll so the phone
-    // can explain why audio is/isn't coming out of the TV. Only report when the
-    // `tts` flag is present (older clients / direct hits simply omit it).
+    // The TV piggybacks its sound on the state poll so the phone can explain
+    // why audio is/isn't coming out of the TV, and wait for a word to finish
+    // before the slideshow moves on. Only report when the `tts` flag is
+    // present (older clients / direct hits simply omit it).
     final q = request.url.queryParameters;
     final cb = onTvAudioReport;
     if (cb != null && q.containsKey('tts')) {
-      cb(supported: q['tts'] == '1', unlocked: q['unlocked'] == '1');
+      cb(
+        supported: q['tts'] == '1',
+        unlocked: q['unlocked'] == '1',
+        speaking: q['spk'] == '1',
+      );
     }
 
     final session = getSession();
@@ -372,11 +420,42 @@ class TvCastServer {
     );
   }
 
+  /// The spoken words for what is on screen, as audio links the TV plays
+  /// (`say`), plus the key that tells the TV whether it has already said them
+  /// (`sayKey`). Only while the sound is routed to the TV — otherwise the
+  /// phone speaks, or nobody does.
+  ///
+  /// Each line also carries its text and language, so a TV whose audio file
+  /// fails (or a phone that cannot make one) can still say it with its own
+  /// Web Speech. Links stay root-relative; the TV scopes them to the code.
+  void _attachSpeech(Map<String, dynamic> map, TvCastSession session) {
+    if (map['ttsOnTv'] != true) return;
+    final lines = castSpeechLinesFor(session, uiFilipino: _ui == 'fil');
+    map['sayKey'] = castSpeechKeyFor(session);
+    map['say'] = [for (final line in lines) _sayEntry(line)];
+    // "Time's up!" gets the same treatment, so a TV without Web Speech still
+    // announces the end of the lesson timer.
+    final timer = map['timer'];
+    if (timer is Map) {
+      timer['say'] = _sayEntry(castTimesUpLine(uiFilipino: _ui == 'fil'));
+    }
+  }
+
+  Map<String, dynamic> _sayEntry(CastSpeechLine line) {
+    final engine = speech;
+    return {
+      if (engine != null) 'u': '/api/speech/${engine.register(line)}.wav',
+      't': line.text,
+      'l': line.lang,
+    };
+  }
+
   /// Adds resolved content (current flashcard, story page, etc.) to
   /// the plain session JSON so the TV can render in a single round-trip.
   Map<String, dynamic> _enrichState(TvCastSession session) {
     final map = session.toApiJson();
     map['ui'] = _ui;
+    _attachSpeech(map, session);
     final cat = session.category;
 
     if ((session.mode == CastMode.flashcards ||
@@ -585,6 +664,31 @@ class TvCastServer {
       return Response.notFound('video not ready for ${card.wordEnglish}');
     }
     return _streamFileRanged(request, file, 'video/mp4', 'video');
+  }
+
+  /// Serves one spoken line as a WAV the TV plays through its own speakers.
+  ///
+  /// Only ids the server itself handed out in `say` are known (see
+  /// [TvCastSpeech.register]) — anything else is a 404, so a TV can't make the
+  /// phone say arbitrary words. The file is made on first request if the
+  /// notifier's prefetch hasn't made it already; a failure is a 404 and the TV
+  /// says the line with its own voice instead. Range-capable like the clips,
+  /// because some TV browsers fetch audio in pieces.
+  Future<Response> _serveSpeech(Request request, String rawId) async {
+    final engine = speech;
+    final id = rawId.endsWith('.wav')
+        ? rawId.substring(0, rawId.length - 4)
+        : rawId;
+    if (engine == null ||
+        !RegExp(r'^[0-9a-f]{8,64}$').hasMatch(id) ||
+        !engine.knows(id)) {
+      return Response.notFound('no such line');
+    }
+    final file = await engine.fileFor(id);
+    if (file == null || !await file.exists()) {
+      return Response.notFound('speech not available');
+    }
+    return _streamFileRanged(request, file, 'audio/wav', 'speech');
   }
 
   /// Serves the current story page's FSL sign-language clip so the TV can play
@@ -872,6 +976,11 @@ class TvCastServer {
   /// the token lives in exactly one place. `/healthz` stays open (it returns
   /// the literal string "ok" and reveals nothing); everything else without a
   /// valid code gets the "ask your teacher" page, never content.
+  ///
+  /// The short link — just `/<token>` ([shortPath]) — opens the cast page
+  /// itself. Only the page: it loads its assets and polls from [basePath]
+  /// (the served HTML says so), so the short form adds one entry point and no
+  /// second namespace.
   Middleware get _castGate => (Handler inner) {
     return (Request request) async {
       final segments = request.url.pathSegments;
@@ -880,16 +989,28 @@ class TvCastServer {
         return inner(request);
       }
 
+      // Browsers ask for a tab icon on their own. Answering "nothing here"
+      // without counting it as a wrong code keeps the probe counter about
+      // people, not about the TV's own housekeeping.
+      if (segments.length == 1 && segments.first == 'favicon.ico') {
+        return Response(204);
+      }
+
       if (segments.length >= 2 &&
           segments[0] == 'c' &&
           _tokenMatches(segments[1])) {
-        final ctx = request.context['shelf.io.connection_info'];
-        if (ctx is HttpConnectionInfo) {
-          _seenClients[ctx.remoteAddress.address] = DateTime.now();
-        }
+        _noteViewer(request);
         // `change(path:)` moves the prefix from `url` to `handlerPath`, which
         // is exactly what shelf_router does when it mounts a sub-router.
         return inner(request.change(path: '${segments[0]}/${segments[1]}'));
+      }
+
+      // `/K7M2Q` or `/K7M2Q/` — the short link. Served as the page at `/`.
+      if ((segments.length == 1 ||
+              (segments.length == 2 && segments[1].isEmpty)) &&
+          _tokenMatches(segments[0])) {
+        _noteViewer(request);
+        return inner(request.change(path: segments[0]));
       }
 
       _rejectedCodes++;
@@ -901,6 +1022,14 @@ class TvCastServer {
       return _rejectResponse();
     };
   };
+
+  /// Counts an authenticated client for the "N viewers connected" line.
+  void _noteViewer(Request request) {
+    final ctx = request.context['shelf.io.connection_info'];
+    if (ctx is HttpConnectionInfo) {
+      _seenClients[ctx.remoteAddress.address] = DateTime.now();
+    }
+  }
 
   /// Friendly dead end for the bare origin and for mistyped codes. Deliberately
   /// identical for both so it never confirms whether a code was close, and
