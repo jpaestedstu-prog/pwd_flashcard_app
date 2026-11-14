@@ -108,3 +108,31 @@ keeps every profile.
 - Found while testing, outside TV Cast and not changed: three Filipino
   messages say "1" for counts such as 2, 3 or 5 (the stars earned on Home, an
   assessment already taken, and cards exported from a deck).
+
+## Published
+
+Published 14 November 2026 (22:20 Philippine time), with the owner's
+go-ahead, from the tested files only:
+
+- Release **v1.4.5** (Latest) on 64742b7, which adds the website's download
+  section, changelog and version.json to the release commit 6260579. Its
+  three APKs went up in about 6 minutes, and GitHub's SHA-256 of each equals
+  the table above.
+- The website and web app went to gh-pages **27fc842** (from 1c22d18): the
+  `website/` folder of 64742b7, and the web app built for 1.4.5 under `app/`.
+- Before the deploy, the new gh-pages commit was served on this PC under the
+  live site's path: the home and download pages name 1.4.5 and carry the
+  three checksums, and the web app reaches its first screen with no errors as
+  a desktop and as a phone (10/10).
+- Live checks: ten site files byte-identical to 27fc842, each download link
+  answering with the right size, and the arm64 APK downloaded whole with the
+  tested SHA-256 (14/14); the live home and download pages name 1.4.5 and
+  carry the three checksums (10/10); the live web app reaches its onboarding
+  screen with no errors at 360, 412 and 1280 pixels wide.
+- The Honor tablet runs the published arm64 APK (code 2029).
+
+GitHub's workflows on 56a6207, the commit after the release, all passed:
+Android (analysis with no issues, the full suite of 10,450 tests, the four
+walkthroughs on a phone and a tablet held upright and sideways, and the
+release APKs) and Web (the build, then Chrome and Firefox as a desktop and a
+phone, Safari on macOS, and Mobile Safari in the iOS Simulator).
