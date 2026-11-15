@@ -108,6 +108,13 @@ void main() {
     await tester.tap(find.text('break'));
     await tester.pump();
     expect(breakTimeStarted.value, before + 1);
+    // Back from the break: counting starts again from here, so the break
+    // itself never counts as learning.
+    await tester.pump(const Duration(milliseconds: 400));
+    Navigator.of(tester.element(find.text('break', skipOffstage: false)), rootNavigator: true).pop();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(breakTimeStarted.value, before + 2);
     await tester.pumpWidget(const SizedBox()); // the break screen's timers end
   });
 

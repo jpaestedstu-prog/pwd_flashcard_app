@@ -1450,8 +1450,8 @@ const _timeBreaks = Guide(
       ),
       GuideLine(
         GuideText(
-          'Routine (My Day): build the day’s steps in order — class, homework, practice, rest. Each step can have a time and a reminder.',
-          'Routine (My Day): buuin ang mga hakbang ng araw — klase, assignment, pagsasanay, pahinga. Maaaring may oras at paalala ang bawat hakbang.',
+          'Routine (My Day): build the day’s steps in order, like School / Class Time, Homework / Study Time, Break Time and Play Time, or your own Custom Activity. Each step can have a time and a reminder.',
+          'Routine (My Day): buuin ang mga hakbang ng araw nang sunod-sunod, gaya ng School / Class Time, Homework / Study Time, Break Time at Play Time, o sariling Custom Activity. Maaaring may oras at paalala ang bawat hakbang.',
         ),
       ),
       GuideLine(
