@@ -113,6 +113,37 @@ void main() {
     }
   });
 
+  // The companion website shows the same 12 guides (website/guides.html, written by
+  // tools/guides_page_build.py from this file). Edit a guide here without rebuilding
+  // the page and this fails.
+  test('the companion website shows every guide, word for word, in both languages', () {
+    final page = File('website/guides.html').readAsStringSync();
+    String esc(String s) => s
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#x27;');
+    for (final g in allGuides) {
+      expect(page, contains('id="g-${g.id}"'), reason: g.id);
+      for (final t in [g.title, g.summary]) {
+        expect(page, contains(esc(t.en)), reason: '${g.id}: ${t.en}');
+        expect(page, contains(esc(t.fil)), reason: '${g.id}: ${t.fil}');
+      }
+      for (final s in g.sections) {
+        expect(page, contains(esc(s.heading.en)), reason: '${g.id}: ${s.heading.en}');
+        expect(page, contains(esc(s.heading.fil)), reason: '${g.id}: ${s.heading.fil}');
+        for (final line in s.lines) {
+          expect(page, contains(esc(line.text.en)), reason: '${g.id}: ${line.text.en}');
+          expect(page, contains(esc(line.text.fil)), reason: '${g.id}: ${line.text.fil}');
+        }
+      }
+      // Read aloud on the website reads exactly what the app reads.
+      expect(page, contains('data-say-en="${esc(g.spokenText(filipino: false))}"'), reason: g.id);
+      expect(page, contains('data-say-fil="${esc(g.spokenText(filipino: true))}"'), reason: g.id);
+    }
+  });
+
   test('the voice guide lists the new app-wide commands in both languages', () {
     final en = guideById('voice')!.spokenText(filipino: false);
     final fil = guideById('voice')!.spokenText(filipino: true);

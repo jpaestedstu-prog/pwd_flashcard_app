@@ -461,10 +461,6 @@ svg.drawn .area{ animation:fade .9s ease both; }
 .mail-ico svg{ width:1.2rem; height:1.2rem; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 .mail-card .actions{ margin:.75rem 0 .2rem; }
 .mail-card .status-line + p{ margin-top:.75rem; }
-/* Tools → Admin guide: numbered steps in plain words. */
-.guide-steps{ margin:0 0 .75rem; padding-left:1.3rem; display:grid; gap:.55rem; font-size:.94rem; }
-.guide-steps li{ padding-left:.2rem; }
-.guide-steps li::marker{ font-weight:800; color:var(--brand-ink); }
 .msg-text{ white-space:pre-wrap; overflow-wrap:anywhere; color:var(--ink); margin:.45rem 0 .6rem; }
 .msg-text.none{ color:var(--muted); font-style:italic; }
 .msg-actions{ display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; }

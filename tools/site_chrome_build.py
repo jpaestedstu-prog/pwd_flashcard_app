@@ -50,10 +50,12 @@ PAGES = {
     "about.html": "about",
     "privacy.html": "privacy",
     "gaze-control.html": "gaze",
+    "guides.html": "guides",
 }
 TEMPLATES = {
     os.path.join("tools", "games_page.template.html"): "games",
     os.path.join("tools", "fsl_dict_page.template.html"): "dictionary",
+    os.path.join("tools", "guides_page.template.html"): "guides",
 }
 
 # One destination: key, href, EN, FIL, icon, hint EN, hint FIL, tone.
@@ -72,7 +74,8 @@ GROUPS = [
         ("awareness", "awareness.html", "PWD Awareness", "Kamalayang PWD", "💜", "Rights and everyday inclusion", "Mga karapatan at araw-araw na inklusyon", "green"),
         ("privacy", "privacy.html", "Privacy &amp; Data", "Privacy at Datos", "🔒", "What the app keeps, and who sees it", "Ano ang itinatago ng app, at sino ang nakakakita", "cyan"),
     ]),
-    ("help", "Help", "Tulong", "Questions, feedback and the team", "Mga tanong, feedback at ang pangkat", [
+    ("help", "Help", "Tulong", "Guides, questions, feedback and the team", "Mga gabay, tanong, feedback at ang pangkat", [
+        ("guides", "guides.html", "Help &amp; Guides", "Tulong at mga Gabay", "📘", "Step-by-step guides for the app", "Mga gabay sa app, hakbang-hakbang", "green"),
         ("faq", "faq.html", "FAQ", "Mga Tanong", "❓", "Answers to common questions", "Mga sagot sa karaniwang tanong", "magenta"),
         ("feedback", "faq.html#feedback", "Rate &amp; Feedback", "Rating at Feedback", "⭐", "Tell the team what you think", "Sabihin sa pangkat ang iyong opinyon", "gold"),
         ("about", "about.html", "About the Team", "Tungkol sa Pangkat", "🎓", "The students behind the app", "Ang mga mag-aaral sa likod ng app", "red"),
@@ -102,6 +105,7 @@ FOOTER_COLS = [
         ("download.html", "Download the app", "I-download ang app"),
     ]),
     ("Help", "Tulong", "Help and the project", "💬", [
+        ("guides.html", "Help &amp; Guides (step by step)", "Tulong at mga Gabay (hakbang-hakbang)"),
         ("faq.html", "Questions (FAQ)", "Mga Tanong (FAQ)"),
         ("faq.html#feedback", "Rate the app or send feedback", "I-rate ang app o magpadala ng feedback"),
         ("about.html", "About the team", "Tungkol sa pangkat"),

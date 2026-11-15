@@ -144,7 +144,7 @@ mode and replay them. They should still work (served from
 
 ## The website (`website/`)
 
-Twelve static pages with no build server; these scripts keep them honest.
+Thirteen static pages with no build server; these scripts keep them honest.
 Each one has a `--check` (or is a pure regenerate) that fails on drift.
 
 | Script | Writes | Run it when |
@@ -152,6 +152,7 @@ Each one has a `--check` (or is a pure regenerate) that fails on drift.
 | `site_chrome_build.py` | the shared head, header, breadcrumb and footer of every page (between `<!--gen:site-…-->` markers), the `?v=` fingerprints on `site.css` / `site.js` / `try.js`, and the matching precache list in `sw.js` | you change the navigation, the footer, or any of those three files |
 | `games_page_build.py` | `games.html` from `games_page.template.html` + the app's game data | games change |
 | `fsl_dict_page_build.py` | `fsl-dictionary.html` from `fsl_dict_page.template.html` + `website/assets/fsl-dict.js` | signs change |
+| `guides_page_build.py` | `guides.html` (Help & Guides) from `guides_page.template.html` + the app's own guides (`lib/features/help/models/guides.dart`): the same 12 guides, words and "Read aloud" text as the app; `test/help_guides_test.dart` fails if the page falls behind | a guide changes in the app |
 | `release_page_build.py` | the download card on `download.html`, the app JSON-LD on `index.html`, `version.json` (the app's update check opens its `page`, now `download.html`) | every release |
 | `site_video_build.py` | the home page film (`film-{en,fil}.mp4` + `-tall` upright copies, two posters), the app preview in the hero's phone (`hero-loop.mp4`), and the film section of `index.html` (`<!--gen:site-film-->`: player, transcript, download links with real sizes, VideoObject JSON-LD) | the app's look, the stats band or the film's words (`COPY`) change |
 

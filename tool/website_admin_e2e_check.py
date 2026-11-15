@@ -754,9 +754,11 @@ def run(p):
     Notifier.mode = "ok"
     p.js("document.getElementById('btnMailCheck').click()")
     p.wait("document.getElementById('mailState').textContent === 'Connected'", 10)
-    check("Tools has a plain admin guide (6 steps) that says learners' data is not here",
-          p.js("document.querySelectorAll('#adminGuide .guide-steps li').length === 6"
-               " && /cannot reach/.test(document.getElementById('adminGuide').textContent)"))
+    # The dashboard is for the administrator only: none of the companion website's
+    # user guides (website/guides.html) belong here.
+    check("the dashboard carries no user guides (they live on the companion website)",
+          p.js("!document.getElementById('adminGuide') && !document.querySelector('.guide-article, .guide-steps')"
+               " && !/Help & Guides|For students|For teachers|For parents|Voice commands guide/.test(document.body.textContent)"))
     found = axe(p, "tools after the checks")
     check("accessibility: the Email notices card has no axe violations in any state it showed", not found, found)
     p.shot("dashboard-tools-notices-desktop", full=True)
