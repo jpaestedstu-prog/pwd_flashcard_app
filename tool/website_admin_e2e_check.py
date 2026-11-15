@@ -21,6 +21,7 @@ FS = f"http://127.0.0.1:8080/v1/projects/{PROJECT}/databases/(default)/documents
 AUTH = "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1"
 SITE, ADMIN = "http://127.0.0.1:8899", "http://127.0.0.1:8898"
 NOTIFIER = "http://127.0.0.1:8896"   # a stand-in for the email notifier (Google Apps Script)
+LIVE_RULES_REF = "v1.4.5"   # the published release, whose rules have no feedback `mail` field
 CHROME = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 sys.stdout.reconfigure(encoding="utf-8")
 SHOTS = sys.argv[1] if len(sys.argv) > 1 else tempfile.mkdtemp(prefix="fladm-shots-")
@@ -753,6 +754,9 @@ def run(p):
     Notifier.mode = "ok"
     p.js("document.getElementById('btnMailCheck').click()")
     p.wait("document.getElementById('mailState').textContent === 'Connected'", 10)
+    check("Tools has a plain admin guide (6 steps) that says learners' data is not here",
+          p.js("document.querySelectorAll('#adminGuide .guide-steps li').length === 6"
+               " && /cannot reach/.test(document.getElementById('adminGuide').textContent)"))
     found = axe(p, "tools after the checks")
     check("accessibility: the Email notices card has no axe violations in any state it showed", not found, found)
     p.shot("dashboard-tools-notices-desktop", full=True)
@@ -1006,8 +1010,9 @@ def email_notices_end_to_end(p, root):
     w.goto(f"{SITE}/faq.html")
 
     # 6. The website published before the new rules: it still saves (without `mail`).
-    old_rules = subprocess.run(["git", "show", "HEAD:website_admin/firestore.rules"], cwd=ROOT, capture_output=True,
-                               text=True, encoding="utf-8").stdout
+    # The rules that are live today: those of the last published release.
+    old_rules = subprocess.run(["git", "show", f"{LIVE_RULES_REF}:website_admin/firestore.rules"], cwd=ROOT,
+                               capture_output=True, text=True, encoding="utf-8").stdout
     new_rules = open(os.path.join(ROOT, "website_admin", "firestore.rules"), encoding="utf-8").read()
     if "'mail'" not in old_rules and emulator_rules(old_rules) == 200:
         try:

@@ -330,6 +330,18 @@
               <div class="card-head"><h2>Links</h2></div>
               <ul class="links" id="links"></ul>
             </div>
+            <div class="card guide-card" id="adminGuide">
+              <div class="card-head"><h2>Admin guide</h2></div>
+              <ol class="guide-steps">
+                <li><b>Read new feedback:</b> open <b>Feedback</b>. New messages have a purple edge and a <b>New</b> tag. Each shows whether its email notice was sent.</li>
+                <li><b>Keep track:</b> set a message to <b>Seen</b> or <b>Done</b>, or <b>Star</b> it. A tag marks a message with the same words as an earlier one.</li>
+                <li><b>Remove spam:</b> press <b>Delete</b>, then confirm. Messages are also deleted by themselves after 12 months.</li>
+                <li><b>Email notices:</b> set them up once (README, “Email notices”), then use <b>Check the connection</b> and <b>Send a test email</b> above.</li>
+                <li><b>For the study:</b> <b>Export for the study</b> saves the numbers and the messages as CSV files.</li>
+                <li><b>Add or remove an administrator:</b> in the Firebase console, <b>Firestore Database → admins</b> (a page cannot change this list).</li>
+              </ol>
+              <p class="small muted">This dashboard shows only the website’s own numbers and messages. Learners’ data stays in the app, in a separate project this page cannot reach — teachers and parents see their learners’ progress in the app.</p>
+            </div>
             <div class="card">
               <div class="card-head"><h2>About this page</h2></div>
               <p class="small">It reads only the website’s own Firebase project: visit tallies, sign plays, ratings and messages. The app’s learners live in a different project that this page cannot reach. GitHub’s download numbers come from its public API.</p>
