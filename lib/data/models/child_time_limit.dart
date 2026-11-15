@@ -81,12 +81,26 @@ class ChildTimeLimit {
   /// beyond half an hour stops reading as "nearly time".
   final int warningMinutes;
 
+  /// Remind the learner to take a short break after [breakEveryMinutes] of
+  /// learning in a row. A reminder, never a lock: they may choose to keep
+  /// going. Off by default.
+  final bool breakReminderEnabled;
+
+  /// Minutes of learning between break reminders. Clamped to
+  /// [minBreakEveryMinutes]–[maxBreakEveryMinutes] on read.
+  final int breakEveryMinutes;
+
   final DateTime updatedAt;
 
   /// Bounds for [warningMinutes]. One minute is the shortest notice that
   /// is still useful; thirty is the longest that still means "soon".
   static const int minWarningMinutes = 1;
   static const int maxWarningMinutes = 30;
+
+  /// Bounds for [breakEveryMinutes]: ten minutes is the shortest stretch
+  /// worth interrupting, an hour the longest that still helps.
+  static const int minBreakEveryMinutes = 10;
+  static const int maxBreakEveryMinutes = 60;
 
   const ChildTimeLimit({
     required this.childProfileId,
@@ -105,6 +119,8 @@ class ChildTimeLimit {
     this.fslVideoUrl = '',
     this.warningEnabled = true,
     this.warningMinutes = 5,
+    this.breakReminderEnabled = false,
+    this.breakEveryMinutes = 20,
     required this.updatedAt,
   });
 
@@ -128,6 +144,10 @@ class ChildTimeLimit {
   int get effectiveWarningMinutes =>
       warningMinutes.clamp(minWarningMinutes, maxWarningMinutes);
 
+  /// [breakEveryMinutes] brought into range — read this, never the raw field.
+  int get effectiveBreakEveryMinutes =>
+      breakEveryMinutes.clamp(minBreakEveryMinutes, maxBreakEveryMinutes);
+
   ChildTimeLimit copyWith({
     String? childProfileId,
     String? setterProfileId,
@@ -145,6 +165,8 @@ class ChildTimeLimit {
     String? fslVideoUrl,
     bool? warningEnabled,
     int? warningMinutes,
+    bool? breakReminderEnabled,
+    int? breakEveryMinutes,
     DateTime? updatedAt,
   }) {
     return ChildTimeLimit(
@@ -165,6 +187,8 @@ class ChildTimeLimit {
       fslVideoUrl: fslVideoUrl ?? this.fslVideoUrl,
       warningEnabled: warningEnabled ?? this.warningEnabled,
       warningMinutes: warningMinutes ?? this.warningMinutes,
+      breakReminderEnabled: breakReminderEnabled ?? this.breakReminderEnabled,
+      breakEveryMinutes: breakEveryMinutes ?? this.breakEveryMinutes,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
@@ -187,6 +211,8 @@ class ChildTimeLimit {
     'fsl_video_url': fslVideoUrl,
     'warning_enabled': warningEnabled,
     'warning_minutes': warningMinutes,
+    'break_reminder_enabled': breakReminderEnabled,
+    'break_every_minutes': breakEveryMinutes,
     'updated_at': updatedAt.toIso8601String(),
   };
 
@@ -220,6 +246,9 @@ class ChildTimeLimit {
       // than keep letting the lock arrive unannounced.
       warningEnabled: json['warning_enabled'] as bool? ?? true,
       warningMinutes: json['warning_minutes'] as int? ?? 5,
+      // New in 1.4.6, and opt-in: an existing limit stays as it was.
+      breakReminderEnabled: json['break_reminder_enabled'] as bool? ?? false,
+      breakEveryMinutes: json['break_every_minutes'] as int? ?? 20,
       updatedAt:
           DateTime.tryParse(json['updated_at'] as String? ?? '') ??
           DateTime.fromMillisecondsSinceEpoch(0),

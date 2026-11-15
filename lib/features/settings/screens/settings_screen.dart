@@ -45,6 +45,7 @@ import '../../../widgets/dpad_focusable.dart';
 import '../../../navigation/dpad_keys.dart';
 import '../../../core/widgets/app_bar_title.dart';
 import '../../../core/widgets/fit_label.dart';
+import '../../help/services/feedback_link.dart';
 
 /// Whether the daily study reminder is actually waiting on this device, or
 /// null where that cannot be asked (a browser, a test without the plugin).
@@ -1239,6 +1240,23 @@ class SettingsScreen extends ConsumerWidget {
                   ref.watch(installedVersionProvider).valueOrNull,
                 ),
                 trailing: const SizedBox.shrink(),
+              ),
+
+              // Step-by-step guides for every profile and every way of using
+              // the app, and the website's feedback form.
+              _SettingsTile(
+                icon: Icons.menu_book_rounded,
+                title: l10n?.helpTitle ?? 'Help & Guides',
+                subtitle: l10n?.helpSettingDesc ??
+                    'How to use the app, step by step',
+                onTap: () => context.push('/help'),
+              ),
+              _SettingsTile(
+                icon: Icons.rate_review_rounded,
+                title: l10n?.feedbackTitle ?? 'Rate & Feedback',
+                subtitle: l10n?.feedbackSettingDesc ??
+                    'Tell the team what you think (opens the website)',
+                onTap: () => openFeedbackForm(context, ref),
               ),
 
               _SettingsTile(

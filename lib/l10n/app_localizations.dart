@@ -23090,6 +23090,216 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No home group yet. Create one in Manage Family — your children can then be picked here.'**
   String get tcgNoGroup;
+
+  /// No description provided for @gzsVoiceOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice only (camera off)'**
+  String get gzsVoiceOnly;
+
+  /// No description provided for @gzsVoiceOnlySub.
+  ///
+  /// In en, this message translates to:
+  /// **'Use only your voice. Head movement is not used and the camera stays off. Needs the microphone.'**
+  String get gzsVoiceOnlySub;
+
+  /// No description provided for @gzsVoiceMore.
+  ///
+  /// In en, this message translates to:
+  /// **'You can also say: “read the screen”, “say again”, “what can I say”. Say “stop listening” to pause and “resume” to go on.'**
+  String get gzsVoiceMore;
+
+  /// No description provided for @gzsCameraOffVoice.
+  ///
+  /// In en, this message translates to:
+  /// **'The camera stays off: in Voice only, spoken commands move the highlight and choose, so these settings are not needed.'**
+  String get gzsCameraOffVoice;
+
+  /// No description provided for @vcPausedSay.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused. Say “resume” when you want to go on.'**
+  String get vcPausedSay;
+
+  /// No description provided for @vcResumedSay.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening again.'**
+  String get vcResumedSay;
+
+  /// No description provided for @vcNothingToRepeat.
+  ///
+  /// In en, this message translates to:
+  /// **'There is nothing to say again yet.'**
+  String get vcNothingToRepeat;
+
+  /// No description provided for @vcHelpSay.
+  ///
+  /// In en, this message translates to:
+  /// **'Say left, right, up or down to move, and select to open. Or say a button’s name. You can also say: read the screen, say again, scroll down, go back, and stop listening.'**
+  String get vcHelpSay;
+
+  /// No description provided for @vcSpeaking.
+  ///
+  /// In en, this message translates to:
+  /// **'Speaking…'**
+  String get vcSpeaking;
+
+  /// No description provided for @vcPausedChip.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused — say “resume”'**
+  String get vcPausedChip;
+
+  /// No description provided for @hfPausedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Hands-free control is paused'**
+  String get hfPausedTitle;
+
+  /// No description provided for @hfPausedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'To go on: say “resume”, blink, press your switch, or tap here.'**
+  String get hfPausedBody;
+
+  /// No description provided for @tlBreak.
+  ///
+  /// In en, this message translates to:
+  /// **'Break reminders'**
+  String get tlBreak;
+
+  /// No description provided for @tlBreakBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Remind the learner to rest after a stretch of learning. They choose to take a break or keep learning — it never locks the app.'**
+  String get tlBreakBody;
+
+  /// No description provided for @tlBreakSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Remind them to take a break'**
+  String get tlBreakSwitch;
+
+  /// No description provided for @tlBreakOn.
+  ///
+  /// In en, this message translates to:
+  /// **'After every {minutes} minutes of learning'**
+  String tlBreakOn(int minutes);
+
+  /// No description provided for @tlBreakOff.
+  ///
+  /// In en, this message translates to:
+  /// **'No break reminders'**
+  String get tlBreakOff;
+
+  /// No description provided for @tlBreakEvery.
+  ///
+  /// In en, this message translates to:
+  /// **'Minutes of learning between reminders'**
+  String get tlBreakEvery;
+
+  /// No description provided for @tlBreakEveryValue.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} minutes'**
+  String tlBreakEveryValue(int minutes);
+
+  /// No description provided for @brkTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Time for a short break'**
+  String get brkTitle;
+
+  /// No description provided for @brkBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You have been learning for {minutes} minutes. Rest your eyes, stretch, or drink some water.'**
+  String brkBody(int minutes);
+
+  /// No description provided for @brkBodySimple.
+  ///
+  /// In en, this message translates to:
+  /// **'You learned for {minutes} minutes. Time to rest.'**
+  String brkBodySimple(int minutes);
+
+  /// No description provided for @brkTimeLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes, plural, =1{Learning time left today: 1 minute.} other{Learning time left today: {minutes} minutes.}}'**
+  String brkTimeLeft(int minutes);
+
+  /// No description provided for @brkTakeBreak.
+  ///
+  /// In en, this message translates to:
+  /// **'Take a break'**
+  String get brkTakeBreak;
+
+  /// No description provided for @brkKeepLearning.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep learning'**
+  String get brkKeepLearning;
+
+  /// No description provided for @helpTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Help & Guides'**
+  String get helpTitle;
+
+  /// No description provided for @helpIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Short, step-by-step guides. Choose one to open it.'**
+  String get helpIntro;
+
+  /// No description provided for @helpSettingDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'How to use the app, step by step'**
+  String get helpSettingDesc;
+
+  /// No description provided for @helpNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'This guide could not be found.'**
+  String get helpNotFound;
+
+  /// No description provided for @helpReadAloud.
+  ///
+  /// In en, this message translates to:
+  /// **'Read aloud'**
+  String get helpReadAloud;
+
+  /// No description provided for @helpStopReading.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop reading'**
+  String get helpStopReading;
+
+  /// No description provided for @feedbackTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate & Feedback'**
+  String get feedbackTitle;
+
+  /// No description provided for @feedbackSettingDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Tell the team what you think (opens the website)'**
+  String get feedbackSettingDesc;
+
+  /// No description provided for @feedbackOpenForm.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the feedback form'**
+  String get feedbackOpenForm;
+
+  /// No description provided for @feedbackOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the feedback page. Visit {url}'**
+  String feedbackOpenFailed(String url);
 }
 
 class _AppLocalizationsDelegate

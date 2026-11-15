@@ -14,6 +14,7 @@ import '../../gamepad/providers/gamepad_status_provider.dart'
 import '../../gamepad/services/gamepad_service.dart';
 import '../controllers/gaze_controller.dart';
 import '../logic/gaze_focus_driver.dart';
+import '../logic/hands_free_pause.dart';
 import '../models/gaze_models.dart';
 import '../models/gaze_settings.dart';
 import '../providers/gaze_settings_provider.dart';
@@ -81,8 +82,20 @@ mixin GazeSessionMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
   ) {
     if (settings.switchSelects) {
       _switchToken ??= GazeSwitchInput.instance.attach(
-        onPress: onSwitch,
-        onSteer: onSwitchSteer,
+        // While hands-free is paused a press only resumes it (a deliberate
+        // act), and steering waits.
+        onPress: () {
+          if (handsFreePaused.value) {
+            resumeHandsFree();
+            return;
+          }
+          onSwitch();
+        },
+        onSteer: onSwitchSteer == null
+            ? null
+            : (direction) {
+                if (!handsFreePaused.value) onSwitchSteer(direction);
+              },
         service: _gamepadService(),
       );
     } else {

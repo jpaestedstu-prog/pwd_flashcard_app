@@ -13,6 +13,8 @@ import '../features/onboarding/screens/post_join_setup_screen.dart';
 import '../features/onboarding/screens/role_setup_screen.dart';
 import '../features/onboarding/screens/membership_removed_screen.dart';
 import '../features/awareness/screens/pwd_awareness_screen.dart';
+import '../features/help/screens/guide_screen.dart';
+import '../features/help/screens/help_center_screen.dart';
 import '../features/home/screens/home_screen.dart';
 import '../features/home/screens/educator_home_screen.dart';
 import '../features/flashcards/screens/deck_list_screen.dart';
@@ -742,6 +744,24 @@ final routerProvider = Provider<GoRouter>((ref) {
           key: state.pageKey,
           child: const PwdAwarenessScreen(),
         ),
+      ),
+      // Help & Guides, for every kind of profile: Settings → About, and the
+      // accessibility sheet on the child and guest homes.
+      GoRoute(
+        path: '/help',
+        pageBuilder: (context, state) => AppPageTransitions.slideRight(
+          key: state.pageKey,
+          child: const HelpCenterScreen(),
+        ),
+        routes: [
+          GoRoute(
+            path: ':guideId',
+            pageBuilder: (context, state) => AppPageTransitions.slideRight(
+              key: state.pageKey,
+              child: GuideScreen(guideId: state.pathParameters['guideId'] ?? ''),
+            ),
+          ),
+        ],
       ),
       // Onboarding Tutorial (first-time walkthrough). Outside the shell, so it
       // carries its own gaze: it is the first screen a learner sees after the

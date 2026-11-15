@@ -100,6 +100,12 @@ class GazeSettings {
   /// head moves and scanning alike — for learners who cannot see it well.
   final bool speakHighlight;
 
+  /// **Voice only**: drive the app by spoken commands alone, with the camera
+  /// off — for a learner who cannot use their hands and does not want (or
+  /// cannot use) head movement. Always comes with [voiceCommands] on (the
+  /// settings notifier keeps the two together). Off by default.
+  final bool voiceOnly;
+
   const GazeSettings({
     this.enabled = false,
     this.sensitivity = 3,
@@ -118,16 +124,22 @@ class GazeSettings {
     this.dwellSelect = false,
     this.dwellSelectMs = 2000,
     this.speakHighlight = false,
+    this.voiceOnly = false,
   });
 
   /// Whether the D-pad should also drive the foreground hub's feature tiles
   /// (Home, Cards, Games, Stories, Progress).
   bool get navHomeTiles => navScope == GazeNavScope.bottomNavAndHomeTiles;
 
-  /// Whether the camera runs at all. Only switch scanning needs none: the
-  /// highlight moves by itself and the switch picks. Head movement and blinks
+  /// Whether the camera runs at all. Switch scanning needs none (the
+  /// highlight moves by itself and the switch picks), and neither does
+  /// [voiceOnly] (spoken commands move and pick). Head movement and blinks
   /// both come from the camera.
-  bool get usesCamera => !(scanMode && pickWith == GazePick.switchButton);
+  bool get usesCamera =>
+      !(scanMode && pickWith == GazePick.switchButton) && !voiceOnlyActive;
+
+  /// [voiceOnly] in force: it needs the voice commands it relies on.
+  bool get voiceOnlyActive => voiceOnly && voiceCommands;
 
   /// Whether a long blink picks things. Scanning is *driven* by picks — the
   /// highlight moves by itself — so a scanning learner who picks by blink
@@ -212,6 +224,7 @@ class GazeSettings {
     bool? dwellSelect,
     int? dwellSelectMs,
     bool? speakHighlight,
+    bool? voiceOnly,
   }) {
     return GazeSettings(
       enabled: enabled ?? this.enabled,
@@ -234,6 +247,7 @@ class GazeSettings {
       dwellSelectMs: (dwellSelectMs ?? this.dwellSelectMs)
           .clamp(minDwellSelectMs, maxDwellSelectMs),
       speakHighlight: speakHighlight ?? this.speakHighlight,
+      voiceOnly: voiceOnly ?? this.voiceOnly,
     );
   }
 
@@ -257,6 +271,7 @@ class GazeSettings {
         'dwellSelect': dwellSelect,
         'dwellSelectMs': dwellSelectMs,
         'speakHighlight': speakHighlight,
+        'voiceOnly': voiceOnly,
       };
 
   /// Rebuilds from a Hive map, tolerating missing/typo'd keys by falling back
@@ -291,6 +306,7 @@ class GazeSettings {
       dwellSelectMs: asInt(map['dwellSelectMs'], d.dwellSelectMs)
           .clamp(minDwellSelectMs, maxDwellSelectMs),
       speakHighlight: asBool(map['speakHighlight'], d.speakHighlight),
+      voiceOnly: asBool(map['voiceOnly'], d.voiceOnly),
     );
   }
 
@@ -313,7 +329,8 @@ class GazeSettings {
       other.pickWith == pickWith &&
       other.dwellSelect == dwellSelect &&
       other.dwellSelectMs == dwellSelectMs &&
-      other.speakHighlight == speakHighlight;
+      other.speakHighlight == speakHighlight &&
+      other.voiceOnly == voiceOnly;
 
   @override
   int get hashCode => Object.hashAll([
@@ -334,5 +351,6 @@ class GazeSettings {
         dwellSelect,
         dwellSelectMs,
         speakHighlight,
+        voiceOnly,
       ]);
 }

@@ -197,7 +197,16 @@ mixin GazeSettingsEditing {
       update(current.copyWith(invertVertical: v));
   void setScanMode(bool v) => update(current.copyWith(scanMode: v));
   void setScanStepMs(int v) => update(current.copyWith(scanStepMs: v));
-  void setVoiceCommands(bool v) => update(current.copyWith(voiceCommands: v));
+  /// Turning voice commands off also ends [GazeSettings.voiceOnly], which
+  /// cannot work without them.
+  void setVoiceCommands(bool v) => update(
+    current.copyWith(voiceCommands: v, voiceOnly: v ? null : false),
+  );
+
+  /// Voice only always brings voice commands with it; leaving it keeps them on.
+  void setVoiceOnly(bool v) => update(
+    current.copyWith(voiceOnly: v, voiceCommands: v ? true : null),
+  );
   void setNavScope(GazeNavScope v) => update(current.copyWith(navScope: v));
   void setSmoothing(GazeSmoothing v) => update(current.copyWith(smoothing: v));
   void setPickWith(GazePick v) => update(current.copyWith(pickWith: v));

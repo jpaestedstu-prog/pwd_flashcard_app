@@ -600,12 +600,17 @@ class FlashcardPictureById extends StatelessWidget {
   final double extent;
   final double borderRadius;
 
+  /// See [FlashcardImage.revealsAnswer]. False where the words are printed
+  /// right beside the picture, so a screen reader does not say them twice.
+  final bool revealsAnswer;
+
   const FlashcardPictureById({
     super.key,
     required this.cardId,
     required this.fallback,
     required this.extent,
     this.borderRadius = 12,
+    this.revealsAnswer = true,
   });
 
   @override
@@ -618,6 +623,7 @@ class FlashcardPictureById extends StatelessWidget {
             card: c,
             extent: extent,
             borderRadius: borderRadius,
+            revealsAnswer: revealsAnswer,
           );
         }
       }

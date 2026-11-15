@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'hands_free_pause.dart';
+
 /// When the scanning highlight moves on — one clock for every gaze scope.
 ///
 /// Each scope used to step its highlight on a plain periodic timer. Two things
@@ -130,6 +132,11 @@ class ScanClock {
 
   void _fire() {
     _timer = null;
+    // Paused hands-free: the highlight stays where it is until resumed.
+    if (handsFreePaused.value) {
+      _schedule(step);
+      return;
+    }
     final generation = _generation;
     final hold = holdFor?.call() ?? Duration.zero;
     if (hold > Duration.zero && _held < maxHold) {

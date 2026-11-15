@@ -14006,4 +14006,134 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get tcgNoGroup =>
       'No home group yet. Create one in Manage Family — your children can then be picked here.';
+
+  @override
+  String get gzsVoiceOnly => 'Voice only (camera off)';
+
+  @override
+  String get gzsVoiceOnlySub =>
+      'Use only your voice. Head movement is not used and the camera stays off. Needs the microphone.';
+
+  @override
+  String get gzsVoiceMore =>
+      'You can also say: “read the screen”, “say again”, “what can I say”. Say “stop listening” to pause and “resume” to go on.';
+
+  @override
+  String get gzsCameraOffVoice =>
+      'The camera stays off: in Voice only, spoken commands move the highlight and choose, so these settings are not needed.';
+
+  @override
+  String get vcPausedSay => 'Paused. Say “resume” when you want to go on.';
+
+  @override
+  String get vcResumedSay => 'Listening again.';
+
+  @override
+  String get vcNothingToRepeat => 'There is nothing to say again yet.';
+
+  @override
+  String get vcHelpSay =>
+      'Say left, right, up or down to move, and select to open. Or say a button’s name. You can also say: read the screen, say again, scroll down, go back, and stop listening.';
+
+  @override
+  String get vcSpeaking => 'Speaking…';
+
+  @override
+  String get vcPausedChip => 'Paused — say “resume”';
+
+  @override
+  String get hfPausedTitle => 'Hands-free control is paused';
+
+  @override
+  String get hfPausedBody =>
+      'To go on: say “resume”, blink, press your switch, or tap here.';
+
+  @override
+  String get tlBreak => 'Break reminders';
+
+  @override
+  String get tlBreakBody =>
+      'Remind the learner to rest after a stretch of learning. They choose to take a break or keep learning — it never locks the app.';
+
+  @override
+  String get tlBreakSwitch => 'Remind them to take a break';
+
+  @override
+  String tlBreakOn(int minutes) {
+    return 'After every $minutes minutes of learning';
+  }
+
+  @override
+  String get tlBreakOff => 'No break reminders';
+
+  @override
+  String get tlBreakEvery => 'Minutes of learning between reminders';
+
+  @override
+  String tlBreakEveryValue(int minutes) {
+    return '$minutes minutes';
+  }
+
+  @override
+  String get brkTitle => 'Time for a short break';
+
+  @override
+  String brkBody(int minutes) {
+    return 'You have been learning for $minutes minutes. Rest your eyes, stretch, or drink some water.';
+  }
+
+  @override
+  String brkBodySimple(int minutes) {
+    return 'You learned for $minutes minutes. Time to rest.';
+  }
+
+  @override
+  String brkTimeLeft(int minutes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      minutes,
+      locale: localeName,
+      other: 'Learning time left today: $minutes minutes.',
+      one: 'Learning time left today: 1 minute.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get brkTakeBreak => 'Take a break';
+
+  @override
+  String get brkKeepLearning => 'Keep learning';
+
+  @override
+  String get helpTitle => 'Help & Guides';
+
+  @override
+  String get helpIntro => 'Short, step-by-step guides. Choose one to open it.';
+
+  @override
+  String get helpSettingDesc => 'How to use the app, step by step';
+
+  @override
+  String get helpNotFound => 'This guide could not be found.';
+
+  @override
+  String get helpReadAloud => 'Read aloud';
+
+  @override
+  String get helpStopReading => 'Stop reading';
+
+  @override
+  String get feedbackTitle => 'Rate & Feedback';
+
+  @override
+  String get feedbackSettingDesc =>
+      'Tell the team what you think (opens the website)';
+
+  @override
+  String get feedbackOpenForm => 'Open the feedback form';
+
+  @override
+  String feedbackOpenFailed(String url) {
+    return 'Could not open the feedback page. Visit $url';
+  }
 }

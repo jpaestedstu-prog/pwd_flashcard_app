@@ -9377,5 +9377,82 @@
   "tcKeyInfo": "Show these keys on the TV",
   "tcKeyInfoName": "Info or Menu",
   "tcgNoClass": "No class yet. Create one in Manage Classes — its learners can then be picked here.",
-  "tcgNoGroup": "No home group yet. Create one in Manage Family — your children can then be picked here."
+  "tcgNoGroup": "No home group yet. Create one in Manage Family — your children can then be picked here.",
+  "gzsVoiceOnly": "Voice only (camera off)",
+  "gzsVoiceOnlySub": "Use only your voice. Head movement is not used and the camera stays off. Needs the microphone.",
+  "gzsVoiceMore": "You can also say: “read the screen”, “say again”, “what can I say”. Say “stop listening” to pause and “resume” to go on.",
+  "gzsCameraOffVoice": "The camera stays off: in Voice only, spoken commands move the highlight and choose, so these settings are not needed.",
+  "vcPausedSay": "Paused. Say “resume” when you want to go on.",
+  "vcResumedSay": "Listening again.",
+  "vcNothingToRepeat": "There is nothing to say again yet.",
+  "vcHelpSay": "Say left, right, up or down to move, and select to open. Or say a button’s name. You can also say: read the screen, say again, scroll down, go back, and stop listening.",
+  "vcSpeaking": "Speaking…",
+  "vcPausedChip": "Paused — say “resume”",
+  "hfPausedTitle": "Hands-free control is paused",
+  "hfPausedBody": "To go on: say “resume”, blink, press your switch, or tap here.",
+  "tlBreak": "Break reminders",
+  "tlBreakBody": "Remind the learner to rest after a stretch of learning. They choose to take a break or keep learning — it never locks the app.",
+  "tlBreakSwitch": "Remind them to take a break",
+  "tlBreakOn": "After every {minutes} minutes of learning",
+  "@tlBreakOn": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "tlBreakOff": "No break reminders",
+  "tlBreakEvery": "Minutes of learning between reminders",
+  "tlBreakEveryValue": "{minutes} minutes",
+  "@tlBreakEveryValue": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "brkTitle": "Time for a short break",
+  "brkBody": "You have been learning for {minutes} minutes. Rest your eyes, stretch, or drink some water.",
+  "@brkBody": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "brkBodySimple": "You learned for {minutes} minutes. Time to rest.",
+  "@brkBodySimple": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "brkTimeLeft": "{minutes, plural, =1{Learning time left today: 1 minute.} other{Learning time left today: {minutes} minutes.}}",
+  "@brkTimeLeft": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "brkTakeBreak": "Take a break",
+  "brkKeepLearning": "Keep learning",
+  "helpTitle": "Help & Guides",
+  "helpIntro": "Short, step-by-step guides. Choose one to open it.",
+  "helpSettingDesc": "How to use the app, step by step",
+  "helpNotFound": "This guide could not be found.",
+  "helpReadAloud": "Read aloud",
+  "helpStopReading": "Stop reading",
+  "feedbackTitle": "Rate & Feedback",
+  "feedbackSettingDesc": "Tell the team what you think (opens the website)",
+  "feedbackOpenForm": "Open the feedback form",
+  "feedbackOpenFailed": "Could not open the feedback page. Visit {url}",
+  "@feedbackOpenFailed": {
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  }
 }

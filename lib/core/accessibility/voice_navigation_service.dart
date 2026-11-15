@@ -1010,6 +1010,29 @@ class VoiceNavigationService {
             'anak.',
       ),
     ),
+    '/help': (
+      en: (
+        name: 'Help and Guides',
+        description: 'Step-by-step guides for learning, teaching and every way '
+            'to use the app.',
+      ),
+      fil: (
+        name: 'Tulong at mga Gabay',
+        description: 'Mga gabay, hakbang-hakbang, sa pag-aaral, pagtuturo at '
+            'bawat paraan ng paggamit ng app.',
+      ),
+    ),
+    '/help/:guideId': (
+      en: (
+        name: 'Guide',
+        description: 'A step-by-step guide. Press Read aloud to hear it.',
+      ),
+      fil: (
+        name: 'Gabay',
+        description: 'Isang gabay, hakbang-hakbang. Pindutin ang Basahin nang '
+            'malakas para marinig ito.',
+      ),
+    ),
     '/join-class': (
       en: (
         name: 'Join a Class',

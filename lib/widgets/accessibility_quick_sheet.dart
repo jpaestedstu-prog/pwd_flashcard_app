@@ -239,6 +239,13 @@ class _AccessibilityQuickSheet extends ConsumerWidget {
                 subtitle: _t(context).settingGamepadDesc,
                 onTap: () => context.push('/gamepad-settings'),
               ),
+            // The guides, for the homes that have no Settings to find them in.
+            _LinkTile(
+              icon: Icons.menu_book_rounded,
+              title: _t(context).helpTitle,
+              subtitle: _t(context).helpSettingDesc,
+              onTap: () => context.push('/help'),
+            ),
           ],
         ),
       ),

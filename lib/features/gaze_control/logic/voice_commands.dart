@@ -458,3 +458,78 @@ WordHuntVoiceResult resolveWordHuntVoiceCommand(
 
   return WordHuntVoiceResult.none;
 }
+
+// ─── App-wide voice commands ───
+//
+// Said anywhere, on any screen, and answered by the voice layer itself
+// (`VoiceControlMixin`) before a screen sees the phrase. They are *phrases*
+// on purpose: single words like "pause", "resume", "read" and Filipino
+// "ulitin" are real button labels (a game's Pause and Resume, a story's Read,
+// a game's restart), so the bare word must keep pressing that button.
+
+/// What an app-wide spoken command asks for.
+enum GlobalVoiceIntent { pause, resume, readScreen, repeat, help, none }
+
+const _pausePhrases = [
+  'stop listening', 'pause listening', 'pause voice', 'pause control',
+  'pause controls', 'pause hands free', 'pause handsfree',
+  'huwag makinig', 'huwag munang makinig', 'tumigil sa pakikinig',
+  'hinto muna',
+];
+// While paused, these single words are safe: nothing else is listened for.
+const _resumeWords = [
+  'resume', 'continue', 'start listening', 'start again', 'go on',
+  'listen again', 'ituloy', 'tuloy', 'magpatuloy', 'makinig ulit',
+];
+const _readPhrases = [
+  'read the screen', 'read screen', 'read this screen', 'read the instructions',
+  'read instructions', 'read the page', "what's on the screen",
+  'whats on the screen', 'what is on the screen',
+  'basahin ang screen', 'basahin ang instructions', 'basahin ang nasa screen',
+  'basahin ang pahina',
+];
+const _repeatPhrases = [
+  'repeat', 'repeat that', 'say again', 'say that again', 'say it again',
+  'sabihin ulit', 'pakiulit', 'ulitin mo',
+];
+const _helpPhrases = [
+  'what can i say', 'voice commands', 'voice help', 'list commands',
+  'ano ang masasabi ko', 'anong masasabi ko', 'ano ang puwede kong sabihin',
+  'anong puwede kong sabihin',
+];
+
+String _normalizeSpoken(String spoken) => spoken
+    .toLowerCase()
+    .replaceAll('’', "'")
+    .replaceAll(RegExp(r"[^a-z0-9'\s]"), ' ')
+    .replaceAll(RegExp(r'\s+'), ' ')
+    .trim();
+
+/// The phrase is one of [phrases], or — for phrases of two words or more —
+/// contains one as whole words ("please read the screen"). A single word
+/// must be the whole phrase, so "repeat after me" on a button stays a label.
+bool _saysPhrase(String t, List<String> phrases) {
+  for (final p in phrases) {
+    if (t == p) return true;
+    if (p.contains(' ') && _wordRegExp(p).hasMatch(t)) return true;
+  }
+  return false;
+}
+
+/// Maps [spoken] to an app-wide command, or [GlobalVoiceIntent.none] when the
+/// phrase belongs to the screen. While [paused], only a resume phrase counts —
+/// everything else is ignored by the caller.
+GlobalVoiceIntent resolveGlobalVoiceCommand(String spoken, {required bool paused}) {
+  final t = _normalizeSpoken(spoken);
+  if (t.isEmpty) return GlobalVoiceIntent.none;
+  if (paused) {
+    return _saysPhrase(t, _resumeWords) || _isPhrase(t, _resumeWords)
+        ? GlobalVoiceIntent.resume
+        : GlobalVoiceIntent.none;
+  }
+  if (_saysPhrase(t, _pausePhrases)) return GlobalVoiceIntent.pause;
+  if (_saysPhrase(t, _readPhrases)) return GlobalVoiceIntent.readScreen;
+  if (_saysPhrase(t, _helpPhrases)) return GlobalVoiceIntent.help;
+  if (_saysPhrase(t, _repeatPhrases)) return GlobalVoiceIntent.repeat;
+  return GlobalVoiceIntent.none;
+}

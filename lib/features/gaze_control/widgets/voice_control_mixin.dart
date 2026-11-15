@@ -1,12 +1,23 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter/gestures.dart' show PointerScrollEvent;
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart' show SemanticsService;
 import '../../../l10n/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/accessibility/stt_service.dart' show sttServiceProvider;
+import '../../../core/accessibility/focused_label.dart';
+import '../../../core/accessibility/spoken_words.dart';
+import '../../../core/accessibility/stt_service.dart'
+    show dictationMicLease, sttServiceProvider;
+import '../../../core/accessibility/tts_service.dart';
 import '../../../providers/app_providers.dart' show settingsProvider;
 import '../controllers/voice_command_controller.dart';
+import '../logic/gaze_focus_driver.dart';
+import '../logic/hands_free_pause.dart';
+import '../logic/voice_commands.dart';
+import '../logic/voice_screen_reading.dart';
 
 /// Shared plumbing for the gaze scopes that layer spoken-command control on top
 /// of gaze ([GazeScope] and [GazeDpadScope]). It owns the
@@ -58,9 +69,10 @@ mixin VoiceControlMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
     final voice = VoiceCommandController(
       stt: stt,
       locale: locale,
-      onCommand: onVoiceCommand,
+      onCommand: _dispatchVoice,
     );
     voice.addListener(_onVoiceUpdate);
+    handsFreePaused.addListener(_onVoiceUpdate);
     _voice = voice;
     voice.start();
   }
@@ -69,8 +81,103 @@ mixin VoiceControlMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
     if (mounted) setState(() {});
   }
 
+  // ── App-wide commands ───────────────────────────────────────────────────
+
+  /// The last thing voice said back, for "say again" — app-wide, so it
+  /// survives moving to another screen (which swaps the listening scope).
+  static String? _lastReply;
+
+  /// True while the app is speaking a reply (the microphone is held off so
+  /// the reply is never heard as a command).
+  bool _replying = false;
+
+  /// Every recognised phrase passes here first: the app-wide commands
+  /// ([resolveGlobalVoiceCommand]) are answered by this layer, a paused learner
+  /// is heard only for "resume", and everything else goes to the screen.
+  void _dispatchVoice(String text) {
+    if (!mounted) return;
+    final paused = handsFreePaused.value;
+    final t = AppLocalizations.of(context);
+    switch (resolveGlobalVoiceCommand(text, paused: paused)) {
+      case GlobalVoiceIntent.pause:
+        pauseHandsFree();
+        _reply(t?.vcPausedSay ?? 'Paused. Say “resume” when you want to go on.');
+      case GlobalVoiceIntent.resume:
+        resumeHandsFree();
+        _reply(t?.vcResumedSay ?? 'Listening again.');
+      case GlobalVoiceIntent.readScreen:
+        _reply(readScreenForVoice(filipino: _filipino));
+      case GlobalVoiceIntent.repeat:
+        final again = _lastReply ??
+            FocusedLabel.of(GazeFocusDriver.focused?.context)?.split('\n').first;
+        _reply(again ??
+            (t?.vcNothingToRepeat ?? 'There is nothing to say again yet.'));
+      case GlobalVoiceIntent.help:
+        _reply(t?.vcHelpSay ??
+            'Say left, right, up or down to move, and select to open. Or say '
+                'a button’s name. You can also say: read the screen, say '
+                'again, scroll down, go back, and stop listening.');
+      case GlobalVoiceIntent.none:
+        if (paused) return;
+        onVoiceCommand(text);
+    }
+  }
+
+  bool get _filipino => ref.read(settingsProvider).locale == 'fil';
+
+  /// Says [text] back: through the screen reader when one is running (its own
+  /// voice and queue), otherwise with the app's voice — holding the
+  /// microphone off until it has finished, so the reply cannot command the app.
+  Future<void> _reply(String text) async {
+    _lastReply = text;
+    if (MediaQuery.maybeOf(context)?.accessibleNavigation ?? false) {
+      final view = WidgetsBinding.instance.platformDispatcher.implicitView;
+      if (view == null) return;
+      try {
+        await SemanticsService.sendAnnouncement(
+          view,
+          SpokenWords.withoutPictures(text),
+          TextDirection.ltr,
+        );
+      } catch (_) {}
+      return;
+    }
+    final tts = ref.read(ttsServiceProvider);
+    dictationMicLease.acquire();
+    _replying = true;
+    if (mounted) setState(() {});
+    try {
+      await (_filipino ? tts.speakFilipino(text) : tts.speakEnglish(text));
+      await _quiet();
+    } catch (_) {
+      // No speech engine (a bare test): the reply is still remembered.
+    } finally {
+      dictationMicLease.release();
+      _replying = false;
+      if (mounted) setState(() {});
+    }
+  }
+
+  /// Resolves once the speech engine has stopped speaking (at most 30 s).
+  Future<void> _quiet() async {
+    final speaking = TtsService.speaking;
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+    if (!speaking.value) return;
+    final done = Completer<void>();
+    void check() {
+      if (!speaking.value && !done.isCompleted) done.complete();
+    }
+    speaking.addListener(check);
+    try {
+      await done.future.timeout(const Duration(seconds: 30), onTimeout: () {});
+    } finally {
+      speaking.removeListener(check);
+    }
+  }
+
   /// Tears the controller down. Call from `dispose`.
   void disposeVoiceControl() {
+    handsFreePaused.removeListener(_onVoiceUpdate);
     _voice?.removeListener(_onVoiceUpdate);
     _voice?.dispose();
     _voice = null;
@@ -98,6 +205,10 @@ mixin VoiceControlMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
     final t = AppLocalizations.of(context);
     final text = voice.unavailable
         ? (t?.vcMicUnavailable ?? 'Microphone unavailable')
+        : _replying
+        ? (t?.vcSpeaking ?? 'Speaking…')
+        : handsFreePaused.value
+        ? (t?.vcPausedChip ?? 'Paused — say “resume”')
         : voice.pausedForDictation
         ? (t?.vcPausedDictation ?? 'Paused while you speak your message')
         : voice.lastHeard.isNotEmpty

@@ -22,7 +22,8 @@ import '../gaze_control/widgets/hands_free_pause_notice.dart';
 /// never drift apart on this.
 Future<void> openWordHunt(BuildContext context, WidgetRef ref) async {
   final gaze = ref.read(gazeSettingsProvider);
-  if (gaze.enabled) {
+  // Voice only uses no camera, and Word Hunt keeps listening: nothing pauses.
+  if (gaze.enabled && !gaze.voiceOnlyActive) {
     final l10n = AppLocalizations.of(context)!;
     final reason = l10n.wordHuntCameraBusyReason;
     final proceed = await confirmHandsFreePause(

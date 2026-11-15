@@ -12,6 +12,7 @@ import '../../../core/services/orientation_hold.dart';
 import '../logic/blink_detector.dart';
 import '../logic/dwell_tracker.dart';
 import '../logic/gaze_zone_resolver.dart';
+import '../logic/hands_free_pause.dart';
 import '../logic/one_euro_filter.dart';
 import '../models/gaze_models.dart';
 import '../models/gaze_settings.dart';
@@ -716,10 +717,15 @@ class GazeController extends ChangeNotifier with WidgetsBindingObserver {
     final rested = _updateRest(reading.zone, signal.hasFace, now);
 
     _zone = reading.zone;
-    _progress = reading.progress;
+    // Paused hands-free: no hold fills, and only a deliberate blink acts —
+    // it resumes. Head movement never does; it is what the pause ignores.
+    final paused = handsFreePaused.value;
+    _progress = paused ? 0 : reading.progress;
     _notify();
 
-    if (reading.justSelected) {
+    if (paused) {
+      if (blinked) resumeHandsFree();
+    } else if (reading.justSelected) {
       onSelect?.call(reading.zone);
     } else if (blinked) {
       onBlink?.call();

@@ -221,7 +221,8 @@ class FslPracticeHubScreen extends ConsumerWidget {
     // fallback is live, so the choice itself is reachable hands-free.
     if (mode == 'sign-it') {
       final gaze = ref.read(gazeSettingsProvider);
-      if (gaze.enabled) {
+      // Voice only uses no camera, and Sign It keeps listening: nothing pauses.
+      if (gaze.enabled && !gaze.voiceOnlyActive) {
         final proceed = await confirmHandsFreePause(
           context,
           activityName: l10n.fslSignIt,

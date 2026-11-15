@@ -340,6 +340,9 @@ class _WordOfDayScreenState extends ConsumerState<WordOfDayScreen> {
               cardId: _word.cardId,
               fallback: _word.emoji,
               extent: 74,
+              // The word is printed just below: the picture must not say it
+              // again (TalkBack read "Proud, English, Proud").
+              revealsAnswer: false,
             ),
             const SizedBox(height: 16),
             // The one word the whole screen exists to teach, so it must not
@@ -405,6 +408,9 @@ class _WordOfDayScreenState extends ConsumerState<WordOfDayScreen> {
               cardId: _word.cardId,
               fallback: _word.emoji,
               extent: 74,
+              // The word is printed just below: the picture must not say it
+              // again (TalkBack read "Proud, English, Proud").
+              revealsAnswer: false,
             ),
             const SizedBox(height: 16),
             // The one word the whole screen exists to teach, so it must not

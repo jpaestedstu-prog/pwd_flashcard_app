@@ -18,7 +18,13 @@ import '../../l10n/app_localizations_en.dart';
 /// game) should pause before awaiting this and resume after, so the lesson is
 /// truly on hold during the break. [BreakButton] wires that up via its
 /// [BreakButton.onBreakStart] / [BreakButton.onBreakEnd] hooks.
+/// Bumped each time a break starts, from anywhere — the learner's own
+/// "I Need a Break" button or a break reminder — so the break reminder
+/// (`BreakReminderGate`) starts counting again from now.
+final ValueNotifier<int> breakTimeStarted = ValueNotifier<int>(0);
+
 Future<void> showBreakTime(BuildContext context) {
+  breakTimeStarted.value++;
   return Navigator.of(context, rootNavigator: true).push<void>(
     PageRouteBuilder<void>(
       barrierColor: Colors.black,

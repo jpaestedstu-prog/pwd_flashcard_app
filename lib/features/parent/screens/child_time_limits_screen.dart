@@ -276,6 +276,55 @@ class _ChildTimeLimitsScreenState extends ConsumerState<ChildTimeLimitsScreen> {
               ),
             ],
             const Divider(height: 32),
+            // Break reminders: a gentle "time for a short break" after a
+            // stretch of learning. Never a lock (BreakReminderGate).
+            _SectionHeader(text: _t(context).tlBreak),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                _t(context).tlBreakBody,
+                style: AppTypography.bodySmall.copyWith(
+                  color: HCColor.of(context).textSecondary,
+                ),
+              ),
+            ),
+            SwitchListTile(
+              title: Text(_t(context).tlBreakSwitch),
+              subtitle: Text(
+                draft.breakReminderEnabled
+                    ? _t(context).tlBreakOn(draft.effectiveBreakEveryMinutes)
+                    : _t(context).tlBreakOff,
+              ),
+              value: draft.breakReminderEnabled,
+              onChanged: (v) =>
+                  _update(draft.copyWith(breakReminderEnabled: v)),
+            ),
+            if (draft.breakReminderEnabled)
+              ListTile(
+                title: DpadSliderScope(
+                  name: _t(context).tlBreakEvery,
+                  child: Slider(
+                    min: ChildTimeLimit.minBreakEveryMinutes.toDouble(),
+                    max: ChildTimeLimit.maxBreakEveryMinutes.toDouble(),
+                    divisions: (ChildTimeLimit.maxBreakEveryMinutes -
+                            ChildTimeLimit.minBreakEveryMinutes) ~/
+                        5,
+                    value: draft.effectiveBreakEveryMinutes.toDouble(),
+                    semanticFormatterCallback: (v) =>
+                        _t(context).tlBreakEveryValue(v.round()),
+                    onChanged: (v) =>
+                        _update(draft.copyWith(breakEveryMinutes: v.round())),
+                  ),
+                ),
+                subtitle: ExcludeSemantics(
+                  child: Text(
+                    _t(context).tlBreakEveryValue(
+                      draft.effectiveBreakEveryMinutes,
+                    ),
+                  ),
+                ),
+              ),
+            const Divider(height: 32),
             _SectionHeader(text: _t(context).tlWhenUp),
             Padding(
               padding: const EdgeInsets.only(bottom: 8),

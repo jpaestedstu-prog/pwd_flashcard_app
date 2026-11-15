@@ -267,7 +267,7 @@ class _GazeControlScreenState extends ConsumerState<GazeControlScreen>
             if (ready && controller != null)
               GazeCameraView(controller: controller)
             else if (ready && !gaze.usesCamera)
-              // Switch scanning: no camera to show, only the targets.
+              // Switch scanning or voice only: no camera to show, only the targets.
               const ColoredBox(color: Colors.black)
             else
               _FallbackState(status: gaze.status, onRetry: gaze.start),

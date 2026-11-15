@@ -13857,4 +13857,130 @@ class AppLocalizationsFil extends AppLocalizations {
   @override
   String get tcgNoGroup =>
       'Wala pang home group. Gumawa sa Pamahalaan ang Pamilya — saka mapipili rito ang mga anak mo.';
+
+  @override
+  String get gzsVoiceOnly => 'Boses lang (nakapatay ang camera)';
+
+  @override
+  String get gzsVoiceOnlySub =>
+      'Boses mo lang ang gagamitin. Hindi ginagamit ang galaw ng ulo at nakapatay ang camera. Kailangan ang mikropono.';
+
+  @override
+  String get gzsVoiceMore =>
+      'Masasabi mo rin: “basahin ang screen”, “sabihin ulit”, “ano ang masasabi ko”. Sabihin ang “huwag makinig” para huminto at “ituloy” para magpatuloy.';
+
+  @override
+  String get gzsCameraOffVoice =>
+      'Nakapatay ang camera: sa Boses lang, ang mga sinasabing utos ang naglilipat ng highlight at pumipili, kaya hindi kailangan ang mga setting na ito.';
+
+  @override
+  String get vcPausedSay =>
+      'Naka-pause. Sabihin ang “ituloy” kapag gusto mo nang magpatuloy.';
+
+  @override
+  String get vcResumedSay => 'Nakikinig na ulit.';
+
+  @override
+  String get vcNothingToRepeat => 'Wala pang masasabi ulit.';
+
+  @override
+  String get vcHelpSay =>
+      'Sabihin ang kaliwa, kanan, taas o baba para gumalaw, at piliin para buksan. O sabihin ang pangalan ng button. Masasabi mo rin: basahin ang screen, sabihin ulit, i-scroll pababa, isara, at huwag makinig.';
+
+  @override
+  String get vcSpeaking => 'Nagsasalita…';
+
+  @override
+  String get vcPausedChip => 'Naka-pause — sabihin ang “ituloy”';
+
+  @override
+  String get hfPausedTitle => 'Naka-pause ang hands-free control';
+
+  @override
+  String get hfPausedBody =>
+      'Para magpatuloy: sabihin ang “ituloy”, kumurap, pindutin ang switch, o i-tap ito.';
+
+  @override
+  String get tlBreak => 'Paalala sa pahinga';
+
+  @override
+  String get tlBreakBody =>
+      'Ipaalala sa mag-aaral na magpahinga matapos ang ilang oras ng pag-aaral. Sila ang pipili kung magpapahinga o magpapatuloy — hindi nito nila-lock ang app.';
+
+  @override
+  String get tlBreakSwitch => 'Ipaalala na magpahinga';
+
+  @override
+  String tlBreakOn(int minutes) {
+    return 'Bawat $minutes minuto ng pag-aaral';
+  }
+
+  @override
+  String get tlBreakOff => 'Walang paalala sa pahinga';
+
+  @override
+  String get tlBreakEvery => 'Minuto ng pag-aaral sa pagitan ng mga paalala';
+
+  @override
+  String tlBreakEveryValue(int minutes) {
+    return '$minutes minuto';
+  }
+
+  @override
+  String get brkTitle => 'Oras na para sa maikling pahinga';
+
+  @override
+  String brkBody(int minutes) {
+    return '$minutes minuto ka nang nag-aaral. Ipahinga ang mga mata, mag-unat, o uminom ng tubig.';
+  }
+
+  @override
+  String brkBodySimple(int minutes) {
+    return '$minutes minuto kang nag-aral. Oras nang magpahinga.';
+  }
+
+  @override
+  String brkTimeLeft(int minutes) {
+    return 'Natitirang oras ng pag-aaral ngayon: $minutes minuto.';
+  }
+
+  @override
+  String get brkTakeBreak => 'Magpahinga';
+
+  @override
+  String get brkKeepLearning => 'Magpatuloy sa pag-aaral';
+
+  @override
+  String get helpTitle => 'Tulong at mga Gabay';
+
+  @override
+  String get helpIntro =>
+      'Maiikling gabay, hakbang-hakbang. Pumili ng isa para buksan.';
+
+  @override
+  String get helpSettingDesc => 'Paano gamitin ang app, hakbang-hakbang';
+
+  @override
+  String get helpNotFound => 'Hindi mahanap ang gabay na ito.';
+
+  @override
+  String get helpReadAloud => 'Basahin nang malakas';
+
+  @override
+  String get helpStopReading => 'Itigil ang pagbasa';
+
+  @override
+  String get feedbackTitle => 'Rating at Feedback';
+
+  @override
+  String get feedbackSettingDesc =>
+      'Sabihin sa team ang iyong opinyon (bubukas ang website)';
+
+  @override
+  String get feedbackOpenForm => 'Buksan ang feedback form';
+
+  @override
+  String feedbackOpenFailed(String url) {
+    return 'Hindi mabuksan ang feedback page. Bisitahin ang $url';
+  }
 }

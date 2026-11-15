@@ -174,6 +174,8 @@ void main() {
     // Everyone.
     'Sign videos': [true, true, true, true, true, true],
     'Privacy & data': [true, true, true, true, true, true],
+    'Help & Guides': [true, true, true, true, true, true],
+    'Rate & Feedback': [true, true, true, true, true, true],
   };
 
   for (final kind in ProfileKind.values) {

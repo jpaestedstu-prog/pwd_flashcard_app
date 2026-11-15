@@ -257,6 +257,18 @@ class GazeSettingsScreen extends ConsumerWidget {
             subtitle: Text(t.gzsVoiceSub),
             onChanged: notifier.setVoiceCommands,
           ),
+          // Voice alone, for a learner who uses neither hands nor head: the
+          // camera stays off and spoken commands move and pick.
+          SwitchListTile.adaptive(
+            value: settings.voiceOnlyActive,
+            activeTrackColor: AppColors.primary,
+            contentPadding: EdgeInsets.zero,
+            secondary: const Icon(Icons.videocam_off_rounded),
+            title: Text(t.gzsVoiceOnly),
+            subtitle: Text(t.gzsVoiceOnlySub),
+            onChanged: notifier.setVoiceOnly,
+          ),
+          if (settings.voiceCommands) _Note(t.gzsVoiceMore),
           SwitchListTile.adaptive(
             value: settings.speakHighlight,
             activeTrackColor: AppColors.primary,
@@ -269,7 +281,8 @@ class GazeSettingsScreen extends ConsumerWidget {
 
           const SizedBox(height: 24),
           _SectionHeader(t.gzsTuning),
-          if (!camera) _Note(t.gzsCameraOff),
+          if (!camera)
+            _Note(settings.voiceOnlyActive ? t.gzsCameraOffVoice : t.gzsCameraOff),
           if (camera) ...[
             _SliderTile(
               icon: Icons.speed_rounded,
