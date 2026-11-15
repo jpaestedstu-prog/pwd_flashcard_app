@@ -801,14 +801,23 @@ def run(p):
     browser = Page(json.load(urllib.request.urlopen("http://127.0.0.1:9333/json/version"))["webSocketDebuggerUrl"])
     browser.call("Browser.setDownloadBehavior", behavior="allow", downloadPath=dl)
     p.js("document.getElementById('btnCsvMessages').click(); document.getElementById('btnCsvDaily').click()")
-    files = wait_for(lambda: (lambda fs: len(fs) == 2 and all(not x.endswith(".crdownload") for x in fs) and fs)(os.listdir(dl)), 10) or []
+    # Both files there, finished and not empty (a busy machine can show a name before the
+    # bytes, and a 10 s wait once ran out under load).
+    def finished():
+        fs = os.listdir(dl)
+        if len(fs) != 2 or any(x.endswith(".crdownload") for x in fs):
+            return None
+        return fs if all(os.path.getsize(os.path.join(dl, x)) > 0 for x in fs) else None
+    files = wait_for(finished, 30) or []
+    time.sleep(0.3)
     texts = {x: open(os.path.join(dl, x), encoding="utf-8-sig").read() for x in files}
     msgs = next((v for k, v in texts.items() if "messages" in k), "")
     daily = next((v for k, v in texts.items() if "daily" in k), "")
     check("the messages export keeps a formula-looking message as text", "'=1+2 Please add more Filipino words" in msgs, msgs[:200])
+    lines = msgs.splitlines()
     check("the messages export has each message's email notice and reference",
-          msgs.splitlines()[0].endswith(",email_notice,reference") and any(line.endswith(",off," + msg_id) for line in msgs.splitlines()),
-          msgs.splitlines()[:2])
+          bool(lines) and lines[0].endswith(",email_notice,reference") and any(line.endswith(",off," + msg_id) for line in lines),
+          lines[:2])
     check("the daily export has today's 7 page views",
           any(line.startswith(today + ",") and line.split(",")[3] == "7" for line in daily.splitlines()), daily.splitlines()[:2])
     shutil.rmtree(dl, ignore_errors=True)

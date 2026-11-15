@@ -187,7 +187,15 @@ guide (or a section of it) instead of repeating it. Videos and pictures live onc
 cards, the filter, the demos, no-JavaScript, Filipino, phones, the guides' groups and
 addresses, and that every link lands), `tool/website_nav_check.py` (menus: five
 links at most, no hover or timer), `tool/website_a11y_check.py` (axe, WCAG 2.2 AA)
-and `tool/website_responsive_check.py` (every page, phone to desktop, largest text).
+`tool/website_responsive_check.py` (every page, phone to desktop, largest text) and
+`tool/website_offline_check.py` (the offline copy, with the server really stopped).
+
+**One look.** Every surface uses the depth tokens at the top of `site.css`
+(`--surface-raise`, `--raise-1`, `--raise-2`, `--press`, `--fill-brand`; the app's
+`depth_3d.dart` recipe), redefined for dark mode and flat in high contrast. Keep
+`color-mix()` out of custom properties used as backgrounds: an older browser drops the
+whole value and the card turns see-through. `sw.js`'s cache name follows every asset
+(`assets_digest` in `site_chrome_build.py`), so no visitor keeps an old picture.
 Styling lives in one file, `website/assets/site.css`; a page keeps only the
 rules that are truly its own. Old links into the former one-page site
 (`index.html#download`, `#try`, `#how`, `#faq`, `#feedback`, `#awareness`,

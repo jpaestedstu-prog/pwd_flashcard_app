@@ -381,13 +381,33 @@ def apply(text, key, path):
     return text
 
 
+def assets_digest():
+    """Every file under website/assets the service worker may keep, by content. (Videos
+    are left out: a <video> asks for byte ranges, and the worker never stores a partial
+    206 answer.) A changed picture, caption or font changes the cache name, so no
+    visitor is answered from an old copy."""
+    h = hashlib.sha256()
+    base = os.path.join(SITE, "assets")
+    for dirpath, dirs, files in os.walk(base):
+        dirs.sort()
+        for f in sorted(files):
+            if f.endswith(".mp4"):
+                continue
+            path = os.path.join(dirpath, f)
+            h.update(os.path.relpath(path, base).replace(os.sep, "/").encode())
+            with open(path, "rb") as fh:
+                h.update(fh.read())
+    return h.hexdigest()
+
+
 def apply_sw(text):
-    """Precache the fingerprinted URLs, under a cache name that changes with them."""
+    """Precache the fingerprinted URLs, under a cache name that changes with them and
+    with every other asset."""
     for name in VERSIONED:
         text, n = re.subn(r"'assets/" + re.escape(name) + r"(\?v=[0-9a-f]+)?'", "'" + asset(name) + "'", text)
         if n != 1:
             fail(f"sw.js: expected one precache entry for assets/{name}, found {n}")
-    tag = hashlib.sha256("".join(V[n] for n in VERSIONED).encode()).hexdigest()[:8]
+    tag = hashlib.sha256(("".join(V[n] for n in VERSIONED) + assets_digest()).encode()).hexdigest()[:8]
     text, n = re.subn(r"const CACHE = 'flp-site-v(\d+)(-[0-9a-f]+)?';",
                       lambda m: f"const CACHE = 'flp-site-v{m.group(1)}-{tag}';", text)
     if n != 1:

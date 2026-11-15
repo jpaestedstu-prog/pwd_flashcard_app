@@ -317,6 +317,16 @@ def guides(p):
     s = p.js("({open:document.getElementById('g-accessibility').open, others:[...document.querySelectorAll('details.guide')].filter(d=>d.open).length, focus:document.activeElement.id, top:Math.round(document.getElementById('g-accessibility-hear-the-words').getBoundingClientRect().top)})")
     check("a link to a guide section opens that guide there, and focuses the section",
           s["open"] and s["others"] == 1 and s["focus"] == "g-accessibility-hear-the-words-h" and 40 <= s["top"] <= 160, s)
+    # Every section of every guide, by its own address (hashchange, as a link in the page does).
+    ids = p.js("[...document.querySelectorAll('section.guide-sec[id]')].map(e => e.id)")
+    bad = []
+    for sid in ids:
+        p.js(f"location.hash = {json.dumps(sid)}")
+        # (The page scrolls smoothly: wait until the section has arrived.)
+        ok = p.wait(f"(function(){{var e=document.getElementById({json.dumps(sid)});return e.closest('details.guide').open && document.activeElement && document.activeElement.id === {json.dumps(sid + '-h')} && e.getBoundingClientRect().top > 0 && e.getBoundingClientRect().top < 220;}})()", 4)
+        if not ok:
+            bad.append(sid)
+    check(f"all {len(ids)} guide sections: their address opens the guide there and focuses the section", ids and not bad, bad[:5])
     p.js("document.querySelector('#g-accessibility .guide-back a').click()")
     time.sleep(0.6)
     check("Back to all guides goes back to the list", p.js("location.hash") == "#find" and p.js("Math.round(document.getElementById('find').getBoundingClientRect().top)") < 160)

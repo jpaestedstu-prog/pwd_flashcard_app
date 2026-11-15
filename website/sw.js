@@ -1,8 +1,11 @@
 /* FlashLearn PWD site service worker — offline support for every page.
+   The cache name (CACHE, written by tools/site_chrome_build.py) changes whenever any
+   file under assets/ changes, so an updated picture, caption or script is never answered
+   from an old copy: the new worker deletes the old cache when it takes over.
    Screenshots and videos are not precached (they load when shown, then stay
    cached); assets/fsl-dict.js is build input for the dictionary page, not
    something a page loads. */
-const CACHE = 'flp-site-v44-c14bace9';
+const CACHE = 'flp-site-v44-b56da509';
 // Where the FlashLearn web app lives, under this site's scope.
 const APP_PATH = new URL('app/', self.registration.scope).pathname;
 const CORE = [
@@ -22,7 +25,7 @@ const CORE = [
   'guides.html',
   'features.html',
   'manifest.webmanifest',
-  'assets/site.css?v=8c7e8290ff',
+  'assets/site.css?v=92f372505f',
   'assets/site.js?v=b563c7ea0d',
   'assets/try.js?v=bf64e37ee3',
   'assets/logo.webp',
@@ -64,16 +67,23 @@ self.addEventListener('fetch', (e) => {
   // page with old code (and keep ~20 MB of it per visitor).
   if (url.pathname.startsWith(APP_PATH)) return;
 
-  // Pages: network first (fresh content), fall back to cache when offline.
+  // Pages: network first (fresh content), fall back to cache when offline. Only a good
+  // page is kept (never an error page). Offline, a page asked for with a query
+  // (features.html?for=hearing, from Home's presets) is the same page: the cached copy
+  // is found without the query, and the page's own script reads it.
   if (req.mode === 'navigate') {
     e.respondWith(
       fetch(req)
         .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(req, copy));
+          if (res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE).then((c) => c.put(req, copy));
+          }
           return res;
         })
-        .catch(() => caches.match(req).then((m) => m || caches.match('index.html')))
+        .catch(() => caches.match(req)
+          .then((m) => m || caches.match(req, { ignoreSearch: true }))
+          .then((m) => m || caches.match('index.html')))
     );
     return;
   }

@@ -67,6 +67,19 @@
   --container:1160px;
   --gutter:20px;
   --ease-out:cubic-bezier(.2,.7,.2,1);
+  /* Depth: the app's recipe (lib/widgets/depth_3d.dart) for every surface on the site.
+     A lit top rim, a grounded bottom edge, a soft neutral shadow under a colour-tinted
+     lift; --press tucks a control down; --fill-brand is the vivid 3D fill of a primary
+     or chosen control. Surfaces shade from a lighter top to their own colour. */
+  --rim:inset 0 1px 0 rgba(255,255,255,.85);
+  --edge:inset 0 -2px 0 rgba(42,36,67,.06);
+  --raise-1:var(--rim), var(--edge), 0 1px 2px rgba(42,36,67,.06), 0 8px 18px -9px rgba(94,53,177,.22);
+  --raise-2:var(--rim), var(--edge), 0 2px 5px rgba(42,36,67,.08), 0 16px 30px -12px rgba(94,53,177,.32);
+  --press:inset 0 2px 5px rgba(42,36,67,.16);
+  --top-light:rgba(255,255,255,.62); --bottom-shade:rgba(42,36,67,.035);
+  --surface-raise:linear-gradient(180deg, var(--top-light), rgba(255,255,255,0) 46%, var(--bottom-shade)), var(--surface);
+  --fill-brand:linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,0) 46%, rgba(0,0,0,.1)), linear-gradient(150deg,#794DC8 0%,#6638BA 50%,#552F99 100%);
+  --lift-brand:inset 0 0 0 1px rgba(255,255,255,.2), inset 0 -3px 0 rgba(0,0,0,.14), 0 10px 22px -7px rgba(102,56,186,.55), 0 3px 6px rgba(42,36,67,.12);
   color-scheme:light;
 }
 /* Dark: the device asks for it (unless the visitor chose Light), or the visitor chose Dark.
@@ -87,6 +100,11 @@
     --shadow-2:0 2px 6px rgba(0,0,0,.45), 0 18px 40px rgba(0,0,0,.42);
     --shadow-3:0 6px 14px rgba(0,0,0,.45), 0 30px 64px rgba(0,0,0,.55);
     --dots:rgba(201,182,255,.12);
+    --rim:inset 0 1px 0 rgba(255,255,255,.08); --edge:inset 0 -2px 0 rgba(0,0,0,.28);
+    --raise-1:var(--rim), var(--edge), 0 1px 2px rgba(0,0,0,.45), 0 10px 22px -10px rgba(0,0,0,.65);
+    --raise-2:var(--rim), var(--edge), 0 2px 6px rgba(0,0,0,.5), 0 18px 34px -12px rgba(0,0,0,.75);
+    --press:inset 0 2px 6px rgba(0,0,0,.45);
+    --top-light:rgba(255,255,255,.05); --bottom-shade:rgba(0,0,0,.2);
     color-scheme:dark;
   }
 }
@@ -105,6 +123,11 @@ html.theme-dark:not(.hc):not(.dys){
   --shadow-2:0 2px 6px rgba(0,0,0,.45), 0 18px 40px rgba(0,0,0,.42);
   --shadow-3:0 6px 14px rgba(0,0,0,.45), 0 30px 64px rgba(0,0,0,.55);
   --dots:rgba(201,182,255,.12);
+  --rim:inset 0 1px 0 rgba(255,255,255,.08); --edge:inset 0 -2px 0 rgba(0,0,0,.28);
+  --raise-1:var(--rim), var(--edge), 0 1px 2px rgba(0,0,0,.45), 0 10px 22px -10px rgba(0,0,0,.65);
+  --raise-2:var(--rim), var(--edge), 0 2px 6px rgba(0,0,0,.5), 0 18px 34px -12px rgba(0,0,0,.75);
+  --press:inset 0 2px 6px rgba(0,0,0,.45);
+  --top-light:rgba(255,255,255,.05); --bottom-shade:rgba(0,0,0,.2);
   color-scheme:dark;
 }
 /* Dyslexia-friendly: Lexend, wider spacing, a cream page (less glare). */
@@ -123,6 +146,8 @@ html.hc{
   --warn-ink:#000000; --warn-bg:#FFFFFF; --tip-ink:#000000; --tip-bg:#FFFFFF;
   --star:#000000; --dots:transparent;
   --shadow-1:0 0 0 2px #12122A; --shadow-2:0 0 0 3px #12122A; --shadow-3:0 0 0 3px #12122A;
+  --rim:0 0 0 0 transparent; --edge:0 0 0 0 transparent; --raise-1:none; --raise-2:none; --press:none;
+  --top-light:#FFFFFF; --bottom-shade:#FFFFFF; --surface-raise:#FFFFFF; --fill-brand:#2A1C9A; --lift-brand:none;
   color-scheme:light;
 }
 /* Text size: the whole page scales (headings, spacing, controls), like the
@@ -1446,9 +1471,11 @@ html.hc .feat-group-ico{ background:#fff; box-shadow:inset 0 0 0 2px #000; }
 .feat-helps{ display:flex; flex-wrap:wrap; align-items:center; gap:.4rem .6rem; }
 .feat-helps-label{ font-weight:800; font-size:.9rem; color:var(--ink); }
 .feat-tags{ list-style:none; display:flex; flex-wrap:wrap; gap:.4rem; }
+/* Labels, not buttons: square-ish and flat, so they never look like the filter's raised
+   pills (those you can press; these you only read). */
 .feat-tags li{
   display:inline-flex; align-items:center; gap:.3rem; font-weight:800; font-size:.86rem; color:var(--ink);
-  background:var(--surface-2); border:1px solid var(--border); border-radius:999px; padding:.2rem .7rem;
+  background:var(--surface-2); border:0; border-radius:.45rem; padding:.15rem .55rem; cursor:default;
 }
 .feat-facts{ display:grid; gap:.6rem; font-size:.95rem; }
 .feat-facts div{ display:grid; gap:.15rem; }
@@ -1480,6 +1507,95 @@ html.hc .feat-guide{ background:#fff; border-color:#000; color:#000; }
   details.demo,.feat-filter-sec,.feat-index{ display:none !important; }
   .feat{ break-inside:avoid-page; box-shadow:none; }
 }
+
+/* ============ Depth system: one recipe for every surface (tokens at the top) ============
+   The app's "vibrant 3D depth" (lib/widgets/depth_3d.dart) for the whole site, so every
+   page reads as one product:
+     * a neutral surface (card, panel, disclosure, step, table, menu) is raised off the
+       page: --surface-raise (lighter at the top) + --raise-1 (lit rim, grounded edge,
+       a soft shadow under a colour-tinted lift);
+     * a control you can press lifts to --raise-2 under a mouse and tucks down (--press)
+       while pressed;
+     * a primary or chosen control takes the vivid --fill-brand with --lift-brand;
+     * every icon sits in a raised coin (gradient, highlight, inner shade).
+   High contrast keeps everything flat and outlined (its tokens are "none"); Reduced
+   motion keeps the depth but never moves anything. */
+.card,.feat,.guide-group,details.disclosure,details.faq,.steps > li,.table-scroll,.stat,details.demo,
+.a11y-panel,.guide-card{
+  background:var(--surface-raise); box-shadow:var(--raise-1);
+}
+.feat-filter{ background:var(--surface-raise); box-shadow:var(--raise-2); }
+details.disclosure[open],details.faq[open]{ box-shadow:var(--raise-2); }
+.nav-panel{ background:var(--surface-raise); box-shadow:var(--rim), var(--shadow-3); }
+.nav-panel::before{ background:linear-gradient(var(--top-light), var(--top-light)), var(--surface); }
+html.hc .nav-panel::before{ background:#fff; }
+.callout{ box-shadow:var(--rim), 0 6px 16px -10px rgba(42,36,67,.28); }
+html.hc .callout{ box-shadow:none; }
+/* Controls */
+.btn-secondary,.tool-btn,.nav-btn-try,.feat-chip,.feat-index a,.feat-guide,.lang-switch{
+  background:var(--surface-raise); box-shadow:var(--raise-1);
+}
+.seg{ box-shadow:var(--press); }
+.btn-secondary,.tool-btn,.nav-btn-try,.feat-chip,.feat-index a,.feat-guide,.guide-card,.link-card{
+  transition:transform .16s var(--ease-out), box-shadow .16s ease, border-color .16s ease, background-color .16s ease;
+}
+@media (hover:hover){
+  .btn-secondary:hover,.tool-btn:hover,.nav-btn-try:hover,.feat-chip:hover,.feat-index a:hover,.feat-guide:hover,.guide-card:hover{
+    box-shadow:var(--raise-2); transform:translateY(-2px);
+  }
+  details.demo > summary:hover{ box-shadow:var(--raise-1); }
+}
+.btn-secondary:active,.tool-btn:active,.nav-btn-try:active,.feat-chip:active,.feat-index a:active,.feat-guide:active,.guide-card:active,
+details.demo > summary:active{ box-shadow:var(--press); transform:translateY(1px); }
+.btn-primary,.nav-btn-dl,.demo-play-btn{ background:var(--fill-brand); box-shadow:var(--lift-brand); }
+.feat-chip[aria-pressed="true"],.btn[aria-pressed="true"],.seg button[aria-pressed="true"],.lang-switch button[aria-pressed="true"]{
+  background:var(--fill-brand); color:#fff; border-color:transparent; box-shadow:var(--lift-brand);
+}
+.nav-link[aria-current="page"],.nav-group-btn[aria-current="true"]{ box-shadow:var(--rim), inset 0 0 0 1px color-mix(in srgb, var(--brand) 22%, transparent); }
+html.js .site-nav.open .nav-sublist a,
+html.js .site-nav.open .nav-item:first-child .nav-link{ background:var(--surface-raise); box-shadow:var(--raise-1); }
+/* Icon coins: the guide icons join the menu, card and feature icons. */
+.guide-ico{
+  background:radial-gradient(circle at 30% 24%, rgba(255,255,255,.42), rgba(255,255,255,0) 60%), linear-gradient(150deg, var(--t1, #9C7AE0), var(--t3, #5E35B1));
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.28), inset 0 -3px 5px rgba(0,0,0,.18), 0 5px 10px -3px color-mix(in srgb, var(--t2, #6638BA) 60%, transparent);
+}
+/* Never move for visitors who asked for less motion (the depth stays). */
+@media (prefers-reduced-motion:reduce){
+  .btn-secondary:hover,.tool-btn:hover,.nav-btn-try:hover,.feat-chip:hover,.feat-index a:hover,.feat-guide:hover,.guide-card:hover,
+  .btn-primary:hover,.nav-btn-dl:hover,.link-card:hover,.link-card:not(.tilt):hover,.btn-secondary:active,.tool-btn:active,.feat-chip:active{ transform:none; }
+}
+html.still .btn-secondary:hover,html.still .tool-btn:hover,html.still .nav-btn-try:hover,html.still .feat-chip:hover,html.still .feat-index a:hover,
+html.still .feat-guide:hover,html.still .guide-card:hover,html.still .btn-primary:hover,html.still .nav-btn-dl:hover,
+html.still .link-card:hover,html.still .link-card:not(.tilt):hover{ transform:none; }
+html.hc .btn-primary,html.hc .nav-btn-dl{ box-shadow:none; }
+
+/* ---- Even rows: cards in a row share one height ----
+   A feature card's "See it in action" and guide link sit at its foot, so a row lines up
+   whatever each card says; a guide group is one full-width band of equal cards. */
+.feat-grid{ align-items:stretch; }
+.feat{ display:flex; flex-direction:column; }
+.feat > details.demo{ margin-top:auto; }
+.guide-groups{ grid-template-columns:minmax(0,1fr); }
+.guide-cards{ grid-template-columns:repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); align-items:stretch; }
+/* A card's "See it in action" / "The features that help" link sits at its foot, so the
+   links of a row line up (Home's feature, preset and profile cards). */
+.card:has(> .card-more){ display:flex; flex-direction:column; }
+.card > .card-more{ margin-top:auto; padding-top:.6rem; }
+/* "Step by step" lines under an FAQ answer and a Teacher's Guide section: a small
+   raised note, so they read as a way on, not as part of the text above. */
+.faq-guides,.tg-guide{
+  margin-top:1rem; padding:.65rem .9rem; border-radius:var(--radius-sm); font-size:.95rem;
+  background:var(--brand-softer); border:1px solid color-mix(in srgb, var(--brand) 18%, var(--border)); box-shadow:var(--rim);
+}
+.faq-guides a,.tg-guide a{ font-weight:800; }
+html.hc .faq-guides,html.hc .tg-guide{ background:#fff; border:2px solid #000; }
+.guide-card{ height:100%; align-items:flex-start; }
+.guide-card .guide-ico{ margin-top:.1rem; }
+
+/* ---- Targets: links that stand on their own are at least 44 px tall (40 in the footer) ---- */
+.arrow-link,.guide-top{ min-height:2.75rem; display:inline-flex; align-items:center; }
+.site-footer ul{ gap:.1rem; }
+.site-footer li a{ display:inline-flex; align-items:center; min-height:2.5rem; }
 
 /* ============ Feedback form ============ */
 .fb-layout{ display:grid; grid-template-columns:minmax(0,1.25fr) minmax(0,.75fr); gap:2rem; align-items:start; }
