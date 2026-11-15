@@ -7,6 +7,13 @@
 // ../firestore.rules (a Google or email sign-in listed in admins/): this page
 // only shows what those rules hand back.
 //
+// Live: while the page is open, Firestore tells it about every change to
+// today's tallies, today's sign plays and the inbox (onSnapshot listeners; on
+// the free Spark plan each change it sends counts as one read). Older days
+// never change (the rules accept counts for today only), so they are read once
+// per load. A tab hidden for ten minutes stops listening and starts again when
+// it comes back.
+//
 // Local testing: http://127.0.0.1:<port>/?emulator uses the Auth and
 // Firestore emulators of the demo-flashlearn-site project instead.
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
@@ -16,9 +23,9 @@ import {
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {
   getFirestore, connectFirestoreEmulator, collection, query, where, orderBy, limit, getDocs, getDoc,
-  doc, setDoc, updateDoc, deleteDoc, documentId, serverTimestamp, writeBatch, Timestamp,
-} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore-lite.js';
-import { FIREBASE, SITE } from './config.js';
+  doc, setDoc, updateDoc, deleteDoc, documentId, serverTimestamp, writeBatch, Timestamp, onSnapshot,
+} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+import { FIREBASE, SITE, MAIL } from './config.js';
 
 const $ = (id) => document.getElementById(id);
 const LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
@@ -26,9 +33,20 @@ const EMULATOR = LOCAL && new URLSearchParams(location.search).has('emulator');
 const CONFIG = EMULATOR
   ? { apiKey: 'demo-key', authDomain: location.host, projectId: 'demo-flashlearn-site', appId: 'demo' }
   : FIREBASE;
+// Email notices (../email_notifier, config.js MAIL). With the emulators, a test can
+// name a stand-in notifier in localStorage 'flp-admin-mail-test'; never otherwise.
+const NOTICES = (() => {
+  let url = (MAIL && MAIL.url) || '';
+  if (EMULATOR) {
+    try { const t = JSON.parse(localStorage.getItem('flp-admin-mail-test') || 'null'); url = (t && t.url) || ''; } catch (e) { url = ''; }
+  }
+  return { to: (MAIL && MAIL.to) || '', url };
+})();
 const IDLE_MS = 30 * 60e3;
 const FEEDBACK_LIMIT = 500;
 const KEEP_MONTHS = 12;   // ratings and messages; privacy page section 8
+const HIDDEN_PAUSE_MS = 10 * 60e3;   // a hidden tab stops listening after this long
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
 
 // ---- Names for the tallies (website/assets/site.js, firestore.rules) ----------
 const PAGES = {
@@ -40,6 +58,7 @@ const SOURCES = {
   direct: 'Typed in, bookmark or app link', search: 'Search engines', social: 'Social media and chat apps',
   github: 'GitHub', qr: 'QR code (link with ?src=qr)', other: 'Other websites',
 };
+const SOURCE_SHORT = { direct: 'typed in or a bookmark', search: 'a search engine', social: 'social media', github: 'GitHub', qr: 'the QR code', other: 'another website' };
 const DEVICES = { phone: 'Phone', tablet: 'Tablet', computer: 'Computer' };
 const LANGS = { en: 'English', fil: 'Filipino' };
 const AIDS = [
@@ -53,8 +72,16 @@ const EVENTS = [
   ['e_try_card', 'Try It: flipped a flashcard'], ['e_try_game', 'Try It: Word Match games'],
   ['e_film', 'Played the Home film'], ['e_demo', 'Played a how-to or welcome video'],
 ];
+const EVENT_ICONS = { e_apk_arm64: '⬇️', e_apk_arm32: '⬇️', e_apk_universal: '⬇️', e_webapp: '🌐', e_try_card: '🎴', e_try_game: '🎯', e_film: '🎬', e_demo: '▶️' };
 const TYPES = { problem: 'Problem', idea: 'Suggestion', praise: 'Praise', rating: 'Rating only' };
+// What happened to a message's email notice (feedback/{id}.mail, written by the website).
+const MAIL_STATES = {
+  sent: { label: 'Email notice sent', cls: 'mail-sent' },
+  unconfirmed: { label: 'Email notice not confirmed', cls: 'mail-unconfirmed' },
+  off: { label: 'No email notice (notices were off)', cls: 'mail-off' },
+};
 const ROLES = { teacher: 'Teacher', parent: 'Parent or guardian', student: 'Student', other: 'Other' };
+const ROLE_ICONS = { teacher: '🧑‍🏫', parent: '👪', student: '🎒', other: '🙂' };
 // Every tally, in the order of the daily CSV.
 const CSV_KEYS = [
   ['u', 'visitors'], ['n', 'new_visitors'], ['v', 'page_views'],
@@ -78,7 +105,9 @@ const dayLabel = (day, year) => new Date(day + 'T00:00:00Z').toLocaleDateString(
   { month: 'short', day: 'numeric', timeZone: 'UTC', ...(year ? { year: 'numeric' } : {}) });
 const whenLabel = (date) => date.toLocaleString('en-PH',
   { timeZone: 'Asia/Manila', year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+const clockLabel = (date = new Date()) => date.toLocaleTimeString('en-PH', { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit' });
 const starsText = (r) => '★'.repeat(r) + '☆'.repeat(5 - r);
+const plural = (n, one, many) => fmt(n) + ' ' + (n === 1 ? one : many);
 
 function el(tag, cls, text) {
   const e = document.createElement(tag);
@@ -138,8 +167,8 @@ function hideTip() { tip.hidden = true; }
   sync();
 })();
 // ---- Views ------------------------------------------------------------------------
-// Loading, set-up, sign-in and not-an-administrator fill the page; the
-// dashboard brings the sidebar.
+// Loading, set-up, sign-in and not-an-administrator fill the page beside the
+// brand panel; the dashboard brings the sidebar.
 const VIEWS = ['viewLoading', 'viewSetup', 'viewSignIn', 'viewDenied', 'viewDash'];
 function show(view) {
   VIEWS.forEach((v) => { $(v).hidden = v !== view; });
@@ -150,8 +179,10 @@ function show(view) {
 // The dashboard's sections, one at a time, named in the address (#audience),
 // so Back and bookmarks work.
 const SECTIONS = { overview: 'Overview', audience: 'Audience', downloads: 'Downloads', feedback: 'Feedback', tools: 'Tools' };
+let section = 'overview';
 function route(focus) {
   const name = SECTIONS[location.hash.slice(1)] ? location.hash.slice(1) : 'overview';
+  section = name;
   document.querySelectorAll('.view').forEach((v) => { v.hidden = v.dataset.view !== name; });
   document.querySelectorAll('.side-nav a').forEach((a) => {
     if (a.dataset.view !== name) return a.removeAttribute('aria-current');
@@ -159,9 +190,15 @@ function route(focus) {
     a.scrollIntoView({ block: 'nearest', inline: 'nearest' });   // the phone's tab strip
   });
   $('pageTitle').textContent = SECTIONS[name];
-  document.title = SECTIONS[name] + ' · FlashLearn PWD Admin';
+  setTitle();
   hideTip();
   if (focus) $('pageTitle').focus();   // a screen reader announces the new section
+  if (name === 'tools' && dashReady) checkNoticesOnce();
+}
+// The tab's title names the section, and how many messages wait (after the name).
+function setTitle() {
+  const unseen = state.feedback.filter((f) => f.status === 'new').length;
+  document.title = SECTIONS[section] + ' · FlashLearn PWD Admin' + (unseen ? ' (' + unseen + ' new)' : '');
 }
 addEventListener('hashchange', () => route(true));
 
@@ -197,7 +234,7 @@ function wireSignIn() {
       .catch((err) => say(msg, authError(err), 'bad'));
   });
   // Signing out reloads the page, so no statistics stay behind in it.
-  const out = () => signOut(auth).then(() => location.reload());
+  const out = () => { stopLive(); signOut(auth).then(() => location.reload()); };
   $('btnSignOut').addEventListener('click', out);
   $('btnDeniedOut').addEventListener('click', out);
   $('btnCopyUid').addEventListener('click', () => {
@@ -227,6 +264,7 @@ function watchIdle() {
     clearTimeout(idleTimer);
     if (!auth.currentUser || stay.checked) return;
     idleTimer = setTimeout(() => {
+      stopLive();
       signOut(auth).then(() => {
         try { sessionStorage.setItem('flp-admin-idle', '1'); } catch (e) {}
         location.reload();
@@ -245,6 +283,7 @@ async function onUser(user) {
   clearTimeout(idleTimer);
   hideTip();
   if (!user) {
+    stopLive();
     $('who').hidden = true;
     show('viewSignIn');
     return;
@@ -276,7 +315,9 @@ async function onUser(user) {
   route(false);
   watchIdle();
   if (!dashReady) initDash();
-  load();
+  if (section === 'tools') checkNoticesOnce();   // opened straight on #tools
+  startLive();
+  load(true);
 }
 
 // ---- Loading ------------------------------------------------------------------------
@@ -301,7 +342,7 @@ function makePeriod(range, earliest) {
   return { range, from, to, days, prevFrom, prevTo, n, label, prevName };
 }
 
-async function load() {
+async function load(animate) {
   const seq = ++loadSeq;
   const dash = $('dash');
   dash.classList.add('loading');
@@ -313,7 +354,7 @@ async function load() {
   const expired = deleteExpired().catch(() => 0);
   const github = loadGitHub().then(() => {
     if (seq !== loadSeq) return;
-    renderDownloads();
+    renderDownloads(animate);
     renderHealth();
     if (period) renderKpis();
   });
@@ -321,20 +362,14 @@ async function load() {
     docs('daily', since(2 * +r)),            // this period and the one before, for the change
     docs('signs', since(+r)),
     docs('downloads', since(+r + 1)),        // and the day before, for the change in downloads
-    getDocs(query(collection(db, 'feedback'), orderBy('created', 'desc'), limit(FEEDBACK_LIMIT)))
-      .then((s) => s.docs.map((d) => {
-        const f = { id: d.id, ...d.data() };
-        f.created = f.created && f.created.toDate ? f.created.toDate() : null;
-        return f;
-      }).filter((f) => f.created && f.created >= keepSince())),
-  ]).then(([daily, signs, snaps, feedback]) => {
+    live.feedbackReady,                      // the inbox listener's first answer (state.feedback)
+  ]).then(([daily, signs, snaps]) => {
     if (seq !== loadSeq) return;
-    Object.assign(state, { daily, signs, snaps, feedback });
-    const earliest = daily.reduce((m, x) => (!m || x.id < m ? x.id : m), null);
+    Object.assign(state, { daily: withLive(daily, live.daily), signs: withLive(signs, live.signs), snaps });
+    const earliest = state.daily.reduce((m, x) => (!m || x.id < m ? x.id : m), null);
     period = makePeriod(r, earliest);
-    renderAll();
-    $('updatedAt').textContent = 'Updated ' + new Date().toLocaleTimeString('en-PH',
-      { timeZone: 'Asia/Manila', hour: 'numeric', minute: '2-digit' });
+    renderAll(animate);
+    $('updatedAt').textContent = 'Updated ' + clockLabel();
   });
   try {
     await firestore;
@@ -441,10 +476,229 @@ async function saveSnapshot() {
   try {
     await setDoc(doc(db, 'downloads', today), { total: gh.total, releases, at: serverTimestamp() });
     state.snaps = state.snaps.filter((s) => s.id !== today).concat({ id: today, total: gh.total, releases });
-    renderDownloadTrend();
+    renderDownloadTrend(false);
     renderKpis();
   } catch (e) { /* tried again the next time the page loads */ }
 }
+
+// ---- Live updates -------------------------------------------------------------------
+// Three listeners: today's tallies, today's sign plays, the newest 500 ratings
+// and messages. Only what the server says counts as news: the first answer is
+// the starting point, and each later one is compared with the one before, so
+// the activity list shows real changes, never guesses.
+const live = {
+  day: null, unsubs: [], paused: false, state: 'connecting', openedAt: Date.now(),
+  daily: undefined, signs: undefined,          // today's documents (null = none yet; undefined = not heard)
+  dailyBase: undefined, signsBase: undefined,  // the last server answer, to compare with
+  feedbackSeen: false, feedbackReady: Promise.resolve(), updates: 0, since: null,
+};
+function startLive() {
+  stopLive();
+  live.paused = false;
+  const day = manilaDay();
+  live.day = day;
+  live.daily = live.signs = live.dailyBase = live.signsBase = undefined;
+  live.feedbackSeen = false;
+  live.since = live.since || new Date();
+  setLive('connecting');
+  let ready, failed;
+  live.feedbackReady = new Promise((res, rej) => { ready = res; failed = rej; });
+  live.feedbackReady.catch(() => {});
+  const opts = { includeMetadataChanges: true };
+  live.unsubs.push(
+    onSnapshot(doc(db, 'daily', day), opts, (s) => onToday(s, day, 'daily'), liveError),
+    onSnapshot(doc(db, 'signs', day), opts, (s) => onToday(s, day, 'signs'), liveError),
+    onSnapshot(query(collection(db, 'feedback'), orderBy('created', 'desc'), limit(FEEDBACK_LIMIT)), opts,
+      (s) => { onFeedback(s); ready(); }, (e) => { liveError(e); failed(e); }),
+  );
+}
+function stopLive() {
+  live.unsubs.splice(0).forEach((u) => { try { u(); } catch (e) {} });
+}
+function setLive(s) {
+  live.state = s;
+  const pill = $('liveStatus');
+  if (!pill) return;
+  pill.dataset.state = s;
+  pill.querySelector('.live-text').textContent = {
+    connecting: 'Connecting…', live: 'Live', offline: 'Offline: the last numbers', paused: 'Paused (tab was hidden)', error: 'Live updates stopped',
+  }[s] || s;
+  $('liveAbout').textContent = s === 'live' || s === 'offline'
+    ? 'Listening since ' + clockLabel(live.since) + ' · ' + plural(live.updates, 'update', 'updates') + ' received.'
+    : '';
+}
+function liveError(e) {
+  setLive('error');
+  stopLive();
+  if (e && e.code === 'permission-denied') {
+    $('dashError').textContent = 'The database stopped sending updates: is this account still on the list of administrators?';
+  } else {
+    $('dashError').textContent = 'Live updates stopped (' + ((e && (e.code || e.message)) || 'unknown error') + '). Press Refresh to start them again.';
+  }
+  $('dashError').hidden = false;
+}
+// Today's row in a list of daily documents follows the live copy once it is known.
+function withLive(rows, todayDoc) {
+  if (todayDoc === undefined || !live.day) return rows;
+  const out = rows.filter((r) => r.id !== live.day);
+  if (todayDoc) out.push(todayDoc);
+  return out;
+}
+function onToday(snap, day, kind) {
+  if (day !== live.day) return;
+  setLive(snap.metadata.fromCache ? 'offline' : 'live');
+  if (snap.metadata.fromCache) return;   // only the server's word counts
+  const data = snap.exists() ? { id: day, ...snap.data() } : null;
+  const baseKey = kind + 'Base', before = live[baseKey];
+  const same = before !== undefined && JSON.stringify(before) === JSON.stringify(data);
+  live[kind] = data;
+  live[baseKey] = data;
+  if (same) return;
+  live.updates += 1;
+  setLive('live');
+  if (before !== undefined) (kind === 'daily' ? dailyNews : signNews)(before || {}, data || {});
+  state[kind] = withLive(state[kind], data);
+  renderToday(before !== undefined);
+  scheduleRender();
+}
+// What changed in today's tallies, in words.
+function dailyNews(a, b) {
+  const up = (k) => (b[k] || 0) - (a[k] || 0);
+  const ups = (prefix, names) => Object.keys(names).filter((k) => up(prefix + k) > 0)
+    .map((k) => names[k] + (up(prefix + k) > 1 ? ' ×' + up(prefix + k) : ''));
+  const views = up('v');
+  if (views > 0) {
+    const pages = ups('p_', PAGES), langs = ups('l_', LANGS), devices = ups('d_', DEVICES);
+    const src = Object.keys(SOURCE_SHORT).find((k) => up('s_' + k) > 0);
+    let text = plural(views, 'page view', 'page views') + (pages.length ? ': ' + pages.join(', ') : '');
+    if (langs.length === 1 && langs[0] === 'Filipino') text += ' (in Filipino)';
+    if (up('n') > 0) text += ' · a new visitor' + (devices.length ? ' on a ' + devices[0].toLowerCase() : '');
+    else if (up('u') > 0) text += ' · a returning visitor' + (devices.length ? ' on a ' + devices[0].toLowerCase() : '');
+    if (src) text += ', from ' + SOURCE_SHORT[src];
+    addActivity(up('n') > 0 ? '🆕' : '👀', text);
+  }
+  EVENTS.forEach(([k, label]) => { if (up(k) > 0) addActivity(EVENT_ICONS[k] || '•', label + (up(k) > 1 ? ' (×' + up(k) + ')' : '')); });
+  AIDS.forEach(([k, label]) => { if (k.startsWith('a_') && up(k) > 0) addActivity('♿', 'A visitor turned on: ' + label); });
+}
+function signNews(a, b) {
+  Object.keys(b).filter((k) => k.startsWith('w_') && (b[k] || 0) > (a[k] || 0))
+    .forEach((k) => addActivity('🤟', 'FSL sign played: ' + signName(k) + ((b[k] || 0) - (a[k] || 0) > 1 ? ' (×' + ((b[k] || 0) - (a[k] || 0)) + ')' : '')));
+}
+function onFeedback(snap) {
+  setLive(snap.metadata.fromCache ? 'offline' : 'live');
+  if (snap.metadata.fromCache && !live.feedbackSeen) return;   // wait for the server's first answer
+  const first = !live.feedbackSeen;
+  // The same objects for the same messages, so what is on screen stays in step.
+  const byId = new Map(state.feedback.map((f) => [f.id, f]));
+  const next = [];
+  snap.docs.forEach((d) => {
+    const data = d.data({ serverTimestamps: 'estimate' });
+    const created = data.created && data.created.toDate ? data.created.toDate() : null;
+    if (!created || created < keepSince()) return;
+    const f = byId.get(d.id);
+    if (f) next.push(Object.assign(f, data, { created }));
+    else next.push({ id: d.id, ...data, created });
+  });
+  const added = first ? [] : next.filter((f) => !byId.has(f.id));
+  const removed = first ? [] : state.feedback.filter((f) => !next.includes(f));
+  state.feedback = next;
+  live.feedbackSeen = true;
+  if (first) return;   // load() draws everything
+  if (!snap.metadata.hasPendingWrites && (added.length || removed.length || snap.docChanges().length)) live.updates += 1;
+  added.forEach((f) => {
+    if (f.created.getTime() < live.openedAt - 5000) return;
+    const who = (ROLES[f.role] || f.role || 'someone').toLowerCase();
+    const what = f.type === 'rating' ? 'New rating ' + starsText(f.rating || 0) : 'New ' + (TYPES[f.type] || 'message').toLowerCase() + (f.rating ? ' with ' + f.rating + '★' : '');
+    addActivity('💬', what + ' from a ' + who);
+    toast(what, (f.message ? '“' + f.message.slice(0, 90) + (f.message.length > 90 ? '…' : '') + '” · ' : '') + 'from a ' + who);
+  });
+  next.forEach((f) => f._sync && f._sync());
+  if (added.length || removed.length) inboxChanged(added.filter((f) => matchesInbox(f)).length);
+  scheduleRender();
+  setLive(live.state);
+}
+
+// The overview's "Today" panel: today's own numbers, as they come in.
+function renderToday(bump) {
+  const d = live.daily !== undefined ? (live.daily || {}) : (state.daily.find((r) => r.id === manilaDay()) || {});
+  const s = live.signs !== undefined ? (live.signs || {}) : (state.signs.find((r) => r.id === manilaDay()) || {});
+  const plays = Object.keys(s).filter((k) => k.startsWith('w_')).reduce((t, k) => t + (s[k] || 0), 0);
+  const set = (id, v) => {
+    const node = $(id), text = fmt(v);
+    if (node.textContent === text) return;
+    node.textContent = text;
+    if (bump && !reduceMotion.matches) { node.classList.remove('bump'); void node.offsetWidth; node.classList.add('bump'); }
+  };
+  set('tfVisitors', d.u || 0);
+  set('tfViews', d.v || 0);
+  set('tfDownloads', (d.e_apk_arm64 || 0) + (d.e_apk_arm32 || 0) + (d.e_apk_universal || 0));
+  set('tfSigns', plays);
+  $('todayNote').textContent = dayLabel(manilaDay(), true) + ' · Philippine time';
+}
+const activity = [];
+function addActivity(icon, text) {
+  activity.unshift({ icon, text, at: new Date() });
+  activity.length = Math.min(activity.length, 40);
+  const ol = $('activity');
+  const empty = ol.querySelector('.activity-empty');
+  if (empty) empty.remove();
+  const li = el('li', reduceMotion.matches ? '' : 'fresh');
+  li.append(el('span', 'a-ico', icon), el('span', 'a-when', clockLabel()), el('span', 'a-text', text));
+  li.firstChild.setAttribute('aria-hidden', 'true');
+  ol.prepend(li);
+  while (ol.children.length > 40) ol.lastChild.remove();
+}
+// A short notice in the corner (visual: nothing here makes a sound).
+function toast(title, text) {
+  const box = $('toasts');
+  const t = el('div', 'toast');
+  const coin = el('span', 't-coin', '💬');
+  coin.setAttribute('aria-hidden', 'true');
+  const x = el('button', null, '✕');
+  x.type = 'button';
+  x.setAttribute('aria-label', 'Close this notice');
+  x.addEventListener('click', () => t.remove());
+  t.append(coin, el('b', null, title), x, el('p', null, text));
+  box.prepend(t);
+  while (box.children.length > 3) box.lastChild.remove();
+  setTimeout(() => t.remove(), 9000);
+}
+// Live changes redraw at most once a second, without the draw-in animation.
+let renderTimer = 0;
+function scheduleRender() {
+  clearTimeout(renderTimer);
+  renderTimer = setTimeout(() => {
+    if (!period) return;
+    renderKpis();
+    renderVisits(false);
+    renderOverview(false);
+    renderBreakdowns(false);
+    renderRatings(false);
+    $('updatedAt').textContent = 'Updated ' + clockLabel();
+  }, 700);
+}
+// A tab hidden for a while stops listening (each update costs a read), and
+// catches up when it is looked at again. A new Philippine day re-subscribes.
+let hiddenTimer = 0;
+document.addEventListener('visibilitychange', () => {
+  clearTimeout(hiddenTimer);
+  if (!auth || !auth.currentUser || $('viewDash').hidden) return;
+  if (document.hidden) {
+    hiddenTimer = setTimeout(() => { if (live.unsubs.length) { stopLive(); live.paused = true; setLive('paused'); } }, HIDDEN_PAUSE_MS);
+  } else if (live.paused) {
+    startLive();
+    load(false);
+  }
+});
+setInterval(() => {
+  if (!live.day || live.paused || !live.unsubs.length) return;
+  if (manilaDay() !== live.day) { startLive(); load(false); return; }
+  // GitHub's numbers: every ten minutes while the page is looked at.
+  if (!document.hidden && Date.now() - (state.ghAt || 0) > 10 * 60e3) {
+    state.ghAt = Date.now();
+    loadGitHub(true).then(() => { renderDownloads(false); renderHealth(); renderKpis(); saveSnapshot(); });
+  }
+}, 60e3);
 
 // ---- Sums ----------------------------------------------------------------------------
 function totals(rows, from, to) {
@@ -472,17 +726,18 @@ function buckets(days) {
 const inPeriod = (date) => date && manilaDay(date.getTime()) >= period.from;
 
 // ---- Rendering -----------------------------------------------------------------------
-function renderAll() {
+function renderAll(animate) {
   $('periodNote').textContent = period.label;
+  renderToday(false);
   renderKpis();
-  renderVisits();
-  renderOverview();
-  renderBreakdowns();
-  renderRatings();
+  renderVisits(animate);
+  renderOverview(animate);
+  renderBreakdowns(animate);
+  renderRatings(animate);
   renderInbox();
-  renderDownloads();
+  renderDownloads(animate);
   renderHealth();
-  renderDownloadTrend();
+  renderDownloadTrend(animate);
 }
 
 function change(cur, prev) {
@@ -500,6 +755,8 @@ const ICONS = {
   downloads: '<path d="M12 3.5v11.5"/><path d="M7 10.5l5 5 5-5"/><path d="M4 20h16"/>',
   rating: '<path d="M12 3.2l2.7 5.5 6 .9-4.35 4.25 1.03 6L12 17.02l-5.38 2.83 1.03-6L3.3 9.6l6-.9z"/>',
   messages: '<path d="M4 4.5h16v11.5H9.5L4 20.5z"/><path d="M8 9h8M8 12.5h5"/>',
+  mail: '<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M4 7.5l8 6 8-6"/>',
+  repeat: '<rect x="8.5" y="8.5" width="12" height="12" rx="2.5"/><path d="M15.5 8.5V6A2.5 2.5 0 0 0 13 3.5H6A2.5 2.5 0 0 0 3.5 6v7A2.5 2.5 0 0 0 6 15.5h2.5"/>',
 };
 function icon(name) {
   const s = svg('svg', { viewBox: '0 0 24 24', 'aria-hidden': 'true', focusable: 'false' });
@@ -507,8 +764,10 @@ function icon(name) {
   return s;
 }
 
-function tile(label, value, sub, spark, iconName) {
-  const t = el('article', 'tile');
+// A stat tile: label, value, change against the period before, and a sparkline
+// (de-emphasised line, the latest day marked).
+function tile(label, value, sub, spark, iconName, tone) {
+  const t = el('article', 'tile tone-' + tone);
   const top = el('div', 'tile-top'), ico = el('span', 'tile-ico');
   ico.appendChild(icon(iconName));
   top.append(ico, el('h2', 'tile-label', label));
@@ -518,7 +777,9 @@ function tile(label, value, sub, spark, iconName) {
     const W = 200, H = 34, max = Math.max(...spark, 1);
     const s = svg('svg', { class: 'spark', viewBox: `0 0 ${W} ${H}`, preserveAspectRatio: 'none', 'aria-hidden': 'true' });
     const X = (i) => 3 + (i * (W - 6)) / (spark.length - 1), Y = (v) => H - 4 - (v / max) * (H - 8);
-    svg('path', { d: spark.map((v, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1)).join(' '), 'vector-effect': 'non-scaling-stroke' }, s);
+    const pts = spark.map((v, i) => X(i).toFixed(1) + ' ' + Y(v).toFixed(1));
+    svg('path', { class: 'spark-area', d: 'M' + X(0).toFixed(1) + ' ' + (H - 1) + ' L' + pts.join(' L') + ' L' + X(spark.length - 1).toFixed(1) + ' ' + (H - 1) + ' Z' }, s);
+    svg('path', { class: 'spark-line', d: 'M' + pts.join(' L'), 'vector-effect': 'non-scaling-stroke' }, s);
     t.appendChild(s);
   }
   return t;
@@ -532,8 +793,8 @@ function renderKpis() {
   const host = $('kpis');
   host.textContent = '';
   host.append(
-    tile('Visitors', fmt(cur.u), change(cur.u, prev && (prev.u || 0)), perDay(state.daily, p.days, 'u'), 'visitors'),
-    tile('Page views', fmt(cur.v), change(cur.v, prev && (prev.v || 0)), perDay(state.daily, p.days, 'v'), 'views'),
+    tile('Visitors', fmt(cur.u), change(cur.u, prev && (prev.u || 0)), perDay(state.daily, p.days, 'u'), 'visitors', 'purple'),
+    tile('Page views', fmt(cur.v), change(cur.v, prev && (prev.v || 0)), perDay(state.daily, p.days, 'v'), 'views', 'teal'),
   );
   // Downloads: GitHub's all-time total; the change from the saved totals, or
   // else the website's own Download presses.
@@ -544,27 +805,28 @@ function renderKpis() {
   const presses = (cur.e_apk_arm64 || 0) + (cur.e_apk_arm32 || 0) + (cur.e_apk_universal || 0);
   if (before && last) sub = { text: 'All time · +' + fmt(last.total - before.total) + ' in this period', cls: last.total > before.total ? 'up' : '' };
   else sub = { text: 'All time · ' + fmt(presses) + (presses === 1 ? ' press' : ' presses') + ' of Download on the site in this period', cls: '' };
-  host.appendChild(tile('Downloads', gh && gh.ok ? fmt(gh.total) : gh ? '–' : '…', gh && !gh.ok ? { text: 'GitHub could not be read', cls: 'down' } : sub, null, 'downloads'));
+  host.appendChild(tile('Downloads', gh && gh.ok ? fmt(gh.total) : gh ? '–' : '…', gh && !gh.ok ? { text: 'GitHub could not be read', cls: 'down' } : sub, null, 'downloads', 'blue'));
   const rated = state.feedback.filter((f) => f.rating && inPeriod(f.created));
   const avg = rated.length ? rated.reduce((s, f) => s + f.rating, 0) / rated.length : 0;
   host.appendChild(tile('Average rating', rated.length ? avg.toFixed(1) + ' ★' : '–',
     { text: rated.length ? 'from ' + fmt(rated.length) + (rated.length === 1 ? ' rating' : ' ratings') : 'No ratings in this period', cls: '' },
-    null, 'rating'));
+    null, 'rating', 'gold'));
   const words = state.feedback.filter((f) => f.message && inPeriod(f.created)).length;
   const unseen = state.feedback.filter((f) => f.status === 'new').length;
-  host.appendChild(tile('Messages', fmt(words), { text: fmt(unseen) + ' not yet seen (all dates)', cls: unseen ? 'up' : '' }, null, 'messages'));
-  // The sidebar's Feedback item shows how many are waiting.
+  host.appendChild(tile('Messages', fmt(words), { text: fmt(unseen) + ' not yet seen (all dates)', cls: unseen ? 'up' : '' }, null, 'messages', 'pink'));
+  // The sidebar's Feedback item shows how many are waiting; so does the tab's title.
   $('navUnseen').replaceChildren(document.createTextNode(String(unseen)), srOnly(' not yet seen'));
   $('navUnseen').hidden = !unseen;
+  setTitle();
 }
 
-function renderVisits() {
+function renderVisits(animate) {
   const p = period, b = buckets(p.days), weekly = b.length !== p.days.length;
   const byId = new Map(state.daily.map((r) => [r.id, r]));
   const sum = (x, key) => x.days.reduce((s, d) => s + ((byId.get(d) || {})[key] || 0), 0);
   $('visitsNote').textContent = weekly ? 'per week (weeks start on Monday)' : 'per day';
   lineChart($('chartVisits'), {
-    labels: b.map((x) => x.label), weekly,
+    labels: b.map((x) => x.label), weekly, animate,
     name: weekly ? 'Visitors and page views per week' : 'Visitors and page views per day',
     series: [
       { name: 'Visitors', cls: 's1', values: b.map((x) => sum(x, 'u')) },
@@ -575,10 +837,10 @@ function renderVisits() {
     b.map((x) => [dayLabel(x.label, true), sum(x, 'u'), sum(x, 'n'), sum(x, 'v')]).reverse(), 'Visitors and page views, table');
 }
 
-function renderOverview() {
+function renderOverview(animate) {
   const t = totals(state.daily, period.from, period.to);
   bars($('barsTopPages'), Object.keys(PAGES).map((k) => ({ label: PAGES[k], value: t['p_' + k] || 0 }))
-    .sort((a, b) => b.value - a.value).slice(0, 5), { total: t.v || 0 });
+    .sort((a, b) => b.value - a.value).slice(0, 5), { total: t.v || 0, animate });
   const ul = $('latestFeedback');
   ul.textContent = '';
   const latest = state.feedback.slice(0, 3);
@@ -598,32 +860,31 @@ function renderOverview() {
   });
 }
 
-function renderBreakdowns() {
+function renderBreakdowns(animate) {
   const p = period, t = totals(state.daily, p.from, p.to);
   const views = t.v || 0, visitors = t.u || 0;
   const byValue = (a, b) => b.value - a.value;
-  bars($('barsPages'), Object.keys(PAGES).map((k) => ({ label: PAGES[k], value: t['p_' + k] || 0 })).sort(byValue), { total: views });
+  bars($('barsPages'), Object.keys(PAGES).map((k) => ({ label: PAGES[k], value: t['p_' + k] || 0 })).sort(byValue), { total: views, animate });
   const arrivals = Object.keys(SOURCES).reduce((s, k) => s + (t['s_' + k] || 0), 0);
-  bars($('barsSources'), Object.keys(SOURCES).map((k) => ({ label: SOURCES[k], value: t['s_' + k] || 0 })).sort(byValue), { total: arrivals });
-  bars($('barsDevices'), Object.keys(DEVICES).map((k) => ({ label: DEVICES[k], value: t['d_' + k] || 0, keep: true })), { total: visitors });
-  bars($('barsLangs'), Object.keys(LANGS).map((k) => ({ label: LANGS[k], value: t['l_' + k] || 0, keep: true })), { total: views });
+  bars($('barsSources'), Object.keys(SOURCES).map((k) => ({ label: SOURCES[k], value: t['s_' + k] || 0 })).sort(byValue), { total: arrivals, animate });
+  bars($('barsDevices'), Object.keys(DEVICES).map((k) => ({ label: DEVICES[k], value: t['d_' + k] || 0, keep: true })), { total: visitors, animate });
+  bars($('barsLangs'), Object.keys(LANGS).map((k) => ({ label: LANGS[k], value: t['l_' + k] || 0, keep: true })), { total: views, animate });
   bars($('barsAids'), AIDS.map(([k, label]) => ({ label, value: t[k] || 0, keep: true })), { total: visitors,
-    tipNote: 'of ' + fmt(visitors) + ' visitors' });
-  bars($('barsEvents'), EVENTS.map(([k, label]) => ({ label, value: t[k] || 0, keep: true })), { share: false });
+    tipNote: 'of ' + fmt(visitors) + ' visitors', animate });
+  bars($('barsEvents'), EVENTS.map(([k, label]) => ({ label, value: t[k] || 0, keep: true })), { share: false, animate });
   const signs = totals(state.signs, p.from, p.to);
   const words = Object.keys(signs).filter((k) => k.startsWith('w_'));
   const plays = words.reduce((s, k) => s + signs[k], 0);
   $('signsNote').textContent = plays ? fmt(plays) + ' plays of ' + fmt(words.length) + ' different signs' : 'Dictionary and Try It';
   bars($('barsSigns'), words.map((k) => ({ label: signName(k), value: signs[k] })).sort(byValue).slice(0, 10),
-    { total: plays, empty: 'No sign videos played in this period yet.' });
+    { total: plays, empty: 'No sign videos played in this period yet.', animate });
 }
 function signName(k) {
   const s = k.slice(2).replace(/_/g, ' ');
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-function renderRatings() {
-  const p = period;
+function renderRatings(animate) {
   const rated = state.feedback.filter((f) => f.rating && inPeriod(f.created));
   const all = state.feedback.filter((f) => f.rating);
   const avg = (list) => list.reduce((s, f) => s + f.rating, 0) / list.length;
@@ -642,7 +903,7 @@ function renderRatings() {
     hero.appendChild(el('p', 'small', 'All time: ' + avg(all).toFixed(1) + ' from ' + fmt(all.length) + ' ratings.'));
   }
   bars($('barsStars'), [5, 4, 3, 2, 1].map((n) => ({ label: n + (n === 1 ? ' star' : ' stars'),
-    value: rated.filter((f) => f.rating === n).length, keep: true })), { total: rated.length, empty: 'No ratings in this period yet.' });
+    value: rated.filter((f) => f.rating === n).length, keep: true })), { total: rated.length, empty: 'No ratings in this period yet.', animate });
   const inP = state.feedback.filter((f) => inPeriod(f.created));
   table($('tableRoles'), ['Who', 'Ratings', 'Average', 'Messages'], Object.keys(ROLES).map((k) => {
     const r = inP.filter((f) => f.role === k && f.rating);
@@ -651,29 +912,87 @@ function renderRatings() {
 }
 
 // ---- Messages ------------------------------------------------------------------------
-const inbox = { status: 'all', type: 'all', starred: false, q: '', shown: 25 };
-function renderInbox() {
+const inbox = { status: 'all', type: 'all', starred: false, q: '', sort: 'new', shown: 25, waiting: 0 };
+function matchesInbox(f) {
   const q = inbox.q.toLowerCase();
-  const list = state.feedback.filter((f) => (inbox.status === 'all' || f.status === inbox.status) &&
-    (inbox.type === 'all' || f.type === inbox.type) && (!inbox.starred || f.starred) &&
-    (!q || ((f.message || '') + ' ' + (f.device || '')).toLowerCase().includes(q)));
+  return (inbox.status === 'all' || f.status === inbox.status) && (inbox.type === 'all' || f.type === inbox.type) &&
+    (!inbox.starred || f.starred) && (!q || ((f.message || '') + ' ' + (f.device || '')).toLowerCase().includes(q));
+}
+function inboxList() {
+  const list = state.feedback.filter(matchesInbox);
+  const t = (f) => (f.created ? f.created.getTime() : 0);
+  const sorts = {
+    new: (a, b) => t(b) - t(a),
+    old: (a, b) => t(a) - t(b),
+    high: (a, b) => (b.rating || 0) - (a.rating || 0) || t(b) - t(a),
+    low: (a, b) => (a.rating || 6) - (b.rating || 6) || t(b) - t(a),
+  };
+  return list.sort(sorts[inbox.sort] || sorts.new);
+}
+// A tag with a small drawn icon (ICONS) that a screen reader skips.
+function iconTag(iconName, text, cls) {
+  const t = el('span', cls);
+  const i = icon(iconName);
+  i.setAttribute('class', 'tag-ico');
+  t.append(i, text);
+  return t;
+}
+// The same words, kind and sender within a day of an earlier message: probably sent
+// twice (the website already refuses an exact repeat within half an hour).
+function markDuplicates() {
+  const seen = new Map();
+  state.feedback.slice().sort((a, b) => (a.created ? a.created.getTime() : 0) - (b.created ? b.created.getTime() : 0)).forEach((f) => {
+    f._dupOf = null;
+    const words = (f.message || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    if (!words) return;
+    const key = f.type + '|' + f.role + '|' + words;
+    const prev = seen.get(key);
+    if (prev && prev.created && f.created && f.created.getTime() - prev.created.getTime() < DAY) f._dupOf = prev.id;
+    seen.set(key, f);
+  });
+}
+// "Email notices: 3 sent · 1 not confirmed · …" for every message loaded.
+function renderMailSummary() {
+  const n = { sent: 0, unconfirmed: 0, off: 0, older: 0 };
+  state.feedback.forEach((f) => { n[MAIL_STATES[f.mail] ? f.mail : 'older'] += 1; });
+  const parts = [];
+  if (n.sent) parts.push(fmt(n.sent) + ' sent');
+  if (n.unconfirmed) parts.push(fmt(n.unconfirmed) + ' not confirmed');
+  if (n.off) parts.push(fmt(n.off) + ' not sent (notices were off)');
+  if (n.older) parts.push(fmt(n.older) + ' from before email notices');
+  $('mailSummary').textContent = state.feedback.length ? 'Email notices for these messages: ' + parts.join(' · ') + '.' : '';
+}
+function renderInbox() {
+  inbox.waiting = 0;
+  $('inboxNewWrap').hidden = true;
+  markDuplicates();
+  renderMailSummary();
+  const list = inboxList();
   const more = state.feedback.length >= FEEDBACK_LIMIT ? ' The newest ' + FEEDBACK_LIMIT + ' are loaded.' : '';
   $('inboxCount').textContent = list.length
     ? 'Showing ' + fmt(Math.min(inbox.shown, list.length)) + ' of ' + fmt(list.length) + '.' + more
     : state.feedback.length ? 'No messages match.' : 'No ratings or messages yet.';
   const ul = $('inbox');
   ul.textContent = '';
-  list.slice(0, inbox.shown).forEach((f) => ul.appendChild(messageItem(f)));
+  const shown = list.slice(0, inbox.shown);
+  shown.forEach((f) => ul.appendChild(messageItem(f)));
   $('btnMore').hidden = list.length <= inbox.shown;
+  $('btnSeenAll').hidden = !shown.some((f) => f.status === 'new');
+}
+// New messages arrived while someone is working in the inbox: offer them instead
+// of redrawing the list under their hands (that would lose their place).
+function inboxChanged(newOnes) {
+  if (!$('inbox').contains(document.activeElement)) { renderInbox(); return; }
+  inbox.waiting += newOnes;
+  if (!inbox.waiting) return;
+  $('inboxNew').textContent = plural(inbox.waiting, 'new message', 'new messages') + ' — show them';
+  $('inboxNewWrap').hidden = false;
 }
 
 function messageItem(f) {
   const li = el('li', 'msg-item');
-  const sync = () => {
-    li.classList.toggle('is-new', f.status === 'new');
-    li.classList.toggle('is-done', f.status === 'done');
-    badge.hidden = f.status !== 'new';
-  };
+  const avatar = el('span', 'msg-avatar', ROLE_ICONS[f.role] || '🙂');
+  avatar.setAttribute('aria-hidden', 'true');
   const head = el('div', 'msg-head');
   const badge = el('span', 'tag new', 'New');
   head.appendChild(badge);
@@ -682,7 +1001,7 @@ function messageItem(f) {
     s.setAttribute('aria-hidden', 'true');
     head.append(s, srOnly('Rated ' + f.rating + ' out of 5'));
   }
-  head.append(el('span', 'tag', TYPES[f.type] || f.type), el('span', null, ROLES[f.role] || f.role));
+  head.append(el('span', 'tag k-' + (TYPES[f.type] ? f.type : 'idea'), TYPES[f.type] || f.type), el('span', null, ROLES[f.role] || f.role));
   if (f.created) {
     const t = el('time', null, whenLabel(f.created));
     t.dateTime = f.created.toISOString();
@@ -690,6 +1009,13 @@ function messageItem(f) {
   }
   head.appendChild(el('span', null, (PAGES[f.page] || f.page) + ' page · ' + (LANGS[f.lang] || f.lang)));
   if (f.device) head.appendChild(el('span', null, 'Device: ' + f.device));
+  // Delivery: the reference the email notice also shows, and what happened to that notice.
+  const ref = el('span', 'msg-ref', 'Ref ' + String(f.id).slice(0, 8));
+  ref.title = 'Reference ' + f.id + ' (the email notice shows the same)';
+  head.appendChild(ref);
+  const mail = MAIL_STATES[f.mail];
+  if (mail) head.appendChild(iconTag('mail', mail.label, 'tag ' + mail.cls));
+  if (f._dupOf) head.appendChild(iconTag('repeat', 'Same words as an earlier message', 'tag dup'));
   const text = el('p', 'msg-text' + (f.message ? '' : ' none'), f.message || 'A rating, with no message.');
   const actions = el('div', 'msg-actions');
   const status = el('label', 'field field-inline', 'Status ');
@@ -699,27 +1025,34 @@ function messageItem(f) {
     o.value = v;
     sel.appendChild(o);
   });
-  sel.value = f.status;
   status.appendChild(sel);
   const star = el('button', 'btn btn-secondary btn-sm');
   star.type = 'button';
-  const showStar = () => { star.textContent = f.starred ? '★ Starred' : '☆ Star'; star.setAttribute('aria-pressed', String(!!f.starred)); };
-  showStar();
   const del = el('button', 'btn btn-danger btn-sm', 'Delete');
   del.type = 'button';
   const note = el('span', 'msg bad');
   note.setAttribute('aria-live', 'polite');
   actions.append(status, star, del, note);
-  li.append(head, text, actions);
+  li.append(avatar, head, text, actions);
+  const showStar = () => { star.textContent = f.starred ? '★ Starred' : '☆ Star'; star.setAttribute('aria-pressed', String(!!f.starred)); };
+  const sync = () => {
+    li.classList.toggle('is-new', f.status === 'new');
+    li.classList.toggle('is-done', f.status === 'done');
+    badge.hidden = f.status !== 'new';
+    if (sel.value !== f.status) sel.value = f.status;
+    showStar();
+  };
+  f._sync = sync;   // the inbox listener calls it when this message changes elsewhere
   sync();
 
   const save = (patch, undo) => updateDoc(doc(db, 'feedback', f.id), patch)
-    .then(() => { say(note, ''); renderKpis(); renderOverview(); }, (e) => { undo(); say(note, 'Not saved (' + (e.code || e.message) + ').', 'bad'); });
+    .then(() => { say(note, ''); renderKpis(); renderOverview(false); $('btnSeenAll').hidden = !inboxList().slice(0, inbox.shown).some((x) => x.status === 'new'); },
+      (e) => { undo(); say(note, 'Not saved (' + (e.code || e.message) + ').', 'bad'); });
   sel.addEventListener('change', () => {
     const before = f.status;
     f.status = sel.value;
     sync();
-    save({ status: f.status }, () => { f.status = before; sel.value = before; sync(); });
+    save({ status: f.status }, () => { f.status = before; sync(); });
   });
   star.addEventListener('click', () => {
     f.starred = !f.starred;
@@ -727,21 +1060,63 @@ function messageItem(f) {
     save({ starred: f.starred }, () => { f.starred = !f.starred; showStar(); });
   });
   del.addEventListener('click', () => {
-    if (!confirm('Delete this ' + (f.message ? 'message' : 'rating') + ' for good? This cannot be undone.')) return;
-    del.disabled = true;
-    deleteDoc(doc(db, 'feedback', f.id)).then(() => {
-      state.feedback = state.feedback.filter((x) => x !== f);
-      renderInbox();
-      renderKpis();
-      renderRatings();
-      renderOverview();
-    }, (e) => { del.disabled = false; say(note, 'Not deleted (' + (e.code || e.message) + ').', 'bad'); });
+    ask('Delete this ' + (f.message ? 'message' : 'rating') + ' for good? This cannot be undone.').then((ok) => {
+      if (!ok) { del.focus(); return; }
+      del.disabled = true;
+      deleteDoc(doc(db, 'feedback', f.id)).then(() => {
+        state.feedback = state.feedback.filter((x) => x !== f);
+        renderInbox();
+        renderKpis();
+        renderRatings(false);
+        renderOverview(false);
+        $('inbox').focus();
+      }, (e) => { del.disabled = false; say(note, 'Not deleted (' + (e.code || e.message) + ').', 'bad'); });
+    });
   });
   return li;
 }
+// Every shown message that is still new becomes seen (20 per batch: the rules'
+// administrator check counts against a batch's 20 lookups).
+async function markShownSeen() {
+  const btn = $('btnSeenAll');
+  const list = inboxList().slice(0, inbox.shown).filter((f) => f.status === 'new');
+  if (!list.length) return;
+  btn.disabled = true;
+  list.forEach((f) => { f.status = 'seen'; if (f._sync) f._sync(); });
+  let done = 0;
+  try {
+    for (let i = 0; i < list.length; i += 20) {
+      const batch = writeBatch(db);
+      list.slice(i, i + 20).forEach((f) => batch.update(doc(db, 'feedback', f.id), { status: 'seen' }));
+      await batch.commit();
+      done += Math.min(20, list.length - i);
+    }
+    $('inboxCount').textContent = plural(done, 'message', 'messages') + ' marked as seen.';
+  } catch (e) {
+    list.slice(done).forEach((f) => { f.status = 'new'; if (f._sync) f._sync(); });
+    $('inboxCount').textContent = 'Not all were saved (' + (e.code || e.message) + ').';
+  }
+  btn.disabled = false;
+  btn.hidden = !inboxList().slice(0, inbox.shown).some((f) => f.status === 'new');
+  renderKpis();
+  renderOverview(false);
+}
+// A yes/no question in the page's own dialog (the browser's confirm() where
+// there is no <dialog>).
+function ask(text) {
+  const dlg = $('confirmDlg');
+  if (!dlg || typeof dlg.showModal !== 'function') return Promise.resolve(window.confirm(text));
+  $('confirmText').textContent = text;
+  dlg.returnValue = '';
+  return new Promise((resolve) => {
+    dlg.addEventListener('close', () => resolve(dlg.returnValue === 'ok'), { once: true });
+    dlg.showModal();
+    $('confirmCancel').focus();
+  });
+}
 
 // ---- Downloads -----------------------------------------------------------------------
-function renderDownloads() {
+function renderDownloads(animate) {
   const gh = state.gh;
   if (!gh) return;
   if (!gh.ok) {
@@ -755,23 +1130,23 @@ function renderDownloads() {
   $('ghNote').textContent = fmt(gh.total) + ' APK downloads in all';
   bars($('barsReleases'), gh.releases.slice(0, 12).map((x) => ({
     label: x.tag + ' · ' + dayLabel(manilaDay(Date.parse(x.date)), true), value: x.total, keep: true,
-  })), { share: false });
+  })), { share: false, animate });
   const v = {};
   gh.releases.forEach((x) => { for (const k in x.variants) v[k] = (v[k] || 0) + x.variants[k]; });
   bars($('barsVariants'), [
     { label: '64-bit (arm64, most devices)', value: v.arm64 || 0, keep: true },
     { label: '32-bit (arm32, older devices)', value: v.arm32 || 0, keep: true },
     { label: 'Universal (any device)', value: v.universal || 0, keep: true },
-  ], { total: gh.total });
+  ], { total: gh.total, animate });
 }
 
-function renderDownloadTrend() {
+function renderDownloadTrend(animate) {
   if (!period) return;
   const byId = new Map(state.snaps.map((s) => [s.id, s.total]));
   const values = period.days.map((d) => (byId.has(d) ? byId.get(d) : null));
   const saved = period.days.filter((d) => byId.has(d));
   lineChart($('chartDownloads'), {
-    labels: period.days, connect: true, minPoints: 2, name: 'Total downloads, as saved each day',
+    labels: period.days, connect: true, minPoints: 2, name: 'Total downloads, as saved each day', animate,
     series: [{ name: 'Total downloads', cls: 's1', values }],
     empty: saved.length
       ? 'One total saved so far in this period: ' + fmt(byId.get(saved[0])) + ' on ' + dayLabel(saved[0], true) +
@@ -829,14 +1204,18 @@ function niceStep(raw) {
 
 function lineChart(host, opt) {
   host._opt = opt;
-  drawLine(host);
+  drawLine(host, opt.animate);
   if (!host._ro) {
-    host._ro = new ResizeObserver(() => { if (host._w !== host.clientWidth) drawLine(host); });
+    host._ro = new ResizeObserver(() => { if (host._w !== host.clientWidth) drawLine(host, false); });
     host._ro.observe(host);
   }
 }
 
-function drawLine(host) {
+// A line per series with a soft area wash under it (the series hue at 10%),
+// recessive gridlines, direct labels at the line ends when they do not collide,
+// and a crosshair + tooltip for mouse and keyboard. The numbers are also in the
+// table under every chart.
+function drawLine(host, animate) {
   const opt = host._opt, { labels, series } = opt;
   host.textContent = '';
   host._w = host.clientWidth;
@@ -869,6 +1248,7 @@ function drawLine(host) {
     .join(', ');
   const root = svg('svg', { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: 'img',
     'aria-label': opt.name + ', ' + period.label + ': ' + summary + (opt.connect ? ' at the end' : ' in all') + '. The numbers are in the table below.' }, host);
+  if (animate && !reduceMotion.matches) root.classList.add('drawn');
   for (let v = min; v <= max + 1e-9; v += step) {
     svg('line', { class: v === min ? 'axis' : 'grid', x1: L, x2: W - R, y1: Y(v), y2: Y(v) }, root);
     svg('text', { class: 'tick', x: L - 8, y: Y(v) + 4, 'text-anchor': 'end' }, root).textContent = compact(v);
@@ -884,14 +1264,25 @@ function drawLine(host) {
     for (let i = 0; i < n - 1; i += every) if (i === 0 || (n - 1 - i) * gap >= 64) dateAt(i, i === 0 ? 'start' : 'middle');
     dateAt(n - 1, 'end');
   }
+  const base = Y(min);
   series.forEach((s) => {
-    let d = '', pen = false;
+    // Runs of known values: a gap breaks the line (and its wash) unless the chart connects them.
+    const runs = [];
+    let run = null;
     s.values.forEach((v, i) => {
-      if (v == null) { if (!opt.connect) pen = false; return; }
-      d += (pen ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1) + ' ';
-      pen = true;
+      if (v == null) { if (!opt.connect) run = null; return; }
+      if (!run) runs.push(run = []);
+      run.push([X(i), Y(v)]);
     });
-    svg('path', { class: 'line ' + s.cls, d }, root);
+    runs.forEach((pts) => {
+      if (pts.length > 1) {
+        svg('path', { class: 'area ' + s.cls,
+          d: 'M' + pts[0][0].toFixed(1) + ' ' + base.toFixed(1) + pts.map((p) => ' L' + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('') +
+             ' L' + pts[pts.length - 1][0].toFixed(1) + ' ' + base.toFixed(1) + ' Z' }, root);
+      }
+    });
+    const d = runs.map((pts) => pts.map((p, k) => (k ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ')).join(' ');
+    svg('path', { class: 'line ' + s.cls, d, pathLength: '1' }, root);
     if (opt.connect) {
       s.values.forEach((v, i) => { if (v != null) svg('circle', { class: 'mark ' + s.cls, cx: X(i), cy: Y(v), r: 4 }, root); });
     }
@@ -969,12 +1360,13 @@ function bars(host, rows, opt = {}) {
   }
   const max = Math.max(...shown.map((r) => r.value), 1);
   const share = opt.share !== false && opt.total;
-  const ul = el('ul', 'bars');
-  shown.forEach((r) => {
+  const ul = el('ul', 'bars' + (opt.animate && !reduceMotion.matches ? ' grow' : ''));
+  shown.forEach((r, i) => {
     const li = el('li');
     const track = el('span', 'bar-track');
     const fill = el('span', 'bar-fill' + (r.value ? '' : ' zero'));
     fill.style.width = (r.value / max) * 100 + '%';
+    fill.style.animationDelay = Math.min(i, 8) * 40 + 'ms';
     track.appendChild(fill);
     const val = el('span', 'bar-val', fmt(r.value));
     if (share) val.appendChild(el('span', 'share', ' · ' + pct(r.value, opt.total)));
@@ -995,13 +1387,13 @@ function bars(host, rows, opt = {}) {
 }
 
 // A table in its own scrolling box: focusable and named, so a keyboard can scroll it.
-function table(host, head, rows, name, compact) {
+function table(host, head, rows, name, compactRows) {
   host.textContent = '';
   if (!rows.length) {
     host.appendChild(el('p', 'empty', 'No rows in this period.'));
     return;
   }
-  const wrap = el('div', 'tbl-wrap'), t = el('table', 'tbl' + (compact ? ' compact' : ''));
+  const wrap = el('div', 'tbl-wrap'), t = el('table', 'tbl' + (compactRows ? ' compact' : ''));
   wrap.tabIndex = 0;
   wrap.setAttribute('role', 'region');
   wrap.setAttribute('aria-label', name);
@@ -1054,9 +1446,117 @@ function exportMessages() {
     f.created ? manilaDay(f.created.getTime()) + ' ' + new Date(f.created.getTime() + 8 * 36e5).toISOString().slice(11, 16) : '',
     TYPES[f.type] || f.type, ROLES[f.role] || f.role, f.rating || '', f.message || '', f.device || '',
     PAGES[f.page] || f.page, LANGS[f.lang] || f.lang, f.status, f.starred ? 'yes' : '',
+    MAIL_STATES[f.mail] ? f.mail : '', f.id,
   ]);
   saveCsv('flashlearn-website-messages-' + manilaDay() + '.csv',
-    [['sent_manila', 'kind', 'who', 'rating', 'message', 'device', 'page', 'language', 'status', 'starred'], ...rows]);
+    [['sent_manila', 'kind', 'who', 'rating', 'message', 'device', 'page', 'language', 'status', 'starred',
+      'email_notice', 'reference'], ...rows]);
+}
+
+// ---- Email notices (Tools) --------------------------------------------------------------
+// The notifier is the team's own Google Apps Script (../email_notifier). "Check the
+// connection" asks it who it sends to; "Send a test email" makes it send one. The
+// page says SENT only when the notifier answers that Gmail accepted the email.
+const NOTICE_ERRORS = {
+  'daily-limit': 'the notifier’s limit of 40 emails a day is reached (it starts again after midnight, Philippine time)',
+  'burst-limit': '8 emails went out in the last 10 minutes; try again in a few minutes',
+  'gmail-quota': 'Gmail’s own daily limit for the notifier’s Google account is used up',
+  'send-failed': 'Gmail refused it; the reason is on the script’s Executions page',
+  busy: 'the notifier was busy; try again',
+  'bad-request': 'the notifier did not understand the request',
+  invalid: 'the notifier did not understand the request',
+};
+function noticeError(code) {
+  return NOTICE_ERRORS[code] || 'no answer (offline, or the address in config.js is not the web app’s /exec address)';
+}
+// Like Code.gs maskEmail_: the first two and last two letters of the name, then the domain.
+function maskEmail(email) {
+  const at = email.indexOf('@');
+  if (at < 1) return '';
+  const name = email.slice(0, at);
+  return (name.length > 4 ? name.slice(0, 2) + '…' + name.slice(-2) : name.slice(0, 1) + '…') + email.slice(at);
+}
+// One call to the notifier: GET (who are you?) or a POST of `body` as plain text, so
+// the browser sends no preflight (Apps Script answers through a redirect).
+async function callNotifier(body) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 15000);
+  try {
+    const opt = { redirect: 'follow', credentials: 'omit', cache: 'no-store', signal: ctrl.signal };
+    if (body) Object.assign(opt, { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
+    const r = await fetch(NOTICES.url, opt);
+    if (!r.ok) return { ok: false, error: 'http-' + r.status };
+    return await r.json();
+  } catch (e) {
+    return { ok: false, error: 'network' };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+function noticeState(text, cls) {
+  const t = $('mailState');
+  t.textContent = text;
+  t.className = 'tag ' + cls;
+}
+function noticeResult(kind, text) {
+  const out = $('mailResult');
+  out.hidden = false;
+  out.className = 'status-line ' + kind;
+  out.textContent = text;
+}
+async function checkNotices() {
+  const btn = $('btnMailCheck');
+  btn.disabled = true;
+  noticeResult('info', 'Checking the connection…');
+  const r = await callNotifier(null);
+  btn.disabled = false;
+  if (r.ok && r.service === 'flashlearn-feedback-mail') {
+    const same = r.to === maskEmail(NOTICES.to);
+    noticeState(same ? 'Connected' : 'Check the address', same ? 'mail-sent' : 'mail-unconfirmed');
+    noticeResult(same ? 'good' : 'warn', same
+      ? '✓ Connected. The notifier answered (version ' + r.version + ') and sends to ' + r.to + ', the address above. It can send ' +
+        plural(r.left, 'more email', 'more emails') + ' today.'
+      : '⚠ The notifier answered, but it sends to ' + r.to + ', not to the address above. Correct ADMIN_EMAIL in Code.gs or MAIL.to in config.js, then deploy again.');
+  } else {
+    noticeState('Not answering', 'mail-bad');
+    noticeResult('bad', '✗ Not connected: ' + noticeError(r.error) + '.');
+  }
+}
+let noticesChecked = false;
+function checkNoticesOnce() {
+  if (noticesChecked || !NOTICES.url) return;
+  noticesChecked = true;
+  checkNotices();
+}
+function initNotices() {
+  $('mailTo').textContent = NOTICES.to || '(no address in config.js)';
+  $('lnkGmail').href = 'https://mail.google.com/mail/?authuser=' + encodeURIComponent(NOTICES.to) +
+    '#search/' + encodeURIComponent('subject:"[FlashLearn PWD]"');
+  if (!NOTICES.url) {
+    noticeState('Not set up', 'mail-off');
+    $('mailHow').textContent = 'Not set up yet, so the website saves ratings and messages in this dashboard only. To turn email notices on, ' +
+      'deploy website_admin/email_notifier in this address’s Google account, then run configure.py --mail-url (README, “Email notices”).';
+    $('btnMailCheck').disabled = true;
+    $('btnMailTest').disabled = true;
+    return;
+  }
+  noticeState('Set up', 'mail-unconfirmed');
+  $('mailHow').textContent = 'The website hands each rating or message to the notifier first, then saves it here with what happened: ' +
+    '“Email notice sent” or “not confirmed” in the inbox.';
+  $('btnMailCheck').addEventListener('click', checkNotices);
+  $('btnMailTest').addEventListener('click', async () => {
+    const btn = $('btnMailTest');
+    btn.disabled = true;
+    noticeResult('info', 'Sending a test email…');
+    const r = await callNotifier({ test: true });
+    btn.disabled = false;
+    if (r.ok) {
+      noticeState('Connected', 'mail-sent');
+      noticeResult('good', '✓ SENT. Gmail accepted a test email for ' + NOTICES.to + '. It should arrive within a minute (look in Spam too).');
+    } else {
+      noticeResult('bad', '✗ NOT SENT: ' + noticeError(r.error) + '.');
+    }
+  });
 }
 
 // ---- Controls ------------------------------------------------------------------------
@@ -1089,14 +1589,16 @@ function initDash() {
   radioRow(document.querySelector('.page-tools .seg'), 'data-range', state.range, (v) => {
     state.range = v;
     stored('flp-admin-range', v);
-    load();
+    load(true);
   });
   $('btnRefresh').addEventListener('click', () => {
     try { sessionStorage.removeItem('flp-admin-github'); } catch (e) {}
-    load();
+    if (!live.unsubs.length) startLive();   // stopped (an error) or paused: listen again
+    load(true);
   });
   radioRow(document.querySelector('.inbox-tools .seg'), 'data-status', inbox.status, (v) => { inbox.status = v; inbox.shown = 25; renderInbox(); });
   $('selType').addEventListener('change', (e) => { inbox.type = e.target.value; inbox.shown = 25; renderInbox(); });
+  $('selSort').addEventListener('change', (e) => { inbox.sort = e.target.value; renderInbox(); });
   $('chkStarred').addEventListener('change', (e) => { inbox.starred = e.target.checked; renderInbox(); });
   let typing = 0;
   $('inSearch').addEventListener('input', (e) => {
@@ -1104,6 +1606,9 @@ function initDash() {
     typing = setTimeout(() => { inbox.q = e.target.value.trim(); inbox.shown = 25; renderInbox(); }, 200);
   });
   $('btnMore').addEventListener('click', () => { inbox.shown += 25; renderInbox(); });
+  $('btnSeenAll').addEventListener('click', markShownSeen);
+  $('inboxNew').addEventListener('click', () => { renderInbox(); $('inbox').focus(); });
+  $('inbox').tabIndex = -1;
   $('btnCsvDaily').addEventListener('click', () => period && exportDaily());
   $('btnCsvMessages').addEventListener('click', exportMessages);
   $('lnkNoCount').href = SITE.url + '?nocount=on';
@@ -1124,6 +1629,7 @@ function initDash() {
     a.rel = 'noopener';
     ul.appendChild(el('li')).appendChild(a);
   });
+  initNotices();
 }
 
 // ---- Start (last, once everything above is defined) ---------------------------------

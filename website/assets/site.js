@@ -4,8 +4,14 @@
      language) persist in localStorage 'flp-a11y', so a choice made on one page
      follows the visitor everywhere. A tiny script in each page's <head> applies
      them before the first paint; this file wires up the controls.
-   * Header: the menu button (narrow screens, or whenever the links do not fit)
-     and the accessibility panel.
+   * Header: the navigation groups (Explore, Teachers & Parents, Help) that
+     open a panel of links on wide screens, the menu button (narrow screens,
+     or whenever the bar does not fit) and the accessibility panel, including
+     the theme (Auto / Light / Dark).
+   * Depth and motion: the header lifts once scrolled; sections rise into
+     place as they arrive; cards tilt toward a mouse and Home's stage moves
+     with it. None of it happens with reduced motion (the site's switch or the
+     device's), high contrast, or for a robot.
    * Language: shows .en or .fil spans, and also swaps the things a span cannot
      hold — aria-labels (data-label-en/-fil), <option> text (data-en/-fil),
      placeholders (data-ph-en/-fil), the page title and video captions.
@@ -23,6 +29,15 @@
   function save(){ try { localStorage.setItem('flp-a11y', JSON.stringify(prefs)); } catch(e){} }
   function $(id){ return document.getElementById(id); }
   function each(sel, fn, root){ Array.prototype.forEach.call((root || document).querySelectorAll(sel), fn); }
+  function media(q){ return window.matchMedia ? matchMedia(q) : { matches: false }; }
+  var mqReduce = media('(prefers-reduced-motion: reduce)');
+  var mqFine = media('(hover: hover) and (pointer: fine)');
+  // Robots and test browsers: never counted, and never shown the arrival animation
+  // (a full-page picture would catch sections still on their way in).
+  var isRobot = !!navigator.webdriver ||
+                /bot|crawl|spider|slurp|headless|lighthouse|pagespeed|prerender|preview|inspectiontool/i.test(navigator.userAgent || '');
+  // Movement the visitor did not ask for: only when nobody asked for less.
+  function motionOK(){ return !prefs.still && !mqReduce.matches && !html.classList.contains('hc'); }
 
   // ---- Preferences ------------------------------------------------------
   function applyFont(){
@@ -65,13 +80,25 @@
     });
     filmFollow();   // the film's words are in the picture: swap to the other language's copy
   }
+  // Theme: Auto (the device's own setting), Light or Dark. High contrast and the
+  // dyslexia colours always win over it (site.css).
+  function applyTheme(){
+    var t = prefs.theme === 'dark' || prefs.theme === 'light' ? prefs.theme : '';
+    html.classList.toggle('theme-dark', t === 'dark');
+    html.classList.toggle('theme-light', t === 'light');
+    each('[data-theme-pick]', function(b){
+      b.setAttribute('aria-pressed', String((b.getAttribute('data-theme-pick') || '') === t));
+    });
+  }
   function applyAll(){
     applyFont();
+    applyTheme();
     applySwitch('btnDys', prefs.dys, 'dys');
     applySwitch('btnHC', prefs.hc, 'hc');
     applySwitch('btnStill', prefs.still, 'still');
     applyLang();
     loopSync();
+    settleMotion();
     layoutChanged();
   }
 
@@ -83,8 +110,11 @@
   // "Reduce motion" is an explicit, site-wide answer: it also overrides a
   // Play/Pause pressed earlier on the app preview.
   if ($('btnStill')) $('btnStill').addEventListener('click', function(){ prefs.still = !prefs.still; loopChoice = null; save(); applyAll(); if (prefs.still) countAid('a_still'); });
+  each('[data-theme-pick]', function(b){
+    b.addEventListener('click', function(){ prefs.theme = b.getAttribute('data-theme-pick') || ''; save(); applyAll(); });
+  });
   if ($('btnA11yReset')) $('btnA11yReset').addEventListener('click', function(){
-    prefs.font = ''; prefs.dys = false; prefs.hc = false; prefs.still = false; loopChoice = null; save(); applyAll();
+    prefs.font = ''; prefs.dys = false; prefs.hc = false; prefs.still = false; prefs.theme = ''; loopChoice = null; save(); applyAll();
   });
   if ($('btnLangEn')) $('btnLangEn').addEventListener('click', function(){ prefs.fil = false; save(); applyAll(); });
   if ($('btnLangFil')) $('btnLangFil').addEventListener('click', function(){ prefs.fil = true; save(); applyAll(); });
@@ -94,10 +124,14 @@
   var nav = $('siteNav'), menuBtn = $('btnMenu');
   var panel = $('a11yPanel'), a11yBtn = $('btnA11y');
 
+  var groups = [].slice.call(document.querySelectorAll('.nav-group'));
+  function compactNav(){ return !!menuBtn && getComputedStyle(menuBtn).display !== 'none'; }
+
   function setMenu(open, focusBack){
     if (!nav || !menuBtn) return;
     nav.classList.toggle('open', open);
     menuBtn.setAttribute('aria-expanded', String(open));
+    closeGroups();
     if (open) { setPanel(false); var cur = nav.querySelector('a[aria-current]') || nav.querySelector('a'); if (cur) cur.focus(); }
     else if (focusBack) menuBtn.focus();
   }
@@ -110,13 +144,83 @@
   }
   if (menuBtn) menuBtn.addEventListener('click', function(){ setMenu(!nav.classList.contains('open')); });
   if (a11yBtn) a11yBtn.addEventListener('click', function(){ setPanel(panel.hidden); });
+
+  // ---- The navigation groups (wide screens): a button opens a panel of links.
+  // Click or Enter/Space opens it; Down/Up opens it at the first/last link and
+  // then moves between links; Escape closes it and returns to its button. With
+  // a mouse it also opens on hover (a short pause, so passing over does not).
+  function setGroup(g, open, focusBtn){
+    var btn = g.querySelector('.nav-group-btn'), list = g.querySelector('.nav-panel');
+    if (!btn || !list) return;
+    if (open) groups.forEach(function(o){ if (o !== g) setGroup(o, false); });
+    if (open && !g.classList.contains('open')) g.openedAt = Date.now();
+    g.classList.toggle('open', open);
+    btn.setAttribute('aria-expanded', String(open));
+    if (open) placeGroup(g, list);
+    else if (focusBtn) btn.focus();
+  }
+  function closeGroups(focusBack){
+    groups.forEach(function(g){
+      if (!g.classList.contains('open')) return;
+      setGroup(g, false, focusBack && g.contains(document.activeElement));
+    });
+  }
+  // Centred under its button, but never past the edge of the screen.
+  function placeGroup(g, list){
+    if (compactNav()) return;
+    var r = g.getBoundingClientRect(), w = list.offsetWidth, vw = document.documentElement.clientWidth, pad = 12;
+    var left = r.left + r.width / 2 - w / 2, shift = 0;
+    if (left < pad) shift = pad - left;
+    else if (left + w > vw - pad) shift = vw - pad - (left + w);
+    list.style.setProperty('--shift', Math.round(shift) + 'px');
+  }
+  groups.forEach(function(g){
+    var btn = g.querySelector('.nav-group-btn'), list = g.querySelector('.nav-panel'), timer = 0;
+    if (!btn || !list) return;
+    btn.addEventListener('click', function(){
+      // A panel the mouse has just opened stays open when the same visit clicks.
+      if (g.classList.contains('open') && Date.now() - (g.openedAt || 0) < 450) return;
+      setGroup(g, !g.classList.contains('open'));
+    });
+    btn.addEventListener('keydown', function(e){
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+      e.preventDefault();
+      setGroup(g, true);
+      var links = list.querySelectorAll('a'), t = links[e.key === 'ArrowDown' ? 0 : links.length - 1];
+      if (t) t.focus();
+    });
+    list.addEventListener('keydown', function(e){
+      var links = [].slice.call(list.querySelectorAll('a')), i = links.indexOf(document.activeElement);
+      var next = { ArrowDown: i + 1, ArrowUp: i - 1, Home: 0, End: links.length - 1 }[e.key];
+      if (next == null || i === -1 || compactNav()) return;
+      e.preventDefault();
+      links[(next + links.length) % links.length].focus();
+    });
+    g.addEventListener('focusout', function(e){
+      if (g.classList.contains('open') && (!e.relatedTarget || !g.contains(e.relatedTarget))) setGroup(g, false);
+    });
+    g.addEventListener('pointerenter', function(e){
+      if (e.pointerType !== 'mouse' || compactNav()) return;
+      clearTimeout(timer);
+      timer = setTimeout(function(){ setGroup(g, true); }, 90);
+    });
+    g.addEventListener('pointerleave', function(e){
+      if (e.pointerType !== 'mouse' || compactNav()) return;
+      clearTimeout(timer);
+      // (Opened with a click or the keyboard, it stays until a click elsewhere.)
+      timer = setTimeout(function(){ if (!g.contains(document.activeElement)) setGroup(g, false); }, 280);
+    });
+  });
+
   document.addEventListener('keydown', function(e){
     if (e.key !== 'Escape') return;
+    closeGroups(true);
     if (nav && nav.classList.contains('open')) setMenu(false, true);
     if (panel && !panel.hidden) setPanel(false, true);
   });
-  // A click or focus outside either one closes it.
+  // A click or focus outside one closes it.
   function outside(e){
+    groups.forEach(function(g){ if (g.classList.contains('open') && !g.contains(e.target)) setGroup(g, false); });
     if (!header || header.contains(e.target)) return;
     if (nav && nav.classList.contains('open')) setMenu(false);
     if (panel && !panel.hidden) setPanel(false);
@@ -127,18 +231,24 @@
     if (e.relatedTarget && !panel.contains(e.relatedTarget) && e.relatedTarget !== a11yBtn) setPanel(false);
   });
 
-  // The links stay in the header only when they actually fit. Measured, not
+  // The bar stays in the header only when it actually fits. Measured, not
   // guessed: Filipino labels and the larger text sizes are much wider.
   function fitNav(){
-    // Measure the full header (menu closed, not compact, wordmark shown), all
-    // in one task so nothing is painted in between.
+    // Measure the full header (menu closed, groups closed, not compact,
+    // wordmark shown), all in one task so nothing is painted in between.
+    fitW = document.documentElement.clientWidth;
     html.classList.remove('nav-compact', 'head-tight');
     if (!nav) return;
+    closeGroups();
     var wasOpen = nav.classList.contains('open');
     nav.classList.remove('open');
-    var ul = nav.querySelector('ul');
+    var ul = nav.querySelector('.nav-list');
     var inline = getComputedStyle(nav).display !== 'none';   // false below the CSS breakpoint
-    if (inline && ul && ul.scrollWidth > ul.clientWidth + 1) html.classList.add('nav-compact');
+    if (inline && ul && ul.lastElementChild) {
+      // The last action pushed past the bar's end means the bar does not fit.
+      var end = ul.getBoundingClientRect().right, last = ul.lastElementChild.getBoundingClientRect().right;
+      if (last > end + 1 || ul.scrollWidth > ul.clientWidth + 1) html.classList.add('nav-compact');
+    }
     var compact = !inline || html.classList.contains('nav-compact');
     if (wasOpen && compact) nav.classList.add('open');
     else if (wasOpen && menuBtn) menuBtn.setAttribute('aria-expanded', 'false');
@@ -155,11 +265,13 @@
   function measureHeader(){
     if (header) html.style.setProperty('--header-h', Math.round(header.getBoundingClientRect().height) + 'px');
   }
-  var raf = 0;
+  var raf = 0, fitW = -1;
   function layoutChanged(){
     if (raf) return;
     raf = requestAnimationFrame(function(){ raf = 0; fitNav(); fitHead(); measureHeader(); scrollBoxes(); });
   }
+  // Only the add-only check, a frame later: used when the page's own width did not change.
+  function fitHeadSoon(){ requestAnimationFrame(function(){ fitHead(); measureHeader(); }); }
 
   // A table wider than the screen scrolls sideways inside its .table-scroll
   // box. A keyboard user can only scroll a box they can focus, so a box that
@@ -186,8 +298,27 @@
       box.setAttribute('aria-label', box.getAttribute(prefs.fil ? 'data-label-fil' : 'data-label-en'));
     });
   }
-  addEventListener('resize', layoutChanged);
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(layoutChanged);
+  // A phone's browser widens its window for a moment when something sticks out
+  // (430 -> 468 px). That is not a new width: re-measuring from scratch there
+  // flip-flopped, and could stop on "fits" just before the web font made the
+  // header wider. So such a resize only runs the add-only check.
+  addEventListener('resize', function(){
+    if (document.documentElement.clientWidth === fitW) fitHeadSoon();
+    else layoutChanged();
+  });
+  // Measure again once the web fonts are in: they are wider than the fallback
+  // fonts, and `fonts.ready` can resolve before a font has even started loading.
+  if (document.fonts) {
+    if (document.fonts.ready) document.fonts.ready.then(layoutChanged);
+    if (document.fonts.addEventListener) document.fonts.addEventListener('loadingdone', layoutChanged);
+  }
+  addEventListener('load', layoutChanged);
+  // And whenever the wordmark or the controls change size by themselves (a font
+  // swapping in, a language switch): the add-only check, a frame later.
+  if (window.ResizeObserver && header) {
+    var headRO = new ResizeObserver(fitHeadSoon);
+    [header.querySelector('.brand'), header.querySelector('.header-tools')].forEach(function(el){ if (el) headRO.observe(el); });
+  }
 
   // ---- Screenshot zoom ----------------------------------------------------
   var zoom = null;
@@ -267,7 +398,6 @@
   var loopHost = document.querySelector('.device[data-loop]');
   var loopBtn = $('btnLoop'), heroArt = $('heroArt');
   var loopVid = null, loopChoice = null, loopBlocked = false, loopSeen = true, loopReady = false;
-  var mqReduce = window.matchMedia ? matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
   function lowData(){
     var c = navigator.connection;
     return !!(c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || '')));
@@ -417,6 +547,10 @@
   // on a device the team excluded with ?nocount=on (?nocount=off undoes it).
   // The feedback form on faq.html sends through the same database.
   var STATS = { host: 'jpaestedstu-prog.github.io', project: 'flashlearn-pwd-site', key: 'AIzaSyAGjW0oU_R0KZYQmyYujaGP1fghr9fXRNE' };
+  // Email notices: the team's own Google Apps Script (website_admin/email_notifier),
+  // which emails each rating or message to the team's inbox. Written by
+  // website_admin/configure.py --mail-url; empty = no notices (the form still saves).
+  var NOTIFY = { url: '' };
   var PAGE_KEYS = ['index', 'try', 'download', 'how_to_use', 'games', 'fsl_dictionary',
                    'teachers_guide', 'faq', 'awareness', 'about', 'privacy', 'gaze_control'];
   var EVENTS = ['apk_arm64', 'apk_arm32', 'apk_universal', 'webapp', 'try_card', 'try_game', 'film', 'demo'];
@@ -431,6 +565,17 @@
     if (!project || !window.fetch) return null;
     var root = 'projects/' + project + '/databases/(default)/documents';
     return { url: base + '/' + root + ':commit' + (key ? '?key=' + encodeURIComponent(key) : ''), root: root, test: !!test };
+  })();
+  // Where email notices go: only from the published site, or from a local copy a
+  // test points at a stand-in notifier.
+  var mailer = (function(){
+    var url = NOTIFY.url;
+    if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
+      var t = null;
+      try { t = JSON.parse(localStorage.getItem('flp-mail-test') || 'null'); } catch(e){}
+      url = t && t.url ? t.url : '';
+    } else if (location.hostname !== STATS.host) url = '';
+    return url && window.fetch ? url : '';
   })();
   function stored(k){ try { return localStorage.getItem(k); } catch(e){ return undefined; } }
 
@@ -456,9 +601,7 @@
 
   var dnt = navigator.doNotTrack === '1' || navigator.doNotTrack === 'yes' || window.doNotTrack === '1' ||
             navigator.globalPrivacyControl === true;
-  var robot = !!navigator.webdriver ||
-              /bot|crawl|spider|slurp|headless|lighthouse|pagespeed|prerender|preview|inspectiontool/i.test(navigator.userAgent || '');
-  var counting = !!db && !dnt && stored('flp-nocount') !== '1' && (db.test || !robot);
+  var counting = !!db && !dnt && stored('flp-nocount') !== '1' && (db.test || !isRobot);
 
   function today(){ return new Date(Date.now() + 8 * 36e5).toISOString().slice(0, 10); }   // Philippine day (UTC+8)
   function mq(q){ return !!(window.matchMedia && matchMedia(q).matches); }
@@ -467,7 +610,10 @@
     return fetch(db.url, {
       method: 'POST', body: JSON.stringify({ writes: writes }), keepalive: !!keepalive,
       headers: { 'Content-Type': 'application/json' }, credentials: 'omit', referrerPolicy: 'no-referrer'
-    }).then(function(r){ if (!r.ok) throw new Error('HTTP ' + r.status); return r; });
+    }).then(function(r){
+      if (!r.ok) { var err = new Error('HTTP ' + r.status); err.status = r.status; throw err; }
+      return r;
+    });
   }
   // Adds one to each of `keys` in one document (created on its first write);
   // `fields` are plain values written alongside.
@@ -612,6 +758,15 @@
   // ---- "Send to the team" (faq.html) ------------------------------------------
   // One rating and/or message, written once and never readable from here.
   // Sending is something the visitor chose, so Do Not Track does not stop it.
+  //
+  // 1. When email notices are set up, the notifier emails it to the team's inbox
+  //    and answers whether it did ('sent'), or does not answer ('unconfirmed').
+  // 2. Then it is saved in the website's database for the admin dashboard, with
+  //    that outcome in `mail` ('off' without notices).
+  // The page is told what really happened: it reached the team if either worked.
+  // The same id is used again when the visitor retries, so a send whose answer
+  // was lost is never saved or emailed twice (the database answers 409, the
+  // notifier "duplicate").
   function randomId(){
     var abc = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789', id = '';
     var bytes = new Uint8Array(20);
@@ -619,29 +774,148 @@
     for (var i = 0; i < bytes.length; i++) id += abc[bytes[i] % abc.length];
     return id;
   }
-  window.flpFeedback = {
-    ready: !!(db && window.crypto && window.crypto.getRandomValues),
-    // f = { type, role, message, rating (1-5, optional), device (optional) }
-    send: function(f){
+  function notify(f, page, lang){
+    if (!mailer) return Promise.resolve('off');
+    var ctrl = window.AbortController ? new AbortController() : null;
+    var timer = setTimeout(function(){ if (ctrl) ctrl.abort(); }, 8000);
+    var body = { id: f.id, type: f.type, role: f.role, message: f.message, page: page, lang: lang };
+    if (f.rating) body.rating = f.rating;
+    if (f.device) body.device = f.device;
+    // text/plain keeps this a "simple" request: Apps Script answers it without a
+    // preflight, after a redirect to Google's own answer page.
+    return fetch(mailer, {
+      method: 'POST', body: JSON.stringify(body), redirect: 'follow', credentials: 'omit', referrerPolicy: 'no-referrer',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, signal: ctrl ? ctrl.signal : undefined
+    }).then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(j){ return j && j.ok === true ? 'sent' : 'unconfirmed'; }, function(){ return 'unconfirmed'; })
+      .then(function(v){ clearTimeout(timer); return v; });
+  }
+  function saveFeedback(f, page, lang, mail){
+    function write(withMail){
       var fields = {
         type: { stringValue: f.type }, role: { stringValue: f.role }, message: { stringValue: f.message },
-        page: { stringValue: pageKey() }, lang: { stringValue: prefs.fil ? 'fil' : 'en' },
-        status: { stringValue: 'new' }
+        page: { stringValue: page }, lang: { stringValue: lang }, status: { stringValue: 'new' }
       };
       if (f.rating) fields.rating = { integerValue: String(f.rating) };
       if (f.device) fields.device = { stringValue: f.device };
+      if (withMail) fields.mail = { stringValue: mail };
       return commit([{
-        update: { name: db.root + '/feedback/' + randomId(), fields: fields },
+        update: { name: db.root + '/feedback/' + f.id, fields: fields },
         currentDocument: { exists: false },
         updateTransforms: [{ fieldPath: 'created', setToServerValue: 'REQUEST_TIME' }]
-      }]);
+      }]).then(function(){ return { duplicate: false }; });
+    }
+    function already(e){ if (e && e.status === 409) return { duplicate: true }; throw e; }
+    return write(true).then(null, function(e){
+      // Database rules from before email notices refuse the `mail` field: save without it.
+      if (e && e.status === 403) return write(false).then(null, already);
+      return already(e);
+    });
+  }
+  window.flpFeedback = {
+    ready: !!(db && window.crypto && window.crypto.getRandomValues),
+    emails: !!mailer,   // a copy also goes to the team's email inbox
+    newId: randomId,
+    // f = { id (from newId, kept for retries), type, role, message, rating (1-5, optional), device (optional) }
+    // Resolves { saved, mail: 'sent' | 'unconfirmed' | 'off', duplicate } once the
+    // team has it (saved for the dashboard, emailed, or both); rejects when neither worked.
+    send: function(f){
+      var page = pageKey(), lang = prefs.fil ? 'fil' : 'en';
+      if (!f.id) f.id = randomId();
+      return notify(f, page, lang).then(function(mail){
+        return saveFeedback(f, page, lang, mail).then(function(r){
+          return { saved: true, mail: mail, duplicate: r.duplicate };
+        }, function(e){
+          if (mail === 'sent') return { saved: false, mail: mail, duplicate: false };
+          throw e;
+        });
+      });
     }
   };
+
+  // ---- Depth and motion ------------------------------------------------------
+  // The header lifts off the page once it is scrolled.
+  var scrollTick = false;
+  function markScrolled(){ scrollTick = false; html.classList.toggle('scrolled', (window.scrollY || window.pageYOffset || 0) > 8); }
+  addEventListener('scroll', function(){ if (!scrollTick) { scrollTick = true; requestAnimationFrame(markScrolled); } }, { passive: true });
+  markScrolled();
+
+  // Sections below the fold rise into place as they arrive. Whatever is on the
+  // screen when the page opens is never hidden, and nothing is held back for a
+  // robot, a printer, reduced motion or high contrast.
+  var REVEAL = '.section-head, .grid > *, .grid-5 > *, .feature-list > li, .tour-step, .faq-group, .stats, .cta-band, ' +
+               '.dl-card, .form-card, .doc .box, .game-grid > *, .roster, .team > *, .future > *, .steps > li, .film, .welcome-video, .subhead';
+  function startReveal(){
+    if (!('IntersectionObserver' in window) || isRobot || !motionOK()) return;
+    var vh = window.innerHeight || 800, held = [];
+    var io = new IntersectionObserver(function(es){
+      es.forEach(function(e){ if (e.isIntersecting) { e.target.classList.add('is-in'); io.unobserve(e.target); } });
+    }, { rootMargin: '0px 0px -6% 0px', threshold: 0.06 });
+    each(REVEAL, function(el){
+      if (el.closest('.site-header, .site-footer, dialog, .a11y-panel')) return;
+      if (el.getBoundingClientRect().top < vh * 0.94) return;
+      var i = 0, s = el;
+      while ((s = s.previousElementSibling) && i < 5) i++;
+      el.style.setProperty('--rd', (i * 0.07).toFixed(2) + 's');
+      el.classList.add('reveal');
+      held.push(el);
+      io.observe(el);
+    });
+    if (held.length) html.classList.add('reveal-on');
+    addEventListener('beforeprint', function(){ held.forEach(function(el){ el.classList.add('is-in'); }); });
+  }
+  // A mouse tilts the cards that lead somewhere, a few degrees toward it
+  // (the app's Pressable3D), and moves the Home stage's layers apart.
+  function startTilt(){
+    if (!mqFine.matches) return;
+    each('.link-card, .tile3d', function(el){
+      el.classList.add('tilt');
+      var raf = 0, rx = 0, ry = 0;
+      el.addEventListener('pointermove', function(e){
+        if (e.pointerType !== 'mouse' || !motionOK()) return;
+        var r = el.getBoundingClientRect();
+        ry = (((e.clientX - r.left) / r.width) - 0.5) * 7;
+        rx = (0.5 - ((e.clientY - r.top) / r.height)) * 7;
+        if (!raf) raf = requestAnimationFrame(function(){
+          raf = 0;
+          el.style.setProperty('--rx', rx.toFixed(2) + 'deg');
+          el.style.setProperty('--ry', ry.toFixed(2) + 'deg');
+        });
+      });
+      el.addEventListener('pointerleave', function(){ el.style.removeProperty('--rx'); el.style.removeProperty('--ry'); });
+    });
+    var art = $('heroArt'), hero = art && art.closest('.hero');
+    if (!hero) return;
+    var praf = 0, px = 0, py = 0;
+    hero.addEventListener('pointermove', function(e){
+      if (e.pointerType !== 'mouse' || !motionOK()) return;
+      var r = hero.getBoundingClientRect();
+      px = (((e.clientX - r.left) / r.width) - 0.5) * 2;
+      py = (((e.clientY - r.top) / r.height) - 0.5) * 2;
+      if (!praf) praf = requestAnimationFrame(function(){
+        praf = 0;
+        art.style.setProperty('--px', px.toFixed(3));
+        art.style.setProperty('--py', py.toFixed(3));
+      });
+    });
+    hero.addEventListener('pointerleave', function(){ art.style.removeProperty('--px'); art.style.removeProperty('--py'); });
+  }
+  // Asked for less motion (or high contrast) mid-visit: everything settles at once.
+  function settleMotion(){
+    if (motionOK()) return;
+    each('.reveal', function(el){ el.classList.add('is-in'); });
+    each('.tilt', function(el){ el.style.removeProperty('--rx'); el.style.removeProperty('--ry'); });
+    var art = $('heroArt');
+    if (art) { art.style.removeProperty('--px'); art.style.removeProperty('--py'); }
+  }
+  if (mqReduce.addEventListener) mqReduce.addEventListener('change', settleMotion);
 
   applyAll();
   fitNav();
   fitHead();
   measureHeader();
+  startReveal();
+  startTilt();
 
   // ---- Offline copy --------------------------------------------------------
   // Registered after the page has loaded: the install downloads the offline

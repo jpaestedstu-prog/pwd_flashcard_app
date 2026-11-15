@@ -20,6 +20,7 @@ PROJECT = "demo-flashlearn-site"
 FS = f"http://127.0.0.1:8080/v1/projects/{PROJECT}/databases/(default)/documents"
 AUTH = "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1"
 SITE, ADMIN = "http://127.0.0.1:8899", "http://127.0.0.1:8898"
+NOTIFIER = "http://127.0.0.1:8896"   # a stand-in for the email notifier (Google Apps Script)
 CHROME = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 sys.stdout.reconfigure(encoding="utf-8")
 SHOTS = sys.argv[1] if len(sys.argv) > 1 else tempfile.mkdtemp(prefix="fladm-shots-")
@@ -83,7 +84,8 @@ def admin_headers():
         if h["key"] == "Content-Security-Policy":
             # The emulators stand in for Google's servers: the Auth emulator also serves the
             # sign-in helper frame, which mobile Chrome loads ahead of time.
-            v = v.replace("connect-src 'self'", "connect-src 'self' http://127.0.0.1:8080 http://127.0.0.1:9099")
+            # (and the stand-in email notifier stands in for script.google.com)
+            v = v.replace("connect-src 'self'", "connect-src 'self' http://127.0.0.1:8080 http://127.0.0.1:9099 " + NOTIFIER)
             v = v.replace("frame-src ", "frame-src http://127.0.0.1:9099 ")
         out.append((h["key"], v))
     return out
@@ -114,6 +116,93 @@ def serve(port, directory, handler):
     srv = Server(("127.0.0.1", port), functools.partial(handler, directory=directory))
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     return srv
+
+
+class Notifier(http.server.BaseHTTPRequestHandler):
+    """Behaves like the Apps Script web app (website_admin/email_notifier/Code.gs) as a
+    browser sees it: POST /exec (or GET) answers 302 to an "echo" address that returns the
+    JSON, both with Access-Control-Allow-Origin: *. It cannot answer a CORS preflight
+    (OPTIONS), just like Apps Script, so a request that needs one fails here too.
+    mode: ok | fail (the notifier says not sent) | down (HTTP 500, no CORS) | wrongto."""
+    mode = "ok"
+    received, preflights, sent_ids, answers = [], [], set(), {}
+    lock = threading.Lock()
+
+    def log_message(self, *a):
+        pass
+
+    def _answer(self, body):
+        key = os.urandom(8).hex()
+        with Notifier.lock:
+            Notifier.answers[key] = body
+        self.send_response(302)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Location", f"{NOTIFIER}/echo?k={key}")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def _down(self):
+        self.send_response(500)
+        self.send_header("Content-Length", "4")
+        self.end_headers()
+        self.wfile.write(b"down")
+
+    def do_OPTIONS(self):
+        Notifier.preflights.append(self.path)
+        self.send_response(405)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def do_GET(self):
+        path, _, q = self.path.partition("?")
+        if path == "/echo":
+            key = q.partition("k=")[2]
+            with Notifier.lock:
+                body = Notifier.answers.pop(key, None)
+            raw = json.dumps(body).encode()
+            self.send_response(200 if body is not None else 404)
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(raw)))
+            self.end_headers()
+            self.wfile.write(raw)
+        elif path == "/exec":
+            if Notifier.mode == "down":
+                return self._down()
+            to = "xy…zz@example.com" if Notifier.mode == "wrongto" else "ja…to@gmail.com"
+            self._answer({"ok": True, "service": "flashlearn-feedback-mail", "version": 1, "to": to, "left": 37})
+        else:
+            self.send_error(404)
+
+    def do_POST(self):
+        if self.path.split("?")[0] != "/exec":
+            return self.send_error(404)
+        raw = self.rfile.read(int(self.headers.get("Content-Length") or 0)).decode("utf-8", "replace")
+        Notifier.received.append({"type": self.headers.get("Content-Type", ""), "body": raw,
+                                  "cookie": self.headers.get("Cookie")})
+        if Notifier.mode == "down":
+            return self._down()
+        if Notifier.mode == "fail":
+            return self._answer({"ok": False, "error": "send-failed"})
+        try:
+            data = json.loads(raw)
+        except ValueError:
+            return self._answer({"ok": False, "error": "bad-request"})
+        if data.get("test") is True:
+            return self._answer({"ok": True})
+        with Notifier.lock:
+            dup = data.get("id") in Notifier.sent_ids
+            Notifier.sent_ids.add(data.get("id"))
+        self._answer({"ok": True, "duplicate": True} if dup else {"ok": True})
+
+
+def emulator_rules(text):
+    """Load security rules into the running Firestore emulator (for the old-rules check)."""
+    r = urllib.request.Request(f"http://127.0.0.1:8080/emulator/v1/projects/{PROJECT}:securityRules", method="PUT",
+                               data=json.dumps({"rules": {"files": [{"name": "firestore.rules", "content": text}]}}).encode(),
+                               headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(r, timeout=20) as resp:
+        return resp.status
 
 
 # ---- A small Chrome DevTools client (stdlib only) ---------------------------------------
@@ -238,6 +327,14 @@ class Page:
         self.js(f"document.querySelector({json.dumps(selector)}).click()")
         return self.wait("!window.__old && document.readyState === 'complete'", 40)
 
+    def tap(self, selector):
+        """A real mouse click (a user gesture, which mailto: needs), in the middle of the element.
+        The scroll is instant: the site scrolls smoothly, and a box read mid-scroll misses."""
+        box = self.js("(function(){var e=document.querySelector(%s); e.scrollIntoView({block:'center', behavior:'instant'});"
+                      "var r=e.getBoundingClientRect(); return [r.left+r.width/2, r.top+r.height/2];})()" % json.dumps(selector))
+        for kind in ("mousePressed", "mouseReleased"):
+            self.call("Input.dispatchMouseEvent", type=kind, x=box[0], y=box[1], button="left", clickCount=1)
+
     def shot(self, name, full=False):
         params = {"format": "png"}
         if full:
@@ -307,6 +404,8 @@ def main():
     with open(cfg, "w", encoding="utf-8") as f:
         f.write(__import__("re").sub(r"apiKey: '[^']*'", "apiKey: ''", text))
     serve(8897, bare, AdminHandler)
+    notifier = Server(("127.0.0.1", 8896), Notifier)
+    threading.Thread(target=notifier.serve_forever, daemon=True).start()
 
     profile = tempfile.mkdtemp(prefix="fladm-")
     chrome = subprocess.Popen([CHROME, "--headless=new", "--remote-debugging-port=9333", f"--user-data-dir={profile}",
@@ -386,23 +485,50 @@ def run(p):
       document.getElementById('fbMsg').value = '=1+2 Please add more Filipino words';
       document.getElementById('fbSend').click();
     })()""")
-    check("a rating with a message is sent and thanked",
-          p.wait("/reached the FlashLearn PWD team/.test(document.getElementById('fbStatus').textContent)"))
+    STATUS = "document.getElementById('fbStatus')"
+    check("a rating with a message is sent: “Your feedback has been sent successfully!”",
+          p.wait(f"/Your feedback has been sent successfully!/.test({STATUS}.textContent) && {STATUS}.dataset.state === 'ok'"))
     check("the form clears after sending", p.js("!document.getElementById('fbMsg').value && !document.querySelector('[name=fbRating]:checked')"))
     p.js("document.getElementById('fbR5').click(); document.getElementById('fbSend').click()")
-    check("a rating on its own is sent and thanked", p.wait("/Thank you for rating/.test(document.getElementById('fbStatus').textContent)"))
+    check("a rating on its own is sent, and thanked for the rating",
+          p.wait(f"/sent successfully/.test({STATUS}.textContent) && /Thank you for rating/.test({STATUS}.textContent)"))
     p.js("document.getElementById('fbHp').value = 'http://spam'; document.getElementById('fbMsg').value = 'buy now';"
          "document.getElementById('fbSend').click()")
+    check("the robot-filled form is not sent, and the page does not pretend it was",
+          p.wait(f"/could not be sent/.test({STATUS}.textContent) && {STATUS}.dataset.state === 'bad'")
+          and not p.js(f"/sent successfully/.test({STATUS}.textContent)"), p.js(f"{STATUS}.textContent"))
+    p.js("document.getElementById('fbHp').value = ''; document.getElementById('fbMsg').value = ''")
     time.sleep(1.5)
     docs = listing("feedback")
     check("exactly two messages arrived (the robot-filled one was not sent)", len(docs) == 2, len(docs))
     got = sorted((fields("feedback/" + d["name"].rsplit("/", 1)[1]) for d in docs), key=lambda f: f.get("type"))
-    want0 = {"type": "idea", "role": "parent", "rating": 4, "device": "Galaxy Tab A9", "page": "faq", "lang": "en", "status": "new"}
+    # No email notifier on this copy yet: each says so ('off').
+    want0 = {"type": "idea", "role": "parent", "rating": 4, "device": "Galaxy Tab A9", "page": "faq", "lang": "en", "status": "new",
+             "mail": "off"}
     check("the message carries what the visitor chose, and nothing else",
           got and all(got[0].get(k) == v for k, v in want0.items()) and got[0].get("message", "").startswith("=1+2")
           and set(got[0]) == set(want0) | {"message", "created"}, got and got[0])
     check("the rating on its own is type 'rating' with no words",
-          len(got) > 1 and got[1].get("type") == "rating" and got[1].get("rating") == 5 and got[1].get("message") == "", got[1:] and got[1])
+          len(got) > 1 and got[1].get("type") == "rating" and got[1].get("rating") == 5 and got[1].get("message") == ""
+          and got[1].get("mail") == "off", got[1:] and got[1])
+    check("with no notifier set up, nothing was posted to one", not Notifier.received, Notifier.received[:1])
+
+    # The email app: the page cannot see a Send press, so it never says "sent".
+    p.js("document.getElementById('fbMsg').value = 'Email me back please'")
+    p.tap("#fbEmail")
+    check("“Open in your email app” first says the feedback is not sent yet",
+          p.wait(f"/not sent yet/.test({STATUS}.textContent) && {STATUS}.dataset.state === 'info'", 3), p.js(f"{STATUS}.textContent"))
+    check("…and when no email app comes to the front, it says what to do either way (never “sent”)",
+          p.wait(f"/If your email app opened, press Send there to complete submission/.test({STATUS}.textContent)"
+                 f" && /Copy message instead/.test({STATUS}.textContent) && !/successfully/.test({STATUS}.textContent)", 6),
+          p.js(f"{STATUS}.textContent"))
+    p.tap("#fbEmail")
+    p.js("setTimeout(() => window.dispatchEvent(new Event('blur')), 300)")
+    check("when the email app takes the screen: “Your email application has been opened. Please send your message to complete submission.”",
+          p.wait(f"/Your email application has been opened\\. Please send your message to complete submission\\./.test({STATUS}.textContent)"
+                 f" && {STATUS}.dataset.state === 'info'", 6), p.js(f"{STATUS}.textContent"))
+    p.js("document.getElementById('fbMsg').value = ''")
+    check("…and nothing was saved for the email app", len(listing("feedback")) == 2)
 
     # ---- A reading aid switched on mid-visit counts once ----
     p.js("document.getElementById('btnHC').click()")
@@ -492,6 +618,9 @@ def run(p):
     found = axe(p, "sign-in")
     check("accessibility: the sign-in page has no axe violations", not found, found)
     p.shot("dashboard-signin-desktop")
+    # The dashboard's email notices talk to the stand-in notifier from the next load on
+    # (honoured with ?emulator only).
+    p.js("localStorage.setItem('flp-admin-mail-test', JSON.stringify({url: '%s/exec'}))" % NOTIFIER)
     p.js("""(function(){
       document.querySelector('.email-signin').open = true;
       document.getElementById('inEmail').value = 'someone@example.com';
@@ -583,6 +712,56 @@ def run(p):
         found += [view + ": " + v for v in axe(p, view)]
         p.shot(f"dashboard-{view}-desktop", full=True)
     check("accessibility: every section of the dashboard has no axe violations (computer, light)", not found, found)
+
+    # ---- Tools → Email notices (the stand-in notifier) ----
+    p.js("location.hash = '#tools'")
+    check("Email notices: opening Tools checks the connection by itself: Connected, sending to ja…to@gmail.com",
+          p.wait("document.getElementById('mailState').textContent === 'Connected'"
+                 " && /Connected\\. The notifier answered \\(version 1\\) and sends to ja…to@gmail\\.com/.test(document.getElementById('mailResult').textContent)"
+                 " && document.getElementById('mailResult').classList.contains('good')", 10),
+          p.js("[document.getElementById('mailState').textContent, document.getElementById('mailResult').textContent]"))
+    check("Email notices: the address shown is jaj4ngpinasto@gmail.com, and the Gmail link opens that account's inbox",
+          p.js("document.getElementById('mailTo').textContent === 'jaj4ngpinasto@gmail.com'"
+               " && document.getElementById('lnkGmail').href.startsWith('https://mail.google.com/mail/?authuser=jaj4ngpinasto%40gmail.com#search/')"
+               " && document.getElementById('lnkGmail').target === '_blank'"))
+    before = len(Notifier.received)
+    p.js("document.getElementById('btnMailTest').click()")
+    check("Email notices: “Send a test email” says SENT only after the notifier confirms it",
+          p.wait("/^✓ SENT\\. Gmail accepted a test email for jaj4ngpinasto@gmail\\.com/.test(document.getElementById('mailResult').textContent)", 10)
+          and len(Notifier.received) == before + 1 and json.loads(Notifier.received[-1]["body"]) == {"test": True},
+          (p.js("document.getElementById('mailResult').textContent"), Notifier.received[-1:]))
+    Notifier.mode = "fail"
+    p.js("document.getElementById('btnMailTest').click()")
+    check("Email notices: when the notifier says it could not send, the page says NOT SENT and why",
+          p.wait("/^✗ NOT SENT: Gmail refused it/.test(document.getElementById('mailResult').textContent)"
+                 " && document.getElementById('mailResult').classList.contains('bad')", 10),
+          p.js("document.getElementById('mailResult').textContent"))
+    Notifier.mode = "wrongto"
+    p.js("document.getElementById('btnMailCheck').click()")
+    check("Email notices: a notifier that sends to another address is flagged",
+          p.wait("/not to the address above/.test(document.getElementById('mailResult').textContent)"
+                 " && document.getElementById('mailState').textContent === 'Check the address'", 10),
+          p.js("document.getElementById('mailResult').textContent"))
+    Notifier.mode = "down"
+    p.js("document.getElementById('btnMailCheck').click()")
+    check("Email notices: no answer from the notifier is shown as Not connected",
+          p.wait("/^✗ Not connected: no answer/.test(document.getElementById('mailResult').textContent)"
+                 " && document.getElementById('mailState').textContent === 'Not answering'", 10),
+          p.js("document.getElementById('mailResult').textContent"))
+    # The browser logs that refused answer (no CORS header on the 500): expected here, not a page error.
+    p.errors[:] = [e for e in p.errors if NOTIFIER + "/exec" not in e]
+    Notifier.mode = "ok"
+    p.js("document.getElementById('btnMailCheck').click()")
+    p.wait("document.getElementById('mailState').textContent === 'Connected'", 10)
+    found = axe(p, "tools after the checks")
+    check("accessibility: the Email notices card has no axe violations in any state it showed", not found, found)
+    p.shot("dashboard-tools-notices-desktop", full=True)
+    check("Email notices: the inbox counts the notices (both earlier messages: notices were off)",
+          p.js("/Email notices for these messages: 2 not sent \\(notices were off\\)\\./.test(document.getElementById('mailSummary').textContent)"),
+          p.js("document.getElementById('mailSummary').textContent"))
+    check("each message shows its reference and what happened to its email notice",
+          p.js("[...document.querySelectorAll('#inbox .msg-item')].every(li => /^Ref [A-Za-z0-9]{8}$/.test(li.querySelector('.msg-ref').textContent)"
+               " && li.querySelector('.tag.mail-off') && /No email notice \\(notices were off\\)/.test(li.querySelector('.tag.mail-off').textContent))"))
     p.js("location.hash = '#feedback'")
     # Inbox actions
     p.js("""(function(){
@@ -594,8 +773,19 @@ def run(p):
     f = wait_for(lambda: (fields(f"feedback/{msg_id}") or {}).get("starred") is True and fields(f"feedback/{msg_id}"))
     check("marking a message seen and starring it is saved", f and f.get("status") == "seen", f)
     check("the sidebar count follows (1 not yet seen)", p.wait("document.getElementById('navUnseen').textContent.startsWith('1')"))
-    p.js("window.confirm = () => true;"
-         "[...document.querySelectorAll('#inbox .msg-item')].find(li => li.querySelector('.msg-text.none')).querySelector('.btn-danger').click()")
+    del_rating = "[...document.querySelectorAll('#inbox .msg-item')].find(li => li.querySelector('.msg-text.none')).querySelector('.btn-danger').click()"
+    p.js(del_rating)
+    check("deleting asks first, in the page's own dialog (focus on Keep it)",
+          p.wait("document.getElementById('confirmDlg').open && document.activeElement === document.getElementById('confirmCancel')"))
+    found = axe(p, "confirm dialog")
+    check("accessibility: the delete dialog has no axe violations", not found, found)
+    p.js("document.getElementById('confirmCancel').click()")
+    time.sleep(0.8)
+    check("Keep it closes the dialog and deletes nothing",
+          p.js("!document.getElementById('confirmDlg').open") and len(listing("feedback")) == 2)
+    p.js(del_rating)
+    p.wait("document.getElementById('confirmDlg').open")
+    p.js("document.getElementById('confirmOk').click()")
     check("deleting a rating removes it", wait_for(lambda: len(listing("feedback")) == 1)
           and p.wait("document.querySelectorAll('#inbox .msg-item').length === 1"))
     check("with nothing left unseen, the sidebar count disappears", p.wait("document.getElementById('navUnseen').hidden"))
@@ -610,9 +800,59 @@ def run(p):
     msgs = next((v for k, v in texts.items() if "messages" in k), "")
     daily = next((v for k, v in texts.items() if "daily" in k), "")
     check("the messages export keeps a formula-looking message as text", "'=1+2 Please add more Filipino words" in msgs, msgs[:200])
+    check("the messages export has each message's email notice and reference",
+          msgs.splitlines()[0].endswith(",email_notice,reference") and any(line.endswith(",off," + msg_id) for line in msgs.splitlines()),
+          msgs.splitlines()[:2])
     check("the daily export has today's 7 page views",
           any(line.startswith(today + ",") and line.split(",")[3] == "7" for line in daily.splitlines()), daily.splitlines()[:2])
     shutil.rmtree(dl, ignore_errors=True)
+
+    # ---- Live updates: the website writes while the dashboard stays open ----
+    check("live: the dashboard says it is listening", p.wait("document.getElementById('liveStatus').dataset.state === 'live'", 20),
+          p.js("document.getElementById('liveStatus').textContent"))
+    v_before = int(p.js("document.getElementById('tfViews').textContent.replace(/,/g, '')"))
+    tile_before = int(p.js("document.querySelectorAll('#kpis .tile-value')[1].textContent.replace(/,/g, '')"))
+    # A page view exactly as site.js sends it, through the rules, with no sign-in.
+    st, _ = rest("POST", f"{FS}:commit", {"writes": [{"update": {"name": f"{root}/daily/{today}", "fields": {}},
+                                                      "updateMask": {"fieldPaths": []},
+                                                      "updateTransforms": [{"fieldPath": k, "increment": {"integerValue": "1"}}
+                                                                           for k in ("v", "p_games", "l_fil")]}]}, token=None)
+    check("live: a page view on the website shows up without a reload (Today, the activity list, the Page views tile)",
+          st == 200 and p.wait(f"document.getElementById('tfViews').textContent === '{v_before + 1}'"
+                               " && /1 page view: Learning Games \\(in Filipino\\)/.test(document.getElementById('activity').textContent)"
+                               f" && document.querySelectorAll('#kpis .tile-value')[1].textContent === '{tile_before + 1}'", 15),
+          (st, p.js("document.getElementById('activity').textContent.slice(0, 160)")))
+    unseen_before = p.js("document.getElementById('navUnseen').hidden ? 0 : parseInt(document.getElementById('navUnseen').textContent, 10)")
+    st, _ = rest("POST", f"{FS}:commit", {"writes": [{"update": {"name": f"{root}/feedback/LiveTestMessage00001", "fields": {
+        "type": {"stringValue": "praise"}, "role": {"stringValue": "teacher"}, "message": {"stringValue": "Live test: my class loves it"},
+        "page": {"stringValue": "faq"}, "lang": {"stringValue": "en"}, "status": {"stringValue": "new"}, "rating": {"integerValue": "5"}}},
+        "currentDocument": {"exists": False},
+        "updateTransforms": [{"fieldPath": "created", "setToServerValue": "REQUEST_TIME"}]}]}, token=None)
+    check("live: a new message brings a notice, an activity line and the unread count, without a reload",
+          st == 200 and p.wait("!!document.querySelector('#toasts .toast')"
+                               " && /New praise with 5★ from a teacher/.test(document.getElementById('activity').textContent)"
+                               f" && document.getElementById('navUnseen').textContent.startsWith('{unseen_before + 1}')", 15),
+          (st, p.js("document.getElementById('toasts').textContent.slice(0, 160)")))
+    # The delete above left the keyboard in the inbox: the list must not be redrawn under it.
+    check("live: while someone works in the inbox, a new message waits behind a button instead of redrawing the list",
+          p.js("document.getElementById('inbox').contains(document.activeElement)")
+          and p.wait("!document.getElementById('inboxNewWrap').hidden && /^1 new message/.test(document.getElementById('inboxNew').textContent)"
+                     " && ![...document.querySelectorAll('#inbox .msg-text')].some(e => e.textContent === 'Live test: my class loves it')"),
+          p.js("[document.activeElement.id, document.getElementById('inboxNew').textContent]"))
+    p.js("document.getElementById('inboxNew').click()")
+    check("…and the button shows it, keeping the keyboard in the inbox",
+          p.wait("[...document.querySelectorAll('#inbox .msg-text')].some(e => e.textContent === 'Live test: my class loves it')"
+                 " && document.getElementById('inboxNewWrap').hidden && document.activeElement === document.getElementById('inbox')"))
+    check("live: the tab's title counts the new messages", p.wait("/\\(\\d+ new\\)$/.test(document.title)"), p.js("document.title"))
+    p.js("document.getElementById('selSort').value = 'old'; document.getElementById('selSort').dispatchEvent(new Event('change'))")
+    check("the inbox can list the oldest first",
+          p.wait("document.querySelector('#inbox .msg-item .msg-text').textContent.startsWith('=1+2')"))
+    p.js("document.getElementById('selSort').value = 'new'; document.getElementById('selSort').dispatchEvent(new Event('change'))")
+    p.js("document.getElementById('btnSeenAll').click()")
+    check("Mark the shown new ones as seen: saved for each, and the unread count goes",
+          wait_for(lambda: all((fields("feedback/" + d["name"].rsplit("/", 1)[1]) or {}).get("status") != "new" for d in listing("feedback")))
+          and p.wait("document.getElementById('navUnseen').hidden && document.getElementById('btnSeenAll').hidden"),
+          [fields("feedback/" + d["name"].rsplit("/", 1)[1]).get("status") for d in listing("feedback")])
 
     # Another period, then the phone layout in dark mode
     p.js("document.querySelector('[data-range=\"7\"]').click()")
@@ -627,7 +867,7 @@ def run(p):
     check("phone width: marking a message new again brings back the tab's unread count",
           p.wait("!document.getElementById('navUnseen').hidden"))
     wide, found = [], []
-    for view in ("overview", "feedback"):
+    for view in ("overview", "feedback", "tools"):
         p.js(f"location.hash = '#{view}'")
         time.sleep(0.8)
         if p.js("document.documentElement.scrollWidth > document.documentElement.clientWidth"):
@@ -639,13 +879,190 @@ def run(p):
     p.call("Emulation.setEmulatedMedia", features=[])
     p.call("Emulation.setDeviceMetricsOverride", width=1280, height=900, deviceScaleFactor=1, mobile=False)
 
-    check("no Content-Security-Policy violations", p.js("window.__csp.length === 0"), p.js("window.__csp"))
+    email_notices_end_to_end(p, root)
+
+    # Without a notifier the card says so, and its buttons cannot be pressed.
+    csp_seen = p.js("window.__csp") or []
+    p.js("localStorage.removeItem('flp-admin-mail-test')")
+    p.goto(f"{ADMIN}/?emulator&reload=1#tools")   # a new address: a real reload, not just a #hash change
+    check("Email notices not set up: the card says so, explains how, and its two buttons are off",
+          p.wait("!document.getElementById('viewDash').hidden && document.getElementById('mailState').textContent === 'Not set up'"
+                 " && /configure\\.py --mail-url/.test(document.getElementById('mailHow').textContent)"
+                 " && document.getElementById('btnMailCheck').disabled && document.getElementById('btnMailTest').disabled"
+                 " && document.getElementById('mailResult').hidden", 20),
+          p.js("[document.getElementById('mailState').textContent, document.getElementById('mailHow').textContent]"))
+    found = axe(p, "tools, not set up")
+    check("accessibility: the not-set-up Email notices card has no axe violations", not found, found)
+
+    csp = csp_seen + (p.js("window.__csp") or [])
+    check("no Content-Security-Policy violations", not csp, csp)
     check("no script errors on the dashboard", not p.errors, p.errors[:4])
     p.js("window.__old = 1; document.getElementById('btnSignOut').click()")
     check("signing out reloads the page: sign-in only, no statistics left in it",
           p.wait("!window.__old && document.readyState === 'complete' && !document.getElementById('viewSignIn').hidden", 20)
           and p.js("document.getElementById('viewDash').hidden && !document.getElementById('kpis').children.length"
                    " && !document.querySelectorAll('#inbox li').length"))
+
+
+def email_notices_end_to_end(p, root):
+    """The feedback form with a notifier, in a second tab, while the dashboard stays open in
+    the first: every outcome the visitor can meet, what is saved, and what the dashboard shows."""
+    browser = Page(json.load(urllib.request.urlopen("http://127.0.0.1:9333/json/version"))["webSocketDebuggerUrl"])
+    tid = browser.call("Target.createTarget", url="about:blank")["targetId"]
+    ws = wait_for(lambda: next((t["webSocketDebuggerUrl"] for t in json.load(urllib.request.urlopen("http://127.0.0.1:9333/json/list"))
+                                if t.get("id") == tid), None), 10)
+    w = Page(ws)
+    for d in ("Page.enable", "Runtime.enable", "Log.enable"):
+        w.call(d)
+    w.call("Emulation.setDeviceMetricsOverride", width=1280, height=900, deviceScaleFactor=1, mobile=False)
+    stats_test = json.dumps({"base": "http://127.0.0.1:8080/v1", "project": PROJECT})
+    w.goto(f"{SITE}/faq.html")
+    w.js("localStorage.setItem('flp-mail-test', JSON.stringify({url: '%s/exec'}))" % NOTIFIER)
+    w.goto(f"{SITE}/faq.html")
+    STATUS = "document.getElementById('fbStatus')"
+    check("with a notifier: the note under the form also says a copy arrives as an email",
+          w.wait(f"{SHOWN}('fbNoteSite') && !document.querySelector('#fbNoteSite .fb-copy').hidden"))
+
+    def send(text, rating=None):
+        w.js("localStorage.removeItem('flp-sent'); %s.textContent = ''; %s.removeAttribute('data-state');" % (STATUS, STATUS))
+        w.js("""(function(){
+          document.querySelectorAll('[name=fbRating]').forEach(r => { r.checked = false; });
+          %s
+          document.getElementById('fbRole').value = 'Teacher';
+          document.getElementById('fbType').value = 'Problem or bug';
+          document.getElementById('fbMsg').value = %s;
+          document.getElementById('fbSend').click();
+        })()""" % (("document.getElementById('fbR%d').click();" % rating) if rating else "", json.dumps(text)))
+        state = w.wait(f"['ok', 'bad'].includes({STATUS}.dataset.state) && {STATUS}.textContent.length > 0 && {STATUS}.dataset.state", 20)
+        return state, w.js(f"{STATUS}.textContent")
+
+    def payload(text):
+        return next((json.loads(r["body"]) for r in reversed(Notifier.received) if json.loads(r["body"]).get("message") == text), None)
+
+    # 1. Notifier and database both work.
+    n0, pre0 = len(listing("feedback")), len(Notifier.preflights)
+    state, said = send("Email notice test one", rating=3)
+    got = payload("Email notice test one")
+    doc = got and fields("feedback/" + got["id"])
+    check("notifier + database: “Your feedback has been sent successfully!”", state == "ok" and "Your feedback has been sent successfully!" in said, said)
+    check("…the notifier got the feedback as plain text (no preflight, no cookies), with the page and language",
+          got and Notifier.received[-1]["type"].startswith("text/plain") and len(Notifier.preflights) == pre0
+          and not Notifier.received[-1]["cookie"]
+          and {k: got.get(k) for k in ("type", "role", "rating", "page", "lang")} == {"type": "problem", "role": "teacher", "rating": 3, "page": "faq", "lang": "en"}
+          and len(got["id"]) == 20, Notifier.received[-1:])
+    check("…and the saved message has the same ID and says its email notice was sent (mail: sent)",
+          doc and doc.get("mail") == "sent" and doc.get("message") == "Email notice test one" and len(listing("feedback")) == n0 + 1, doc)
+
+    # 2. The notifier says no: still saved, so still sent, and marked "unconfirmed".
+    Notifier.mode = "fail"
+    state, said = send("Email notice test two")
+    got = payload("Email notice test two")
+    doc = got and fields("feedback/" + got["id"])
+    check("notifier refuses, database works: still sent (saved), and marked mail: unconfirmed",
+          state == "ok" and "sent successfully" in said and doc and doc.get("mail") == "unconfirmed", (said, doc))
+
+    # 3. Nothing works: the page says so. A retry of the same feedback keeps its ID.
+    Notifier.mode = "down"
+    w.js("localStorage.setItem('flp-stats-test', JSON.stringify({base: 'http://127.0.0.1:8079/v1', project: '%s'}))" % PROJECT)
+    w.goto(f"{SITE}/faq.html")
+    n1 = len(listing("feedback"))
+    state, said = send("Email notice test three")
+    check("notifier and database both down: “Your feedback could not be sent. Please try again.” (never “sent”)",
+          state == "bad" and "Your feedback could not be sent. Please try again." in said and "successfully" not in said
+          and len(listing("feedback")) == n1, said)
+    first_try = payload("Email notice test three")
+    Notifier.mode = "ok"
+    w.js("""(function(){ %s.textContent = ''; %s.removeAttribute('data-state'); document.getElementById('fbSend').click(); })()""" % (STATUS, STATUS))
+    state = w.wait(f"['ok', 'bad'].includes({STATUS}.dataset.state) && {STATUS}.textContent.length > 0 && {STATUS}.dataset.state", 20)
+    said = w.js(f"{STATUS}.textContent")
+    tries = [json.loads(r["body"]) for r in Notifier.received if json.loads(r["body"]).get("message") == "Email notice test three"]
+    check("…pressing Send again with the database still down but the notifier back: sent (it reached the team's email)",
+          state == "ok" and "sent successfully" in said and len(listing("feedback")) == n1, said)
+    check("…and both tries carried the same ID, so the team gets one email, not two",
+          first_try and len(tries) == 2 and tries[0]["id"] == tries[1]["id"], [t.get("id") for t in tries])
+    w.js("localStorage.setItem('flp-stats-test', JSON.stringify(%s))" % stats_test)
+    w.goto(f"{SITE}/faq.html")
+
+    # 4. The same feedback again: not sent twice.
+    send("Email notice test four")
+    n2, r2 = len(listing("feedback")), len(Notifier.received)
+    state, said = send("Email notice test four")
+    check("the same feedback again soon after: “already sent successfully”, and nothing is saved or emailed again",
+          state == "ok" and "This feedback was already sent successfully" in said and len(listing("feedback")) == n2
+          and len(Notifier.received) == r2, said)
+
+    # 5. A send whose answer was lost: the retry finds it already saved (409) and says sent.
+    lost = "LostAnswerTest000001"
+    st, _ = rest("POST", f"{FS}:commit", {"writes": [{"update": {"name": f"{root}/feedback/{lost}", "fields": {
+        "type": {"stringValue": "problem"}, "role": {"stringValue": "teacher"}, "message": {"stringValue": "Email notice test five"},
+        "page": {"stringValue": "faq"}, "lang": {"stringValue": "en"}, "status": {"stringValue": "new"}, "mail": {"stringValue": "sent"}}},
+        "currentDocument": {"exists": False},
+        "updateTransforms": [{"fieldPath": "created", "setToServerValue": "REQUEST_TIME"}]}]}, token=None)
+    n3 = len(listing("feedback"))
+    w.js("window.flpFeedback.newId = function(){ return '%s'; }" % lost)
+    state, said = send("Email notice test five")
+    check("a retry after a lost answer (the database says it is already there) is reported as sent, and not saved twice",
+          st == 200 and state == "ok" and "sent successfully" in said and len(listing("feedback")) == n3, (st, said))
+    w.goto(f"{SITE}/faq.html")
+
+    # 6. The website published before the new rules: it still saves (without `mail`).
+    old_rules = subprocess.run(["git", "show", "HEAD:website_admin/firestore.rules"], cwd=ROOT, capture_output=True,
+                               text=True, encoding="utf-8").stdout
+    new_rules = open(os.path.join(ROOT, "website_admin", "firestore.rules"), encoding="utf-8").read()
+    if "'mail'" not in old_rules and emulator_rules(old_rules) == 200:
+        try:
+            state, said = send("Email notice test six")
+            got = payload("Email notice test six")
+            doc = got and fields("feedback/" + got["id"])
+            check("with the rules from before email notices, the form still saves (without the notice's outcome) and says sent",
+                  state == "ok" and "sent successfully" in said and doc and "mail" not in doc and doc.get("message") == "Email notice test six",
+                  (said, doc))
+        finally:
+            emulator_rules(new_rules)
+    else:
+        check("the old rules could be loaded for the deploy-order check", False, old_rules[:80])
+    exceptions = [e for e in w.errors if e.startswith("exception")]
+    check("no script errors on the website while sending (failed requests aside)", not exceptions, exceptions[:3])
+    w.shot("website-feedback-sent-desktop")
+    browser.call("Target.closeTarget", targetId=tid)
+
+    # Two copies of the same words within a day (as the website writes them).
+    for i, ago in ((1, 3600), (2, 0)):
+        rest("POST", f"{FS}:commit", {"writes": [{"update": {"name": f"{root}/feedback/DupWordsTest00000{i:03d}", "fields": {
+            "type": {"stringValue": "idea"}, "role": {"stringValue": "student"}, "message": {"stringValue": "Please add a dark mode"},
+            "page": {"stringValue": "faq"}, "lang": {"stringValue": "en"}, "status": {"stringValue": "new"}, "mail": {"stringValue": "off"}}},
+            "currentDocument": {"exists": False},
+            "updateTransforms": [{"fieldPath": "created", "setToServerValue": "REQUEST_TIME"}]}]}, token=None)
+        time.sleep(1.1)
+
+    # The dashboard (still open) shows them all, as they arrived.
+    p.js("location.hash = '#feedback'")
+    p.wait("!document.querySelector('.view[data-view=feedback]').hidden")
+    p.js("(function(){ var b = document.getElementById('inboxNew'); if (!document.getElementById('inboxNewWrap').hidden) b.click(); })()")
+    tags = """(function(){ var out = {};
+      [...document.querySelectorAll('#inbox .msg-item')].forEach(li => {
+        var t = li.querySelector('.msg-text').textContent;
+        out[t] = [...li.querySelectorAll('.tag')].map(x => x.textContent.trim()).join(' | '); });
+      return out; })()"""
+    ok = p.wait(tags.replace("return out;", "return ['Email notice test one', 'Email notice test two', 'Email notice test four',"
+                             " 'Email notice test five', 'Email notice test six'].every(k => k in out) && out;"), 20)
+    t = p.js(tags) or {}
+    check("dashboard, live: each new message shows what happened to its email notice (sent / not confirmed / none)",
+          ok and "Email notice sent" in t.get("Email notice test one", "") and "Email notice not confirmed" in t.get("Email notice test two", "")
+          and "Email notice sent" in t.get("Email notice test four", "") and "Email notice sent" in t.get("Email notice test five", "")
+          and "Email notice" not in t.get("Email notice test six", "x"), t)
+    check("dashboard: a message with the same words as one an hour earlier is marked as a likely repeat (the earlier one is not)",
+          p.wait("(function(){ var items = [...document.querySelectorAll('#inbox .msg-item')].filter(li => li.querySelector('.msg-text').textContent === 'Please add a dark mode');"
+                 " return items.length === 2 && items.filter(li => li.querySelector('.tag.dup')).length === 1; })()", 10), t.get("Please add a dark mode"))
+    # sent: one, four, five · not confirmed: two · off: the first form message and the two
+    # repeats · none: the live-update test message and six (old rules)
+    check("dashboard: the summary counts the notices (3 sent, 1 not confirmed, 3 off, 2 older)",
+          p.wait("document.getElementById('mailSummary').textContent === 'Email notices for these messages: 3 sent · 1 not confirmed"
+                 " · 3 not sent (notices were off) · 2 from before email notices.'", 10),
+          p.js("document.getElementById('mailSummary').textContent"))
+    p.shot("dashboard-feedback-notices-desktop", full=True)
+    found = axe(p, "feedback with notices")
+    check("accessibility: the inbox with delivery tags has no axe violations", not found, found)
 
 
 if __name__ == "__main__":

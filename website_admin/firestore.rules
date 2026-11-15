@@ -152,10 +152,14 @@ service cloud.firestore {
               'teachers_guide', 'faq', 'awareness', 'about', 'privacy', 'gaze_control', 'other'];
     }
 
+    // `mail` says what happened to the email notice sent to the team's inbox
+    // just before this was saved (website_admin/email_notifier): 'sent' (the
+    // notifier confirmed it), 'unconfirmed' (no answer, or an error) or 'off'
+    // (no notifier set up). Older website copies leave it out.
     function newFeedback(d) {
       return d.keys().hasAll(['type', 'role', 'message', 'page', 'lang', 'created', 'status'])
         && d.keys().hasOnly(['type', 'role', 'message', 'page', 'lang', 'created', 'status',
-                             'rating', 'device'])
+                             'rating', 'device', 'mail'])
         && d.type in ['problem', 'idea', 'praise', 'rating']
         && d.role in ['teacher', 'parent', 'student', 'other']
         && d.message is string && d.message.size() <= 2000
@@ -163,6 +167,7 @@ service cloud.firestore {
         && (!('rating' in d) || (d.rating is int && d.rating >= 1 && d.rating <= 5))
         && (d.type != 'rating' || 'rating' in d)
         && (!('device' in d) || (d.device is string && d.device.size() <= 120))
+        && (!('mail' in d) || d.mail in ['sent', 'unconfirmed', 'off'])
         && d.page in pages()
         && d.lang in ['en', 'fil']
         && d.created == request.time

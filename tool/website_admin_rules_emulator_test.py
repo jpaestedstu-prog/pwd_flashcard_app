@@ -210,7 +210,12 @@ def main():
     check("a date the sender chose (not the server's) is refused",
           send("O" * 20, {**GOOD_MSG, "created": "2020-01-01"}, server_time=False) == 403)
     check("a short or odd document id is refused", send("short-id", GOOD_MSG) == 403)
-    check("sending over someone else's message is refused", send(ok_id, GOOD_MSG) in (400, 403, 409))
+    for i, how in enumerate(("sent", "unconfirmed", "off")):
+        check(f"the email notice's outcome '{how}' is accepted", send("P" * 19 + str(i), {**GOOD_MSG, "mail": how}) == 200)
+    check("a made-up email notice outcome is refused", send("Q" * 20, {**GOOD_MSG, "mail": "delivered"}) == 403)
+    check("an email notice outcome that is not text is refused", send("R" * 20, {**GOOD_MSG, "mail": True}) == 403)
+    check("sending the same message again (same id) is refused as already there",
+          send(ok_id, GOOD_MSG) == 409 and send(ok_id, {**GOOD_MSG, "mail": "sent"}) == 409)
     check("the public cannot change a message",
           patch(f"feedback/{ok_id}", {"message": "changed"}) == 403)
     check("the public cannot read a message", get(f"feedback/{ok_id}")[0] == 403)

@@ -25,12 +25,12 @@
 <meta name="twitter:description" content="Set up FlashLearn PWD in your classroom — offline installs, class codes, disability presets, and progress tracking.">
 <meta name="twitter:image" content="https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/og-image.png">
 <!--gen:site-head-->
-<meta name="theme-color" content="#6C5CE7">
+<meta name="theme-color" content="#7E57C2">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
-<link rel="stylesheet" href="assets/site.css?v=d070cf00a7">
-<script>(function(h){h.classList.add('js');try{var p=JSON.parse(localStorage.getItem('flp-a11y')||'{}');if(p.font==='lg'||p.font==='xl')h.classList.add('fs-'+p.font);if(p.dys)h.classList.add('dys');if(p.hc)h.classList.add('hc');if(p.still)h.classList.add('still');if(p.fil){h.classList.add('fil');h.setAttribute('lang','fil');}if(p.fil||p.font==='lg'||p.font==='xl')h.classList.add('nav-compact');}catch(e){}})(document.documentElement);</script>
+<link rel="stylesheet" href="assets/site.css?v=ea48165114">
+<script>(function(h){h.classList.add('js');try{var p=JSON.parse(localStorage.getItem('flp-a11y')||'{}');if(p.font==='lg'||p.font==='xl')h.classList.add('fs-'+p.font);if(p.dys)h.classList.add('dys');if(p.hc)h.classList.add('hc');if(p.still)h.classList.add('still');if(p.theme==='dark'||p.theme==='light')h.classList.add('theme-'+p.theme);if(p.fil){h.classList.add('fil');h.setAttribute('lang','fil');}if(p.font==='lg'||p.font==='xl'||(p.fil&&window.innerWidth<1200))h.classList.add('nav-compact');}catch(e){}})(document.documentElement);</script>
 <!--/gen:site-head-->
 </head>
 <body>
@@ -40,15 +40,45 @@
   <div class="header-inner">
     <a class="brand" href="index.html"><img class="brand-logo" src="assets/logo.webp" width="40" height="40" alt=""><span class="brand-name">FlashLearn <b>PWD</b></span></a>
     <nav class="site-nav" id="siteNav" aria-label="Main" data-label-en="Main" data-label-fil="Pangunahin">
-      <ul>
-        <li><a href="index.html"><span class="nav-ico" aria-hidden="true">🏠</span><span class="nav-txt"><span class="nav-main"><span class="en">Home</span><span class="fil">Home</span></span><span class="nav-sub"><span class="en">Start here</span><span class="fil">Dito magsimula</span></span></span></a></li>
-        <li><a href="try.html"><span class="nav-ico" aria-hidden="true">🎴</span><span class="nav-txt"><span class="nav-main"><span class="en">Try It</span><span class="fil">Subukan</span></span><span class="nav-sub"><span class="en">Flashcards and a game, right in your browser</span><span class="fil">Flashcard at laro, mismo sa browser</span></span></span></a></li>
-        <li><a href="download.html"><span class="nav-ico" aria-hidden="true">⬇️</span><span class="nav-txt"><span class="nav-main"><span class="en">Download</span><span class="fil">I-download</span></span><span class="nav-sub"><span class="en">Free for Android 10 and newer</span><span class="fil">Libre para sa Android 10 pataas</span></span></span></a></li>
-        <li><a href="how-to-use.html"><span class="nav-ico" aria-hidden="true">📖</span><span class="nav-txt"><span class="nav-main"><span class="en">How to Use</span><span class="fil">Paano Gamitin</span></span><span class="nav-sub"><span class="en">A short video and a picture tour</span><span class="fil">Maikling video at tour na may larawan</span></span></span></a></li>
-        <li><a href="games.html"><span class="nav-ico" aria-hidden="true">🎮</span><span class="nav-txt"><span class="nav-main"><span class="en">Games</span><span class="fil">Mga Laro</span></span><span class="nav-sub"><span class="en">Every learning game in the app</span><span class="fil">Bawat larong pampagkatuto sa app</span></span></span></a></li>
-        <li><a href="fsl-dictionary.html"><span class="nav-ico" aria-hidden="true">🤟</span><span class="nav-txt"><span class="nav-main"><span class="en">FSL Dictionary</span><span class="fil">Diksyunaryo ng FSL</span></span><span class="nav-sub"><span class="en">Watch everyday words signed</span><span class="fil">Panoorin ang senyas ng mga salita</span></span></span></a></li>
-        <li><a href="teachers-guide.html" aria-current="page"><span class="nav-ico" aria-hidden="true">🧑‍🏫</span><span class="nav-txt"><span class="nav-main"><span class="en">Teacher’s Guide</span><span class="fil">Gabay ng Guro</span></span><span class="nav-sub"><span class="en">Set up a class, printable</span><span class="fil">Pag-set up ng klase, napi-print</span></span></span></a></li>
-        <li><a href="faq.html"><span class="nav-ico" aria-hidden="true">❓</span><span class="nav-txt"><span class="nav-main"><span class="en">FAQ</span><span class="fil">Mga Tanong</span></span><span class="nav-sub"><span class="en">Answers, and how to reach us</span><span class="fil">Mga sagot, at paano kami makakausap</span></span></span></a></li>
+      <ul class="nav-list">
+        <li class="nav-item"><a class="nav-link" href="index.html"><span class="nav-ico tone-purple" aria-hidden="true">🏠</span><span class="nav-txt"><span class="nav-main"><span class="en">Home</span><span class="fil">Home</span></span><span class="nav-sub"><span class="en">Start here</span><span class="fil">Dito magsimula</span></span></span></a></li>
+        <li class="nav-item nav-group" data-group="explore">
+          <button type="button" class="nav-link nav-group-btn" aria-expanded="false" aria-controls="nav-explore"><span class="nav-main"><span class="en">Explore</span><span class="fil">Tuklasin</span></span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>
+          <div class="nav-panel" id="nav-explore">
+            <p class="nav-panel-title"><span class="en">Explore</span><span class="fil">Tuklasin</span><span class="sr-only"> — <span class="en">The app, up close</span><span class="fil">Ang app, malapitan</span></span></p>
+            <ul class="nav-sublist">
+              <li><a href="how-to-use.html"><span class="nav-ico tone-orange" aria-hidden="true">📖</span><span class="nav-txt"><span class="nav-main"><span class="en">How to Use</span><span class="fil">Paano Gamitin</span></span><span class="nav-sub"><span class="en">A short video and a picture tour</span><span class="fil">Maikling video at tour na may larawan</span></span></span></a></li>
+              <li><a href="games.html"><span class="nav-ico tone-pink" aria-hidden="true">🎮</span><span class="nav-txt"><span class="nav-main"><span class="en">Games</span><span class="fil">Mga Laro</span></span><span class="nav-sub"><span class="en">Every learning game in the app</span><span class="fil">Bawat larong pampagkatuto sa app</span></span></span></a></li>
+              <li><a href="fsl-dictionary.html"><span class="nav-ico tone-teal" aria-hidden="true">🤟</span><span class="nav-txt"><span class="nav-main"><span class="en">FSL Dictionary</span><span class="fil">Diksyunaryo ng FSL</span></span><span class="nav-sub"><span class="en">Watch everyday words signed</span><span class="fil">Panoorin ang senyas ng mga salita</span></span></span></a></li>
+              <li><a href="gaze-control.html"><span class="nav-ico tone-blue" aria-hidden="true">👁️</span><span class="nav-txt"><span class="nav-main"><span class="en">Gaze Control</span><span class="fil">Gaze Control</span></span><span class="nav-sub"><span class="en">Use the app hands-free</span><span class="fil">Gamitin ang app nang walang kamay</span></span></span></a></li>
+            </ul>
+          </div>
+        </li>
+        <li class="nav-item nav-group" data-group="educators">
+          <button type="button" class="nav-link nav-group-btn" aria-expanded="false" aria-controls="nav-educators" aria-current="true"><span class="nav-main"><span class="en">Teachers &amp; Parents</span><span class="fil">Guro at Magulang</span></span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>
+          <div class="nav-panel" id="nav-educators">
+            <p class="nav-panel-title"><span class="en">Teachers &amp; Parents</span><span class="fil">Guro at Magulang</span><span class="sr-only"> — <span class="en">For the adults beside a learner</span><span class="fil">Para sa mga katuwang ng mag-aaral</span></span></p>
+            <ul class="nav-sublist">
+              <li><a href="teachers-guide.html" aria-current="page"><span class="nav-ico tone-indigo" aria-hidden="true">🧑‍🏫</span><span class="nav-txt"><span class="nav-main"><span class="en">Teacher’s Guide</span><span class="fil">Gabay ng Guro</span></span><span class="nav-sub"><span class="en">Set up a class, printable</span><span class="fil">Pag-set up ng klase, napi-print</span></span></span></a></li>
+              <li><a href="awareness.html"><span class="nav-ico tone-green" aria-hidden="true">💜</span><span class="nav-txt"><span class="nav-main"><span class="en">PWD Awareness</span><span class="fil">Kamalayang PWD</span></span><span class="nav-sub"><span class="en">Rights and everyday inclusion</span><span class="fil">Mga karapatan at araw-araw na inklusyon</span></span></span></a></li>
+              <li><a href="privacy.html"><span class="nav-ico tone-cyan" aria-hidden="true">🔒</span><span class="nav-txt"><span class="nav-main"><span class="en">Privacy &amp; Data</span><span class="fil">Privacy at Datos</span></span><span class="nav-sub"><span class="en">What the app keeps, and who sees it</span><span class="fil">Ano ang itinatago ng app, at sino ang nakakakita</span></span></span></a></li>
+            </ul>
+          </div>
+        </li>
+        <li class="nav-item nav-group" data-group="help">
+          <button type="button" class="nav-link nav-group-btn" aria-expanded="false" aria-controls="nav-help"><span class="nav-main"><span class="en">Help</span><span class="fil">Tulong</span></span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>
+          <div class="nav-panel" id="nav-help">
+            <p class="nav-panel-title"><span class="en">Help</span><span class="fil">Tulong</span><span class="sr-only"> — <span class="en">Questions, feedback and the team</span><span class="fil">Mga tanong, feedback at ang pangkat</span></span></p>
+            <ul class="nav-sublist">
+              <li><a href="faq.html"><span class="nav-ico tone-magenta" aria-hidden="true">❓</span><span class="nav-txt"><span class="nav-main"><span class="en">FAQ</span><span class="fil">Mga Tanong</span></span><span class="nav-sub"><span class="en">Answers to common questions</span><span class="fil">Mga sagot sa karaniwang tanong</span></span></span></a></li>
+              <li><a href="faq.html#feedback"><span class="nav-ico tone-gold" aria-hidden="true">⭐</span><span class="nav-txt"><span class="nav-main"><span class="en">Rate &amp; Feedback</span><span class="fil">Rating at Feedback</span></span><span class="nav-sub"><span class="en">Tell the team what you think</span><span class="fil">Sabihin sa pangkat ang iyong opinyon</span></span></span></a></li>
+              <li><a href="about.html"><span class="nav-ico tone-red" aria-hidden="true">🎓</span><span class="nav-txt"><span class="nav-main"><span class="en">About the Team</span><span class="fil">Tungkol sa Pangkat</span></span><span class="nav-sub"><span class="en">The students behind the app</span><span class="fil">Ang mga mag-aaral sa likod ng app</span></span></span></a></li>
+              <li><a href="about.html#future"><span class="nav-ico tone-teal" aria-hidden="true">🔭</span><span class="nav-txt"><span class="nav-main"><span class="en">Future Recommendations</span><span class="fil">Mga Rekomendasyon</span></span><span class="nav-sub"><span class="en">Plans for later, like 3D signs</span><span class="fil">Mga plano, gaya ng 3D na senyas</span></span></span></a></li>
+            </ul>
+          </div>
+        </li>
+        <li class="nav-item nav-cta nav-cta-first"><a class="nav-btn nav-btn-try" href="try.html"><span aria-hidden="true">🎴</span><span class="nav-main"><span class="en">Try It</span><span class="fil">Subukan</span></span></a></li>
+        <li class="nav-item nav-cta"><a class="nav-btn nav-btn-dl" href="download.html"><span aria-hidden="true">⬇️</span><span class="nav-main"><span class="en">Download</span><span class="fil">I-download</span></span></a></li>
       </ul>
     </nav>
     <div class="header-tools">
@@ -70,6 +100,14 @@
           <button type="button" data-font="xl" aria-pressed="false" aria-label="Largest text" data-label-en="Largest text" data-label-fil="Pinakamalaking letra">A++</button>
       </div>
     </div>
+    <div class="panel-row">
+      <span class="row-label" id="a11yThemeLabel"><span class="en">Theme</span><span class="fil">Tema</span></span>
+      <div class="seg" role="group" aria-labelledby="a11yThemeLabel">
+          <button type="button" data-theme-pick="" aria-pressed="true"><span class="en">Auto</span><span class="fil">Awto</span><span class="sr-only"> — <span class="en">Follow this device</span><span class="fil">Sundin ang device</span></span></button>
+          <button type="button" data-theme-pick="light" aria-pressed="false"><span class="en">Light</span><span class="fil">Maliwanag</span><span class="sr-only"> — <span class="en">Light theme</span><span class="fil">Maliwanag na tema</span></span></button>
+          <button type="button" data-theme-pick="dark" aria-pressed="false"><span class="en">Dark</span><span class="fil">Madilim</span><span class="sr-only"> — <span class="en">Dark theme</span><span class="fil">Madilim na tema</span></span></button>
+      </div>
+    </div>
     <button type="button" class="switch" id="btnDys" role="switch" aria-checked="false"><span><span class="en">Dyslexia-friendly font</span><span class="fil">Font para sa may dyslexia</span></span><span class="track" aria-hidden="true"></span></button>
     <button type="button" class="switch" id="btnHC" role="switch" aria-checked="false"><span><span class="en">High contrast</span><span class="fil">Mataas na contrast</span></span><span class="track" aria-hidden="true"></span></button>
     <button type="button" class="switch" id="btnStill" role="switch" aria-checked="false"><span><span class="en">Reduce motion</span><span class="fil">Bawasan ang galaw</span></span><span class="track" aria-hidden="true"></span></button>
@@ -84,7 +122,7 @@
 <main id="main">
 <section class="page-hero">
   <div class="container">
-    <!--gen:site-crumbs--><nav class="crumbs" aria-label="Breadcrumb" data-label-en="Breadcrumb" data-label-fil="Kinaroroonan"><ol><li><a href="index.html"><span class="en">Home</span><span class="fil">Home</span></a></li><li aria-current="page"><span class="en">Teacher’s Guide</span><span class="fil">Gabay ng Guro</span></li></ol></nav><!--/gen:site-crumbs-->
+    <!--gen:site-crumbs--><nav class="crumbs" aria-label="Breadcrumb" data-label-en="Breadcrumb" data-label-fil="Kinaroroonan"><ol><li><a href="index.html"><span class="en">Home</span><span class="fil">Home</span></a></li><li><span class="en">Teachers &amp; Parents</span><span class="fil">Guro at Magulang</span></li><li aria-current="page"><span class="en">Teacher’s Guide</span><span class="fil">Gabay ng Guro</span></li></ol></nav><span class="hero-badge tone-indigo" aria-hidden="true">🧑‍🏫</span><!--/gen:site-crumbs-->
     <p class="eyebrow"><span aria-hidden="true">🧑‍🏫</span> <span class="en">Teacher's Guide</span><span class="fil">Gabay ng Guro</span></p>
     <h1><span class="en">FlashLearn PWD in your classroom</span><span class="fil">FlashLearn PWD sa iyong silid-aralan</span></h1>
     <p class="lead"><span class="en">A printable guide for teachers — print this page and pin it in the faculty room. 🖨️</span><span class="fil">Gabay para sa mga guro na maaaring i-print — i-print ang pahinang ito para sa faculty room. 🖨️</span></p>
@@ -263,33 +301,37 @@
       <div class="footer-brand">
         <a class="brand" href="index.html"><img class="brand-logo" src="assets/logo.webp" width="40" height="40" alt=""><span>FlashLearn <b>PWD</b></span></a>
         <p><span class="en">A free, bilingual flashcard app for learners with disabilities — a college thesis / capstone project (2023–2027), built with Filipino learners first.</span><span class="fil">Libreng bilingual na flashcard app para sa mga mag-aaral na may kapansanan — isang college thesis / capstone project (2023–2027), ginawa para sa mga mag-aaral na Pilipino.</span></p>
-        <a class="btn btn-primary btn-sm" href="download.html"><span class="en">Download free</span><span class="fil">I-download nang libre</span></a>
+        <div class="actions">
+          <a class="btn btn-primary btn-sm" href="download.html"><span class="en">Download free</span><span class="fil">I-download nang libre</span></a>
+          <a class="btn btn-secondary btn-sm" href="try.html"><span class="en">Try it first</span><span class="fil">Subukan muna</span></a>
+        </div>
       </div>
-      <nav aria-label="Get started">
-        <h2 class="footer-title"><span class="en">Get started</span><span class="fil">Magsimula</span></h2>
+      <nav aria-label="Explore the app">
+        <h2 class="footer-title"><span aria-hidden="true">🧭</span><span class="en">Explore</span><span class="fil">Tuklasin</span></h2>
         <ul>
-          <li><a href="download.html"><span class="en">Download the app</span><span class="fil">I-download ang app</span></a></li>
-          <li><a href="try.html"><span class="en">Try it in your browser</span><span class="fil">Subukan sa browser</span></a></li>
           <li><a href="how-to-use.html"><span class="en">How to use the app</span><span class="fil">Paano gamitin ang app</span></a></li>
           <li><a href="games.html"><span class="en">Learning games</span><span class="fil">Mga larong pampagkatuto</span></a></li>
-        </ul>
-      </nav>
-      <nav aria-label="Learn more">
-        <h2 class="footer-title"><span class="en">Learn more</span><span class="fil">Matuto pa</span></h2>
-        <ul>
           <li><a href="fsl-dictionary.html"><span class="en">FSL Sign Dictionary</span><span class="fil">Diksyunaryo ng FSL</span></a></li>
-          <li><a href="teachers-guide.html"><span class="en">Teacher’s Guide</span><span class="fil">Gabay ng Guro</span></a></li>
           <li><a href="gaze-control.html"><span class="en">Gaze Control (hands-free)</span><span class="fil">Gaze Control (walang kamay)</span></a></li>
-          <li><a href="awareness.html"><span class="en">PWD Awareness</span><span class="fil">Kamalayang PWD</span></a></li>
-          <li><a href="faq.html"><span class="en">Questions (FAQ)</span><span class="fil">Mga Tanong (FAQ)</span></a></li>
+          <li><a href="try.html"><span class="en">Try it in your browser</span><span class="fil">Subukan sa browser</span></a></li>
         </ul>
       </nav>
-      <nav aria-label="About the project">
-        <h2 class="footer-title"><span class="en">The project</span><span class="fil">Ang proyekto</span></h2>
+      <nav aria-label="For teachers and parents">
+        <h2 class="footer-title"><span aria-hidden="true">🏫</span><span class="en">Teachers &amp; Parents</span><span class="fil">Guro at Magulang</span></h2>
         <ul>
-          <li><a href="about.html"><span class="en">About the team</span><span class="fil">Tungkol sa pangkat</span></a></li>
-          <li><a href="faq.html#feedback"><span class="en">Rate the app or send feedback</span><span class="fil">I-rate ang app o magpadala ng feedback</span></a></li>
+          <li><a href="teachers-guide.html"><span class="en">Teacher’s Guide</span><span class="fil">Gabay ng Guro</span></a></li>
+          <li><a href="awareness.html"><span class="en">PWD Awareness</span><span class="fil">Kamalayang PWD</span></a></li>
           <li><a href="privacy.html"><span class="en">Privacy &amp; data</span><span class="fil">Privacy at datos</span></a></li>
+          <li><a href="download.html"><span class="en">Download the app</span><span class="fil">I-download ang app</span></a></li>
+        </ul>
+      </nav>
+      <nav aria-label="Help and the project">
+        <h2 class="footer-title"><span aria-hidden="true">💬</span><span class="en">Help</span><span class="fil">Tulong</span></h2>
+        <ul>
+          <li><a href="faq.html"><span class="en">Questions (FAQ)</span><span class="fil">Mga Tanong (FAQ)</span></a></li>
+          <li><a href="faq.html#feedback"><span class="en">Rate the app or send feedback</span><span class="fil">I-rate ang app o magpadala ng feedback</span></a></li>
+          <li><a href="about.html"><span class="en">About the team</span><span class="fil">Tungkol sa pangkat</span></a></li>
+          <li><a href="about.html#future"><span class="en">Future recommendations</span><span class="fil">Mga rekomendasyon sa hinaharap</span></a></li>
           <li><a href="https://github.com/jpaestedstu-prog/pwd_flashcard_app" rel="noopener">GitHub</a></li>
         </ul>
       </nav>
@@ -300,7 +342,7 @@
     </div>
   </div>
 </footer>
-<script src="assets/site.js?v=e41ed031c7"></script>
+<script src="assets/site.js?v=a91719fc9b"></script>
 <!--/gen:site-footer-->
 </body>
 </html>

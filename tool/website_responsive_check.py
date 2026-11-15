@@ -14,8 +14,9 @@ import website_admin_e2e_check as h  # noqa: E402  (its Chrome client and server
 
 # 430 and 600 sit between the header's 420 px phone breakpoint and the width it needs
 # with its labels (large phones, a phone set to a small display size, the largest text);
-# 900 is a phone turned sideways, just past the 820 px two-column video layout.
-WIDTHS = (320, 360, 414, 430, 600, 768, 900, 1280)
+# 900 is a phone turned sideways, just past the 820 px two-column video layout; 1024 is
+# where the grouped navigation bar first replaces the Menu button (tighter pills to 1199).
+WIDTHS = (320, 360, 414, 430, 600, 768, 900, 1024, 1280)
 MODES = {
     "EN": ({}, []),
     "FIL A++": ({"fil": True, "font": "xl"}, []),

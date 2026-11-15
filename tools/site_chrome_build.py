@@ -10,12 +10,18 @@ Now the shared parts live here and are written between markers:
 
   <!--gen:site-head-->    stylesheet, icons, the early preference script
   <!--gen:site-header-->  skip link, header, navigation, accessibility panel
-  <!--gen:site-crumbs-->  "Home > This page" (every page except Home)
+  <!--gen:site-crumbs-->  "Home > Group > This page" and the page's 3D badge
   <!--gen:site-footer-->  footer + assets/site.js
+
+The navigation is grouped (2026-11 redesign): Home, three groups that open a
+panel (Explore, Teachers & Parents, Help) and two actions (Try It, Download).
+Every one of the twelve pages is reachable from the header on every page, and
+the footer repeats the same three groups.
 
 The two generated pages are covered through their templates, so the next
 games/dictionary build reproduces exactly what this script wrote.
-Guards: every page must carry each marker exactly once (crumbs: none on Home).
+Guards: every page must carry each marker exactly once (crumbs: none on Home),
+and every page must be reachable from the navigation exactly once.
 
 Cache busting: the site's service worker answers scripts and stylesheets from
 its cache first, so after a deploy a returning visitor would get the new
@@ -50,43 +56,56 @@ TEMPLATES = {
     os.path.join("tools", "fsl_dict_page.template.html"): "dictionary",
 }
 
-# Main navigation: key, href, EN, FIL, icon, menu hint EN, menu hint FIL.
-NAV = [
-    ("home", "index.html", "Home", "Home", "🏠", "Start here", "Dito magsimula"),
-    ("try", "try.html", "Try It", "Subukan", "🎴", "Flashcards and a game, right in your browser", "Flashcard at laro, mismo sa browser"),
-    ("download", "download.html", "Download", "I-download", "⬇️", "Free for Android 10 and newer", "Libre para sa Android 10 pataas"),
-    ("how", "how-to-use.html", "How to Use", "Paano Gamitin", "📖", "A short video and a picture tour", "Maikling video at tour na may larawan"),
-    ("games", "games.html", "Games", "Mga Laro", "🎮", "Every learning game in the app", "Bawat larong pampagkatuto sa app"),
-    ("dictionary", "fsl-dictionary.html", "FSL Dictionary", "Diksyunaryo ng FSL", "🤟", "Watch everyday words signed", "Panoorin ang senyas ng mga salita"),
-    ("guide", "teachers-guide.html", "Teacher’s Guide", "Gabay ng Guro", "🧑‍🏫", "Set up a class, printable", "Pag-set up ng klase, napi-print"),
-    ("faq", "faq.html", "FAQ", "Mga Tanong", "❓", "Answers, and how to reach us", "Mga sagot, at paano kami makakausap"),
+# One destination: key, href, EN, FIL, icon, hint EN, hint FIL, tone.
+# The tone is one of the tile tones in site.css (.tone-*): it colours the
+# destination's icon in the menus and its page's 3D badge.
+HOME = ("home", "index.html", "Home", "Home", "🏠", "Start here", "Dito magsimula", "purple")
+GROUPS = [
+    ("explore", "Explore", "Tuklasin", "The app, up close", "Ang app, malapitan", [
+        ("how", "how-to-use.html", "How to Use", "Paano Gamitin", "📖", "A short video and a picture tour", "Maikling video at tour na may larawan", "orange"),
+        ("games", "games.html", "Games", "Mga Laro", "🎮", "Every learning game in the app", "Bawat larong pampagkatuto sa app", "pink"),
+        ("dictionary", "fsl-dictionary.html", "FSL Dictionary", "Diksyunaryo ng FSL", "🤟", "Watch everyday words signed", "Panoorin ang senyas ng mga salita", "teal"),
+        ("gaze", "gaze-control.html", "Gaze Control", "Gaze Control", "👁️", "Use the app hands-free", "Gamitin ang app nang walang kamay", "blue"),
+    ]),
+    ("educators", "Teachers &amp; Parents", "Guro at Magulang", "For the adults beside a learner", "Para sa mga katuwang ng mag-aaral", [
+        ("guide", "teachers-guide.html", "Teacher’s Guide", "Gabay ng Guro", "🧑‍🏫", "Set up a class, printable", "Pag-set up ng klase, napi-print", "indigo"),
+        ("awareness", "awareness.html", "PWD Awareness", "Kamalayang PWD", "💜", "Rights and everyday inclusion", "Mga karapatan at araw-araw na inklusyon", "green"),
+        ("privacy", "privacy.html", "Privacy &amp; Data", "Privacy at Datos", "🔒", "What the app keeps, and who sees it", "Ano ang itinatago ng app, at sino ang nakakakita", "cyan"),
+    ]),
+    ("help", "Help", "Tulong", "Questions, feedback and the team", "Mga tanong, feedback at ang pangkat", [
+        ("faq", "faq.html", "FAQ", "Mga Tanong", "❓", "Answers to common questions", "Mga sagot sa karaniwang tanong", "magenta"),
+        ("feedback", "faq.html#feedback", "Rate &amp; Feedback", "Rating at Feedback", "⭐", "Tell the team what you think", "Sabihin sa pangkat ang iyong opinyon", "gold"),
+        ("about", "about.html", "About the Team", "Tungkol sa Pangkat", "🎓", "The students behind the app", "Ang mga mag-aaral sa likod ng app", "red"),
+        ("future", "about.html#future", "Future Recommendations", "Mga Rekomendasyon", "🔭", "Plans for later, like 3D signs", "Mga plano, gaya ng 3D na senyas", "teal"),
+    ]),
 ]
-# Pages that are not in the main navigation still need a breadcrumb label.
-EXTRA_LABELS = {
-    "awareness": ("PWD Awareness", "Kamalayang PWD"),
-    "about": ("About", "Tungkol sa Amin"),
-    "privacy": ("Privacy &amp; Data", "Privacy at Datos"),
-    "gaze": ("Gaze Control", "Gaze Control"),
-}
+# The two actions at the end of the bar (the class picks their look).
+ACTIONS = [
+    ("try", "try.html", "Try It", "Subukan", "🎴", "Flashcards and a game in your browser", "Flashcard at laro sa browser", "gold", "nav-btn-try"),
+    ("download", "download.html", "Download", "I-download", "⬇️", "Free for Android 10 and newer", "Libre para sa Android 10 pataas", "purple", "nav-btn-dl"),
+]
+# Links that are not pages of their own (never marked as the current page).
+NOT_PAGES = {"feedback", "future"}
 
 FOOTER_COLS = [
-    ("Get started", "Magsimula", "Get started", [
-        ("download.html", "Download the app", "I-download ang app"),
-        ("try.html", "Try it in your browser", "Subukan sa browser"),
+    ("Explore", "Tuklasin", "Explore the app", "🧭", [
         ("how-to-use.html", "How to use the app", "Paano gamitin ang app"),
         ("games.html", "Learning games", "Mga larong pampagkatuto"),
-    ]),
-    ("Learn more", "Matuto pa", "Learn more", [
         ("fsl-dictionary.html", "FSL Sign Dictionary", "Diksyunaryo ng FSL"),
-        ("teachers-guide.html", "Teacher’s Guide", "Gabay ng Guro"),
         ("gaze-control.html", "Gaze Control (hands-free)", "Gaze Control (walang kamay)"),
-        ("awareness.html", "PWD Awareness", "Kamalayang PWD"),
-        ("faq.html", "Questions (FAQ)", "Mga Tanong (FAQ)"),
+        ("try.html", "Try it in your browser", "Subukan sa browser"),
     ]),
-    ("The project", "Ang proyekto", "About the project", [
-        ("about.html", "About the team", "Tungkol sa pangkat"),
-        ("faq.html#feedback", "Rate the app or send feedback", "I-rate ang app o magpadala ng feedback"),
+    ("Teachers &amp; Parents", "Guro at Magulang", "For teachers and parents", "🏫", [
+        ("teachers-guide.html", "Teacher’s Guide", "Gabay ng Guro"),
+        ("awareness.html", "PWD Awareness", "Kamalayang PWD"),
         ("privacy.html", "Privacy &amp; data", "Privacy at datos"),
+        ("download.html", "Download the app", "I-download ang app"),
+    ]),
+    ("Help", "Tulong", "Help and the project", "💬", [
+        ("faq.html", "Questions (FAQ)", "Mga Tanong (FAQ)"),
+        ("faq.html#feedback", "Rate the app or send feedback", "I-rate ang app o magpadala ng feedback"),
+        ("about.html", "About the team", "Tungkol sa pangkat"),
+        ("about.html#future", "Future recommendations", "Mga rekomendasyon sa hinaharap"),
         ("https://github.com/jpaestedstu-prog/pwd_flashcard_app", "GitHub", "GitHub"),
     ]),
 ]
@@ -112,14 +131,18 @@ def asset(name):
 
 
 # Runs before the page is painted: marks JavaScript as available and applies
-# the visitor's saved text size / dyslexia / contrast / motion / language
-# choices, so a Filipino reader never sees the English page flash first and a
-# "Reduce motion" visitor never sees anything start moving.
+# the visitor's saved text size / dyslexia / contrast / motion / theme /
+# language choices, so a Filipino reader never sees the English page flash
+# first and a "Reduce motion" visitor never sees anything start moving. The
+# larger text sizes (and Filipino on a narrower window) start with the compact
+# header; site.js measures and corrects it.
 EARLY_JS = (
     "<script>(function(h){h.classList.add('js');try{var p=JSON.parse(localStorage.getItem('flp-a11y')||'{}');"
     "if(p.font==='lg'||p.font==='xl')h.classList.add('fs-'+p.font);if(p.dys)h.classList.add('dys');"
-    "if(p.hc)h.classList.add('hc');if(p.still)h.classList.add('still');if(p.fil){h.classList.add('fil');h.setAttribute('lang','fil');}"
-    "if(p.fil||p.font==='lg'||p.font==='xl')h.classList.add('nav-compact');}catch(e){}})"
+    "if(p.hc)h.classList.add('hc');if(p.still)h.classList.add('still');"
+    "if(p.theme==='dark'||p.theme==='light')h.classList.add('theme-'+p.theme);"
+    "if(p.fil){h.classList.add('fil');h.setAttribute('lang','fil');}"
+    "if(p.font==='lg'||p.font==='xl'||(p.fil&&window.innerWidth<1200))h.classList.add('nav-compact');}catch(e){}})"
     "(document.documentElement);</script>"
 )
 
@@ -127,7 +150,7 @@ EARLY_JS = (
 def render_head(key):
     return "\n".join([
         "",
-        '<meta name="theme-color" content="#6C5CE7">',
+        '<meta name="theme-color" content="#7E57C2">',
         '<link rel="manifest" href="manifest.webmanifest">',
         '<link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">',
         '<link rel="apple-touch-icon" href="assets/icon-192.png">',
@@ -143,16 +166,46 @@ MENU_SVG = (
     '<svg class="ico-close" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18" '
     'stroke="currentColor" stroke-width="2.4" stroke-linecap="round" fill="none"/></svg>'
 )
+CHEVRON = ('<svg class="chev" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 9l6 6 6-6" '
+           'stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>')
+
+
+def nav_txt(en, fil, sub_en, sub_fil):
+    return (f'<span class="nav-txt"><span class="nav-main">{bi(en, fil)}</span>'
+            f'<span class="nav-sub">{bi(sub_en, sub_fil)}</span></span>')
+
+
+def current(k, key):
+    return ' aria-current="page"' if k == key and k not in NOT_PAGES else ""
 
 
 def render_header(key):
+    I = "        "
     items = []
-    for k, href, en, fil, ico, sub_en, sub_fil in NAV:
-        cur = ' aria-current="page"' if k == key else ""
+    k, href, en, fil, ico, sub_en, sub_fil, tone = HOME
+    items.append(f'{I}<li class="nav-item"><a class="nav-link" href="{href}"{current(k, key)}>'
+                 f'<span class="nav-ico tone-{tone}" aria-hidden="true">{ico}</span>{nav_txt(en, fil, sub_en, sub_fil)}</a></li>')
+    for gk, gen, gfil, gsub_en, gsub_fil, links in GROUPS:
+        here = any(lk == key and lk not in NOT_PAGES for lk, *_ in links)
+        here_attr = ' aria-current="true"' if here else ""
+        pid = "nav-" + gk
+        subs = []
+        for lk, lhref, len_, lfil, lico, lsub_en, lsub_fil, ltone in links:
+            subs.append(f'{I}      <li><a href="{lhref}"{current(lk, key)}><span class="nav-ico tone-{ltone}" aria-hidden="true">{lico}</span>'
+                        f'{nav_txt(len_, lfil, lsub_en, lsub_fil)}</a></li>')
         items.append(
-            f'        <li><a href="{href}"{cur}><span class="nav-ico" aria-hidden="true">{ico}</span>'
-            f'<span class="nav-txt"><span class="nav-main">{bi(en, fil)}</span>'
-            f'<span class="nav-sub">{bi(sub_en, sub_fil)}</span></span></a></li>')
+            f'{I}<li class="nav-item nav-group" data-group="{gk}">\n'
+            f'{I}  <button type="button" class="nav-link nav-group-btn" aria-expanded="false" aria-controls="{pid}"'
+            f'{here_attr}><span class="nav-main">{bi(gen, gfil)}</span>{CHEVRON}</button>\n'
+            f'{I}  <div class="nav-panel" id="{pid}">\n'
+            f'{I}    <p class="nav-panel-title">{bi(gen, gfil)}<span class="sr-only"> — {bi(gsub_en, gsub_fil)}</span></p>\n'
+            f'{I}    <ul class="nav-sublist">\n' + "\n".join(subs) + f'\n{I}    </ul>\n'
+            f'{I}  </div>\n'
+            f'{I}</li>')
+    for n, (ak, ahref, en, fil, ico, sub_en, sub_fil, tone, cls) in enumerate(ACTIONS):
+        first = " nav-cta-first" if n == 0 else ""
+        items.append(f'{I}<li class="nav-item nav-cta{first}"><a class="nav-btn {cls}" href="{ahref}"{current(ak, key)}>'
+                     f'<span aria-hidden="true">{ico}</span><span class="nav-main">{bi(en, fil)}</span></a></li>')
     sizes = [
         ("", "A", "Normal text size", "Karaniwang laki ng letra"),
         ("lg", "A+", "Large text", "Malaking letra"),
@@ -162,13 +215,22 @@ def render_header(key):
         f'          <button type="button" data-font="{v}" aria-pressed="{"true" if not v else "false"}" '
         f'aria-label="{en}" data-label-en="{en}" data-label-fil="{fil}">{t}</button>'
         for v, t, en, fil in sizes)
+    themes = [
+        ("", "Auto", "Awto", "Follow this device", "Sundin ang device"),
+        ("light", "Light", "Maliwanag", "Light theme", "Maliwanag na tema"),
+        ("dark", "Dark", "Madilim", "Dark theme", "Madilim na tema"),
+    ]
+    tseg = "\n".join(
+        f'          <button type="button" data-theme-pick="{v}" aria-pressed="{"true" if not v else "false"}">'
+        f'{bi(en, fil)}<span class="sr-only"> — {bi(en_long, fil_long)}</span></button>'
+        for v, en, fil, en_long, fil_long in themes)
     return f"""
 <a class="skip" href="#main">{bi("Skip to main content", "Laktawan papunta sa nilalaman")}</a>
 <header class="site-header">
   <div class="header-inner">
     <a class="brand" href="index.html"><img class="brand-logo" src="assets/logo.webp" width="40" height="40" alt=""><span class="brand-name">FlashLearn <b>PWD</b></span></a>
     <nav class="site-nav" id="siteNav" aria-label="Main" data-label-en="Main" data-label-fil="Pangunahin">
-      <ul>
+      <ul class="nav-list">
 {chr(10).join(items)}
       </ul>
     </nav>
@@ -189,6 +251,12 @@ def render_header(key):
 {seg}
       </div>
     </div>
+    <div class="panel-row">
+      <span class="row-label" id="a11yThemeLabel">{bi("Theme", "Tema")}</span>
+      <div class="seg" role="group" aria-labelledby="a11yThemeLabel">
+{tseg}
+      </div>
+    </div>
     <button type="button" class="switch" id="btnDys" role="switch" aria-checked="false"><span>{bi("Dyslexia-friendly font", "Font para sa may dyslexia")}</span><span class="track" aria-hidden="true"></span></button>
     <button type="button" class="switch" id="btnHC" role="switch" aria-checked="false"><span>{bi("High contrast", "Mataas na contrast")}</span><span class="track" aria-hidden="true"></span></button>
     <button type="button" class="switch" id="btnStill" role="switch" aria-checked="false"><span>{bi("Reduce motion", "Bawasan ang galaw")}</span><span class="track" aria-hidden="true"></span></button>
@@ -201,23 +269,33 @@ def render_header(key):
 """
 
 
-def label_for(key):
-    for k, _href, en, fil, *_ in NAV:
-        if k == key:
-            return en, fil
-    return EXTRA_LABELS[key]
+def find(key):
+    """(group or None, destination) for a page key."""
+    if key == HOME[0]:
+        return None, HOME
+    for g in GROUPS:
+        for d in g[5]:
+            if d[0] == key:
+                return g, d
+    for a in ACTIONS:
+        if a[0] == key:
+            return None, a
+    fail(f"page key {key!r} is in no navigation entry")
 
 
 def render_crumbs(key):
-    en, fil = label_for(key)
+    group, dest = find(key)
+    en, fil, ico, tone = dest[2], dest[3], dest[4], dest[7]
+    mid = f'<li>{bi(group[1], group[2])}</li>' if group else ""
     return (f'<nav class="crumbs" aria-label="Breadcrumb" data-label-en="Breadcrumb" data-label-fil="Kinaroroonan">'
-            f'<ol><li><a href="index.html">{bi("Home", "Home")}</a></li>'
-            f'<li aria-current="page">{bi(en, fil)}</li></ol></nav>')
+            f'<ol><li><a href="index.html">{bi("Home", "Home")}</a></li>{mid}'
+            f'<li aria-current="page">{bi(en, fil)}</li></ol></nav>'
+            f'<span class="hero-badge tone-{tone}" aria-hidden="true">{ico}</span>')
 
 
 def render_footer(key):
     cols = []
-    for title_en, title_fil, aria, links in FOOTER_COLS:
+    for title_en, title_fil, aria, ico, links in FOOTER_COLS:
         lis = []
         for href, en, fil in links:
             ext = ' rel="noopener"' if href.startswith("http") else ""
@@ -225,7 +303,7 @@ def render_footer(key):
             lis.append(f'          <li><a href="{href}"{ext}>{text}</a></li>')
         cols.append(
             f'      <nav aria-label="{aria}">\n'
-            f'        <h2 class="footer-title">{bi(title_en, title_fil)}</h2>\n'
+            f'        <h2 class="footer-title"><span aria-hidden="true">{ico}</span>{bi(title_en, title_fil)}</h2>\n'
             f'        <ul>\n' + "\n".join(lis) + "\n        </ul>\n      </nav>")
     return f"""
 <footer class="site-footer">
@@ -234,7 +312,10 @@ def render_footer(key):
       <div class="footer-brand">
         <a class="brand" href="index.html"><img class="brand-logo" src="assets/logo.webp" width="40" height="40" alt=""><span>FlashLearn <b>PWD</b></span></a>
         <p>{bi("A free, bilingual flashcard app for learners with disabilities — a college thesis / capstone project (2023–2027), built with Filipino learners first.", "Libreng bilingual na flashcard app para sa mga mag-aaral na may kapansanan — isang college thesis / capstone project (2023–2027), ginawa para sa mga mag-aaral na Pilipino.")}</p>
-        <a class="btn btn-primary btn-sm" href="download.html">{bi("Download free", "I-download nang libre")}</a>
+        <div class="actions">
+          <a class="btn btn-primary btn-sm" href="download.html">{bi("Download free", "I-download nang libre")}</a>
+          <a class="btn btn-secondary btn-sm" href="try.html">{bi("Try it first", "Subukan muna")}</a>
+        </div>
       </div>
 {chr(10).join(cols)}
     </div>
@@ -258,6 +339,16 @@ REGIONS = {
 
 def fail(msg):
     sys.exit(f"site_chrome_build: {msg}")
+
+
+def check_reach():
+    """Every page is one navigation entry (Home, a group link or an action), once."""
+    keys = [HOME[0]] + [d[0] for g in GROUPS for d in g[5] if d[0] not in NOT_PAGES] + [a[0] for a in ACTIONS]
+    dupes = sorted({k for k in keys if keys.count(k) > 1})
+    missing = sorted(set(PAGES.values()) - set(keys))
+    extra = sorted(set(keys) - set(PAGES.values()))
+    if dupes or missing or extra:
+        fail(f"navigation out of date — twice: {dupes}, no entry: {missing}, no page: {extra}")
 
 
 def apply(text, key, path):
@@ -292,6 +383,7 @@ def apply_sw(text):
 
 def main():
     check = "--check" in sys.argv
+    check_reach()
     on_disk = sorted(f for f in os.listdir(SITE) if f.endswith(".html"))
     unknown = [f for f in on_disk if f not in PAGES]
     missing = [f for f in PAGES if f not in on_disk]

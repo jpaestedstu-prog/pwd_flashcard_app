@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow, noarchive">
 <meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#3B2380">
 <title>FlashLearn PWD Admin</title>
 <link rel="icon" href="icon-192.png">
 <link rel="stylesheet" href="admin.css">
@@ -18,15 +19,15 @@
   <!-- Sidebar: only once an administrator is signed in. On phones it becomes the top bar. -->
   <aside class="side" id="side" hidden>
     <div class="side-top">
-      <span class="brand"><img src="icon-192.png" alt="" width="36" height="36"><span class="brand-text"><span>FlashLearn <b>PWD</b></span><small>Website admin</small></span></span>
+      <span class="brand"><img src="icon-192.png" alt="" width="40" height="40"><span class="brand-text"><span>FlashLearn <b>PWD</b></span><small>Website admin</small></span></span>
       <span class="badge badge-emu" id="emuBadge" hidden>Emulator</span>
     </div>
     <nav class="side-nav" aria-label="Dashboard sections">
-      <a href="#overview" data-view="overview"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg><span>Overview</span></a>
-      <a href="#audience" data-view="audience"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8"/><path d="M18 14.3a6.5 6.5 0 0 1 3.5 5.7"/></svg><span>Audience</span></a>
-      <a href="#downloads" data-view="downloads"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3.5v11.5"/><path d="M7 10.5l5 5 5-5"/><path d="M4 20h16"/></svg><span>Downloads</span></a>
-      <a href="#feedback" data-view="feedback"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 4.5h16v11.5H9.5L4 20.5z"/><path d="M8 9h8M8 12.5h5"/></svg><span>Feedback</span><span class="count" id="navUnseen" hidden></span></a>
-      <a href="#tools" data-view="tools"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6.5h9M17 6.5h3M4 12h3M11 12h9M4 17.5h11M19 17.5h1"/><circle cx="15" cy="6.5" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="17.5" r="2"/></svg><span>Tools</span></a>
+      <a href="#overview" data-view="overview"><span class="nav-coin tone-purple" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg></span><span>Overview</span></a>
+      <a href="#audience" data-view="audience"><span class="nav-coin tone-teal" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8"/><path d="M18 14.3a6.5 6.5 0 0 1 3.5 5.7"/></svg></span><span>Audience</span></a>
+      <a href="#downloads" data-view="downloads"><span class="nav-coin tone-blue" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M12 3.5v11.5"/><path d="M7 10.5l5 5 5-5"/><path d="M4 20h16"/></svg></span><span>Downloads</span></a>
+      <a href="#feedback" data-view="feedback"><span class="nav-coin tone-pink" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 4.5h16v11.5H9.5L4 20.5z"/><path d="M8 9h8M8 12.5h5"/></svg></span><span>Feedback</span><span class="count" id="navUnseen" hidden></span></a>
+      <a href="#tools" data-view="tools"><span class="nav-coin tone-orange" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 6.5h9M17 6.5h3M4 12h3M11 12h9M4 17.5h11M19 17.5h1"/><circle cx="15" cy="6.5" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="17.5" r="2"/></svg></span><span>Tools</span></a>
     </nav>
     <div class="side-foot">
       <button type="button" class="side-btn" id="btnTheme" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg><span>Dark theme</span></button>
@@ -41,9 +42,23 @@
   <main id="main" tabindex="-1">
     <noscript><p class="card auth-card">This dashboard needs JavaScript.</p></noscript>
 
-    <!-- Signed out, or not yet checked -->
+    <!-- Signed out, or not yet checked: the brand on one side, the card on the other -->
+    <div class="auth-brand" id="authBrand">
+      <div class="auth-brand-inner">
+        <span class="auth-coin"><img src="icon-192.png" alt="" width="64" height="64"></span>
+        <p class="auth-kicker">FlashLearn PWD</p>
+        <p class="auth-title">Website admin</p>
+        <p class="auth-text">The private side of the companion website: who visits, what they read, what they download, and what they tell the team.</p>
+        <ul class="auth-points">
+          <li><span class="pt-coin tone-teal" aria-hidden="true">📈</span>Visits and downloads, updated live</li>
+          <li><span class="pt-coin tone-pink" aria-hidden="true">💬</span>Ratings and messages in one inbox</li>
+          <li><span class="pt-coin tone-gold" aria-hidden="true">🔒</span>Only the team’s administrators can read</li>
+        </ul>
+      </div>
+    </div>
+
     <section class="auth" id="viewLoading">
-      <div class="card auth-card"><p class="muted" id="loadingMsg" aria-live="polite">Loading…</p></div>
+      <div class="card auth-card"><p class="muted loading-line" id="loadingMsg" aria-live="polite">Loading…</p></div>
     </section>
 
     <section class="auth" id="viewSetup" hidden aria-labelledby="setupTitle">
@@ -73,7 +88,7 @@
             <label class="field">Password
               <input type="password" id="inPassword" autocomplete="current-password" required>
             </label>
-            <button type="submit" class="btn btn-secondary">Sign in</button>
+            <button type="submit" class="btn btn-primary">Sign in</button>
           </form>
         </details>
         <label class="check"><input type="checkbox" id="chkStay"> Stay signed in on this computer</label>
@@ -112,6 +127,7 @@
             <button type="button" role="radio" data-range="all">All time</button>
           </div>
           <button type="button" class="btn btn-secondary btn-sm" id="btnRefresh"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 11.5a8 8 0 1 0-2.4 5.7"/><path d="M20 4.5v7h-7"/></svg>Refresh</button>
+          <span class="live" id="liveStatus" data-state="connecting" role="status"><span class="live-dot" aria-hidden="true"></span><span class="live-text">Connecting…</span></span>
           <span class="updated" id="updatedAt" aria-live="polite"></span>
         </div>
       </header>
@@ -121,6 +137,24 @@
       <div class="dash" id="dash">
 
         <section class="view" id="overview" data-view="overview" aria-labelledby="pageTitle">
+          <section class="today" aria-labelledby="todayTitle">
+            <div class="today-main">
+              <div class="today-head">
+                <h2 id="todayTitle">Today</h2>
+                <span class="today-note" id="todayNote">Philippine time</span>
+              </div>
+              <ul class="today-figs" id="todayFigs" aria-live="off">
+                <li><span class="tf-val" id="tfVisitors">–</span><span class="tf-label">Visitors</span></li>
+                <li><span class="tf-val" id="tfViews">–</span><span class="tf-label">Page views</span></li>
+                <li><span class="tf-val" id="tfDownloads">–</span><span class="tf-label">Download presses</span></li>
+                <li><span class="tf-val" id="tfSigns">–</span><span class="tf-label">Sign videos played</span></li>
+              </ul>
+            </div>
+            <div class="today-feed">
+              <h3 class="feed-title">Live activity <span class="h-note">since this page opened</span></h3>
+              <ol class="activity" id="activity"><li class="activity-empty">Nothing yet. New visits, plays, downloads and messages appear here as they happen.</li></ol>
+            </div>
+          </section>
           <div class="kpis" id="kpis"></div>
           <figure class="card chart-card">
             <figcaption><span class="cap-title">Visitors and page views</span><span class="cap-note" id="visitsNote"></span></figcaption>
@@ -214,7 +248,8 @@
             </div>
           </div>
           <div class="card">
-            <div class="card-head"><h2>Messages <span class="h-note">all dates</span></h2></div>
+            <div class="card-head"><h2>Messages <span class="h-note">all dates</span></h2><a class="cap-link" href="#tools">Email notices →</a></div>
+            <p class="small mail-summary" id="mailSummary"></p>
             <div class="inbox-tools" role="group" aria-label="Show messages">
               <div class="seg" role="radiogroup" aria-label="Status">
                 <button type="button" role="radio" data-status="all">All</button>
@@ -231,13 +266,25 @@
                   <option value="rating">Ratings only</option>
                 </select>
               </label>
+              <label class="field field-inline">Order
+                <select id="selSort">
+                  <option value="new">Newest first</option>
+                  <option value="old">Oldest first</option>
+                  <option value="high">Highest rating first</option>
+                  <option value="low">Lowest rating first</option>
+                </select>
+              </label>
               <label class="check"><input type="checkbox" id="chkStarred"> Starred only</label>
               <label class="field field-inline grow">Search
                 <input type="search" id="inSearch" placeholder="Words in the message or device">
               </label>
             </div>
+            <div class="inbox-bar">
+              <p class="small muted" id="inboxCount" aria-live="polite"></p>
+              <button type="button" class="btn btn-secondary btn-sm" id="btnSeenAll" hidden>Mark the shown new ones as seen</button>
+            </div>
             <p class="small muted">Ratings and messages are deleted 12 months after they were sent (privacy page, section 8). <span id="expiredNote" aria-live="polite"></span></p>
-            <p class="small muted" id="inboxCount" aria-live="polite"></p>
+            <p class="inbox-new" id="inboxNewWrap" hidden><button type="button" class="btn btn-primary btn-sm" id="inboxNew"></button></p>
             <ul class="inbox" id="inbox"></ul>
             <p class="center"><button type="button" class="btn btn-secondary" id="btnMore" hidden>Show more</button></p>
           </div>
@@ -245,6 +292,19 @@
 
         <section class="view" id="tools" data-view="tools" aria-labelledby="pageTitle" hidden>
           <div class="grid2">
+            <div class="card mail-card" id="mailCard">
+              <div class="card-head"><h2>Email notices</h2><span class="tag" id="mailState">Not set up</span></div>
+              <p class="small">Each rating or message sent with <b>Send to the team</b> on the website is saved in this dashboard and also emailed to:</p>
+              <p class="mail-to"><span class="mail-ico" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M4 7.5l8 6 8-6"/></svg></span><b id="mailTo"></b></p>
+              <p class="small muted" id="mailHow"></p>
+              <div class="actions">
+                <button type="button" class="btn btn-secondary btn-sm" id="btnMailCheck">Check the connection</button>
+                <button type="button" class="btn btn-secondary btn-sm" id="btnMailTest">Send a test email</button>
+                <a class="btn btn-quiet btn-sm" id="lnkGmail" target="_blank" rel="noopener">Open the inbox in Gmail</a>
+              </div>
+              <p class="status-line" id="mailResult" role="status" hidden></p>
+              <p class="small muted">Messages sent with <b>Open in your email app</b> go straight to this address from the visitor’s own email, so they are only in that inbox, not listed here. Gmail lets a free account send 100 emails a day; the notifier sends at most 40.</p>
+            </div>
             <div class="card">
               <div class="card-head"><h2>Export for the study</h2></div>
               <p class="small muted">CSV files open in Excel or Google Sheets. Text that starts like a formula is kept as text.</p>
@@ -262,6 +322,11 @@
               </div>
             </div>
             <div class="card">
+              <div class="card-head"><h2>Live updates</h2></div>
+              <p class="small">Today’s counts, sign plays and the inbox update by themselves while this page is open: the database tells the page about each change. Each change it sends counts as one read of the free daily quota. After ten minutes in a hidden tab the page stops listening, and starts again when you come back.</p>
+              <p class="small muted" id="liveAbout"></p>
+            </div>
+            <div class="card">
               <div class="card-head"><h2>Links</h2></div>
               <ul class="links" id="links"></ul>
             </div>
@@ -274,6 +339,18 @@
         </section>
       </div>
     </div>
+    <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+    <dialog class="confirm" id="confirmDlg" aria-labelledby="confirmTitle" aria-describedby="confirmText">
+      <form method="dialog">
+        <span class="confirm-coin tone-red" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13"/><path d="M10 11v5M14 11v5"/></svg></span>
+        <h2 id="confirmTitle">Delete for good?</h2>
+        <p id="confirmText"></p>
+        <div class="actions">
+          <button type="submit" class="btn btn-secondary" value="cancel" id="confirmCancel">Keep it</button>
+          <button type="submit" class="btn btn-danger-solid" value="ok" id="confirmOk">Delete</button>
+        </div>
+      </form>
+    </dialog>
   </main>
 </div>
 <div class="tip" id="tip" hidden></div>
