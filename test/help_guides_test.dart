@@ -144,6 +144,44 @@ void main() {
     }
   });
 
+  // "Features in Action" (website/features.html, written by
+  // tools/features_page_build.py) quotes the guides for what each feature does, who it
+  // helps, what you need and the first steps. Each quote carries where it came from
+  // (data-guide-line="gaze.0.0" = guide, section, line; "voice.summary" = the summary),
+  // so a guide edited here without rebuilding the page fails.
+  test('Features in Action quotes the guides word for word', () {
+    final page = File('website/features.html').readAsStringSync();
+    String esc(String s) => s
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#x27;');
+    final quote = RegExp(
+      r'data-guide-line="([A-Za-z]+)\.(summary|\d+\.\d+)">'
+      r'<span class="en">(?:<strong>[^<]*</strong> )?([^<]*)</span>'
+      r'<span class="fil">(?:<strong>[^<]*</strong> )?([^<]*)</span>',
+    );
+    final found = quote.allMatches(page).toList();
+    expect(found.length, greaterThan(50), reason: 'the page quotes the guides');
+    for (final m in found) {
+      final g = guideById(m.group(1)!);
+      expect(g, isNotNull, reason: 'no guide ${m.group(1)}');
+      final GuideText text;
+      if (m.group(2) == 'summary') {
+        text = g!.summary;
+      } else {
+        final at = m.group(2)!.split('.').map(int.parse).toList();
+        expect(at[0], lessThan(g!.sections.length), reason: '${m.group(0)}');
+        final section = g.sections[at[0]];
+        expect(at[1], lessThan(section.lines.length), reason: '${m.group(0)}');
+        text = section.lines[at[1]].text;
+      }
+      expect(m.group(3), esc(text.en), reason: '${m.group(1)} ${m.group(2)} (English)');
+      expect(m.group(4), esc(text.fil), reason: '${m.group(1)} ${m.group(2)} (Filipino)');
+    }
+  });
+
   test('the voice guide lists the new app-wide commands in both languages', () {
     final en = guideById('voice')!.spokenText(filipino: false);
     final fil = guideById('voice')!.spokenText(filipino: true);

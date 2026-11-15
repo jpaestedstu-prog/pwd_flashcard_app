@@ -144,7 +144,7 @@ mode and replay them. They should still work (served from
 
 ## The website (`website/`)
 
-Thirteen static pages with no build server; these scripts keep them honest.
+Fourteen static pages with no build server; these scripts keep them honest.
 Each one has a `--check` (or is a pure regenerate) that fails on drift.
 
 | Script | Writes | Run it when |
@@ -152,7 +152,10 @@ Each one has a `--check` (or is a pure regenerate) that fails on drift.
 | `site_chrome_build.py` | the shared head, header, breadcrumb and footer of every page (between `<!--gen:site-…-->` markers), the `?v=` fingerprints on `site.css` / `site.js` / `try.js`, and the matching precache list in `sw.js` | you change the navigation, the footer, or any of those three files |
 | `games_page_build.py` | `games.html` from `games_page.template.html` + the app's game data | games change |
 | `fsl_dict_page_build.py` | `fsl-dictionary.html` from `fsl_dict_page.template.html` + `website/assets/fsl-dict.js` | signs change |
-| `guides_page_build.py` | `guides.html` (Help & Guides) from `guides_page.template.html` + the app's own guides (`lib/features/help/models/guides.dart`): the same 12 guides, words and "Read aloud" text as the app; `test/help_guides_test.dart` fails if the page falls behind | a guide changes in the app |
+| `guides_page_build.py` | `guides.html` (Help & Guides) from `guides_page.template.html` + the app's own guides (`lib/features/help/models/guides.dart`): the same 12 guides, words and "Read aloud" text as the app, in five groups, every guide and section with its own address (`#g-voice`, `#g-accessibility-hear-the-words`), a "Back to all guides" link, and the same "See it in action" as its card; `test/help_guides_test.dart` fails if the page falls behind | a guide changes in the app |
+| `features_page_build.py` | `features.html` (Features in Action, under Explore) from `features_page.template.html`: 20 feature cards in 5 groups, the "Who is it for?" filter, and each card's guide link. What a feature does, who it helps, what you need and its first steps are QUOTED from the app's guides (each quote is marked `data-guide-line`; `test/help_guides_test.dart` checks them); the few lines no guide covers come from the app's per-disability presentation code. Also fills `<!--gen:guide-steps gaze/turn-it-on-->` regions on other pages (the Gaze Control page's steps) | a card, a guide or a demo changes |
+| `site_media.py` | not run on its own: the one list of "See it in action" media (video parts as start/end inside the site's existing videos, app pictures with English and Filipino descriptions), used by both builders above. "What you see" under a video part is its own captions | a demo changes |
+| `site_pictures_build.py` | `website/assets/features/*.webp` from the PNGs `integration_test/site_pictures_test.dart` saves on an Android EMULATOR (sample profiles, `--dart-define=FLASHLEARN_OFFLINE=true`, never on a tablet with real profiles: `flutter drive` uninstalls the app), plus a poster frame for every video part | the app's screens change |
 | `release_page_build.py` | the download card on `download.html`, the app JSON-LD on `index.html`, `version.json` (the app's update check opens its `page`, now `download.html`) | every release |
 | `site_video_build.py` | the home page film (`film-{en,fil}.mp4` + `-tall` upright copies, two posters), the app preview in the hero's phone (`hero-loop.mp4`), and the film section of `index.html` (`<!--gen:site-film-->`: player, transcript, download links with real sizes, VideoObject JSON-LD) | the app's look, the stats band or the film's words (`COPY`) change |
 
@@ -174,7 +177,17 @@ The films are silent by design — every word is on screen — so nothing depend
 on hearing them.
 
 Order after editing a template: the page builder first, then
-`site_chrome_build.py`. Never hand-edit `games.html` or `fsl-dictionary.html`.
+`site_chrome_build.py`. Never hand-edit `games.html`, `fsl-dictionary.html`,
+`guides.html` or `features.html`.
+
+**Where things live (Explore shows, Help teaches).** Steps live only in the guides;
+a feature card, the Gaze Control page, the Teacher's Guide and the FAQ link to the
+guide (or a section of it) instead of repeating it. Videos and pictures live once in
+`site_media.py`. Checks, in headless Chrome: `tool/website_features_check.py` (the
+cards, the filter, the demos, no-JavaScript, Filipino, phones, the guides' groups and
+addresses, and that every link lands), `tool/website_nav_check.py` (menus: five
+links at most, no hover or timer), `tool/website_a11y_check.py` (axe, WCAG 2.2 AA)
+and `tool/website_responsive_check.py` (every page, phone to desktop, largest text).
 Styling lives in one file, `website/assets/site.css`; a page keeps only the
 rules that are truly its own. Old links into the former one-page site
 (`index.html#download`, `#try`, `#how`, `#faq`, `#feedback`, `#awareness`,

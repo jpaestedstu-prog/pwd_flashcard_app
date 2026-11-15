@@ -147,13 +147,15 @@
 
   // ---- The navigation groups (wide screens): a button opens a panel of links.
   // Click or Enter/Space opens it; Down/Up opens it at the first/last link and
-  // then moves between links; Escape closes it and returns to its button. With
-  // a mouse it also opens on hover (a short pause, so passing over does not).
+  // then moves between links; Escape closes it and returns to its button. It
+  // never opens or closes by itself: no hover, no timer. A head-pointer, eye-gaze
+  // or switch user moving slowly across the panel must not lose it on the way;
+  // it closes only when they choose a link, press Escape, open another group,
+  // click elsewhere, or move the keyboard focus out of it.
   function setGroup(g, open, focusBtn){
     var btn = g.querySelector('.nav-group-btn'), list = g.querySelector('.nav-panel');
     if (!btn || !list) return;
     if (open) groups.forEach(function(o){ if (o !== g) setGroup(o, false); });
-    if (open && !g.classList.contains('open')) g.openedAt = Date.now();
     g.classList.toggle('open', open);
     btn.setAttribute('aria-expanded', String(open));
     if (open) placeGroup(g, list);
@@ -175,13 +177,9 @@
     list.style.setProperty('--shift', Math.round(shift) + 'px');
   }
   groups.forEach(function(g){
-    var btn = g.querySelector('.nav-group-btn'), list = g.querySelector('.nav-panel'), timer = 0;
+    var btn = g.querySelector('.nav-group-btn'), list = g.querySelector('.nav-panel');
     if (!btn || !list) return;
-    btn.addEventListener('click', function(){
-      // A panel the mouse has just opened stays open when the same visit clicks.
-      if (g.classList.contains('open') && Date.now() - (g.openedAt || 0) < 450) return;
-      setGroup(g, !g.classList.contains('open'));
-    });
+    btn.addEventListener('click', function(){ setGroup(g, !g.classList.contains('open')); });
     btn.addEventListener('keydown', function(e){
       if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
       e.preventDefault();
@@ -199,17 +197,15 @@
     g.addEventListener('focusout', function(e){
       if (g.classList.contains('open') && (!e.relatedTarget || !g.contains(e.relatedTarget))) setGroup(g, false);
     });
-    g.addEventListener('pointerenter', function(e){
-      if (e.pointerType !== 'mouse' || compactNav()) return;
-      clearTimeout(timer);
-      timer = setTimeout(function(){ setGroup(g, true); }, 90);
-    });
-    g.addEventListener('pointerleave', function(e){
-      if (e.pointerType !== 'mouse' || compactNav()) return;
-      clearTimeout(timer);
-      // (Opened with a click or the keyboard, it stays until a click elsewhere.)
-      timer = setTimeout(function(){ if (!g.contains(document.activeElement)) setGroup(g, false); }, 280);
-    });
+  });
+
+  // Following a link from the menu closes it (a link to a part of this same page would
+  // otherwise leave the panel over what it opened).
+  if (nav) nav.addEventListener('click', function(e){
+    var a = e.target.closest && e.target.closest('a[href]');
+    if (!a) return;
+    closeGroups();
+    if (nav.classList.contains('open') && a.pathname === location.pathname) setMenu(false);
   });
 
   document.addEventListener('keydown', function(e){
@@ -334,7 +330,7 @@
       zoom.addEventListener('close', function(){ var i = zoom.querySelector('img'); i.removeAttribute('src'); i.alt = ''; });
     }
     var big = zoom.querySelector('img');
-    big.src = img.currentSrc || img.src; big.alt = img.alt;
+    big.src = img.currentSrc || img.src; big.alt = img.getAttribute('aria-label') || img.alt;
     zoom.querySelector('.close').setAttribute('aria-label', html.classList.contains('fil') ? 'Isara' : 'Close');
     zoom.showModal();
   }
@@ -360,6 +356,58 @@
         v.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       });
     }, list);
+  });
+
+  // ---- "See it in action": a part of one of the site's videos ----------------
+  // (tools/site_media.py). Nothing downloads until Play is pressed, it never plays
+  // by itself, it stops at the end of its part, and its captions follow the site
+  // language (applyLang). Closing the demo pauses it.
+  each('.demo-clip[data-src]', function(box){
+    var btn = box.querySelector('.demo-play');
+    if (!btn) return;
+    btn.addEventListener('click', function(){
+      var start = parseFloat(box.getAttribute('data-start')) || 0;
+      var end = parseFloat(box.getAttribute('data-end')) || 0;
+      var lang = html.classList.contains('fil') ? 'fil' : 'en';
+      var v = document.createElement('video');
+      v.controls = true; v.muted = true; v.defaultMuted = true; v.playsInline = true; v.preload = 'auto';
+      v.setAttribute('playsinline', ''); v.setAttribute('muted', '');
+      ['en', 'fil'].forEach(function(l){
+        var name = box.getAttribute('data-name-' + l);
+        if (name) v.setAttribute('data-label-' + l, name);
+      });
+      v.setAttribute('aria-label', box.getAttribute('data-name-' + lang) || '');
+      var img = btn.querySelector('img');
+      if (img) v.poster = img.currentSrc || img.src;
+      ['en', 'fil'].forEach(function(l){
+        var src = box.getAttribute('data-vtt-' + l);
+        if (!src) return;
+        var t = document.createElement('track');
+        t.kind = 'captions'; t.srclang = l; t.label = l === 'fil' ? 'Filipino' : 'English'; t.src = src;
+        if (l === lang) t.default = true;
+        v.appendChild(t);
+      });
+      v.addEventListener('loadedmetadata', function(){ try { if (v.currentTime < start - 0.2) v.currentTime = start; } catch(e){} });
+      v.addEventListener('timeupdate', function(){ if (end && v.currentTime >= end) v.pause(); });
+      // Play again after the end starts the part again, not the rest of the video.
+      v.addEventListener('play', function(){ if (end && v.currentTime >= end - 0.1) { try { v.currentTime = start; } catch(e){} } });
+      v.addEventListener('error', function(){
+        if (box.querySelector('.demo-note')) return;
+        var note = document.createElement('p');
+        note.className = 'demo-note';
+        note.setAttribute('role', 'status');
+        note.innerHTML = '<span class="en">This video could not load. It needs the internet; the pictures and words on this page work without it.</span>' +
+                         '<span class="fil">Hindi ma-load ang video na ito. Kailangan nito ng internet; gumagana kahit wala nito ang mga larawan at salita sa pahinang ito.</span>';
+        box.appendChild(note);
+      });
+      v.src = box.getAttribute('data-src') + '#t=' + start + (end ? ',' + end : '');
+      btn.parentNode.replaceChild(v, btn);
+      v.focus();
+      var p = v.play(); if (p && p.catch) p.catch(function(){});
+    });
+  });
+  each('details.demo', function(d){
+    d.addEventListener('toggle', function(){ if (!d.open) each('video', function(v){ v.pause(); }, d); });
   });
 
   // ---- "On this page": mark the section being read -------------------------

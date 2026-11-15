@@ -15,10 +15,14 @@ Now the shared parts live here and are written between markers:
 
 The navigation is grouped (2026-11 redesign): Home, three groups that open a
 panel (Explore, Teachers & Parents, Help) and two actions (Try It, Download).
-Every one of the twelve pages is reachable from the header on every page, and
-the footer repeats the same three groups.
+Every one of the fourteen pages is reachable from the header on every page, and
+the footer repeats the same three groups. Explore SHOWS what the app does (App Tour,
+Features in Action, Gaze Control, Games, the FSL Dictionary); Help TEACHES it (Help &
+Guides, where all the step-by-step guides live). Teachers & Parents links into the
+adults' part of Help & Guides rather than copying it. No group holds more than five
+links, and no link opens a second menu.
 
-The two generated pages are covered through their templates, so the next
+The generated pages are covered through their templates, so the next
 games/dictionary build reproduces exactly what this script wrote.
 Guards: every page must carry each marker exactly once (crumbs: none on Home),
 and every page must be reachable from the navigation exactly once.
@@ -51,11 +55,13 @@ PAGES = {
     "privacy.html": "privacy",
     "gaze-control.html": "gaze",
     "guides.html": "guides",
+    "features.html": "features",
 }
 TEMPLATES = {
     os.path.join("tools", "games_page.template.html"): "games",
     os.path.join("tools", "fsl_dict_page.template.html"): "dictionary",
     os.path.join("tools", "guides_page.template.html"): "guides",
+    os.path.join("tools", "features_page.template.html"): "features",
 }
 
 # One destination: key, href, EN, FIL, icon, hint EN, hint FIL, tone.
@@ -64,13 +70,15 @@ TEMPLATES = {
 HOME = ("home", "index.html", "Home", "Home", "🏠", "Start here", "Dito magsimula", "purple")
 GROUPS = [
     ("explore", "Explore", "Tuklasin", "The app, up close", "Ang app, malapitan", [
-        ("how", "how-to-use.html", "How to Use", "Paano Gamitin", "📖", "A short video and a picture tour", "Maikling video at tour na may larawan", "orange"),
+        ("how", "how-to-use.html", "App Tour", "Tour ng App", "📖", "An 81-second video and a picture tour", "81 segundong video at tour na may larawan", "orange"),
+        ("features", "features.html", "Features in Action", "Tingnan ang mga Feature", "✨", "See each feature work, and who it helps", "Tingnan ang bawat feature at kung sino ang natutulungan", "magenta"),
+        ("gaze", "gaze-control.html", "Gaze Control", "Gaze Control", "👁️", "Use the app hands-free", "Gamitin ang app nang walang kamay", "blue"),
         ("games", "games.html", "Games", "Mga Laro", "🎮", "Every learning game in the app", "Bawat larong pampagkatuto sa app", "pink"),
         ("dictionary", "fsl-dictionary.html", "FSL Dictionary", "Diksyunaryo ng FSL", "🤟", "Watch everyday words signed", "Panoorin ang senyas ng mga salita", "teal"),
-        ("gaze", "gaze-control.html", "Gaze Control", "Gaze Control", "👁️", "Use the app hands-free", "Gamitin ang app nang walang kamay", "blue"),
     ]),
     ("educators", "Teachers &amp; Parents", "Guro at Magulang", "For the adults beside a learner", "Para sa mga katuwang ng mag-aaral", [
         ("guide", "teachers-guide.html", "Teacher’s Guide", "Gabay ng Guro", "🧑‍🏫", "Set up a class, printable", "Pag-set up ng klase, napi-print", "indigo"),
+        ("guidesadults", "guides.html#gg-educators", "Guides for Parents &amp; Teachers", "Mga Gabay para sa Magulang at Guro", "📘", "Time limits, routines and TV Cast, step by step", "Oras, routine at TV Cast, hakbang-hakbang", "green"),
         ("awareness", "awareness.html", "PWD Awareness", "Kamalayang PWD", "💜", "Rights and everyday inclusion", "Mga karapatan at araw-araw na inklusyon", "green"),
         ("privacy", "privacy.html", "Privacy &amp; Data", "Privacy at Datos", "🔒", "What the app keeps, and who sees it", "Ano ang itinatago ng app, at sino ang nakakakita", "cyan"),
     ]),
@@ -88,18 +96,20 @@ ACTIONS = [
     ("download", "download.html", "Download", "I-download", "⬇️", "Free for Android 10 and newer", "Libre para sa Android 10 pataas", "purple", "nav-btn-dl"),
 ]
 # Links that are not pages of their own (never marked as the current page).
-NOT_PAGES = {"feedback", "future"}
+NOT_PAGES = {"feedback", "future", "guidesadults"}
 
 FOOTER_COLS = [
     ("Explore", "Tuklasin", "Explore the app", "🧭", [
-        ("how-to-use.html", "How to use the app", "Paano gamitin ang app"),
+        ("how-to-use.html", "App tour (video and pictures)", "Tour ng app (video at larawan)"),
+        ("features.html", "Features in action", "Tingnan ang mga feature"),
+        ("gaze-control.html", "Gaze Control (hands-free)", "Gaze Control (walang kamay)"),
         ("games.html", "Learning games", "Mga larong pampagkatuto"),
         ("fsl-dictionary.html", "FSL Sign Dictionary", "Diksyunaryo ng FSL"),
-        ("gaze-control.html", "Gaze Control (hands-free)", "Gaze Control (walang kamay)"),
         ("try.html", "Try it in your browser", "Subukan sa browser"),
     ]),
     ("Teachers &amp; Parents", "Guro at Magulang", "For teachers and parents", "🏫", [
         ("teachers-guide.html", "Teacher’s Guide", "Gabay ng Guro"),
+        ("guides.html#gg-educators", "Guides for parents &amp; teachers", "Mga gabay para sa magulang at guro"),
         ("awareness.html", "PWD Awareness", "Kamalayang PWD"),
         ("privacy.html", "Privacy &amp; data", "Privacy at datos"),
         ("download.html", "Download the app", "I-download ang app"),

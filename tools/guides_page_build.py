@@ -7,13 +7,22 @@ different things.
 
 Then run `python tools/site_chrome_build.py` (header, footer, fingerprints).
 
+The page lists the guides in five groups (who you are, then how you use the app). Every
+guide and every section of one has its own address (guides.html#g-voice,
+guides.html#g-accessibility-font-size-bigger-text): a link to a section opens its guide
+there. Guides with a demo show the same "See it in action" as their card on
+features.html (tools/site_media.py), and every guide ends with a "Back to all guides" link.
+
 The guides file is Dart constant data; this reads it with a small parser for the subset it
 uses (constructor calls, named arguments, lists, string literals, dotted names), then
 renders each guide in both languages, numbered where the app numbers it, with the same
 "Read aloud" text the app speaks (Guide.spokenText).
 """
-import html, json, re, sys
+import html, json, os, re, sys
 from pathlib import Path
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import site_media as sm   # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 GUIDES = ROOT / "lib" / "features" / "help" / "models" / "guides.dart"
@@ -29,7 +38,7 @@ LOOK = {
     "accessibility": ("♿", "pink"),
     "gaze": ("👁️", "blue"),
     "voice": ("🎙️", "magenta"),
-    "controller": ("🎮", "orange"),
+    "controller": ("🕹️", "orange"),
     "screenReader": ("🔊", "green"),
     "keyboard": ("⌨️", "indigo"),
     "timeBreaks": ("⏰", "gold"),
@@ -37,21 +46,41 @@ LOOK = {
     "feedback": ("⭐", "gold"),
 }
 # Who each guide is for, on the "Find your guide" panel.
+# The same group names as the cards on features.html, so a feature sits under the same
+# heading in both places.
 GROUPS = [
     ("learners", "🎒", ("For students", "Para sa mag-aaral"), ["students"]),
     ("educators", "🧑‍🏫", ("For teachers and parents", "Para sa guro at magulang"),
      ["teachers", "parents", "timeBreaks", "tvCast"]),
-    ("access", "♿", ("Accessibility: ways to use the app", "Accessibility: mga paraan ng paggamit ng app"),
-     ["accessibility", "gaze", "voice", "controller", "screenReader", "keyboard"]),
+    ("control", "🎛️", ("Control the app your way", "Kontrolin ang app sa paraan mo"),
+     ["gaze", "voice", "controller", "keyboard"]),
+    ("seehear", "👀", ("See, hear and read your way", "Makita, marinig at mabasa sa paraan mo"),
+     ["accessibility", "screenReader"]),
     ("feedback", "💬", ("Questions and feedback", "Mga tanong at feedback"), ["feedback"]),
 ]
+# "See it in action" inside a guide: the same demo as its card (tools/site_media.py).
+DEMO = {
+    "students": "tour", "teachers": "tour", "parents": "tour",
+    "gaze": "gaze", "voice": "voice", "controller": "controller", "keyboard": "switch",
+    "accessibility": "looks", "timeBreaks": "breaks", "tvCast": "tv-cast",
+}
 # More on this website, after a guide.
+FIA = ("What it is and who it helps: Features in Action", "Kung ano ito at sino ang natutulungan: Tingnan ang mga Feature")
 MORE = {
-    "students": ("how-to-use.html", ("How to Use, with pictures and a short video", "Paano Gamitin, may larawan at maikling video")),
-    "teachers": ("teachers-guide.html", ("The printable Teacher’s Guide", "Ang napi-print na Gabay ng Guro")),
-    "parents": ("teachers-guide.html", ("The printable Teacher’s Guide (for parents too)", "Ang napi-print na Gabay ng Guro (para rin sa magulang)")),
-    "gaze": ("gaze-control.html", ("Gaze Control, with a video", "Gaze Control, may video")),
-    "accessibility": ("awareness.html", ("PWD Awareness", "Kamalayang PWD")),
+    "students": [("features.html#grp-learn", FIA),
+                 ("how-to-use.html", ("The App Tour, with pictures and a short video", "Ang Tour ng App, may larawan at maikling video"))],
+    "teachers": [("features.html#grp-adults", FIA),
+                 ("teachers-guide.html", ("The printable Teacher’s Guide", "Ang napi-print na Gabay ng Guro"))],
+    "parents": [("features.html#grp-adults", FIA),
+                ("teachers-guide.html", ("The printable Teacher’s Guide (for parents too)", "Ang napi-print na Gabay ng Guro (para rin sa magulang)"))],
+    "accessibility": [("features.html#grp-seehear", FIA), ("awareness.html", ("PWD Awareness", "Kamalayang PWD"))],
+    "gaze": [("features.html#f-gaze", FIA), ("gaze-control.html", ("The Gaze Control page, with the whole video", "Ang pahina ng Gaze Control, kasama ang buong video"))],
+    "voice": [("features.html#f-voice", FIA)],
+    "controller": [("features.html#f-controller", FIA)],
+    "keyboard": [("features.html#f-keyboard", FIA)],
+    "screenReader": [("features.html#f-screenreader", FIA)],
+    "timeBreaks": [("features.html#f-timelimits", FIA)],
+    "tvCast": [("features.html#f-tvcast", FIA)],
 }
 
 
@@ -261,6 +290,10 @@ def render_index(guides):
     return "\n".join(out)
 
 
+def slug(text):
+    return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+
+
 def render_guide(g):
     gid = g["id"]
     emoji, tone = LOOK[gid]
@@ -278,10 +311,13 @@ def render_guide(g):
            + bi2("This device has no Filipino voice, so another voice reads the Filipino words.",
                  "Walang boses na Filipino sa device na ito, kaya ibang boses ang babasa sa mga salitang Filipino.")
            + '</p>']
+    if gid in DEMO:
+        out.append(sm.render_demo(DEMO[gid], g["title"]["en"], g["title"]["fil"], f"g-{gid}"))
     for s in g["sections"]:
         tag = "ol" if s["numbered"] else "ul"
-        out.append('        <section class="guide-sec">')
-        out.append(f'          <h3>{bi(s["heading"])}</h3>')
+        sid = f'g-{gid}-{slug(s["heading"]["en"])}'
+        out.append(f'        <section class="guide-sec" id="{sid}" aria-labelledby="{sid}-h">')
+        out.append(f'          <h4 id="{sid}-h" tabindex="-1">{bi(s["heading"])}</h4>')
         out.append(f'          <{tag} class="guide-{"steps" if s["numbered"] else "list"}">')
         for line in s["lines"]:
             if line["label"]:
@@ -296,12 +332,23 @@ def render_guide(g):
     if gid == "feedback":
         out.append('        <p><a class="btn btn-primary" href="faq.html#feedback"><span aria-hidden="true">💌</span> '
                    + bi2("Open the feedback form", "Buksan ang feedback form") + '</a></p>')
-    if gid in MORE:
-        href, (en, fil) = MORE[gid]
+    for href, (en, fil) in MORE.get(gid, []):
         out.append(f'        <p class="guide-more"><span class="en">More on this website:</span>'
                    f'<span class="fil">Higit pa sa website na ito:</span> <a href="{href}">{bi2(en, fil)}</a></p>')
+    out.append(f'        <p class="guide-back"><a href="#find"><span aria-hidden="true">↑</span> {bi2("Back to all guides", "Bumalik sa lahat ng gabay")}'
+               f'<span class="sr-only"> ({bi(g["title"])})</span></a></p>')
     out.append('      </div>')
     out.append('    </details>')
+    return "\n".join(out)
+
+
+def render_all(guides):
+    """The full list, grouped under the same names as the index."""
+    by_id = {g["id"]: g for g in guides}
+    out = []
+    for key, ico, (en, fil), ids in GROUPS:
+        out.append(f'    <h3 class="guide-list-title" id="gl-{key}"><span aria-hidden="true">{ico}</span> {bi2(en, fil)}</h3>')
+        out += [render_guide(by_id[i]) for i in ids]
     return "\n".join(out)
 
 
@@ -310,13 +357,22 @@ PAGE_JS = r"""(function(){
   // shows every guide; and "Read aloud" with the browser's own voices (the app reads the
   // same words with its own voice).
   var guides = [].slice.call(document.querySelectorAll('details.guide'));
+  // #g-voice opens that guide; #g-accessibility-hear-the-words opens the guide that holds
+  // that section and goes to it.
   function openFromHash(){
     var id = decodeURIComponent((location.hash || '').slice(1));
     var el = id && document.getElementById(id);
-    if (el && el.tagName === 'DETAILS') {
-      el.open = true;
-      requestAnimationFrame(function(){ el.scrollIntoView({ block: 'start' }); el.querySelector('summary').focus({ preventScroll: true }); });
-    }
+    if (!el) return;
+    var guide = el.tagName === 'DETAILS' && el.classList.contains('guide') ? el : el.closest('details.guide');
+    if (!guide) return;
+    var focus = el === guide ? guide.querySelector('summary') : (el.querySelector('h4') || el);
+    guide.classList.add('at-once');   // no opening animation: the section is there to go to
+    guide.open = true;
+    requestAnimationFrame(function(){
+      el.scrollIntoView({ block: 'start' });
+      focus.focus({ preventScroll: true });
+      setTimeout(function(){ guide.classList.remove('at-once'); }, 400);
+    });
   }
   addEventListener('hashchange', openFromHash);
   openFromHash();
@@ -403,7 +459,7 @@ def main():
     page = TEMPLATE.read_text(encoding="utf-8")
     repl = {
         "<!--INDEX-->": render_index(guides),
-        "<!--GUIDES-->": "\n".join(render_guide(g) for g in guides),
+        "<!--GUIDES-->": render_all(guides),
         "<!--PAGEJS-->": PAGE_JS,
         "__COUNT__": str(len(guides)),
     }

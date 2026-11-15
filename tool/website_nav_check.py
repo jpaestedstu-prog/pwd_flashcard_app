@@ -8,7 +8,10 @@ Checks, on the real pages (website/ served locally; nothing is counted):
     aria-current="true"), with Home > Group > Page breadcrumbs;
   * a group opens with a click, with Down (first link) and Up (last link), moves
     with the arrow keys, closes with Escape (focus back on its button), a click
-    outside, or by opening another; a mouse hover opens it, leaving closes it;
+    outside, or by opening another; it never opens or closes by itself (no hover,
+    no timer), so a slow pointer (head-pointer, eye-gaze, switch) never loses it;
+  * every group holds at most five links, in the agreed order (Explore shows the app,
+    Help teaches it, Teachers & Parents links into the adults' guides);
   * an open panel stays inside the window at 1024, 1280 and 1440 px;
   * on a phone the Menu sheet lists every page and closes with Escape;
   * the theme choice (Auto / Light / Dark) applies, follows to the next page,
@@ -95,9 +98,10 @@ def run(p, pages):
           return {hrefs: hrefs, cur: cur, grp: grp, inGroup: inGroup, crumbs: crumbs};
         })()""")
         counts = {f: r["hrefs"].count(f) for f in pages}
-        # Linked twice: faq.html (the FAQ and its feedback form, #feedback) and about.html
-        # (the team and its Future Recommendations, #future).
-        wrong = {f: n for f, n in counts.items() if n != (2 if f in ("faq.html", "about.html") else 1)}
+        # Linked twice: faq.html (the FAQ and its feedback form, #feedback), about.html
+        # (the team and its Future Recommendations, #future) and guides.html (Help & Guides,
+        # and its adults' part, #gg-educators, under Teachers & Parents).
+        wrong = {f: n for f, n in counts.items() if n != (2 if f in ("faq.html", "about.html", "guides.html") else 1)}
         if wrong:
             bad_reach.append(f"{page}: {wrong}")
         if r["cur"] != [page]:
@@ -110,8 +114,22 @@ def run(p, pages):
     check("each page marks itself (link) and its group (button), and only those", not bad_current, bad_current[:3])
     check("breadcrumbs read Home > (group) > page", not bad_crumbs, bad_crumbs[:3])
 
-    # ---- A group, with the mouse and the keyboard (wide screen) ----
+    # ---- What each group holds ----
     goto(p, "games.html")
+    groups = p.js("""(function(){var o={};document.querySelectorAll('.nav-group').forEach(function(g){
+      o[g.dataset.group]=[...g.querySelectorAll('.nav-panel a')].map(a=>a.getAttribute('href'));});return o;})()""")
+    check("Explore: App Tour, Features in Action, Gaze Control, Games, FSL Dictionary",
+          groups.get("explore") == ["how-to-use.html", "features.html", "gaze-control.html", "games.html", "fsl-dictionary.html"], groups.get("explore"))
+    check("Teachers & Parents: Teacher's Guide, Guides for Parents & Teachers, PWD Awareness, Privacy & Data",
+          groups.get("educators") == ["teachers-guide.html", "guides.html#gg-educators", "awareness.html", "privacy.html"], groups.get("educators"))
+    check("Help: Help & Guides, FAQ, Rate & Feedback, About the Team, Future Recommendations",
+          groups.get("help") == ["guides.html", "faq.html", "faq.html#feedback", "about.html", "about.html#future"], groups.get("help"))
+    check("no group holds more than five links, and none opens another menu",
+          all(len(v) <= 5 for v in groups.values()) and not p.js("!!document.querySelector('.nav-panel .nav-panel, .nav-panel .nav-group-btn')"), groups)
+    check("the menu labels: App Tour (the old How to Use) and Features in Action",
+          p.js("[...document.querySelectorAll('#nav-explore .nav-main .en')].map(e=>e.textContent).slice(0,2).join('|')") == "App Tour|Features in Action")
+
+    # ---- A group, with the mouse and the keyboard (wide screen) ----
     state = "(function(g){var e=document.querySelector('.nav-group[data-group='+g+']');return {open:e.classList.contains('open'),exp:e.querySelector('.nav-group-btn').getAttribute('aria-expanded'),shown:getComputedStyle(e.querySelector('.nav-panel')).display!=='none',focus:document.activeElement.textContent.trim().slice(0,30)};})"
     p.js("document.querySelector('.nav-group[data-group=help] .nav-group-btn').click()")
     s = p.js(state + "('help')")
@@ -127,7 +145,7 @@ def run(p, pages):
     s = p.js(state + "('educators')")
     check("Down on a group's button opens it at its first link", s["open"] and s["focus"].startswith("🧑‍🏫Teacher’s Guide"), s)
     press(p, DOWN)
-    check("Down moves to the next link", p.js("document.activeElement.getAttribute('href')") == "awareness.html")
+    check("Down moves to the next link", p.js("document.activeElement.getAttribute('href')") == "guides.html#gg-educators")
     press(p, END)
     check("End moves to the last link", p.js("document.activeElement.getAttribute('href')") == "privacy.html")
     press(p, DOWN)
@@ -141,11 +159,14 @@ def run(p, pages):
     # Mouse
     box = p.js("(function(){var r=document.querySelector('.nav-group[data-group=help] .nav-group-btn').getBoundingClientRect();return [r.left+r.width/2,r.top+r.height/2];})()")
     p.call("Input.dispatchMouseEvent", type="mouseMoved", x=box[0], y=box[1])
-    time.sleep(0.35)
-    check("hovering a group with the mouse opens it", p.js(state + "('help')")["open"])
-    p.call("Input.dispatchMouseEvent", type="mouseMoved", x=box[0], y=600)
     time.sleep(0.6)
-    check("leaving it closes it again", not p.js(state + "('help')")["open"])
+    check("hovering a group does not open it (it opens only when chosen)", not p.js(state + "('help')")["open"])
+    p.js("document.querySelector('.nav-group[data-group=help] .nav-group-btn').click()")
+    p.call("Input.dispatchMouseEvent", type="mouseMoved", x=box[0], y=600)
+    time.sleep(1.2)
+    check("an open group stays open when the pointer wanders off (no timer closes it)", p.js(state + "('help')")["open"])
+    press(p, ESC)
+    check("…and Escape closes it", not p.js(state + "('help')")["open"])
     # On screen at several widths
     off = []
     for w in (1024, 1280, 1440):
