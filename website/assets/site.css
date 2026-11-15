@@ -1239,21 +1239,26 @@ html.hc .law::before{ width:8px; background:#000; }
 .checklist li::before{ position:absolute; left:0; top:0; }
 .checklist.do li::before{ content:"✅"; }
 .checklist.dont li::before{ content:"🚫"; }
-.team{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1.25rem; }
+/* Meet the team: one card per member: photo (4:5, the same head-and-shoulders frame for
+   everyone, tools/team_photos_build.py), name, role, and a Facebook button. Rows stay even:
+   the button sits at the foot of every card. */
+.team{ list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1.25rem; align-items:stretch; }
 @media (max-width:900px){ .team{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
-@media (max-width:420px){ .team{ grid-template-columns:minmax(0,1fr); } }
-.member{ text-align:center; position:relative; overflow:hidden; padding-top:2rem; }
-.member::before{ content:""; position:absolute; left:0; right:0; top:0; height:4.4rem; background:linear-gradient(150deg, var(--t1,#794DC8), var(--t3,#552F99)); opacity:.14; }
-.member:nth-child(4n+2){ --t1:#D31A5E; --t3:#8F1240; } .member:nth-child(4n+3){ --t1:#007569; --t3:#004D44; } .member:nth-child(4n+4){ --t1:#B34619; --t3:#702C10; }
-.member .ava{
-  position:relative; width:5.25rem; height:5.25rem; margin:0 auto .95rem; border-radius:50%; display:grid; place-items:center; font-size:2.2rem;
-  background:radial-gradient(circle at 32% 26%, rgba(255,255,255,.45), rgba(255,255,255,0) 60%), linear-gradient(150deg, var(--t1,#794DC8), var(--t3,#552F99));
-  box-shadow:inset 0 0 0 2px rgba(255,255,255,.35), inset 0 -5px 8px rgba(0,0,0,.18), 0 12px 22px -8px color-mix(in srgb, var(--t1,#794DC8) 70%, transparent);
-}
-html.hc .member::before{ display:none; }
-html.hc .member .ava{ background:#fff; border:2px solid #000; box-shadow:none; }
-.member h3{ font-size:1.08rem; }
-.member p{ font-weight:700; font-size:.93rem; margin:.2rem auto 0; }
+@media (max-width:480px){ .team{ grid-template-columns:minmax(0,1fr); max-width:21rem; margin-inline:auto; } }
+.team > li{ max-width:none; }
+.member{ display:flex; flex-direction:column; padding:0; overflow:hidden; text-align:center; }
+.member:nth-child(4n+1){ --t1:#794DC8; } .member:nth-child(4n+2){ --t1:#D31A5E; } .member:nth-child(4n+3){ --t1:#007569; } .member:nth-child(4n+4){ --t1:#B34619; }
+.member-photo{ display:block; width:100%; height:auto; aspect-ratio:4/5; object-fit:cover; background:var(--surface-2); border-bottom:4px solid var(--t1,#794DC8); }
+.member-body{ flex:1; display:flex; flex-direction:column; align-items:center; gap:.35rem; padding:1rem 1rem 1.2rem; }
+.member h3{ font-size:1.08rem; margin:0; overflow-wrap:anywhere; }
+.member-role{ font-weight:700; font-size:.93rem; margin:0 auto .5rem; color:var(--ink-2); }
+.member-fb{ margin-top:auto; gap:.5rem; }
+.member-fb .fb-ico{ width:1.35rem; height:1.35rem; color:#0866FF; }
+html.theme-dark:not(.hc):not(.dys) .member-fb .fb-ico{ color:#5AA0FF; }
+@media (prefers-color-scheme:dark){ html:not(.hc):not(.dys):not(.theme-light) .member-fb .fb-ico{ color:#5AA0FF; } }
+html.hc .member-photo{ border-bottom:2px solid #000; }
+html.hc .member-fb .fb-ico{ color:#000; }
+@media (max-width:480px){ .member-photo{ aspect-ratio:1/1; object-position:50% 22%; } }   /* shorter cards on phones; every face sits in the top part */
 
 /* ============ About: Future Recommendations ============ */
 /* A note in the developer's words beside the project it is about. Information only. */
@@ -1338,6 +1343,16 @@ details.guide + .guide-list-title{ margin-top:2.25rem; }
 .guide-list li{ max-width:none; }
 .guide-list li::marker{ color:var(--brand); }
 .guide-more{ font-size:.95rem; }
+/* For children: a line for the grown-up under the group heading, and pictures of the app's
+   own Child screens inside a guide (two side by side; one alone stays card-sized). */
+.guide-group-note{ font-size:.95rem; color:var(--ink-2); margin:-.35rem 0 .85rem; max-width:none; }
+.guide-pics{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; margin:1rem 0 .25rem; max-width:30rem; }
+.guide-pics-1{ grid-template-columns:minmax(0,1fr); max-width:15rem; }
+.guide-pic{ margin:0; display:grid; gap:.45rem; align-content:start; }
+.guide-pic img{ display:block; width:100%; height:auto; border-radius:var(--radius-sm); border:1px solid var(--border); box-shadow:var(--raise-1); background:var(--surface-2); cursor:zoom-in; }
+.guide-pic figcaption{ font-size:.9rem; font-weight:700; color:var(--ink-2); text-align:center; }
+html.hc .guide-pic img{ border:2px solid #000; box-shadow:none; }
+@media (max-width:420px){ .guide-pics{ gap:.6rem; } .guide-pic figcaption{ font-size:.85rem; } }
 html.hc .guide-group,html.hc .guide-card{ border:2px solid #000; box-shadow:none; }
 html.hc .guide-ico{ background:#fff; box-shadow:inset 0 0 0 2px #000; }
 html.hc .guide-steps li::before{ background:#000; }

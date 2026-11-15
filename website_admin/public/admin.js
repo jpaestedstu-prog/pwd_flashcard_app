@@ -50,7 +50,7 @@ const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
 
 // ---- Names for the tallies (website/assets/site.js, firestore.rules) ----------
 const PAGES = {
-  index: 'Home', try: 'Try It', download: 'Download', how_to_use: 'How to Use', games: 'Learning Games',
+  index: 'Home', try: 'Try It', download: 'Download', how_to_use: 'App Tour', games: 'Learning Games',
   fsl_dictionary: 'FSL Dictionary', teachers_guide: 'Teacher’s Guide', faq: 'FAQ and feedback',
   awareness: 'PWD Awareness', about: 'About', privacy: 'Privacy', gaze_control: 'Gaze Control', other: 'Other pages',
 };

@@ -84,10 +84,10 @@ GROUPS = [
     ]),
     ("help", "Help", "Tulong", "Guides, questions, feedback and the team", "Mga gabay, tanong, feedback at ang pangkat", [
         ("guides", "guides.html", "Help &amp; Guides", "Tulong at mga Gabay", "📘", "Step-by-step guides for the app", "Mga gabay sa app, hakbang-hakbang", "green"),
+        ("children", "guides.html#gg-children", "For Children", "Para sa mga Bata", "🧒", "Simple guides for young learners", "Simpleng gabay para sa mga bata", "orange"),
         ("faq", "faq.html", "FAQ", "Mga Tanong", "❓", "Answers to common questions", "Mga sagot sa karaniwang tanong", "magenta"),
         ("feedback", "faq.html#feedback", "Rate &amp; Feedback", "Rating at Feedback", "⭐", "Tell the team what you think", "Sabihin sa pangkat ang iyong opinyon", "gold"),
-        ("about", "about.html", "About the Team", "Tungkol sa Pangkat", "🎓", "The students behind the app", "Ang mga mag-aaral sa likod ng app", "red"),
-        ("future", "about.html#future", "Future Recommendations", "Mga Rekomendasyon", "🔭", "Plans for later, like 3D signs", "Mga plano, gaya ng 3D na senyas", "teal"),
+        ("about", "about.html", "About the Team", "Tungkol sa Pangkat", "🎓", "The students behind the app, and future plans", "Ang mga mag-aaral sa likod ng app, at mga plano", "red"),
     ]),
 ]
 # The two actions at the end of the bar (the class picks their look).
@@ -96,7 +96,7 @@ ACTIONS = [
     ("download", "download.html", "Download", "I-download", "⬇️", "Free for Android 10 and newer", "Libre para sa Android 10 pataas", "purple", "nav-btn-dl"),
 ]
 # Links that are not pages of their own (never marked as the current page).
-NOT_PAGES = {"feedback", "future", "guidesadults"}
+NOT_PAGES = {"feedback", "children", "guidesadults"}
 
 FOOTER_COLS = [
     ("Explore", "Tuklasin", "Explore the app", "🧭", [
@@ -116,11 +116,11 @@ FOOTER_COLS = [
     ]),
     ("Help", "Tulong", "Help and the project", "💬", [
         ("guides.html", "Help &amp; Guides (step by step)", "Tulong at mga Gabay (hakbang-hakbang)"),
+        ("guides.html#gg-children", "For children", "Para sa mga bata"),
         ("faq.html", "Questions (FAQ)", "Mga Tanong (FAQ)"),
         ("faq.html#feedback", "Rate the app or send feedback", "I-rate ang app o magpadala ng feedback"),
         ("about.html", "About the team", "Tungkol sa pangkat"),
         ("about.html#future", "Future recommendations", "Mga rekomendasyon sa hinaharap"),
-        ("https://github.com/jpaestedstu-prog/pwd_flashcard_app", "GitHub", "GitHub"),
     ]),
 ]
 

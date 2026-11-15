@@ -11,10 +11,18 @@
 //
 // It makes two sample profiles on the emulator — a learner, "Ana" (Player
 // with Progress), and a teacher, "Ms. Cruz" — and photographs the screens the
-// website shows: the flashcard with its speaker and FSL buttons, Gaze Control
-// and its voice and switch settings, the game controller settings, the Talk
-// Board, My Day, the break reminder, Settings at normal and at the larger,
-// high-contrast and dyslexia-friendly looks, and the teacher's tools.
+// website shows: the profile choice, the flashcard with its speaker and FSL
+// buttons, Gaze Control and its voice and switch settings, the game controller
+// settings, the Talk Board, My Day and its ready-made plans, the break
+// reminder, Settings at normal and at the larger, high-contrast and
+// dyslexia-friendly looks, and the teacher's tools.
+//
+// For the website's "For Children" guides it also walks a Child profile,
+// "Mia": the join screen, the Child home and its sections, and the screens
+// its tiles open. A real Child joins their parent's family group with a code,
+// which needs the online service, and this walk stays offline — so Mia is
+// added as a Child profile directly (a sample family-group id), at the end of
+// the walk. Everything photographed is the app's own Child screens.
 // FLASHLEARN_OFFLINE keeps the app off Firebase, so nothing is created online.
 //
 // NEVER point it at a tablet with real profiles: when `flutter drive`
@@ -31,6 +39,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:pwdpwdpwd/data/models/enums.dart' show UserRole;
+import 'package:pwdpwdpwd/data/models/models.dart' show UserProfile;
 import 'package:pwdpwdpwd/features/break_time/widgets/break_reminder_gate.dart'
     show BreakReminderDialog;
 import 'package:pwdpwdpwd/l10n/app_localizations.dart';
@@ -40,6 +50,7 @@ import 'package:pwdpwdpwd/providers/app_providers.dart'
     show profileProvider, settingsProvider;
 
 const _learner = 'Ana';
+const _child = 'Mia';
 const _teacher = 'Ms. Cruz';
 const _maxShotSide = 1280;
 
@@ -93,12 +104,92 @@ class _Pictures {
     }, const Duration(seconds: 120));
     if (first == 'welcome') await _tap(find.text('Skip'));
     if (first == 'switcher') await _tap(find.text('Add New Profile'));
+    // The six kinds of profile, as a new user meets them.
+    if (await _waitFor(find.text('Child Profile (PWD)'), const Duration(seconds: 30))) {
+      await _settle(const Duration(seconds: 2));
+      await _shot('choose_profile');
+    }
     await _createLearner();
     await _intoHome(learner: true);
+    _ana = _container.read(profileProvider);
 
     await _learnerPictures();
     await _looks();
     await _teacherPictures();
+    // Last: after a switch of profile, a screenshot of a screen the earlier
+    // profile also visited could still show that profile's last frame (seen
+    // 16 Nov; the app itself had switched — a probe read the right name on
+    // screen). With the Child walk at the end, no other picture follows a
+    // switch.
+    await _childPictures();
+  }
+
+  /// The learner, Ana, as created; Mia (the Child) is made from her.
+  UserProfile? _ana;
+
+  // ── The child ───────────────────────────────────────────────────────────
+
+  Future<void> _childPictures() async {
+    final notifier = _container.read(profileProvider.notifier);
+    final ana = _ana;
+    if (ana == null) {
+      notes.add('no learner to walk as a child');
+      return;
+    }
+    Future<void> become(UserProfile p) async {
+      await notifier.setProfile(p);
+      await _settle(const Duration(seconds: 3));
+    }
+
+    // Mia is a profile of her own on this tablet (her own id, no username):
+    // nothing of Ana's — her My Day plan included — goes with her.
+    final mia = ana.copyWith(
+      id: 'sample-child-mia',
+      role: UserRole.child,
+      name: _child,
+      username: () => null,
+    );
+
+    // A new Child has no family yet: the app asks for the parent's code.
+    await become(mia.copyWith(homeGroupId: () => null));
+    _router.go('/join-home-group');
+    await _settle(const Duration(seconds: 3));
+    await _shot('kids_join');
+
+    // In the family: the Child home and what its tiles open.
+    await become(mia.copyWith(homeGroupId: () => 'sample-family'));
+    await _visit('/home', name: 'kids_home', push: false);
+    for (final (heading, name) in const [
+      ('Play & Learn', 'kids_play'),
+      ('Explore & Create', 'kids_explore'),
+      ('Friends', 'kids_friends'),
+      ('Rewards & Feelings', 'kids_rewards'),
+    ]) {
+      await _visit('/home', name: '${name}_again', push: false, shoot: false);
+      if (await _scrollToTop(find.text(heading))) await _shot(name);
+    }
+    await _visit('/flashcards', name: 'kids_decks', push: false);
+    await _visit('/flashcards/viewer/0', name: 'kids_card');
+    await _visit('/games', name: 'kids_games', push: false);
+    await _visit('/stories', name: 'kids_stories', push: false);
+    await _visit('/progress', name: 'kids_progress', push: false);
+    await _visit('/communication-board', name: 'kids_talk_empty', shoot: false);
+    for (final word in const ['Hello', 'Good morning']) {
+      final tile = find.text(word);
+      if (await _has(tile)) {
+        await _tap(tile.first);
+        await _settle(const Duration(seconds: 2));
+      }
+    }
+    await _shot('kids_talk');
+    await _visit('/routine', name: 'kids_my_day');
+    await _visit('/mood-check-in', name: 'kids_feelings');
+    await _visit('/ai-tutor', name: 'kids_buddy');
+    await _visit('/sticker-album', name: 'kids_stickers');
+    await _visit('/gamification-dashboard', name: 'kids_player_card');
+    await _visit('/smileyometer', name: 'kids_how_was_it');
+    await _visit('/messages', name: 'kids_messages');
+    await _visit('/word-hunt-collection', name: 'kids_word_hunt');
   }
 
   // ── The learner ─────────────────────────────────────────────────────────
@@ -203,6 +294,24 @@ class _Pictures {
 
     // My Day: the plans to start from, then one of them.
     await _visit('/routine', name: 'my_day_start');
+    // "Build my routine" opens the routine page; its "Create a routine" opens
+    // the "Start from…" sheet of ready-made plans.
+    final build = find.text('Build my routine');
+    if (await _has(build)) {
+      await _tap(build.first);
+      await _settle(const Duration(seconds: 3));
+      final create = find.text('Create a routine');
+      if (await _has(create)) {
+        await _tap(create.first);
+        await _settle(const Duration(seconds: 3));
+      }
+      if (await _waitFor(find.text('Start from…'), const Duration(seconds: 8))) {
+        await _settle(const Duration(seconds: 1));
+        await _shot('my_day_plans');
+      } else {
+        notes.add('no Start from… sheet');
+      }
+    }
     final plan = find.textContaining('Morning Routine');
     if (await _has(plan)) {
       await _tap(plan.first);

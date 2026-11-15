@@ -149,6 +149,24 @@ def static_links():
     bad = {page: dead_links(page) for page in pages}
     bad = {k: v[:4] for k, v in bad.items() if v}
     check(f"all {len(pages)} pages: every link to a page, or to a part of one, lands somewhere real", not bad, bad)
+    # The project's code stays private: no page links to its GitHub repository or issues.
+    # The only GitHub addresses left are the app files themselves (releases/download/...).
+    repo = re.compile(r"https?://github\.com/[^\"'\s]+", re.I)
+    found = {}
+    for page in pages:
+        text = open(os.path.join(WEB, page), encoding="utf-8").read()
+        hits = [u for u in repo.findall(text) if "/releases/download/" not in u]
+        if hits:
+            found[page] = hits[:3]
+    check("no page links to the project's GitHub repository or issues page (only the app downloads)", not found, found)
+    # Facebook links on About: exactly the four the team gave, each opening safely in a new tab.
+    about = open(os.path.join(WEB, "about.html"), encoding="utf-8").read()
+    fb = re.findall(r'<a class="btn btn-secondary member-fb" href="([^"]+)" target="_blank" rel="noopener noreferrer">', about)
+    want = ["https://www.facebook.com/share/1MU6UAhHZy/", "https://www.facebook.com/share/1BjELCxZdV/",
+            "https://www.facebook.com/share/1CDzfQVoMD/", "https://www.facebook.com/share/1DvN26pKML/"]
+    others = re.findall(r"(instagram\.com|tiktok\.com|twitter\.com|x\.com/|linkedin\.com)", about, re.I)
+    check("Meet the team: the four Facebook links, in role order, new tab with noopener; no other social sites",
+          fb == want and about.count("facebook.com/share/") == 4 and not others, {"fb": fb, "others": others})
 
 
 def features(p):
@@ -306,14 +324,39 @@ def guides(p):
                 list:[...document.querySelectorAll('h3.guide-list-title')].map(x=>x.id),
                 back:[...document.querySelectorAll('details.guide .guide-back a[href="#find"]')].length,
                 guides:document.querySelectorAll('details.guide').length})""")
-    check("Help & Guides: the five groups, with the right guides", r["index"] == [
+    kids = "kids-start,kids-words,kids-games,kids-stories,kids-talk,kids-day,kids-buddy,kids-rewards,kids-rest,kids-safe,kids-grownups"
+    check("Help & Guides: the six groups, For children first, with the right guides", r["index"] == [
+        "gg-children:" + kids,
         "gg-learners:students", "gg-educators:teachers,parents,timeBreaks,tvCast", "gg-control:gaze,voice,controller,keyboard",
         "gg-seehear:accessibility,screenReader", "gg-feedback:feedback"], r["index"])
-    check("all 12 guides are there, listed under the same five group headings", r["guides"] == 12 and r["list"] == [
-        "gl-learners", "gl-educators", "gl-control", "gl-seehear", "gl-feedback"], r)
-    check("every guide ends with Back to all guides", r["back"] == 12, r["back"])
+    check("all 23 guides are there (11 for children + the app's 12), under the same six group headings", r["guides"] == 23 and r["list"] == [
+        "gl-children", "gl-learners", "gl-educators", "gl-control", "gl-seehear", "gl-feedback"], r)
+    check("every guide ends with Back to all guides", r["back"] == 23, r["back"])
+    # For Children: the menu link lands on the group; every children's guide opens, has steps,
+    # Read aloud text in both languages, and its pictures load with words for them.
+    p.goto(f"{SITE}/guides.html?r=k#gg-children")
+    time.sleep(0.6)
+    s = p.js("({top:Math.round(document.getElementById('gg-children').getBoundingClientRect().top), cards:document.getElementById('gg-children').closest('.guide-group').querySelectorAll('.guide-card').length, note:(document.querySelector('#gg-children + .guide-group-note')||{}).innerText||''})")
+    check("For Children (#gg-children) lands on the children's eleven guides, with a note for the grown-up",
+          40 <= s["top"] <= 200 and s["cards"] == 11 and "parent or teacher" in s["note"], s)
+    p.js("document.querySelectorAll('details.guide[id^=\"g-kids-\"]').forEach(function(d){d.open=true;})")
+    p.js("(async function(){for(const i of document.querySelectorAll('details.guide[id^=\"g-kids-\"] .guide-pic img')){i.scrollIntoView({block:'center'});await new Promise(r=>setTimeout(r,60));}})()")
+    time.sleep(1.5)
+    k = p.js("""(function(){var out=[];document.querySelectorAll('details.guide[id^="g-kids-"]').forEach(function(d){
+        var imgs=[...d.querySelectorAll('.guide-pic img')];
+        out.push({id:d.id, steps:d.querySelectorAll('.guide-steps li, .guide-list li').length,
+          say:!!(d.querySelector('.guide-say')||{}).dataset && !!d.querySelector('.guide-say').dataset.sayEn && !!d.querySelector('.guide-say').dataset.sayFil,
+          pics:imgs.length, loaded:imgs.filter(i=>i.complete&&i.naturalWidth>0).length,
+          named:imgs.filter(i=>(i.getAttribute('alt')||'').length>15 && i.dataset.labelFil).length,
+          caps:d.querySelectorAll('.guide-pic figcaption .en').length});});return out;})()""")
+    bad = [x for x in k if x["steps"] < 3 or not x["say"] or x["loaded"] != x["pics"] or x["named"] != x["pics"] or x["caps"] != x["pics"]]
+    check(f"the {len(k)} children's guides: steps, Read aloud in both languages, every picture loads with a description and caption",
+          len(k) == 11 and not bad and sum(x["pics"] for x in k) >= 12, bad or k)
     p.goto(f"{SITE}/guides.html?r=s#g-accessibility-hear-the-words")
-    time.sleep(0.8)
+    # The page scrolls there smoothly, and the list is long (the children's guides come
+    # first): wait until the section has arrived, as the all-sections loop below does.
+    p.wait("(function(){var e=document.getElementById('g-accessibility-hear-the-words');var t=e.getBoundingClientRect().top;return document.activeElement && document.activeElement.id === 'g-accessibility-hear-the-words-h' && t > 0 && t < 220;})()", 8)
+    time.sleep(0.3)
     s = p.js("({open:document.getElementById('g-accessibility').open, others:[...document.querySelectorAll('details.guide')].filter(d=>d.open).length, focus:document.activeElement.id, top:Math.round(document.getElementById('g-accessibility-hear-the-words').getBoundingClientRect().top)})")
     check("a link to a guide section opens that guide there, and focuses the section",
           s["open"] and s["others"] == 1 and s["focus"] == "g-accessibility-hear-the-words-h" and 40 <= s["top"] <= 160, s)

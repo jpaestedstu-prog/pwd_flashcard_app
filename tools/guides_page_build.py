@@ -7,7 +7,9 @@ different things.
 
 Then run `python tools/site_chrome_build.py` (header, footer, fingerprints).
 
-The page lists the guides in five groups (who you are, then how you use the app). Every
+The page lists the guides in six groups (who you are, then how you use the app). The first,
+"For children", holds simple guides written for this website (tools/kids_guides.py: the app
+has no guide for children); the other five hold the app's own guides. Every
 guide and every section of one has its own address (guides.html#g-voice,
 guides.html#g-accessibility-font-size-bigger-text): a link to a section opens its guide
 there. Guides with a demo show the same "See it in action" as their card on
@@ -23,6 +25,7 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import site_media as sm   # noqa: E402
+import kids_guides as kg  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 GUIDES = ROOT / "lib" / "features" / "help" / "models" / "guides.dart"
@@ -44,11 +47,13 @@ LOOK = {
     "timeBreaks": ("⏰", "gold"),
     "tvCast": ("📺", "teal"),
     "feedback": ("⭐", "gold"),
+    **kg.LOOK,
 }
 # Who each guide is for, on the "Find your guide" panel.
 # The same group names as the cards on features.html, so a feature sits under the same
 # heading in both places.
 GROUPS = [
+    ("children", "🧒", ("For children", "Para sa mga bata"), [g["id"] for g in kg.GUIDES]),
     ("learners", "🎒", ("For students", "Para sa mag-aaral"), ["students"]),
     ("educators", "🧑‍🏫", ("For teachers and parents", "Para sa guro at magulang"),
      ["teachers", "parents", "timeBreaks", "tvCast"]),
@@ -276,6 +281,8 @@ def render_index(guides):
     for key, ico, (en, fil), ids in GROUPS:
         out.append(f'      <section class="guide-group" aria-labelledby="gg-{key}">')
         out.append(f'        <h3 id="gg-{key}"><span aria-hidden="true">{ico}</span> {bi2(en, fil)}</h3>')
+        if key == "children":
+            out.append(f'        <p class="guide-group-note">{bi(kg.NOTE)}</p>')
         out.append('        <ul class="guide-cards">')
         for gid in ids:
             g = by_id[gid]
@@ -299,7 +306,7 @@ def render_guide(g):
     emoji, tone = LOOK[gid]
     out = [f'    <details class="disclosure guide" id="g-{gid}">',
            f'      <summary><span class="guide-sum"><span class="guide-ico tone-{tone}" aria-hidden="true">{emoji}</span>'
-           f'<span class="guide-sum-text"><span class="guide-name">{bi(g["title"])}</span>'
+           f'<span class="guide-sum-text"><span class="guide-name" id="g-{gid}-name">{bi(g["title"])}</span>'
            f'<span class="guide-sub">{bi(g["summary"])}</span></span></span></summary>',
            '      <div class="d-body guide-body">',
            f'        <p class="guide-actions"><button type="button" class="btn btn-secondary btn-sm guide-say" hidden'
@@ -313,10 +320,14 @@ def render_guide(g):
            + '</p>']
     if gid in DEMO:
         out.append(sm.render_demo(DEMO[gid], g["title"]["en"], g["title"]["fil"], f"g-{gid}"))
+    if g.get("pics"):
+        out.append(render_pics(g["pics"]))
     for s in g["sections"]:
         tag = "ol" if s["numbered"] else "ul"
         sid = f'g-{gid}-{slug(s["heading"]["en"])}'
-        out.append(f'        <section class="guide-sec" id="{sid}" aria-labelledby="{sid}-h">')
+        # Named by the guide and the heading ("Gaze Control Turn it on"): several guides have a
+        # "Turn it on" or a "Good to know", and every region on the page needs its own name.
+        out.append(f'        <section class="guide-sec" id="{sid}" aria-labelledby="g-{gid}-name {sid}-h">')
         out.append(f'          <h4 id="{sid}-h" tabindex="-1">{bi(s["heading"])}</h4>')
         out.append(f'          <{tag} class="guide-{"steps" if s["numbered"] else "list"}">')
         for line in s["lines"]:
@@ -332,7 +343,8 @@ def render_guide(g):
     if gid == "feedback":
         out.append('        <p><a class="btn btn-primary" href="faq.html#feedback"><span aria-hidden="true">💌</span> '
                    + bi2("Open the feedback form", "Buksan ang feedback form") + '</a></p>')
-    for href, (en, fil) in MORE.get(gid, []):
+    more = MORE.get(gid) or [(href, (t["en"], t["fil"])) for href, t in g.get("more", [])]
+    for href, (en, fil) in more:
         out.append(f'        <p class="guide-more"><span class="en">More on this website:</span>'
                    f'<span class="fil">Higit pa sa website na ito:</span> <a href="{href}">{bi2(en, fil)}</a></p>')
     out.append(f'        <p class="guide-back"><a href="#find"><span aria-hidden="true">↑</span> {bi2("Back to all guides", "Bumalik sa lahat ng gabay")}'
@@ -342,12 +354,30 @@ def render_guide(g):
     return "\n".join(out)
 
 
+def render_pics(pics):
+    """Pictures of the app's own screens, beside the steps (zoomable, lazy)."""
+    out = [f'        <div class="guide-pics{" guide-pics-1" if len(pics) == 1 else ""}">']
+    for pic in pics:
+        path = ROOT / "website" / pic["src"]
+        if not path.exists():
+            raise SystemExit(f"picture missing: website/{pic['src']}")
+        w, h = sm.image_size(path)
+        out.append('          <figure class="guide-pic">'
+                   f'<img class="zoomable" src="{pic["src"]}" width="{w}" height="{h}" loading="lazy" decoding="async"'
+                   f' alt="{esc(pic["alt"]["en"])}" data-label-en="{esc(pic["alt"]["en"])}" data-label-fil="{esc(pic["alt"]["fil"])}">'
+                   f'<figcaption>{bi(pic["caption"])}</figcaption></figure>')
+    out.append('        </div>')
+    return "\n".join(out)
+
+
 def render_all(guides):
     """The full list, grouped under the same names as the index."""
     by_id = {g["id"]: g for g in guides}
     out = []
     for key, ico, (en, fil), ids in GROUPS:
         out.append(f'    <h3 class="guide-list-title" id="gl-{key}"><span aria-hidden="true">{ico}</span> {bi2(en, fil)}</h3>')
+        if key == "children":
+            out.append(f'    <p class="guide-group-note">{bi(kg.NOTE)}</p>')
         out += [render_guide(by_id[i]) for i in ids]
     return "\n".join(out)
 
@@ -452,7 +482,8 @@ PAGE_JS = r"""(function(){
 
 def main():
     check = "--check" in sys.argv
-    guides = read_guides()
+    app_guides = read_guides()
+    guides = kg.GUIDES + app_guides
     missing = [g["id"] for g in guides if g["id"] not in LOOK]
     if missing:
         raise SystemExit(f"LOOK has no emoji/tone for: {missing}")
@@ -461,7 +492,8 @@ def main():
         "<!--INDEX-->": render_index(guides),
         "<!--GUIDES-->": render_all(guides),
         "<!--PAGEJS-->": PAGE_JS,
-        "__COUNT__": str(len(guides)),
+        "__COUNT__": str(len(app_guides)),
+        "__KIDS__": str(len(kg.GUIDES)),
     }
     for needle, value in repl.items():
         if needle not in page:
