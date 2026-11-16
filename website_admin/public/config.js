@@ -22,5 +22,5 @@ export const SITE = {
 // values above: the script can only ever email that one address.
 export const MAIL = {
   to: 'jaj4ngpinasto@gmail.com',
-  url: '',
+  url: 'https://script.google.com/macros/s/AKfycbx37NB3vsA_FTCAXmVexMP3rQsfmVZt6u2hN2nI_6WMBfs76tA_kbHQqavVC9rFaqU/exec',
 };

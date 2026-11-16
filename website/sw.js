@@ -5,7 +5,7 @@
    Screenshots and videos are not precached (they load when shown, then stay
    cached); assets/fsl-dict.js is build input for the dictionary page, not
    something a page loads. */
-const CACHE = 'flp-site-v44-8f611b72';
+const CACHE = 'flp-site-v45-da04a251';
 // Where the FlashLearn web app lives, under this site's scope.
 const APP_PATH = new URL('app/', self.registration.scope).pathname;
 const CORE = [
@@ -26,7 +26,7 @@ const CORE = [
   'features.html',
   'manifest.webmanifest',
   'assets/site.css?v=64ca20403f',
-  'assets/site.js?v=b563c7ea0d',
+  'assets/site.js?v=205d4f961b',
   'assets/try.js?v=bf64e37ee3',
   'assets/logo.webp',
   'assets/videos/app-demo.en.vtt',

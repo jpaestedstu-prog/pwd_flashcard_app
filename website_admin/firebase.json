@@ -13,7 +13,7 @@
         "headers": [
           {
             "key": "Content-Security-Policy",
-            "value": "default-src 'none'; script-src 'self' https://www.gstatic.com https://apis.google.com; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com https://api.github.com https://jpaestedstu-prog.github.io; frame-src https://flashlearn-pwd-site.firebaseapp.com https://accounts.google.com; manifest-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'; frame-ancestors 'none'"
+            "value": "default-src 'none'; script-src 'self' https://www.gstatic.com https://apis.google.com; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com https://api.github.com https://jpaestedstu-prog.github.io https://script.google.com/macros/s/AKfycbx37NB3vsA_FTCAXmVexMP3rQsfmVZt6u2hN2nI_6WMBfs76tA_kbHQqavVC9rFaqU/exec https://script.googleusercontent.com; frame-src https://flashlearn-pwd-site.firebaseapp.com https://accounts.google.com; manifest-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'; frame-ancestors 'none'"
           },
           { "key": "X-Frame-Options", "value": "DENY" },
           { "key": "X-Content-Type-Options", "value": "nosniff" },

@@ -2,6 +2,22 @@
   "_comment": "Newest first. tools/release_page_build.py renders the website's download section, changelog, website/version.json and the GitHub release notes from this file plus pubspec.yaml and the built APKs. The first entry must match the pubspec version.",
   "releases": [
     {
+      "version": "1.4.6",
+      "build": 30,
+      "date": "2026-11-16",
+      "summary_en": "1.4.6: voice only, a hands-free pause, break reminders, and Help & Guides in the app. Gaze Control can now run on voice alone with the camera off; saying “stop listening” pauses hands-free control and “resume” brings it back; teachers and parents can turn on gentle break reminders; and every profile has step-by-step guides and a way to rate the app.",
+      "summary_fil": "1.4.6: boses lang, paghinto ng hands-free, paalala sa pahinga, at Tulong at mga Gabay sa app. Maaari nang gamitin ang Gaze Control sa boses lang nang nakapatay ang camera; pinahihinto ng “stop listening” ang hands-free na kontrol at ibinabalik ito ng “resume”; maaaring i-on ng guro at magulang ang mga paalala sa pahinga; at may mga gabay na hakbang-hakbang at paraan para i-rate ang app ang bawat profile.",
+      "notes_en": "Voice only (camera off), pause and resume hands-free control by voice, read the screen aloud, break reminders set by teachers and parents, and Help & Guides with Rate & Feedback in Settings.",
+      "notes_fil": "Boses lang (nakapatay ang camera), ihinto at ituloy ang hands-free na kontrol gamit ang boses, basahin nang malakas ang screen, paalala sa pahinga na itinatakda ng guro at magulang, at Tulong at mga Gabay pati Rating at Feedback sa Settings.",
+      "bullets_en": [
+        "Voice only: in Gaze Control, “Voice only (camera off)” lets a learner move around the app and choose by voice alone. The camera stays off, and Voice commands turn on with it.",
+        "A hands-free pause: saying “stop listening” pauses hands-free control and shows a banner; “resume”, a long blink, a switch press or a tap on the banner brings it back. New phrases also read the screen aloud (“read the screen”), repeat the last words (“say again”) and list what you can say (“what can I say”), in English and Filipino.",
+        "Break reminders: in Time limits, a teacher or parent can turn on “Remind them to take a break” every 10 to 60 minutes. The learner sees “Time for a short break” with Take a break and Keep learning; the reminder waits until a test is finished and counts learning time from the end of the last break.",
+        "Help & Guides in the app: Settings → About → Help & Guides holds 12 step-by-step guides in English and Filipino, each with Read aloud; learners see the guides meant for them, teachers and parents see theirs first. On a child’s or a guest’s Home, the guides are in the accessibility button.",
+        "Rate & Feedback: Settings → About → Rate & Feedback opens the website’s feedback form (on a student’s or child’s profile, a grown-up check comes first)."
+      ]
+    },
+    {
       "version": "1.4.5",
       "build": 29,
       "date": "2026-11-14",

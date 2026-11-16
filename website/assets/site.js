@@ -598,7 +598,7 @@
   // Email notices: the team's own Google Apps Script (website_admin/email_notifier),
   // which emails each rating or message to the team's inbox. Written by
   // website_admin/configure.py --mail-url; empty = no notices (the form still saves).
-  var NOTIFY = { url: '' };
+  var NOTIFY = { url: 'https://script.google.com/macros/s/AKfycbx37NB3vsA_FTCAXmVexMP3rQsfmVZt6u2hN2nI_6WMBfs76tA_kbHQqavVC9rFaqU/exec' };
   var PAGE_KEYS = ['index', 'try', 'download', 'how_to_use', 'games', 'fsl_dictionary',
                    'teachers_guide', 'faq', 'awareness', 'about', 'privacy', 'gaze_control'];
   var EVENTS = ['apk_arm64', 'apk_arm32', 'apk_universal', 'webapp', 'try_card', 'try_game', 'film', 'demo'];

@@ -403,6 +403,13 @@ PAGE_JS = r"""(function(){
   }
   addEventListener('hashchange', openFromHash);
   openFromHash();
+  // Fonts and pictures may still be arriving, and the browser makes its own jump to the
+  // address: once the page has loaded, if nothing holds the focus yet, go to the section
+  // again so it has it (never taking the focus from something the visitor chose).
+  addEventListener('load', function(){
+    var a = document.activeElement;
+    if (location.hash && (!a || a === document.body)) openFromHash();
+  });
   var tools = document.querySelector('.guides-tools');
   if (tools) tools.hidden = false;
   var openAll = document.getElementById('guidesOpenAll'), closeAll = document.getElementById('guidesCloseAll');
