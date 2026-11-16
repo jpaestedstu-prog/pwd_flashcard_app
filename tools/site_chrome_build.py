@@ -78,16 +78,16 @@ GROUPS = [
     ]),
     ("educators", "Teachers &amp; Parents", "Guro at Magulang", "For the adults beside a learner", "Para sa mga katuwang ng mag-aaral", [
         ("guide", "teachers-guide.html", "Teacher’s Guide", "Gabay ng Guro", "🧑‍🏫", "Set up a class, printable", "Pag-set up ng klase, napi-print", "indigo"),
-        ("guidesadults", "guides.html#gg-educators", "Guides for Parents &amp; Teachers", "Mga Gabay para sa Magulang at Guro", "📘", "Time limits, routines and TV Cast, step by step", "Oras, routine at TV Cast, hakbang-hakbang", "green"),
+        ("guidesadults", "guides.html#gg-educators", "Guides for Teachers &amp; Parents", "Mga Gabay para sa Guro at Magulang", "📘", "Set up and support learners, step by step", "Pag-set up at pagsuporta, hakbang-hakbang", "green"),
         ("awareness", "awareness.html", "PWD Awareness", "Kamalayang PWD", "💜", "Rights and everyday inclusion", "Mga karapatan at araw-araw na inklusyon", "green"),
         ("privacy", "privacy.html", "Privacy &amp; Data", "Privacy at Datos", "🔒", "What the app keeps, and who sees it", "Ano ang itinatago ng app, at sino ang nakakakita", "cyan"),
     ]),
     ("help", "Help", "Tulong", "Guides, questions, feedback and the team", "Mga gabay, tanong, feedback at ang pangkat", [
         ("guides", "guides.html", "Help &amp; Guides", "Tulong at mga Gabay", "📘", "Step-by-step guides for the app", "Mga gabay sa app, hakbang-hakbang", "green"),
-        ("children", "guides.html#gg-children", "For Children", "Para sa mga Bata", "🧒", "Simple guides for young learners", "Simpleng gabay para sa mga bata", "orange"),
         ("faq", "faq.html", "FAQ", "Mga Tanong", "❓", "Answers to common questions", "Mga sagot sa karaniwang tanong", "magenta"),
         ("feedback", "faq.html#feedback", "Rate &amp; Feedback", "Rating at Feedback", "⭐", "Tell the team what you think", "Sabihin sa pangkat ang iyong opinyon", "gold"),
-        ("about", "about.html", "About the Team", "Tungkol sa Pangkat", "🎓", "The students behind the app, and future plans", "Ang mga mag-aaral sa likod ng app, at mga plano", "red"),
+        ("about", "about.html", "About the Team", "Tungkol sa Pangkat", "🎓", "The students behind the app", "Ang mga mag-aaral sa likod ng app", "red"),
+        ("future", "about.html#future", "Future Recommendations", "Mga Rekomendasyon", "🔭", "Plans for later, like 3D signs", "Mga plano, gaya ng 3D na senyas", "teal"),
     ]),
 ]
 # The two actions at the end of the bar (the class picks their look).
@@ -96,7 +96,7 @@ ACTIONS = [
     ("download", "download.html", "Download", "I-download", "⬇️", "Free for Android 10 and newer", "Libre para sa Android 10 pataas", "purple", "nav-btn-dl"),
 ]
 # Links that are not pages of their own (never marked as the current page).
-NOT_PAGES = {"feedback", "children", "guidesadults"}
+NOT_PAGES = {"feedback", "future", "guidesadults"}
 
 FOOTER_COLS = [
     ("Explore", "Tuklasin", "Explore the app", "🧭", [
@@ -109,14 +109,13 @@ FOOTER_COLS = [
     ]),
     ("Teachers &amp; Parents", "Guro at Magulang", "For teachers and parents", "🏫", [
         ("teachers-guide.html", "Teacher’s Guide", "Gabay ng Guro"),
-        ("guides.html#gg-educators", "Guides for parents &amp; teachers", "Mga gabay para sa magulang at guro"),
+        ("guides.html#gg-educators", "Guides for teachers &amp; parents", "Mga gabay para sa guro at magulang"),
         ("awareness.html", "PWD Awareness", "Kamalayang PWD"),
         ("privacy.html", "Privacy &amp; data", "Privacy at datos"),
         ("download.html", "Download the app", "I-download ang app"),
     ]),
     ("Help", "Tulong", "Help and the project", "💬", [
         ("guides.html", "Help &amp; Guides (step by step)", "Tulong at mga Gabay (hakbang-hakbang)"),
-        ("guides.html#gg-children", "For children", "Para sa mga bata"),
         ("faq.html", "Questions (FAQ)", "Mga Tanong (FAQ)"),
         ("faq.html#feedback", "Rate the app or send feedback", "I-rate ang app o magpadala ng feedback"),
         ("about.html", "About the team", "Tungkol sa pangkat"),

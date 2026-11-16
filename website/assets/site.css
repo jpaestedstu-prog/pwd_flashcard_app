@@ -1343,9 +1343,8 @@ details.guide + .guide-list-title{ margin-top:2.25rem; }
 .guide-list li{ max-width:none; }
 .guide-list li::marker{ color:var(--brand); }
 .guide-more{ font-size:.95rem; }
-/* For children: a line for the grown-up under the group heading, and pictures of the app's
-   own Child screens inside a guide (two side by side; one alone stays card-sized). */
-.guide-group-note{ font-size:.95rem; color:var(--ink-2); margin:-.35rem 0 .85rem; max-width:none; }
+/* Pictures of the app's own screens inside a guide, under the steps they show
+   (two side by side; one alone stays card-sized). */
 .guide-pics{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; margin:1rem 0 .25rem; max-width:30rem; }
 .guide-pics-1{ grid-template-columns:minmax(0,1fr); max-width:15rem; }
 .guide-pic{ margin:0; display:grid; gap:.45rem; align-content:start; }
@@ -1353,6 +1352,35 @@ details.guide + .guide-list-title{ margin-top:2.25rem; }
 .guide-pic figcaption{ font-size:.9rem; font-weight:700; color:var(--ink-2); text-align:center; }
 html.hc .guide-pic img{ border:2px solid #000; box-shadow:none; }
 @media (max-width:420px){ .guide-pics{ gap:.6rem; } .guide-pic figcaption{ font-size:.85rem; } }
+/* On wider screens a section's one picture stands beside its steps instead of under them. */
+@media (min-width:720px){
+  .guide-sec:has(> .guide-pics-1){ display:grid; grid-template-columns:minmax(0,1fr) 13rem; column-gap:1.75rem; align-items:start; }
+  .guide-sec:has(> .guide-pics-1) > h4{ grid-column:1 / -1; }
+  .guide-sec:has(> .guide-pics-1) > .guide-pics-1{ grid-column:2; grid-row:2; margin:0; max-width:none; }
+}
+/* Help & Guides: two audience categories (For Students and Children, For Teachers and
+   Parents), told apart by a coloured top edge and an emoji coin in their tone; inside, quiet
+   sub-group labels. The same coin heads each category in the full list below. */
+.guide-groups{ gap:1.5rem; }
+.guide-cat{ border-top:6px solid var(--t1); }
+.guide-cat-head{ display:flex; gap:.9rem; align-items:center; margin-bottom:1.15rem; }
+.guide-cat-badge{
+  flex:0 0 auto; display:grid; place-items:center; width:3.2rem; height:3.2rem; border-radius:50%; font-size:1.6rem; line-height:1;
+  background:radial-gradient(circle at 32% 26%, rgba(255,255,255,.45), rgba(255,255,255,0) 60%), linear-gradient(150deg, var(--t1), var(--t3));
+  box-shadow:inset 0 0 0 2px rgba(255,255,255,.35), inset 0 -4px 7px rgba(0,0,0,.18), 0 8px 16px -8px var(--t3);
+}
+.guide-cat-text{ min-width:0; }
+.guide-cat-head h3{ font-size:1.35rem; margin:0; display:block; }
+.guide-cat-desc{ margin:.25rem 0 0; color:var(--ink-2); font-size:.95rem; max-width:none; }
+.guide-subgroup + .guide-subgroup{ margin-top:1.15rem; }
+.guide-subgroup-title{ display:flex; align-items:center; gap:.6rem; font-size:.95rem; font-weight:800; color:var(--ink-2); margin:0 0 .55rem; }
+.guide-subgroup-title::after{ content:""; flex:1; height:1px; background:var(--border); }
+.guide-cat-title{ border-bottom:4px solid var(--t1); padding-bottom:.5rem; }
+.guide-cat-title .guide-cat-badge{ width:2.5rem; height:2.5rem; font-size:1.25rem; }
+html.hc .guide-cat{ border-top-color:#000; }
+html.hc .guide-cat-badge{ background:#fff; border:2px solid #000; box-shadow:none; }
+html.hc .guide-cat-title{ border-bottom-color:#000; }
+@media (max-width:420px){ .guide-cat-head{ align-items:flex-start; } .guide-cat-badge{ width:2.7rem; height:2.7rem; font-size:1.35rem; } }
 html.hc .guide-group,html.hc .guide-card{ border:2px solid #000; box-shadow:none; }
 html.hc .guide-ico{ background:#fff; box-shadow:inset 0 0 0 2px #000; }
 html.hc .guide-steps li::before{ background:#000; }

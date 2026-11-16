@@ -4,7 +4,7 @@
 
 Three sets (all of them unless --sets names some):
   features  the "Features in Action" pictures and the video posters -> assets/features/
-  kids      the Child screens for the guides "For children" (guides.html) -> assets/kids/
+  kids      the Child screens shown in the website-written guides (guides.html) -> assets/kids/
   tour      the App Tour's eleven pictures (how-to-use.html) and the Home page's phone
             picture (02-home) -> assets/screenshots/
 The emulator's screenshots come in the tablet's own upright shape, 5:8 (the 2026-11-16 run;
@@ -59,13 +59,10 @@ SHOTS = {
     "stories.webp": "stories",
     "buddy.webp": "learner_home",
 }
-# Child screens (sample child "Mia") for tools/kids_guides.py.
+# Child screens (sample child "Mia") for the guides written for the website (tools/website_guides.py).
 KIDS = {
     "join.webp": "kids_join",
     "home.webp": "kids_home",
-    "card.webp": "kids_card",
-    "games.webp": "kids_games",
-    "stories.webp": "kids_stories",
     "talk.webp": "kids_talk",
     "my-day.webp": "kids_my_day",
     "feelings.webp": "kids_feelings",

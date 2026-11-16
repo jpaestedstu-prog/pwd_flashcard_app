@@ -7,10 +7,11 @@ different things.
 
 Then run `python tools/site_chrome_build.py` (header, footer, fingerprints).
 
-The page lists the guides in six groups (who you are, then how you use the app). The first,
-"For children", holds simple guides written for this website (tools/kids_guides.py: the app
-has no guide for children); the other five hold the app's own guides. Every
-guide and every section of one has its own address (guides.html#g-voice,
+The page sorts every guide into two audience categories, For Students and Children and For
+Teachers and Parents, each in a few labelled sub-groups (tools/website_guides.py, CATEGORIES).
+They are only a way to sort the guides, not features of the app. Most guides are the app's
+own; the few written for the website (tools/website_guides.py) add pictures and plain words
+and never repeat an app guide's line. Every guide and every section of one has its own address (guides.html#g-voice,
 guides.html#g-accessibility-font-size-bigger-text): a link to a section opens its guide
 there. Guides with a demo show the same "See it in action" as their card on
 features.html (tools/site_media.py), and every guide ends with a "Back to all guides" link.
@@ -25,7 +26,7 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import site_media as sm   # noqa: E402
-import kids_guides as kg  # noqa: E402
+import website_guides as wg  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 GUIDES = ROOT / "lib" / "features" / "help" / "models" / "guides.dart"
@@ -47,22 +48,11 @@ LOOK = {
     "timeBreaks": ("⏰", "gold"),
     "tvCast": ("📺", "teal"),
     "feedback": ("⭐", "gold"),
-    **kg.LOOK,
+    **wg.LOOK,
 }
-# Who each guide is for, on the "Find your guide" panel.
-# The same group names as the cards on features.html, so a feature sits under the same
-# heading in both places.
-GROUPS = [
-    ("children", "🧒", ("For children", "Para sa mga bata"), [g["id"] for g in kg.GUIDES]),
-    ("learners", "🎒", ("For students", "Para sa mag-aaral"), ["students"]),
-    ("educators", "🧑‍🏫", ("For teachers and parents", "Para sa guro at magulang"),
-     ["teachers", "parents", "timeBreaks", "tvCast"]),
-    ("control", "🎛️", ("Control the app your way", "Kontrolin ang app sa paraan mo"),
-     ["gaze", "voice", "controller", "keyboard"]),
-    ("seehear", "👀", ("See, hear and read your way", "Makita, marinig at mabasa sa paraan mo"),
-     ["accessibility", "screenReader"]),
-    ("feedback", "💬", ("Questions and feedback", "Mga tanong at feedback"), ["feedback"]),
-]
+# Who each guide is for: two audience categories, each with labelled sub-groups. Every guide
+# (app and website) sits in exactly one place; the build stops otherwise.
+CATEGORIES = wg.CATEGORIES
 # "See it in action" inside a guide: the same demo as its card (tools/site_media.py).
 DEMO = {
     "students": "tour", "teachers": "tour", "parents": "tour",
@@ -272,26 +262,32 @@ def bi2(en, fil):
 
 def render_index(guides):
     by_id = {g["id"]: g for g in guides}
-    grouped = [i for _, _, _, ids in GROUPS for i in ids]
-    missing = sorted(set(by_id) - set(grouped))
-    unknown = sorted(set(grouped) - set(by_id))
-    if missing or unknown:
-        raise SystemExit(f"GROUPS out of date — not grouped: {missing}, no such guide: {unknown}")
+    placed = [i for *_, subs in CATEGORIES for _, ids in subs for i in ids]
+    missing = sorted(set(by_id) - set(placed))
+    unknown = sorted(set(placed) - set(by_id))
+    twice = sorted({i for i in placed if placed.count(i) > 1})
+    if missing or unknown or twice:
+        raise SystemExit(f"CATEGORIES out of date — not placed: {missing}, no such guide: {unknown}, "
+                         f"placed twice: {twice}")
     out = ['    <div class="guide-groups">']
-    for key, ico, (en, fil), ids in GROUPS:
-        out.append(f'      <section class="guide-group" aria-labelledby="gg-{key}">')
-        out.append(f'        <h3 id="gg-{key}"><span aria-hidden="true">{ico}</span> {bi2(en, fil)}</h3>')
-        if key == "children":
-            out.append(f'        <p class="guide-group-note">{bi(kg.NOTE)}</p>')
-        out.append('        <ul class="guide-cards">')
-        for gid in ids:
-            g = by_id[gid]
-            emoji, tone = LOOK[gid]
-            out.append(f'          <li><a class="guide-card" href="#g-{gid}" data-guide="{gid}">'
-                       f'<span class="guide-ico tone-{tone}" aria-hidden="true">{emoji}</span>'
-                       f'<span class="guide-card-text"><strong>{bi(g["title"])}</strong>'
-                       f'<span class="guide-card-sum">{bi(g["summary"])}</span></span></a></li>')
-        out.append('        </ul>')
+    for key, ico, tone, title, desc, subs in CATEGORIES:
+        out.append(f'      <section class="guide-group guide-cat tone-{tone}" aria-labelledby="gg-{key}">')
+        out.append(f'        <div class="guide-cat-head"><span class="guide-cat-badge" aria-hidden="true">{ico}</span>'
+                   f'<div class="guide-cat-text"><h3 id="gg-{key}">{bi(title)}</h3>'
+                   f'<p class="guide-cat-desc">{bi(desc)}</p></div></div>')
+        for label, ids in subs:
+            out.append('        <div class="guide-subgroup">')
+            out.append(f'          <h4 class="guide-subgroup-title">{bi(label)}</h4>')
+            out.append('          <ul class="guide-cards">')
+            for gid in ids:
+                g = by_id[gid]
+                emoji, gtone = LOOK[gid]
+                out.append(f'            <li><a class="guide-card" href="#g-{gid}" data-guide="{gid}">'
+                           f'<span class="guide-ico tone-{gtone}" aria-hidden="true">{emoji}</span>'
+                           f'<span class="guide-card-text"><strong>{bi(g["title"])}</strong>'
+                           f'<span class="guide-card-sum">{bi(g["summary"])}</span></span></a></li>')
+            out.append('          </ul>')
+            out.append('        </div>')
         out.append('      </section>')
     out.append('    </div>')
     return "\n".join(out)
@@ -339,6 +335,8 @@ def render_guide(g):
                 body = bi(line["text"])
             out.append(f'            <li>{body}</li>')
         out.append(f'          </{tag}>')
+        if s.get("pics"):
+            out.append(render_pics(s["pics"]))
         out.append('        </section>')
     if gid == "feedback":
         out.append('        <p><a class="btn btn-primary" href="faq.html#feedback"><span aria-hidden="true">💌</span> '
@@ -371,14 +369,13 @@ def render_pics(pics):
 
 
 def render_all(guides):
-    """The full list, grouped under the same names as the index."""
+    """The full list, under the same two categories as the index, in the same order."""
     by_id = {g["id"]: g for g in guides}
     out = []
-    for key, ico, (en, fil), ids in GROUPS:
-        out.append(f'    <h3 class="guide-list-title" id="gl-{key}"><span aria-hidden="true">{ico}</span> {bi2(en, fil)}</h3>')
-        if key == "children":
-            out.append(f'    <p class="guide-group-note">{bi(kg.NOTE)}</p>')
-        out += [render_guide(by_id[i]) for i in ids]
+    for key, ico, tone, title, desc, subs in CATEGORIES:
+        out.append(f'    <h3 class="guide-list-title guide-cat-title tone-{tone}" id="gl-{key}">'
+                   f'<span class="guide-cat-badge" aria-hidden="true">{ico}</span> {bi(title)}</h3>')
+        out += [render_guide(by_id[i]) for _, ids in subs for i in ids]
     return "\n".join(out)
 
 
@@ -483,7 +480,7 @@ PAGE_JS = r"""(function(){
 def main():
     check = "--check" in sys.argv
     app_guides = read_guides()
-    guides = kg.GUIDES + app_guides
+    guides = wg.GUIDES + app_guides
     missing = [g["id"] for g in guides if g["id"] not in LOOK]
     if missing:
         raise SystemExit(f"LOOK has no emoji/tone for: {missing}")
@@ -492,8 +489,6 @@ def main():
         "<!--INDEX-->": render_index(guides),
         "<!--GUIDES-->": render_all(guides),
         "<!--PAGEJS-->": PAGE_JS,
-        "__COUNT__": str(len(app_guides)),
-        "__KIDS__": str(len(kg.GUIDES)),
     }
     for needle, value in repl.items():
         if needle not in page:

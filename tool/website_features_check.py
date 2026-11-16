@@ -14,7 +14,8 @@ Checks, on the real pages (website/ served locally; nothing is counted):
     the end of its part; pictures load when opened and enlarge on a click;
   * without JavaScript: every card shows, the filter is gone, and the video opens as a file;
   * Filipino; a 360 px phone (normal and largest text) never scrolls sideways;
-  * Help & Guides: the five groups, every guide and guide section reachable by its address
+  * Help & Guides: the two audience categories (For Students and Children, For Teachers and
+    Parents), no repeated instructions, every guide and guide section reachable by its address
     (a section link opens its guide there), "Back to all guides" on every guide, and the
     same demo as the card;
   * Home, the Teacher's Guide, the FAQ and the Gaze Control page link to guides and cards
@@ -324,37 +325,57 @@ def guides(p):
                 list:[...document.querySelectorAll('h3.guide-list-title')].map(x=>x.id),
                 back:[...document.querySelectorAll('details.guide .guide-back a[href="#find"]')].length,
                 guides:document.querySelectorAll('details.guide').length})""")
-    kids = "kids-start,kids-words,kids-games,kids-stories,kids-talk,kids-day,kids-buddy,kids-rewards,kids-rest,kids-safe,kids-grownups"
-    check("Help & Guides: the six groups, For children first, with the right guides", r["index"] == [
-        "gg-children:" + kids,
-        "gg-learners:students", "gg-educators:teachers,parents,timeBreaks,tvCast", "gg-control:gaze,voice,controller,keyboard",
-        "gg-seehear:accessibility,screenReader", "gg-feedback:feedback"], r["index"])
-    check("all 23 guides are there (11 for children + the app's 12), under the same six group headings", r["guides"] == 23 and r["list"] == [
-        "gl-children", "gl-learners", "gl-educators", "gl-control", "gl-seehear", "gl-feedback"], r)
-    check("every guide ends with Back to all guides", r["back"] == 23, r["back"])
-    # For Children: the menu link lands on the group; every children's guide opens, has steps,
-    # Read aloud text in both languages, and its pictures load with words for them.
-    p.goto(f"{SITE}/guides.html?r=k#gg-children")
+    learners = ("students,children,stay-safe,talk-board,my-day,buddy,rewards,"
+                "accessibility,gaze,voice,controller,keyboard,screenReader")
+    adults = "teachers,parents,timeBreaks,supervision,tvCast,feedback"
+    check("Help & Guides: exactly two audience categories, For Students and Children, then For Teachers and Parents",
+          r["index"] == ["gg-learners:" + learners, "gg-educators:" + adults], r["index"])
+    check("all 19 guides are there (the app's 12 + 7 written for the website), listed under the same two categories",
+          r["guides"] == 19 and r["list"] == ["gl-learners", "gl-educators"], r)
+    check("every guide ends with Back to all guides", r["back"] == 19, r["back"])
+    c = p.js("""[...document.querySelectorAll('.guide-cat')].map(g=>({title:g.querySelector('h3').innerText.trim(),
+        subs:[...g.querySelectorAll('.guide-subgroup-title .en')].map(x=>x.textContent),
+        edge:getComputedStyle(g).borderTopColor, badge:!!g.querySelector('.guide-cat-badge')}))""")
+    check("the categories carry their names, sub-group labels and each its own colour",
+          [x["title"] for x in c] == ["For Students and Children", "For Teachers and Parents"]
+          and c[0]["subs"] == ["Start here", "Learn and play", "Use the app your way"]
+          and c[1]["subs"] == ["Set up and guide", "Tools and feedback"]
+          and c[0]["edge"] != c[1]["edge"] and all(x["badge"] for x in c), c)
+    check("nothing is left of the old separate children's group (no #gg-children, no g-kids-* guides)",
+          p.js("!document.getElementById('gg-children') && !document.querySelector('[id^=\"g-kids-\"]') && !document.querySelector('a[href*=\"gg-children\"]')"))
+    # Each category, by its own address, lands on its own guides.
+    p.goto(f"{SITE}/guides.html?r=k#gg-learners")
     time.sleep(0.6)
-    s = p.js("({top:Math.round(document.getElementById('gg-children').getBoundingClientRect().top), cards:document.getElementById('gg-children').closest('.guide-group').querySelectorAll('.guide-card').length, note:(document.querySelector('#gg-children + .guide-group-note')||{}).innerText||''})")
-    check("For Children (#gg-children) lands on the children's eleven guides, with a note for the grown-up",
-          40 <= s["top"] <= 200 and s["cards"] == 11 and "parent or teacher" in s["note"], s)
-    p.js("document.querySelectorAll('details.guide[id^=\"g-kids-\"]').forEach(function(d){d.open=true;})")
-    p.js("(async function(){for(const i of document.querySelectorAll('details.guide[id^=\"g-kids-\"] .guide-pic img')){i.scrollIntoView({block:'center'});await new Promise(r=>setTimeout(r,60));}})()")
-    time.sleep(1.5)
-    k = p.js("""(function(){var out=[];document.querySelectorAll('details.guide[id^="g-kids-"]').forEach(function(d){
+    s = p.js("({top:Math.round(document.getElementById('gg-learners').getBoundingClientRect().top), cards:document.getElementById('gg-learners').closest('.guide-group').querySelectorAll('.guide-card').length})")
+    check("For Students and Children (#gg-learners) lands on its 13 guides", 40 <= s["top"] <= 200 and s["cards"] == 13, s)
+    # The guides written for the website: steps, Read aloud in both languages, and pictures
+    # that load with words for them.
+    web = ["children", "stay-safe", "talk-board", "my-day", "buddy", "rewards", "supervision"]
+    p.js("%s.forEach(function(id){var d=document.getElementById('g-'+id);d.classList.add('at-once');d.open=true;})" % json.dumps(web))
+    p.js("(async function(){for(const i of document.querySelectorAll('details.guide .guide-pic img')){i.scrollIntoView({block:'center'});await new Promise(r=>setTimeout(r,60));}})()")
+    time.sleep(1.8)
+    k = p.js("""%s.map(function(id){var d=document.getElementById('g-'+id);
         var imgs=[...d.querySelectorAll('.guide-pic img')];
-        out.push({id:d.id, steps:d.querySelectorAll('.guide-steps li, .guide-list li').length,
-          say:!!(d.querySelector('.guide-say')||{}).dataset && !!d.querySelector('.guide-say').dataset.sayEn && !!d.querySelector('.guide-say').dataset.sayFil,
+        return {id:id, steps:d.querySelectorAll('.guide-steps li, .guide-list li').length,
+          say:!!d.querySelector('.guide-say').dataset.sayEn && !!d.querySelector('.guide-say').dataset.sayFil,
           pics:imgs.length, loaded:imgs.filter(i=>i.complete&&i.naturalWidth>0).length,
           named:imgs.filter(i=>(i.getAttribute('alt')||'').length>15 && i.dataset.labelFil).length,
-          caps:d.querySelectorAll('.guide-pic figcaption .en').length});});return out;})()""")
+          caps:d.querySelectorAll('.guide-pic figcaption .en').length};})""" % json.dumps(web))
     bad = [x for x in k if x["steps"] < 3 or not x["say"] or x["loaded"] != x["pics"] or x["named"] != x["pics"] or x["caps"] != x["pics"]]
-    check(f"the {len(k)} children's guides: steps, Read aloud in both languages, every picture loads with a description and caption",
-          len(k) == 11 and not bad and sum(x["pics"] for x in k) >= 12, bad or k)
+    check("the 7 guides written for the website: steps, Read aloud in both languages, every picture loads with a description and caption",
+          len(k) == 7 and not bad and sum(x["pics"] for x in k) == 9, bad or k)
+    # No instruction is said twice: a website-written line never repeats another line on the
+    # page (the app's own guides repeat "Turn it off" once per feature, in the app's words).
+    d = p.js("""(function(){var seen={},dup=[];document.querySelectorAll('details.guide').forEach(function(g){
+        g.querySelectorAll('.guide-steps li .en, .guide-list li .en').forEach(function(e){
+          var t=e.textContent.replace(/\\s+/g,' ').trim().toLowerCase();(seen[t]=seen[t]||[]).push(g.id);});});
+      Object.keys(seen).forEach(function(t){if(seen[t].length>1)dup.push({line:t,in:seen[t]});});return dup;})()""")
+    web_ids = {"g-" + w for w in web}
+    check("no website-written line repeats another instruction on the page",
+          not [x for x in d if web_ids & set(x["in"])], d)
     p.goto(f"{SITE}/guides.html?r=s#g-accessibility-hear-the-words")
-    # The page scrolls there smoothly, and the list is long (the children's guides come
-    # first): wait until the section has arrived, as the all-sections loop below does.
+    # The page scrolls there smoothly, and the list is long: wait until the section has
+    # arrived, as the all-sections loop below does.
     p.wait("(function(){var e=document.getElementById('g-accessibility-hear-the-words');var t=e.getBoundingClientRect().top;return document.activeElement && document.activeElement.id === 'g-accessibility-hear-the-words-h' && t > 0 && t < 220;})()", 8)
     time.sleep(0.3)
     s = p.js("({open:document.getElementById('g-accessibility').open, others:[...document.querySelectorAll('details.guide')].filter(d=>d.open).length, focus:document.activeElement.id, top:Math.round(document.getElementById('g-accessibility-hear-the-words').getBoundingClientRect().top)})")
@@ -376,7 +397,7 @@ def guides(p):
     p.goto(f"{SITE}/guides.html?r=e#gg-educators")
     time.sleep(0.6)
     s = p.js("({top:Math.round(document.getElementById('gg-educators').getBoundingClientRect().top), cards:[...document.getElementById('gg-educators').closest('.guide-group').querySelectorAll('.guide-card')].length})")
-    check("Guides for Parents & Teachers (#gg-educators) lands on the adults' four guides", 40 <= s["top"] <= 200 and s["cards"] == 4, s)
+    check("Guides for Teachers & Parents (#gg-educators) lands on the adults' six guides", 40 <= s["top"] <= 200 and s["cards"] == 6, s)
     s = p.js("({g:document.querySelector('#demo-g-gaze .demo-clip').dataset.src, start:document.querySelector('#demo-g-gaze .demo-clip').dataset.start, end:document.querySelector('#demo-g-gaze .demo-clip').dataset.end})")
     check("a guide shows the same demo as its card (same file, same part)", s == {"g": "assets/videos/gaze-demo.mp4", "start": "0", "end": "23.9"}, s)
 

@@ -98,10 +98,10 @@ def run(p, pages):
           return {hrefs: hrefs, cur: cur, grp: grp, inGroup: inGroup, crumbs: crumbs};
         })()""")
         counts = {f: r["hrefs"].count(f) for f in pages}
-        # Linked more than once: faq.html (the FAQ and its feedback form, #feedback) and
-        # guides.html (Help & Guides, its For Children part, #gg-children, and its adults'
-        # part, #gg-educators, under Teachers & Parents).
-        wrong = {f: n for f, n in counts.items() if n != {"faq.html": 2, "guides.html": 3}.get(f, 1)}
+        # Linked twice: faq.html (the FAQ and its feedback form, #feedback), about.html
+        # (the team and its Future Recommendations, #future) and guides.html (Help & Guides,
+        # and its For Teachers and Parents category, #gg-educators, under Teachers & Parents).
+        wrong = {f: n for f, n in counts.items() if n != (2 if f in ("faq.html", "about.html", "guides.html") else 1)}
         if wrong:
             bad_reach.append(f"{page}: {wrong}")
         if r["cur"] != [page]:
@@ -122,11 +122,14 @@ def run(p, pages):
           groups.get("explore") == ["how-to-use.html", "features.html", "gaze-control.html", "games.html", "fsl-dictionary.html"], groups.get("explore"))
     check("Teachers & Parents: Teacher's Guide, Guides for Parents & Teachers, PWD Awareness, Privacy & Data",
           groups.get("educators") == ["teachers-guide.html", "guides.html#gg-educators", "awareness.html", "privacy.html"], groups.get("educators"))
-    check("Help: Help & Guides, For Children, FAQ, Rate & Feedback, About the Team",
-          groups.get("help") == ["guides.html", "guides.html#gg-children", "faq.html", "faq.html#feedback", "about.html"], groups.get("help"))
+    check("Help: Help & Guides, FAQ, Rate & Feedback, About the Team, Future Recommendations",
+          groups.get("help") == ["guides.html", "faq.html", "faq.html#feedback", "about.html", "about.html#future"], groups.get("help"))
+    check("the adults' menu link is named for its category: Guides for Teachers & Parents",
+          p.js("(document.querySelector('#siteNav a[href=\"guides.html#gg-educators\"] .nav-main .en')||{}).textContent") == "Guides for Teachers & Parents")
     foot = p.js("[...document.querySelectorAll('footer a')].map(a=>a.getAttribute('href'))")
-    check("the footer links For children and Future Recommendations, and nothing on GitHub",
-          "guides.html#gg-children" in foot and "about.html#future" in foot and not any("github.com" in h for h in foot), foot)
+    check("the footer links Help & Guides, the adults' guides and Future Recommendations, and nothing on GitHub",
+          "guides.html" in foot and "guides.html#gg-educators" in foot and "about.html#future" in foot
+          and not any("github.com" in h or "gg-children" in h for h in foot), foot)
     check("no group holds more than five links, and none opens another menu",
           all(len(v) <= 5 for v in groups.values()) and not p.js("!!document.querySelector('.nav-panel .nav-panel, .nav-panel .nav-group-btn')"), groups)
     check("the menu labels: App Tour (the old How to Use) and Features in Action",
