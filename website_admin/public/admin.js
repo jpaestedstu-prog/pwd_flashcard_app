@@ -780,6 +780,11 @@ function tile(label, value, sub, spark, iconName, tone) {
     const pts = spark.map((v, i) => X(i).toFixed(1) + ' ' + Y(v).toFixed(1));
     svg('path', { class: 'spark-area', d: 'M' + X(0).toFixed(1) + ' ' + (H - 1) + ' L' + pts.join(' L') + ' L' + X(spark.length - 1).toFixed(1) + ' ' + (H - 1) + ' Z' }, s);
     svg('path', { class: 'spark-line', d: 'M' + pts.join(' L'), 'vector-effect': 'non-scaling-stroke' }, s);
+    // The latest day, as a dot: a zero-length stroke with round ends stays round
+    // however much the chart is stretched (a circle would become an oval).
+    const end = 'M' + pts[pts.length - 1] + ' h0';
+    svg('path', { class: 'spark-ring', d: end, 'vector-effect': 'non-scaling-stroke' }, s);
+    svg('path', { class: 'spark-end', d: end, 'vector-effect': 'non-scaling-stroke' }, s);
     t.appendChild(s);
   }
   return t;
@@ -813,7 +818,7 @@ function renderKpis() {
     null, 'rating', 'gold'));
   const words = state.feedback.filter((f) => f.message && inPeriod(f.created)).length;
   const unseen = state.feedback.filter((f) => f.status === 'new').length;
-  host.appendChild(tile('Messages', fmt(words), { text: fmt(unseen) + ' not yet seen (all dates)', cls: unseen ? 'up' : '' }, null, 'messages', 'pink'));
+  host.appendChild(tile('Messages', fmt(words), { text: fmt(unseen) + ' not yet seen (all dates)', cls: unseen ? 'attn' : '' }, null, 'messages', 'pink'));
   // The sidebar's Feedback item shows how many are waiting; so does the tab's title.
   $('navUnseen').replaceChildren(document.createTextNode(String(unseen)), srOnly(' not yet seen'));
   $('navUnseen').hidden = !unseen;
@@ -890,14 +895,18 @@ function renderRatings(animate) {
   const avg = (list) => list.reduce((s, f) => s + f.rating, 0) / list.length;
   const hero = $('ratingHero');
   hero.textContent = '';
+  // The same head as the overview's Average rating tile: the gold coin, then the label.
+  const top = el('div', 'tile-top'), ico = el('span', 'tile-ico');
+  ico.appendChild(icon('rating'));
+  top.append(ico, el('p', 'tile-label', 'Average rating'));
   if (rated.length) {
     const a = avg(rated);
     const stars = el('span', 'stars-text', starsText(Math.round(a)));
     stars.setAttribute('aria-hidden', 'true');
-    hero.append(el('p', 'tile-label', 'Average rating'), el('p', 'rating-big', a.toFixed(1)), stars,
+    hero.append(top, el('p', 'rating-big', a.toFixed(1)), stars,
       el('p', 'small muted', 'out of 5, from ' + fmt(rated.length) + (rated.length === 1 ? ' rating' : ' ratings')));
   } else {
-    hero.append(el('p', 'tile-label', 'Average rating'), el('p', 'empty', 'No ratings in this period yet.'));
+    hero.append(top, el('p', 'empty', 'No ratings in this period yet.'));
   }
   if (all.length && all.length !== rated.length) {
     hero.appendChild(el('p', 'small', 'All time: ' + avg(all).toFixed(1) + ' from ' + fmt(all.length) + ' ratings.'));

@@ -102,7 +102,9 @@ main{ min-width:0; outline:none; }
     radial-gradient(30rem 20rem at 10% 110%, rgba(0,121,107,.08), transparent 70%),
     var(--bg);
 }
-#viewDash{ max-width:1200px; margin:0 auto; }
+/* The dashboard's own width (without the sidebar) decides how its grids are laid out:
+   container queries, not the screen width, because the sidebar takes 16rem of it. */
+#viewDash{ max-width:1200px; margin:0 auto; container:dash / inline-size; }
 
 /* The sidebar: the brand's deep gradient, white text, in both themes.
    100dvh is the height the browser really shows. 100vh assumes its toolbar is
@@ -178,6 +180,14 @@ main{ min-width:0; outline:none; }
 .page-head{ display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:.9rem 1.25rem; margin-bottom:1.35rem; }
 .page-title h1{ outline:none; }
 .page-tools{ display:flex; flex-wrap:wrap; align-items:center; gap:.6rem; }
+/* Too narrow for the five periods in one row (a phone): two even rows, 3 and 2,
+   instead of one long pill with "All time" alone on a second line. */
+@container dash (max-width:29rem){
+  .page-tools{ width:100%; }
+  .page-tools .seg{ display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); width:100%; border-radius:18px; }
+  .page-tools .seg button{ grid-column:span 2; border-radius:13px; padding:.3rem .4rem; }
+  .page-tools .seg button:nth-child(n+4){ grid-column:span 3; }
+}
 .updated{ font-size:.85rem; color:var(--muted); }
 .view{ display:grid; gap:1.1rem; }
 .view-note{ margin:0; color:var(--muted); font-weight:700; font-size:.92rem; }
@@ -199,16 +209,21 @@ main{ min-width:0; outline:none; }
 .cap-link{ font-size:.86rem; white-space:nowrap; }
 .h-note{ font-size:.85rem; font-weight:700; color:var(--muted); margin-left:.3rem; }
 .grid2{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1.1rem; }
-.grid3{ display:grid; grid-template-columns:minmax(0,.62fr) minmax(0,1.08fr) minmax(0,1.3fr); gap:1.1rem; }
+.grid3{ display:grid; grid-template-columns:minmax(0,.75fr) minmax(0,1fr) minmax(0,1.25fr); gap:1.1rem; }
 @media (max-width:1100px){ .grid3{ grid-template-columns:repeat(2,minmax(0,1fr)); } .grid3 > :last-child{ grid-column:1 / -1; } }
 @media (max-width:760px){ .grid2,.grid3{ grid-template-columns:minmax(0,1fr); } }
+/* An odd card out (Audience has seven) takes the whole last row, not half of it. */
+.grid2 > :last-child:nth-child(odd){ grid-column:1 / -1; }
 .stack{ display:grid; gap:1.1rem; align-content:start; }
 .actions{ display:flex; flex-wrap:wrap; gap:.6rem; align-items:center; }
 
-/* ---- Today, live: the overview's lead panel ---- */
+/* ---- Today, live: the overview's lead panel ----
+   One column: today's four numbers in a row (two by two on a phone), the live
+   activity under them. Side by side, the activity was a tall empty box beside the
+   numbers until something happened. */
 .today{
   position:relative; overflow:hidden; isolation:isolate; color:#fff;
-  display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr); gap:1.1rem; padding:1.35rem;
+  display:grid; grid-template-columns:minmax(0,1fr); gap:1rem; padding:1.35rem;
   border-radius:26px;
   background:
     radial-gradient(circle closest-side, rgba(255,255,255,.14), rgba(255,255,255,.04) 62%, rgba(255,255,255,0) 100%) no-repeat calc(100% + 4rem) -5rem / 15rem 15rem,
@@ -216,21 +231,21 @@ main{ min-width:0; outline:none; }
     linear-gradient(135deg,#6D45BF 0%,#5532A6 48%,#00594F 100%);
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.16), 0 24px 44px -20px rgba(70,40,150,.6), 0 6px 14px rgba(20,12,50,.12);
 }
-@media (max-width:980px){ .today{ grid-template-columns:minmax(0,1fr); } }
 .today h2,.today h3{ color:#fff; }
 .today-head{ display:flex; align-items:baseline; gap:.6rem; flex-wrap:wrap; margin-bottom:.85rem; }
 .today-head h2{ font:600 1.35rem/1.2 var(--font-head); }
 .today-note{ font-size:.85rem; font-weight:700; color:#EAE3FF; }
 .today-figs{ list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.7rem; }
+@container dash (min-width:40rem){ .today-figs{ grid-template-columns:repeat(4,minmax(0,1fr)); } }
 .today-figs li{ display:flex; flex-direction:column; gap:.1rem; padding:.85rem 1rem; border-radius:18px; background:rgba(0,0,0,.16); box-shadow:inset 0 0 0 1px rgba(255,255,255,.16); min-width:0; }
 .tf-val{ font-size:2.15rem; font-weight:800; line-height:1.1; color:#fff; transition:transform .3s var(--ease-out); }
 .tf-val.bump{ animation:bump .6s var(--ease-out); }
 @keyframes bump{ 30%{ transform:scale(1.18); } }
 .tf-label{ font-size:.86rem; font-weight:800; color:#F1ECFF; }
-.today-feed{ display:flex; flex-direction:column; min-width:0; padding:1rem 1.05rem; border-radius:18px; background:rgba(0,0,0,.18); box-shadow:inset 0 0 0 1px rgba(255,255,255,.14); }
-.feed-title{ font-size:.95rem; margin-bottom:.6rem; }
+.today-feed{ display:flex; flex-direction:column; min-width:0; padding:.85rem 1rem; border-radius:18px; background:rgba(0,0,0,.18); box-shadow:inset 0 0 0 1px rgba(255,255,255,.14); }
+.feed-title{ font-size:.95rem; margin-bottom:.5rem; }
 .today-feed .h-note{ color:#E6DFFF; }
-.activity{ list-style:none; margin:0; padding:0; display:grid; gap:.45rem; max-height:12.5rem; overflow-y:auto; }
+.activity{ list-style:none; margin:0; padding:0; display:grid; gap:.45rem; max-height:11rem; overflow-y:auto; }
 .activity li{ display:grid; grid-template-columns:auto minmax(0,1fr); gap:.15rem .6rem; align-items:start; font-size:.88rem; color:#fff; padding:.4rem .5rem; border-radius:12px; background:rgba(0,0,0,.14); }
 .activity li.fresh{ animation:fresh .8s var(--ease-out); }
 @keyframes fresh{ from{ opacity:0; transform:translateY(-6px); } }
@@ -239,25 +254,41 @@ main{ min-width:0; outline:none; }
 .activity .a-text{ font-weight:700; overflow-wrap:anywhere; }
 .activity .activity-empty{ display:block; background:none; padding:0; color:#F1ECFF; font-weight:700; }
 
-/* ---- Overview tiles ---- */
-.kpis{ display:grid; grid-template-columns:repeat(auto-fit,minmax(10rem,1fr)); gap:1rem; }   /* two a row on phones */
-.tile{ position:relative; overflow:hidden; background:var(--surface); border:1px solid var(--border); border-radius:var(--r); box-shadow:var(--shadow); padding:1.05rem 1.1rem .9rem; min-width:0; display:flex; flex-direction:column; transition:box-shadow .2s, transform .2s var(--ease-out); }
+/* ---- Overview tiles ----
+   Five tiles. On a phone two a row, the fifth across the whole last row (it sat
+   alone in half a row). Wider: the two traffic tiles, with their small charts, side
+   by side over the other three (on a laptop five in one row were 178 px each:
+   "Average rating" and every note broke over two or three lines). */
+.kpis{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
+.kpis > :last-child:nth-child(odd){ grid-column:1 / -1; }
+@container dash (min-width:40rem){
+  .kpis{ grid-template-columns:repeat(6,minmax(0,1fr)); }
+  .kpis > *,.kpis > :last-child:nth-child(odd){ grid-column:span 2; }
+  .kpis > :nth-child(-n+2){ grid-column:span 3; }
+}
+.tile{ position:relative; overflow:hidden; background:var(--surface); border:1px solid var(--border); border-radius:var(--r); box-shadow:var(--shadow); padding:1.1rem 1.15rem 1rem; min-width:0; display:flex; flex-direction:column; transition:box-shadow .2s, transform .2s var(--ease-out); }
 .tile:hover{ box-shadow:var(--shadow-2); transform:translateY(-2px); }
-.tile::before{ content:""; position:absolute; left:0; right:0; top:0; height:3.4rem; background:linear-gradient(150deg, var(--t1,#794DC8), var(--t3,#552F99)); opacity:.09; pointer-events:none; }
-.tile-top{ display:flex; align-items:center; gap:.65rem; margin-bottom:.55rem; position:relative; }
+/* A thin band of the tile's colour along the top (a 3.4rem tint used to end
+   half-way down the label, like a misplaced header). */
+.tile::before,.rating-hero::before{ content:""; position:absolute; left:0; right:0; top:0; height:4px; background:linear-gradient(90deg, var(--t1,#794DC8), var(--t3,#552F99)); pointer-events:none; }
+.tile-top{ display:flex; align-items:center; gap:.65rem; min-height:2.35rem; margin-bottom:.6rem; position:relative; }
 .tile-ico{ width:2.35rem; height:2.35rem; border-radius:.8rem; display:grid; place-items:center; color:#fff;
   background:radial-gradient(circle at 30% 24%, rgba(255,255,255,.4), rgba(255,255,255,0) 60%), linear-gradient(150deg, var(--t1,#794DC8), var(--t3,#552F99));
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.25), 0 6px 12px -5px color-mix(in srgb, var(--t2,#6638BA) 70%, transparent); }
 .tile-ico svg{ width:1.2rem; height:1.2rem; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
-.tile-label{ font-size:.9rem; font-weight:800; color:var(--ink-2); margin:0; }
-.tile-value{ font-size:2.1rem; font-weight:800; color:var(--ink); line-height:1.1; margin:0; overflow-wrap:anywhere; }
+.tile-label{ font-size:.9rem; font-weight:800; line-height:1.2; color:var(--ink-2); margin:0; }
+.tile-value{ font-size:2.1rem; font-weight:800; color:var(--ink); line-height:1.1; margin:0; overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
 .tile-sub{ font-size:.84rem; margin:.35rem 0 0; color:var(--muted); font-weight:700; }
 .tile-sub.up{ color:var(--ok); }
 .tile-sub.down{ color:var(--bad); }
-.spark{ display:block; width:100%; height:36px; margin-top:auto; padding-top:.55rem; overflow:visible; }
-.spark .spark-area{ fill:var(--t2,#6638BA); fill-opacity:.1; stroke:none; }
+.tile-sub.attn{ color:var(--brand-ink); }   /* waiting to be read: not "good" green */
+.spark{ display:block; width:100%; height:38px; margin-top:auto; padding-top:.6rem; overflow:visible; }
+.spark .spark-area{ fill:var(--t1,#794DC8); fill-opacity:.12; stroke:none; }
 .spark .spark-line{ fill:none; stroke:var(--muted); stroke-opacity:.6; stroke-width:2; stroke-linejoin:round; stroke-linecap:round; }
-.spark .spark-end{ fill:var(--t2,#6638BA); stroke:var(--surface); stroke-width:2; }
+/* The latest day: a round dot (a zero-length stroke, so the stretched chart keeps it round). */
+.spark .spark-ring,.spark .spark-end{ fill:none; stroke-linecap:round; }
+.spark .spark-ring{ stroke:var(--surface); stroke-width:11; }
+.spark .spark-end{ stroke:var(--t1,#794DC8); stroke-width:7; }
 
 /* ---- Buttons and controls ---- */
 .btn{ display:inline-flex; align-items:center; justify-content:center; gap:.5rem; min-height:2.75rem; padding:.5rem 1.1rem; border-radius:999px; border:1px solid transparent; font:800 .95rem var(--font); cursor:pointer; text-decoration:none; transition:transform .15s ease, box-shadow .15s ease, background-color .15s, border-color .15s; }
@@ -419,9 +450,10 @@ svg.drawn .area{ animation:fade .9s ease both; }
 .status-line.warn{ color:var(--warn-ink); background:var(--warn-bg); }
 .status-line.bad{ color:var(--bad); background:var(--bad-bg); }
 .status-line.info{ color:var(--ink); background:var(--surface-2); }
-.rating-hero{ display:flex; flex-direction:column; justify-content:center; position:relative; overflow:hidden; }
-.rating-hero::before{ content:""; position:absolute; right:-2.5rem; top:-2.5rem; width:8rem; height:8rem; border-radius:50%; background:radial-gradient(circle at 34% 30%, rgba(255,214,102,.5), rgba(255,214,102,0) 65%); pointer-events:none; }
-.rating-big{ font-size:3.2rem; font-weight:800; color:var(--ink); line-height:1.05; margin:.2rem 0 .1rem; }
+/* Laid out like the overview's tiles: the gold coin and label on top, then the number
+   (it had a blurred gold glow in one corner instead). */
+.rating-hero{ display:flex; flex-direction:column; position:relative; overflow:hidden; }
+.rating-big{ font-size:3.2rem; font-weight:800; color:var(--ink); line-height:1.05; margin:.1rem 0 .1rem; }
 .stars-text{ color:var(--warn-ink); letter-spacing:.08em; font-size:1.15rem; }
 
 /* ---- Messages ---- */

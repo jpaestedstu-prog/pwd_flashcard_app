@@ -71,3 +71,7 @@ play-upload*
 
 # Gradle run from inside android/ writes its reports here
 /android/build/
+
+# The team's original photos (tools/team_photos_build.py makes the small copies the
+# website uses). The originals are private and never go in the public repository.
+/PICTURES/
