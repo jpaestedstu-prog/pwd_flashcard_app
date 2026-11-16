@@ -24,12 +24,12 @@
 <meta name="twitter:description" content="Devices, installing, internet use, privacy and classroom use — answered in plain words.">
 <meta name="twitter:image" content="https://jpaestedstu-prog.github.io/pwd_flashcard_app/assets/og-image.png">
 <!--gen:site-head-->
-<meta name="theme-color" content="#6C5CE7">
+<meta name="theme-color" content="#7E57C2">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
-<link rel="stylesheet" href="assets/site.css?v=d070cf00a7">
-<script>(function(h){h.classList.add('js');try{var p=JSON.parse(localStorage.getItem('flp-a11y')||'{}');if(p.font==='lg'||p.font==='xl')h.classList.add('fs-'+p.font);if(p.dys)h.classList.add('dys');if(p.hc)h.classList.add('hc');if(p.still)h.classList.add('still');if(p.fil){h.classList.add('fil');h.setAttribute('lang','fil');}if(p.fil||p.font==='lg'||p.font==='xl')h.classList.add('nav-compact');}catch(e){}})(document.documentElement);</script>
+<link rel="stylesheet" href="assets/site.css?v=64ca20403f">
+<script>(function(h){h.classList.add('js');try{var p=JSON.parse(localStorage.getItem('flp-a11y')||'{}');if(p.font==='lg'||p.font==='xl')h.classList.add('fs-'+p.font);if(p.dys)h.classList.add('dys');if(p.hc)h.classList.add('hc');if(p.still)h.classList.add('still');if(p.theme==='dark'||p.theme==='light')h.classList.add('theme-'+p.theme);if(p.fil){h.classList.add('fil');h.setAttribute('lang','fil');}if(p.font==='lg'||p.font==='xl'||(p.fil&&window.innerWidth<1200))h.classList.add('nav-compact');}catch(e){}})(document.documentElement);</script>
 <!--/gen:site-head-->
 <script type="application/ld+json">
 {
@@ -43,10 +43,10 @@
     {"@type":"Question","name":"Do I need an account or internet to use the app?","acceptedAnswer":{"@type":"Answer","text":"No account and no login — ever. Just create a profile with a name and avatar on the device. After installing, flashcards, games and stories work without internet. The internet is used only to play each sign-language video the first time (it is saved for offline use after that) and for the optional connected features: joining a class or home group, Messages, and playing with a friend online."}},
     {"@type":"Question","name":"Which disabilities does the app support?","acceptedAnswer":{"@type":"Answer","text":"Student profiles can select visual impairment, hearing impairment, motor impairment, cognitive/learning disability, or multiple disabilities — and the app pre-configures the right accessibility features for each. There is also a no-accessibility-needs option. Every setting can be adjusted manually afterwards, so any learner can mix and match what helps them most."}},
     {"@type":"Question","name":"Can a learner use the app without touching the screen?","acceptedAnswer":{"@type":"Answer","text":"Yes. With Gaze Control, head movements move a highlight around the screen, and a long blink, keeping still or a single switch chooses — on every screen. Learners who can’t move their head can use scanning with one switch, and voice commands work too. Everything runs on the tablet itself; no video is sent anywhere."}},
-    {"@type":"Question","name":"How do teachers and parents use it?","acceptedAnswer":{"@type":"Answer","text":"Create a Teacher or Parent profile to set up classes or home groups, generate join codes for students, view progress reports, and leave encouraging notes. Student profiles created with a class code appear automatically in the teacher's dashboard. The full walkthrough is in the Teacher's Guide."}},
+    {"@type":"Question","name":"How do teachers and parents use it?","acceptedAnswer":{"@type":"Answer","text":"Create a Teacher or Parent profile to set up classes or home groups, generate join codes for students, view progress reports, and leave encouraging notes. Student profiles created with a class code appear automatically in the teacher's dashboard, and a Child profile joins a parent's home group with its code. The full walkthrough is in the Teacher's Guide, and Help & Guides has guides for students and children to read together."}},
     {"@type":"Question","name":"What data does the app keep?","acceptedAnswer":{"@type":"Answer","text":"A Guest Player's profile never leaves the tablet. Every other profile is also saved online, so a learner can join a class or home group, send messages and move to a new tablet. Mood check-ins, notebook pages and saved Talk Board phrases stay on the tablet. There are no ads, and data is never sold. The Privacy & data page explains everything in plain words."}},
     {"@type":"Question","name":"Is FlashLearn PWD really free?","acceptedAnswer":{"@type":"Answer","text":"Yes. FlashLearn PWD is a student thesis project built to help PWD learners, with no ads and no in-app purchases."}},
-    {"@type":"Question","name":"How can I give feedback or report a problem?","acceptedAnswer":{"@type":"Answer","text":"Use the feedback form on this page to rate the app, report a problem or share an idea — no account needed. If you have a GitHub account, you can also open a ticket on the project's issues page."}}
+    {"@type":"Question","name":"How can I give feedback or report a problem?","acceptedAnswer":{"@type":"Answer","text":"Use the feedback form on this page to rate the app, report a problem or share an idea — no account needed."}}
   ]
 }
 </script>
@@ -58,15 +58,48 @@
   <div class="header-inner">
     <a class="brand" href="index.html"><img class="brand-logo" src="assets/logo.webp" width="40" height="40" alt=""><span class="brand-name">FlashLearn <b>PWD</b></span></a>
     <nav class="site-nav" id="siteNav" aria-label="Main" data-label-en="Main" data-label-fil="Pangunahin">
-      <ul>
-        <li><a href="index.html"><span class="nav-ico" aria-hidden="true">🏠</span><span class="nav-txt"><span class="nav-main"><span class="en">Home</span><span class="fil">Home</span></span><span class="nav-sub"><span class="en">Start here</span><span class="fil">Dito magsimula</span></span></span></a></li>
-        <li><a href="try.html"><span class="nav-ico" aria-hidden="true">🎴</span><span class="nav-txt"><span class="nav-main"><span class="en">Try It</span><span class="fil">Subukan</span></span><span class="nav-sub"><span class="en">Flashcards and a game, right in your browser</span><span class="fil">Flashcard at laro, mismo sa browser</span></span></span></a></li>
-        <li><a href="download.html"><span class="nav-ico" aria-hidden="true">⬇️</span><span class="nav-txt"><span class="nav-main"><span class="en">Download</span><span class="fil">I-download</span></span><span class="nav-sub"><span class="en">Free for Android 10 and newer</span><span class="fil">Libre para sa Android 10 pataas</span></span></span></a></li>
-        <li><a href="how-to-use.html"><span class="nav-ico" aria-hidden="true">📖</span><span class="nav-txt"><span class="nav-main"><span class="en">How to Use</span><span class="fil">Paano Gamitin</span></span><span class="nav-sub"><span class="en">A short video and a picture tour</span><span class="fil">Maikling video at tour na may larawan</span></span></span></a></li>
-        <li><a href="games.html"><span class="nav-ico" aria-hidden="true">🎮</span><span class="nav-txt"><span class="nav-main"><span class="en">Games</span><span class="fil">Mga Laro</span></span><span class="nav-sub"><span class="en">Every learning game in the app</span><span class="fil">Bawat larong pampagkatuto sa app</span></span></span></a></li>
-        <li><a href="fsl-dictionary.html"><span class="nav-ico" aria-hidden="true">🤟</span><span class="nav-txt"><span class="nav-main"><span class="en">FSL Dictionary</span><span class="fil">Diksyunaryo ng FSL</span></span><span class="nav-sub"><span class="en">Watch everyday words signed</span><span class="fil">Panoorin ang senyas ng mga salita</span></span></span></a></li>
-        <li><a href="teachers-guide.html"><span class="nav-ico" aria-hidden="true">🧑‍🏫</span><span class="nav-txt"><span class="nav-main"><span class="en">Teacher’s Guide</span><span class="fil">Gabay ng Guro</span></span><span class="nav-sub"><span class="en">Set up a class, printable</span><span class="fil">Pag-set up ng klase, napi-print</span></span></span></a></li>
-        <li><a href="faq.html" aria-current="page"><span class="nav-ico" aria-hidden="true">❓</span><span class="nav-txt"><span class="nav-main"><span class="en">FAQ</span><span class="fil">Mga Tanong</span></span><span class="nav-sub"><span class="en">Answers, and how to reach us</span><span class="fil">Mga sagot, at paano kami makakausap</span></span></span></a></li>
+      <ul class="nav-list">
+        <li class="nav-item"><a class="nav-link" href="index.html"><span class="nav-ico tone-purple" aria-hidden="true">🏠</span><span class="nav-txt"><span class="nav-main"><span class="en">Home</span><span class="fil">Home</span></span><span class="nav-sub"><span class="en">Start here</span><span class="fil">Dito magsimula</span></span></span></a></li>
+        <li class="nav-item nav-group" data-group="explore">
+          <button type="button" class="nav-link nav-group-btn" aria-expanded="false" aria-controls="nav-explore"><span class="nav-main"><span class="en">Explore</span><span class="fil">Tuklasin</span></span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>
+          <div class="nav-panel" id="nav-explore">
+            <p class="nav-panel-title"><span class="en">Explore</span><span class="fil">Tuklasin</span><span class="sr-only"> — <span class="en">The app, up close</span><span class="fil">Ang app, malapitan</span></span></p>
+            <ul class="nav-sublist">
+              <li><a href="how-to-use.html"><span class="nav-ico tone-orange" aria-hidden="true">📖</span><span class="nav-txt"><span class="nav-main"><span class="en">App Tour</span><span class="fil">Tour ng App</span></span><span class="nav-sub"><span class="en">An 81-second video and a picture tour</span><span class="fil">81 segundong video at tour na may larawan</span></span></span></a></li>
+              <li><a href="features.html"><span class="nav-ico tone-magenta" aria-hidden="true">✨</span><span class="nav-txt"><span class="nav-main"><span class="en">Features in Action</span><span class="fil">Tingnan ang mga Feature</span></span><span class="nav-sub"><span class="en">See each feature work, and who it helps</span><span class="fil">Tingnan ang bawat feature at kung sino ang natutulungan</span></span></span></a></li>
+              <li><a href="gaze-control.html"><span class="nav-ico tone-blue" aria-hidden="true">👁️</span><span class="nav-txt"><span class="nav-main"><span class="en">Gaze Control</span><span class="fil">Gaze Control</span></span><span class="nav-sub"><span class="en">Use the app hands-free</span><span class="fil">Gamitin ang app nang walang kamay</span></span></span></a></li>
+              <li><a href="games.html"><span class="nav-ico tone-pink" aria-hidden="true">🎮</span><span class="nav-txt"><span class="nav-main"><span class="en">Games</span><span class="fil">Mga Laro</span></span><span class="nav-sub"><span class="en">Every learning game in the app</span><span class="fil">Bawat larong pampagkatuto sa app</span></span></span></a></li>
+              <li><a href="fsl-dictionary.html"><span class="nav-ico tone-teal" aria-hidden="true">🤟</span><span class="nav-txt"><span class="nav-main"><span class="en">FSL Dictionary</span><span class="fil">Diksyunaryo ng FSL</span></span><span class="nav-sub"><span class="en">Watch everyday words signed</span><span class="fil">Panoorin ang senyas ng mga salita</span></span></span></a></li>
+            </ul>
+          </div>
+        </li>
+        <li class="nav-item nav-group" data-group="educators">
+          <button type="button" class="nav-link nav-group-btn" aria-expanded="false" aria-controls="nav-educators"><span class="nav-main"><span class="en">Teachers &amp; Parents</span><span class="fil">Guro at Magulang</span></span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>
+          <div class="nav-panel" id="nav-educators">
+            <p class="nav-panel-title"><span class="en">Teachers &amp; Parents</span><span class="fil">Guro at Magulang</span><span class="sr-only"> — <span class="en">For the adults beside a learner</span><span class="fil">Para sa mga katuwang ng mag-aaral</span></span></p>
+            <ul class="nav-sublist">
+              <li><a href="teachers-guide.html"><span class="nav-ico tone-indigo" aria-hidden="true">🧑‍🏫</span><span class="nav-txt"><span class="nav-main"><span class="en">Teacher’s Guide</span><span class="fil">Gabay ng Guro</span></span><span class="nav-sub"><span class="en">Set up a class, printable</span><span class="fil">Pag-set up ng klase, napi-print</span></span></span></a></li>
+              <li><a href="guides.html#gg-educators"><span class="nav-ico tone-green" aria-hidden="true">📘</span><span class="nav-txt"><span class="nav-main"><span class="en">Guides for Teachers &amp; Parents</span><span class="fil">Mga Gabay para sa Guro at Magulang</span></span><span class="nav-sub"><span class="en">Set up and support learners, step by step</span><span class="fil">Pag-set up at pagsuporta, hakbang-hakbang</span></span></span></a></li>
+              <li><a href="awareness.html"><span class="nav-ico tone-green" aria-hidden="true">💜</span><span class="nav-txt"><span class="nav-main"><span class="en">PWD Awareness</span><span class="fil">Kamalayang PWD</span></span><span class="nav-sub"><span class="en">Rights and everyday inclusion</span><span class="fil">Mga karapatan at araw-araw na inklusyon</span></span></span></a></li>
+              <li><a href="privacy.html"><span class="nav-ico tone-cyan" aria-hidden="true">🔒</span><span class="nav-txt"><span class="nav-main"><span class="en">Privacy &amp; Data</span><span class="fil">Privacy at Datos</span></span><span class="nav-sub"><span class="en">What the app keeps, and who sees it</span><span class="fil">Ano ang itinatago ng app, at sino ang nakakakita</span></span></span></a></li>
+            </ul>
+          </div>
+        </li>
+        <li class="nav-item nav-group" data-group="help">
+          <button type="button" class="nav-link nav-group-btn" aria-expanded="false" aria-controls="nav-help" aria-current="true"><span class="nav-main"><span class="en">Help</span><span class="fil">Tulong</span></span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button>
+          <div class="nav-panel" id="nav-help">
+            <p class="nav-panel-title"><span class="en">Help</span><span class="fil">Tulong</span><span class="sr-only"> — <span class="en">Guides, questions, feedback and the team</span><span class="fil">Mga gabay, tanong, feedback at ang pangkat</span></span></p>
+            <ul class="nav-sublist">
+              <li><a href="guides.html"><span class="nav-ico tone-green" aria-hidden="true">📘</span><span class="nav-txt"><span class="nav-main"><span class="en">Help &amp; Guides</span><span class="fil">Tulong at mga Gabay</span></span><span class="nav-sub"><span class="en">Step-by-step guides for the app</span><span class="fil">Mga gabay sa app, hakbang-hakbang</span></span></span></a></li>
+              <li><a href="faq.html" aria-current="page"><span class="nav-ico tone-magenta" aria-hidden="true">❓</span><span class="nav-txt"><span class="nav-main"><span class="en">FAQ</span><span class="fil">Mga Tanong</span></span><span class="nav-sub"><span class="en">Answers to common questions</span><span class="fil">Mga sagot sa karaniwang tanong</span></span></span></a></li>
+              <li><a href="faq.html#feedback"><span class="nav-ico tone-gold" aria-hidden="true">⭐</span><span class="nav-txt"><span class="nav-main"><span class="en">Rate &amp; Feedback</span><span class="fil">Rating at Feedback</span></span><span class="nav-sub"><span class="en">Tell the team what you think</span><span class="fil">Sabihin sa pangkat ang iyong opinyon</span></span></span></a></li>
+              <li><a href="about.html"><span class="nav-ico tone-red" aria-hidden="true">🎓</span><span class="nav-txt"><span class="nav-main"><span class="en">About the Team</span><span class="fil">Tungkol sa Pangkat</span></span><span class="nav-sub"><span class="en">The students behind the app</span><span class="fil">Ang mga mag-aaral sa likod ng app</span></span></span></a></li>
+              <li><a href="about.html#future"><span class="nav-ico tone-teal" aria-hidden="true">🔭</span><span class="nav-txt"><span class="nav-main"><span class="en">Future Recommendations</span><span class="fil">Mga Rekomendasyon</span></span><span class="nav-sub"><span class="en">Plans for later, like 3D signs</span><span class="fil">Mga plano, gaya ng 3D na senyas</span></span></span></a></li>
+            </ul>
+          </div>
+        </li>
+        <li class="nav-item nav-cta nav-cta-first"><a class="nav-btn nav-btn-try" href="try.html"><span aria-hidden="true">🎴</span><span class="nav-main"><span class="en">Try It</span><span class="fil">Subukan</span></span></a></li>
+        <li class="nav-item nav-cta"><a class="nav-btn nav-btn-dl" href="download.html"><span aria-hidden="true">⬇️</span><span class="nav-main"><span class="en">Download</span><span class="fil">I-download</span></span></a></li>
       </ul>
     </nav>
     <div class="header-tools">
@@ -88,6 +121,14 @@
           <button type="button" data-font="xl" aria-pressed="false" aria-label="Largest text" data-label-en="Largest text" data-label-fil="Pinakamalaking letra">A++</button>
       </div>
     </div>
+    <div class="panel-row">
+      <span class="row-label" id="a11yThemeLabel"><span class="en">Theme</span><span class="fil">Tema</span></span>
+      <div class="seg" role="group" aria-labelledby="a11yThemeLabel">
+          <button type="button" data-theme-pick="" aria-pressed="true"><span class="en">Auto</span><span class="fil">Awto</span><span class="sr-only"> — <span class="en">Follow this device</span><span class="fil">Sundin ang device</span></span></button>
+          <button type="button" data-theme-pick="light" aria-pressed="false"><span class="en">Light</span><span class="fil">Maliwanag</span><span class="sr-only"> — <span class="en">Light theme</span><span class="fil">Maliwanag na tema</span></span></button>
+          <button type="button" data-theme-pick="dark" aria-pressed="false"><span class="en">Dark</span><span class="fil">Madilim</span><span class="sr-only"> — <span class="en">Dark theme</span><span class="fil">Madilim na tema</span></span></button>
+      </div>
+    </div>
     <button type="button" class="switch" id="btnDys" role="switch" aria-checked="false"><span><span class="en">Dyslexia-friendly font</span><span class="fil">Font para sa may dyslexia</span></span><span class="track" aria-hidden="true"></span></button>
     <button type="button" class="switch" id="btnHC" role="switch" aria-checked="false"><span><span class="en">High contrast</span><span class="fil">Mataas na contrast</span></span><span class="track" aria-hidden="true"></span></button>
     <button type="button" class="switch" id="btnStill" role="switch" aria-checked="false"><span><span class="en">Reduce motion</span><span class="fil">Bawasan ang galaw</span></span><span class="track" aria-hidden="true"></span></button>
@@ -102,10 +143,10 @@
 <main id="main">
 <section class="page-hero">
   <div class="container">
-    <!--gen:site-crumbs--><nav class="crumbs" aria-label="Breadcrumb" data-label-en="Breadcrumb" data-label-fil="Kinaroroonan"><ol><li><a href="index.html"><span class="en">Home</span><span class="fil">Home</span></a></li><li aria-current="page"><span class="en">FAQ</span><span class="fil">Mga Tanong</span></li></ol></nav><!--/gen:site-crumbs-->
+    <!--gen:site-crumbs--><nav class="crumbs" aria-label="Breadcrumb" data-label-en="Breadcrumb" data-label-fil="Kinaroroonan"><ol><li><a href="index.html"><span class="en">Home</span><span class="fil">Home</span></a></li><li><span class="en">Help</span><span class="fil">Tulong</span></li><li aria-current="page"><span class="en">FAQ</span><span class="fil">Mga Tanong</span></li></ol></nav><span class="hero-badge tone-magenta" aria-hidden="true">❓</span><!--/gen:site-crumbs-->
     <p class="eyebrow"><span aria-hidden="true">❓</span> <span class="en">Questions</span><span class="fil">Mga Tanong</span></p>
     <h1><span class="en">Frequently asked questions</span><span class="fil">Mga madalas itanong</span></h1>
-    <p class="lead"><span class="en">Plain answers for parents, teachers and learners. Can't find yours? <a href="#feedback">Send us a message</a> — it goes straight to the team.</span><span class="fil">Simpleng sagot para sa mga magulang, guro at mag-aaral. Wala ang tanong mo? <a href="#feedback">Magpadala ng mensahe</a> — diretso ito sa team.</span></p>
+    <p class="lead"><span class="en">Plain answers for parents, teachers and learners. Need steps for a feature? See <a href="guides.html">Help &amp; Guides</a>. Can't find yours? <a href="#feedback">Send us a message</a> — it goes straight to the team.</span><span class="fil">Simpleng sagot para sa mga magulang, guro at mag-aaral. Kailangan ang mga hakbang para sa isang feature? Tingnan ang <a href="guides.html">Tulong at mga Gabay</a>. Wala ang tanong mo? <a href="#feedback">Magpadala ng mensahe</a> — diretso ito sa team.</span></p>
   </div>
 </section>
 
@@ -139,15 +180,15 @@
       </details>
       <details class="faq" id="disabilities">
         <summary><span class="en">Which disabilities does the app support?</span><span class="fil">Anong mga kapansanan ang sinusuportahan ng app?</span></summary>
-        <div class="d-body"><p><span class="en">Visual impairment, hearing impairment, motor impairment, cognitive/learning disability and multiple disabilities, plus a no-accessibility-needs option — and the app sets up the right accessibility features for each. A student or child gets the type of the class or home group they join; their teacher or parent can change it for one learner in Manage Classes or Home Groups, and the change reaches the learner’s device. A Player chooses their own. Display settings such as text size and contrast can still be adjusted afterwards, so any learner can mix and match what helps them most.</span><span class="fil">Kapansanan sa paningin, pandinig, paggalaw, kognitibo/pagkatuto at maramihang kapansanan, pati ang opsyon para sa walang pangangailangang accessibility — at awtomatikong ise-set ng app ang tamang accessibility features para sa bawat isa. Nakukuha ng mag-aaral o anak ang uri ng klase o home group na sinalihan nila; mababago ito ng kanilang guro o magulang para sa isang mag-aaral sa Pamahalaan ang mga Klase o Mga Home Group, at umaabot ang pagbabago sa device ng mag-aaral. Ang Manlalaro ang pumipili ng sa kanila. Mababago pa rin pagkatapos ang mga setting ng display gaya ng laki ng teksto at contrast sa Settings.</span></p></div>
+        <div class="d-body"><p><span class="en">Visual impairment, hearing impairment, motor impairment, cognitive/learning disability and multiple disabilities, plus a no-accessibility-needs option — and the app sets up the right accessibility features for each. A student or child gets the type of the class or home group they join; their teacher or parent can change it for one learner in Manage Classes or Home Groups, and the change reaches the learner’s device. A Player chooses their own. Display settings such as text size and contrast can still be adjusted afterwards, so any learner can mix and match what helps them most.</span><span class="fil">Kapansanan sa paningin, pandinig, paggalaw, kognitibo/pagkatuto at maramihang kapansanan, pati ang opsyon para sa walang pangangailangang accessibility — at awtomatikong ise-set ng app ang tamang accessibility features para sa bawat isa. Nakukuha ng mag-aaral o anak ang uri ng klase o home group na sinalihan nila; mababago ito ng kanilang guro o magulang para sa isang mag-aaral sa Pamahalaan ang mga Klase o Mga Home Group, at umaabot ang pagbabago sa device ng mag-aaral. Ang Manlalaro ang pumipili ng sa kanila. Mababago pa rin pagkatapos ang mga setting ng display gaya ng laki ng teksto at contrast sa Settings.</span></p><p class="faq-guides"><span aria-hidden="true">✨</span> <span class="en">See which features help each need — with short videos and pictures — on </span><span class="fil">Tingnan kung aling mga feature ang nakakatulong sa bawat pangangailangan — may maiikling video at larawan — sa </span><a href="features.html#who"><span class="en">Features in Action</span><span class="fil">Tingnan ang mga Feature</span></a>. <span class="en">How to turn each one on: </span><span class="fil">Paano buksan ang bawat isa: </span><a href="guides.html#g-accessibility"><span class="en">the Accessibility options guide</span><span class="fil">ang gabay sa mga Accessibility option</span></a>.</p></div>
       </details>
       <details class="faq" id="hands-free">
         <summary><span class="en">Can a learner use the app without touching the screen?</span><span class="fil">Magagamit ba ng mag-aaral ang app nang hindi hinahawakan ang screen?</span></summary>
-        <div class="d-body"><p><span class="en">Yes. With <a href="gaze-control.html">Gaze Control</a>, head movements move a highlight around the screen, and a long blink, keeping still or a single switch chooses — on every screen. Learners who can’t move their head can use scanning with one switch, and voice commands work too. Everything runs on the tablet itself; no video is sent anywhere.</span><span class="fil">Oo. Sa <a href="gaze-control.html">Gaze Control</a>, inililipat ng galaw ng ulo ang highlight sa screen, at pumipili ang mahabang pagkurap, pananatiling nakatigil o isang switch — sa bawat screen. Magagamit ng mga mag-aaral na hindi maigalaw ang ulo ang scanning gamit ang isang switch, at gumagana rin ang mga utos sa boses. Sa tablet mismo tumatakbo ang lahat; walang video na ipinapadala.</span></p></div>
+        <div class="d-body"><p><span class="en">Yes. With <a href="gaze-control.html">Gaze Control</a>, head movements move a highlight around the screen, and a long blink, keeping still or a single switch chooses — on every screen. Learners who can’t move their head can use scanning with one switch, and voice commands work too. Everything runs on the tablet itself; no video is sent anywhere.</span><span class="fil">Oo. Sa <a href="gaze-control.html">Gaze Control</a>, inililipat ng galaw ng ulo ang highlight sa screen, at pumipili ang mahabang pagkurap, pananatiling nakatigil o isang switch — sa bawat screen. Magagamit ng mga mag-aaral na hindi maigalaw ang ulo ang scanning gamit ang isang switch, at gumagana rin ang mga utos sa boses. Sa tablet mismo tumatakbo ang lahat; walang video na ipinapadala.</span></p><p class="faq-guides"><span aria-hidden="true">📘</span> <strong><span class="en">Step by step:</span><span class="fil">Hakbang-hakbang:</span></strong> <a href="guides.html#g-gaze"><span class="en">Gaze Control</span><span class="fil">Gaze Control</span></a>, <a href="guides.html#g-voice"><span class="en">Voice commands</span><span class="fil">Mga voice command</span></a>, <a href="guides.html#g-controller"><span class="en">Game controller</span><span class="fil">Game controller</span></a>, <a href="guides.html#g-keyboard"><span class="en">Keyboard and switches</span><span class="fil">Keyboard at mga switch</span></a></p></div>
       </details>
       <details class="faq" id="teachers">
         <summary><span class="en">How do teachers and parents use it?</span><span class="fil">Paano ito gagamitin ng mga guro at magulang?</span></summary>
-        <div class="d-body"><p><span class="en">Create a <strong>Teacher</strong> or <strong>Parent</strong> profile to set up classes or home groups, generate join codes for students, view progress reports, and leave encouraging notes. Student profiles created with a class code appear automatically in the teacher's dashboard. The full walkthrough is in the <a href="teachers-guide.html">Teacher's Guide</a>.</span><span class="fil">Gumawa ng <strong>Teacher</strong> o <strong>Parent</strong> profile para mag-set up ng klase o home group, gumawa ng join codes para sa mga mag-aaral, tingnan ang progress reports, at mag-iwan ng mga nakapagpapalakas na note. Ang kumpletong gabay ay nasa <a href="teachers-guide.html">Gabay ng Guro</a>.</span></p></div>
+        <div class="d-body"><p><span class="en">Create a <strong>Teacher</strong> or <strong>Parent</strong> profile to set up classes or home groups, generate join codes for students, view progress reports, and leave encouraging notes. Student profiles created with a class code appear automatically in the teacher's dashboard, and a <strong>Child</strong> profile joins a parent's home group with its code. The full walkthrough is in the <a href="teachers-guide.html">Teacher's Guide</a>, and Help &amp; Guides has <a href="guides.html#gg-learners">guides For Students and Children</a> to read together.</span><span class="fil">Gumawa ng <strong>Teacher</strong> o <strong>Parent</strong> profile para mag-set up ng klase o home group, gumawa ng join codes para sa mga mag-aaral, tingnan ang progress reports, at mag-iwan ng mga nakapagpapalakas na note. Sumasali ang <strong>Child</strong> profile sa home group ng magulang gamit ang code nito. Ang kumpletong gabay ay nasa <a href="teachers-guide.html">Gabay ng Guro</a>, at may <a href="guides.html#gg-learners">mga gabay Para sa Mag-aaral at mga Bata</a> sa Tulong at mga Gabay na mababasa nang magkasama.</span></p><p class="faq-guides"><span aria-hidden="true">📘</span> <strong><span class="en">Step by step:</span><span class="fil">Hakbang-hakbang:</span></strong> <a href="guides.html#g-teachers"><span class="en">For teachers</span><span class="fil">Para sa guro</span></a>, <a href="guides.html#g-parents"><span class="en">For parents</span><span class="fil">Para sa magulang</span></a>, <a href="guides.html#g-timeBreaks"><span class="en">Time limits, breaks and routines</span><span class="fil">Oras, pahinga at routine</span></a>, <a href="guides.html#g-tvCast"><span class="en">TV Cast</span><span class="fil">TV Cast</span></a>, <a href="guides.html#g-supervision"><span class="en">Supervision and safe use</span><span class="fil">Pagbabantay at ligtas na paggamit</span></a></p></div>
       </details>
       <details class="faq" id="data">
         <summary><span class="en">What data does the app keep?</span><span class="fil">Anong datos ang itinatago ng app?</span></summary>
@@ -163,7 +204,7 @@
       </details>
       <details class="faq" id="report">
         <summary><span class="en">How can I give feedback or report a problem?</span><span class="fil">Paano ako magbibigay ng feedback o mag-uulat ng problema?</span></summary>
-        <div class="d-body"><p><span class="en">We'd love to hear from you! Use the <a href="#feedback">feedback form</a> below to rate the app, report a problem or share an idea — no account needed. If you have a GitHub account, you can also open a ticket on our <a href="https://github.com/jpaestedstu-prog/pwd_flashcard_app/issues" rel="noopener">issues page</a>.</span><span class="fil">Gusto naming marinig ang inyong opinyon! Gamitin ang <a href="#feedback">feedback form</a> sa ibaba para i-rate ang app, mag-ulat ng problema o magbahagi ng ideya — walang kailangang account. Kung may GitHub account kayo, maaari ring magbukas ng ticket sa aming <a href="https://github.com/jpaestedstu-prog/pwd_flashcard_app/issues" rel="noopener">issues page</a>.</span></p></div>
+        <div class="d-body"><p><span class="en">We'd love to hear from you! Use the <a href="#feedback">feedback form</a> below to rate the app, report a problem or share an idea — no account needed.</span><span class="fil">Gusto naming marinig ang inyong opinyon! Gamitin ang <a href="#feedback">feedback form</a> sa ibaba para i-rate ang app, mag-ulat ng problema o magbahagi ng ideya — walang kailangang account.</span></p><p class="faq-guides"><span aria-hidden="true">📘</span> <strong><span class="en">Step by step:</span><span class="fil">Hakbang-hakbang:</span></strong> <a href="guides.html#g-feedback"><span class="en">Rate &amp; Feedback</span><span class="fil">Rating at Feedback</span></a></p></div>
       </details>
     </div>
   </div>
@@ -222,14 +263,13 @@
           <button class="btn btn-secondary" type="button" id="fbCopy"><span aria-hidden="true">📋</span> <span class="en">Copy message instead</span><span class="fil">Kopyahin na lang</span></button>
         </div>
         <p class="fb-status" id="fbStatus" aria-live="polite"></p>
-        <p class="fb-note" id="fbNoteSite" hidden><span aria-hidden="true">🔒</span> <span class="en">“Send to the team” delivers your rating and message to the FlashLearn PWD team through this website’s own database, with the page and language you used — no name, email or account — and it is deleted after 12 months. Please don’t write names, phone numbers or details about a child. Want an answer, or asking us to delete a profile? Use “Open in your email app” so we can reply. <a href="privacy.html#website">How the website handles this</a>.</span><span class="fil">Ipinapadala ng “Ipadala sa team” ang inyong rating at mensahe sa FlashLearn PWD team sa sariling database ng website na ito, kasama ang pahina at wikang ginamit ninyo — walang pangalan, email o account — at binubura ito pagkalipas ng 12 buwan. Huwag pong isulat ang mga pangalan, numero ng telepono o detalye tungkol sa isang bata. Gusto ng sagot, o hihilingin na burahin ang isang profile? Gamitin ang “Buksan sa inyong email app” para makasagot kami. <a href="privacy.html#website">Paano ito hinahawakan ng website</a>.</span></p>
+        <p class="fb-note" id="fbNoteSite" hidden><span aria-hidden="true">🔒</span> <span class="en">“Send to the team” delivers your rating and message to the FlashLearn PWD team through this website’s own database, with the page and language you used — no name, email or account — and it is deleted after 12 months.<span class="fb-copy" hidden> A copy also arrives as an email in the team’s inbox, and the team deletes it there after 12 months too.</span> Please don’t write names, phone numbers or details about a child. Want an answer, or asking us to delete a profile? Use “Open in your email app” so we can reply. <a href="privacy.html#website">How the website handles this</a>.</span><span class="fil">Ipinapadala ng “Ipadala sa team” ang inyong rating at mensahe sa FlashLearn PWD team sa sariling database ng website na ito, kasama ang pahina at wikang ginamit ninyo — walang pangalan, email o account — at binubura ito pagkalipas ng 12 buwan.<span class="fb-copy" hidden> May kopya ring dumarating bilang email sa inbox ng team, at binubura rin ito roon ng team pagkalipas ng 12 buwan.</span> Huwag pong isulat ang mga pangalan, numero ng telepono o detalye tungkol sa isang bata. Gusto ng sagot, o hihilingin na burahin ang isang profile? Gamitin ang “Buksan sa inyong email app” para makasagot kami. <a href="privacy.html#website">Paano ito hinahawakan ng website</a>.</span></p>
         <p class="fb-note" id="fbNoteMail"><span aria-hidden="true">🔒</span> <span class="en">This website sends nothing by itself — the buttons only prepare the message in your own email app (or copy it), so you stay in control.</span><span class="fil">Walang ipinapadala ang website na ito nang mag-isa — inihahanda lang ng mga button ang mensahe sa inyong sariling email app (o kinokopya ito), kaya kayo ang may kontrol.</span></p>
       </form>
       <div>
         <h3><span class="en">Other ways to reach us</span><span class="fil">Iba pang paraan</span></h3>
         <ul class="contact-list mt-1">
           <li><span aria-hidden="true">📧</span> <span class="en">Email us directly at</span><span class="fil">Mag-email nang direkta sa</span> <code id="fbAddr">…</code></li>
-          <li><span aria-hidden="true">🐙</span> <span class="en">Have a GitHub account? <a href="https://github.com/jpaestedstu-prog/pwd_flashcard_app/issues" rel="noopener">Open an issue</a> so you can follow our progress on the fix.</span><span class="fil">May GitHub account? <a href="https://github.com/jpaestedstu-prog/pwd_flashcard_app/issues" rel="noopener">Magbukas ng issue</a> para masundan ang pag-aayos.</span></li>
           <li><span aria-hidden="true">💡</span> <span class="en">The most helpful reports say what you did, what you expected, and what happened instead — a screenshot is a bonus!</span><span class="fil">Pinakamalaking tulong ang mga ulat na nagsasabi kung ano ang ginawa ninyo, ano ang inaasahan, at ano ang nangyari — bonus na ang screenshot!</span></li>
         </ul>
       </div>
@@ -245,34 +285,40 @@
       <div class="footer-brand">
         <a class="brand" href="index.html"><img class="brand-logo" src="assets/logo.webp" width="40" height="40" alt=""><span>FlashLearn <b>PWD</b></span></a>
         <p><span class="en">A free, bilingual flashcard app for learners with disabilities — a college thesis / capstone project (2023–2027), built with Filipino learners first.</span><span class="fil">Libreng bilingual na flashcard app para sa mga mag-aaral na may kapansanan — isang college thesis / capstone project (2023–2027), ginawa para sa mga mag-aaral na Pilipino.</span></p>
-        <a class="btn btn-primary btn-sm" href="download.html"><span class="en">Download free</span><span class="fil">I-download nang libre</span></a>
+        <div class="actions">
+          <a class="btn btn-primary btn-sm" href="download.html"><span class="en">Download free</span><span class="fil">I-download nang libre</span></a>
+          <a class="btn btn-secondary btn-sm" href="try.html"><span class="en">Try it first</span><span class="fil">Subukan muna</span></a>
+        </div>
       </div>
-      <nav aria-label="Get started">
-        <h2 class="footer-title"><span class="en">Get started</span><span class="fil">Magsimula</span></h2>
+      <nav aria-label="Explore the app">
+        <h2 class="footer-title"><span aria-hidden="true">🧭</span><span class="en">Explore</span><span class="fil">Tuklasin</span></h2>
         <ul>
-          <li><a href="download.html"><span class="en">Download the app</span><span class="fil">I-download ang app</span></a></li>
-          <li><a href="try.html"><span class="en">Try it in your browser</span><span class="fil">Subukan sa browser</span></a></li>
-          <li><a href="how-to-use.html"><span class="en">How to use the app</span><span class="fil">Paano gamitin ang app</span></a></li>
-          <li><a href="games.html"><span class="en">Learning games</span><span class="fil">Mga larong pampagkatuto</span></a></li>
-        </ul>
-      </nav>
-      <nav aria-label="Learn more">
-        <h2 class="footer-title"><span class="en">Learn more</span><span class="fil">Matuto pa</span></h2>
-        <ul>
-          <li><a href="fsl-dictionary.html"><span class="en">FSL Sign Dictionary</span><span class="fil">Diksyunaryo ng FSL</span></a></li>
-          <li><a href="teachers-guide.html"><span class="en">Teacher’s Guide</span><span class="fil">Gabay ng Guro</span></a></li>
+          <li><a href="how-to-use.html"><span class="en">App tour (video and pictures)</span><span class="fil">Tour ng app (video at larawan)</span></a></li>
+          <li><a href="features.html"><span class="en">Features in action</span><span class="fil">Tingnan ang mga feature</span></a></li>
           <li><a href="gaze-control.html"><span class="en">Gaze Control (hands-free)</span><span class="fil">Gaze Control (walang kamay)</span></a></li>
-          <li><a href="awareness.html"><span class="en">PWD Awareness</span><span class="fil">Kamalayang PWD</span></a></li>
-          <li><a href="faq.html"><span class="en">Questions (FAQ)</span><span class="fil">Mga Tanong (FAQ)</span></a></li>
+          <li><a href="games.html"><span class="en">Learning games</span><span class="fil">Mga larong pampagkatuto</span></a></li>
+          <li><a href="fsl-dictionary.html"><span class="en">FSL Sign Dictionary</span><span class="fil">Diksyunaryo ng FSL</span></a></li>
+          <li><a href="try.html"><span class="en">Try it in your browser</span><span class="fil">Subukan sa browser</span></a></li>
         </ul>
       </nav>
-      <nav aria-label="About the project">
-        <h2 class="footer-title"><span class="en">The project</span><span class="fil">Ang proyekto</span></h2>
+      <nav aria-label="For teachers and parents">
+        <h2 class="footer-title"><span aria-hidden="true">🏫</span><span class="en">Teachers &amp; Parents</span><span class="fil">Guro at Magulang</span></h2>
         <ul>
-          <li><a href="about.html"><span class="en">About the team</span><span class="fil">Tungkol sa pangkat</span></a></li>
-          <li><a href="faq.html#feedback"><span class="en">Rate the app or send feedback</span><span class="fil">I-rate ang app o magpadala ng feedback</span></a></li>
+          <li><a href="teachers-guide.html"><span class="en">Teacher’s Guide</span><span class="fil">Gabay ng Guro</span></a></li>
+          <li><a href="guides.html#gg-educators"><span class="en">Guides for teachers &amp; parents</span><span class="fil">Mga gabay para sa guro at magulang</span></a></li>
+          <li><a href="awareness.html"><span class="en">PWD Awareness</span><span class="fil">Kamalayang PWD</span></a></li>
           <li><a href="privacy.html"><span class="en">Privacy &amp; data</span><span class="fil">Privacy at datos</span></a></li>
-          <li><a href="https://github.com/jpaestedstu-prog/pwd_flashcard_app" rel="noopener">GitHub</a></li>
+          <li><a href="download.html"><span class="en">Download the app</span><span class="fil">I-download ang app</span></a></li>
+        </ul>
+      </nav>
+      <nav aria-label="Help and the project">
+        <h2 class="footer-title"><span aria-hidden="true">💬</span><span class="en">Help</span><span class="fil">Tulong</span></h2>
+        <ul>
+          <li><a href="guides.html"><span class="en">Help &amp; Guides (step by step)</span><span class="fil">Tulong at mga Gabay (hakbang-hakbang)</span></a></li>
+          <li><a href="faq.html"><span class="en">Questions (FAQ)</span><span class="fil">Mga Tanong (FAQ)</span></a></li>
+          <li><a href="faq.html#feedback"><span class="en">Rate the app or send feedback</span><span class="fil">I-rate ang app o magpadala ng feedback</span></a></li>
+          <li><a href="about.html"><span class="en">About the team</span><span class="fil">Tungkol sa pangkat</span></a></li>
+          <li><a href="about.html#future"><span class="en">Future recommendations</span><span class="fil">Mga rekomendasyon sa hinaharap</span></a></li>
         </ul>
       </nav>
     </div>
@@ -282,15 +328,19 @@
     </div>
   </div>
 </footer>
-<script src="assets/site.js?v=e41ed031c7"></script>
+<script src="assets/site.js?v=205d4f961b"></script>
 <!--/gen:site-footer-->
 <script>
 (function(){
-  // Feedback form: a star rating and/or a message. "Send to the team" writes
-  // it to the website's own database (site.js, flpFeedback); "Open in your
-  // email app" (mailto) and "Copy message instead" send nothing themselves.
-  // Without that database (a local copy, or before it is set up) the email
-  // app is the way to send, as it always was.
+  // Feedback form: a star rating and/or a message. "Send to the team" saves it
+  // in the website's own database for the admin dashboard and, when email
+  // notices are set up, emails a copy to the team (site.js, flpFeedback).
+  // "Open in your email app" (mailto) and "Copy message instead" send nothing
+  // themselves. Without that database (a local copy, or before it is set up)
+  // the email app is the way to send, as it always was.
+  // The status line says only what really happened: "sent successfully" after
+  // the team's database or notifier confirmed it, never for the email app
+  // (only the visitor's own Send button sends that).
   var form = document.getElementById('fbForm');
   if (!form) return;
   var addr = ['jaj4ngpinasto', 'gmail.com'].join('@'); // assembled here to avoid address-harvesting bots
@@ -307,11 +357,22 @@
     mailBtn.classList.add('btn-secondary');
     document.getElementById('fbNoteSite').hidden = false;
     document.getElementById('fbNoteMail').hidden = true;
+    if (site.emails) [].forEach.call(form.querySelectorAll('.fb-copy'), function(s){ s.hidden = false; });
   }
-  function say(html, bad){
-    status.innerHTML = html;
-    status.classList.toggle('bad', !!bad);
+  // kind: 'ok' (sent), 'bad' (not sent, or something to fix) or 'info' (waiting
+  // for the visitor, e.g. in their email app). A second line explains more.
+  var sayTimer = 0;
+  function say(html, kind, more){
+    clearTimeout(sayTimer);
+    status.className = 'fb-status' + (kind && kind !== 'ok' ? ' ' + kind : '');
+    status.setAttribute('data-state', kind || 'ok');
+    // Emptied first, so a screen reader announces the same words again.
+    status.textContent = '';
+    sayTimer = setTimeout(function(){
+      status.innerHTML = html + (more ? '<span class="fb-sub">' + more + '</span>' : '');
+    }, 30);
   }
+  function bi(en, fil){ return '<span class="en">' + en + '</span><span class="fil">' + fil + '</span>'; }
 
   // Stars: five radio buttons; the chosen one and those before it fill in.
   var WORDS = [null, ['Poor', 'Mahina'], ['Fair', 'Katamtaman'], ['Good', 'Mabuti'],
@@ -338,7 +399,7 @@
   function kind(select){ return select.options[select.selectedIndex].getAttribute('data-kind'); }
   function filled(){
     if (msg.value.trim() || rating()) return true;
-    say('<span class="en">✍️ Choose a rating or write a message first.</span><span class="fil">✍️ Pumili muna ng rating o sumulat ng mensahe.</span>', true);
+    say(bi('✍️ Choose a rating or write a message first.', '✍️ Pumili muna ng rating o sumulat ng mensahe.'), 'bad');
     msg.focus();
     return false;
   }
@@ -353,8 +414,9 @@
     };
   }
 
-  // At most a few sends a day from one browser. A form filled in faster than
-  // a person can, or with the hidden field a person never sees: thanked, not sent.
+  // At most a few sends a day from one browser. The hidden field a person never
+  // sees, filled in: not sent, and the page says so. A form sent faster than a
+  // person can fill it waits a moment first.
   var PER_DAY = 5;
   function today(){ return new Date(Date.now() + 8 * 36e5).toISOString().slice(0, 10); }
   function sentToday(){
@@ -364,10 +426,21 @@
   function noteSent(){
     try { localStorage.setItem('flp-sent', JSON.stringify({ d: today(), n: sentToday() + 1 })); } catch(e){}
   }
-  function thanked(ratingOnly){
-    say(ratingOnly
-      ? '<span class="en">✅ Thank you for rating FlashLearn PWD!</span><span class="fil">✅ Salamat sa pag-rate sa FlashLearn PWD!</span>'
-      : '<span class="en">✅ Thank you! Your message reached the FlashLearn PWD team.</span><span class="fil">✅ Salamat! Natanggap na ng FlashLearn PWD team ang inyong mensahe.</span>');
+  // What is being sent, to recognise the same feedback sent twice.
+  function signature(f){ return [f.type, f.role, f.rating || 0, f.device, f.message].join('\u0001'); }
+  var draft = null;   // { id, sig }: one id per piece of feedback, kept for retries
+  function lastSent(){
+    try { return JSON.parse(sessionStorage.getItem('flp-last-sent') || 'null'); } catch(e){ return null; }
+  }
+  function keepLastSent(sig){
+    try { sessionStorage.setItem('flp-last-sent', JSON.stringify({ sig: sig, at: Date.now() })); } catch(e){}
+  }
+
+  var SENT = bi('✅ Your feedback has been sent successfully!', '✅ Matagumpay na naipadala ang inyong feedback!');
+  var FAILED = bi('⚠️ Your feedback could not be sent. Please try again.', '⚠️ Hindi naipadala ang inyong feedback. Pakisubukan ulit.');
+  var FAILED_MORE = bi('Check that you are online. You can also press “Open in your email app”.',
+                       'Tingnan kung may internet kayo. Maaari ring pindutin ang “Buksan sa inyong email app”.');
+  function cleared(){
     msg.value = ''; device.value = '';
     stars.forEach(function(s){ s.checked = false; });
     showStars();
@@ -375,25 +448,79 @@
   function sendHere(){
     if (!filled()) return;
     if (sentToday() >= PER_DAY) {
-      say('<span class="en">You have sent ' + PER_DAY + ' messages today — thank you! For more, please email us at <b>' + addr + '</b>.</span><span class="fil">Nakapagpadala na kayo ng ' + PER_DAY + ' mensahe ngayong araw — salamat! Para sa iba pa, mag-email sa <b>' + addr + '</b>.</span>', true);
+      say(bi('You have sent ' + PER_DAY + ' messages today — thank you! For more, please email us at <b>' + addr + '</b>.',
+             'Nakapagpadala na kayo ng ' + PER_DAY + ' mensahe ngayong araw — salamat! Para sa iba pa, mag-email sa <b>' + addr + '</b>.'), 'bad');
       return;
     }
+    if (document.getElementById('fbHp').value) { say(FAILED, 'bad', FAILED_MORE); return; }
     var text = msg.value.trim(), r = rating();
-    if (document.getElementById('fbHp').value || Date.now() - openedAt < 1500) { thanked(r && !text); return; }
+    var f = { type: text ? kind(type) : 'rating', role: kind(role), message: text.slice(0, 2000),
+              rating: r, device: device.value.trim().slice(0, 120) };
+    var sig = signature(f), last = lastSent();
+    if (last && last.sig === sig && Date.now() - last.at < 30 * 60e3) {
+      say(bi('✅ This feedback was already sent successfully. You do not need to send it again.',
+             '✅ Naipadala na ang feedback na ito. Hindi na kailangang ipadala ulit.'));
+      return;
+    }
+    if (!draft || draft.sig !== sig) draft = { id: site.newId(), sig: sig };
+    f.id = draft.id;
     sendBtn.disabled = true;
-    say('<span class="en">⏳ Sending…</span><span class="fil">⏳ Ipinapadala…</span>');
-    site.send({ type: text ? kind(type) : 'rating', role: kind(role), message: text.slice(0, 2000),
-                rating: r, device: device.value.trim().slice(0, 120) })
-      .then(function(){ noteSent(); thanked(r && !text); }, function(){
-        say('<span class="en">⚠️ It could not be sent — are you online? Please try again, or use “Open in your email app”.</span><span class="fil">⚠️ Hindi ito naipadala — may internet ba kayo? Subukan ulit, o gamitin ang “Buksan sa inyong email app”.</span>', true);
+    sendBtn.setAttribute('aria-busy', 'true');
+    say(bi('⏳ Sending your feedback…', '⏳ Ipinapadala ang inyong feedback…'), 'info');
+    var wait = Math.max(0, 1500 - (Date.now() - openedAt));
+    new Promise(function(done){ setTimeout(done, wait); })
+      .then(function(){ return site.send(f); })
+      .then(function(res){
+        if (!res.duplicate) noteSent();
+        keepLastSent(sig);
+        draft = null;
+        cleared();
+        say(SENT, 'ok', r && !text
+          ? bi('Thank you for rating FlashLearn PWD.', 'Salamat sa pag-rate sa FlashLearn PWD.')
+          : bi('Thank you! The FlashLearn PWD team will read it.', 'Salamat! Babasahin ito ng FlashLearn PWD team.'));
+      }, function(){
+        say(FAILED, 'bad', FAILED_MORE);
       })
-      .then(function(){ sendBtn.disabled = false; });
+      .then(function(){ sendBtn.disabled = false; sendBtn.removeAttribute('aria-busy'); });
   }
+  // The email app: the page cannot see whether it opened or whether the visitor
+  // pressed Send there, so it never says "sent". It says the app opened only
+  // when this page lost focus or was hidden (the app came to the front).
+  var mailWatch = null;
   function openMail(){
     if (!filled()) return;
     var m = compose();
-    say('<span class="en">✅ Your email app should open — just press Send there.</span><span class="fil">✅ Bubukas ang inyong email app — pindutin lang ang Send doon.</span>');
+    if (mailWatch) mailWatch.stop();
+    var left = false;
+    var gone = function(){ left = true; };
+    var hidden = function(){ if (document.visibilityState === 'hidden') left = true; };
+    window.addEventListener('blur', gone);
+    document.addEventListener('visibilitychange', hidden);
+    var watch = mailWatch = {
+      stop: function(){
+        clearTimeout(watch.timer);
+        window.removeEventListener('blur', gone);
+        document.removeEventListener('visibilitychange', hidden);
+        if (mailWatch === watch) mailWatch = null;
+      }
+    };
+    say(bi('📧 Opening your email app… Your feedback is not sent yet.',
+           '📧 Binubuksan ang inyong email app… Hindi pa naipapadala ang inyong feedback.'), 'info');
     location.href = 'mailto:' + addr + '?subject=' + encodeURIComponent(m.subject) + '&body=' + encodeURIComponent(m.body);
+    watch.timer = setTimeout(function(){
+      watch.stop();
+      if (left) {
+        say(bi('📧 Your email application has been opened. Please send your message to complete submission.',
+               '📧 Nabuksan na ang inyong email app. Pindutin ang Send doon para matapos ang pagpapadala.'), 'info',
+            bi('No email app? Press “Copy message instead” and send it to <b>' + addr + '</b>.',
+               'Walang email app? Pindutin ang “Kopyahin na lang” at ipadala ito sa <b>' + addr + '</b>.'));
+      } else {
+        say(bi('📧 If your email app opened, press Send there to complete submission.',
+               '📧 Kung bumukas ang inyong email app, pindutin ang Send doon para matapos ang pagpapadala.'), 'info',
+            bi('If it did not open, press “Copy message instead” and send it to <b>' + addr + '</b>.',
+               'Kung hindi ito bumukas, pindutin ang “Kopyahin na lang” at ipadala ito sa <b>' + addr + '</b>.'));
+      }
+    }, 2500);
   }
   form.addEventListener('submit', function(e){
     e.preventDefault();
@@ -405,12 +532,15 @@
     var m = compose();
     var text = 'To: ' + addr + '\nSubject: ' + m.subject + '\n\n' + m.body;
     var done = function(){
-      say('<span class="en">✅ Copied! Paste it into any email or chat app and send it to <b>' + addr + '</b>.</span><span class="fil">✅ Nakopya! I-paste ito sa kahit anong email o chat app at ipadala sa <b>' + addr + '</b>.</span>');
+      say(bi('📋 Copied! Paste it into any email or chat app and send it to <b>' + addr + '</b>.',
+             '📋 Nakopya! I-paste ito sa kahit anong email o chat app at ipadala sa <b>' + addr + '</b>.'), 'info',
+          bi('It is not sent until you send it there.', 'Hindi pa ito naipapadala hangga’t hindi ninyo ito ipinapadala roon.'));
     };
     var failed = function(){
       // Copying can be blocked (older browsers, denied permission). Say so and
       // show the address rather than leaving the button looking dead.
-      say('<span class="en">⚠️ Your browser blocked the copy. Select the message and copy it yourself, then send it to <b>' + addr + '</b>.</span><span class="fil">⚠️ Hindi pinayagan ng browser ang pagkopya. Piliin at kopyahin ang mensahe, at ipadala sa <b>' + addr + '</b>.</span>', true);
+      say(bi('⚠️ Your browser blocked the copy. Select the message and copy it yourself, then send it to <b>' + addr + '</b>.',
+             '⚠️ Hindi pinayagan ng browser ang pagkopya. Piliin at kopyahin ang mensahe, at ipadala sa <b>' + addr + '</b>.'), 'bad');
     };
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(done, function(){ fallbackCopy(text, done, failed); });
