@@ -178,6 +178,10 @@ def rules():
     check("a rating is accepted (and deleted)", ok and rest("DELETE", f"{FS}/feedback/{doc_id}", owner=True)[0] == 200)
 
 
+NOTICES_ON = "url: ''" not in open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "website", "assets", "site.js"),
+                                    encoding="utf-8").read().split("var NOTIFY", 1)[1][:80]
+
+
 def site(p):
     """The published website counts and its form sends; both undone afterwards."""
     # The site leaves robots uncounted, and a headless browser calls itself "HeadlessChrome".
@@ -198,11 +202,17 @@ def site(p):
     p.js("document.getElementById('fbR5').click(); document.getElementById('fbMsg').value = '[live check] please ignore';"
          "document.getElementById('fbSend').click()")
     check("a live rating with a message is sent and thanked",
-          p.wait("/reached the FlashLearn PWD team/.test(document.getElementById('fbStatus').textContent)", 15))
+          p.wait("/sent successfully/.test(document.getElementById('fbStatus').textContent)", 30))
     st, docs = rest("POST", f"{FS}:runQuery", {"structuredQuery": {"from": [{"collectionId": "feedback"}],
                     "where": {"fieldFilter": {"field": {"fieldPath": "message"}, "op": "EQUAL",
                                               "value": {"stringValue": "[live check] please ignore"}}}}}, owner=True)
-    names = [d["document"]["name"] for d in (docs or []) if "document" in d] if st == 200 else []
+    found = [d["document"] for d in (docs or []) if "document" in d] if st == 200 else []
+    names = [d["name"] for d in found]
+    # With email notices on (website_admin/configure.py --mail-url), the page posts to the
+    # notifier first and records what it answered: "sent" means the notifier emailed the admin.
+    if NOTICES_ON:
+        mail = [d.get("fields", {}).get("mail", {}).get("stringValue") for d in found]
+        check("the live page's email notice went out (saved as mail: sent)", mail == ["sent"], mail)
     deleted = all(rest("DELETE", "https://firestore.googleapis.com/v1/" + n, owner=True)[0] == 200 for n in names)
     check("it arrived in the database (and was deleted)", len(names) == 1 and deleted, (st, len(names)))
     after = h.wait_for(lambda: (lambda c: c if c.get("p_faq", 0) > before.get("p_faq", 0) else None)(counts(day)), 15) or counts(day)
